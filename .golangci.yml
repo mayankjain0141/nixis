@@ -16,75 +16,82 @@ linters:
     - unused
     - misspell
     - exhaustive
-    # depguard disabled - requires golangci-lint v2 syntax update for internal/stream isolation only
-    # - depguard
+    - depguard
+  settings:
+    forbidigo:
+      forbid:
+        # ADR-016: Category must be uint32 (not [4]uint64)
+        # Rationale: uint64 array breaks the INV-003 CAS loop — packLabel assumes uint32 Category
+        - pattern: 'Category\s+\[4\]uint64'
+          msg: "Category must be uint32 per ADR-016 — uint64 array breaks INV-003 CAS loop"
 
-linters-settings:
-  forbidigo:
-    forbid:
-      # ADR-016: Category must be uint32 (not [4]uint64)
-      # Rationale: uint64 array breaks the INV-003 CAS loop — packLabel assumes uint32 Category
-      - pattern: 'Category\s+\[4\]uint64'
-        msg: "Category must be uint32 per ADR-016 — uint64 array breaks INV-003 CAS loop"
+        # FINAL_SPEC_HARDENING P1-3: skipTaint banned at project level (INV-012)
+        # Only the built-in signed bundle may define the localhost exception
+        - pattern: 'skipTaint\s*:'
+          msg: "skipTaint is prohibited in project policies per FINAL_SPEC_HARDENING.md P1-3. Use built-in bundle localhost exception only."
 
-      # FINAL_SPEC_HARDENING P1-3: skipTaint banned at project level (INV-012)
-      # Only the built-in signed bundle may define the localhost exception
-      - pattern: 'skipTaint\s*:'
-        msg: "skipTaint is prohibited in project policies per FINAL_SPEC_HARDENING.md P1-3. Use built-in bundle localhost exception only."
+        # FINAL_SPEC_HARDENING P0-2: Empty command check must use TrimSpace
+        # Rationale: bare == "" misses whitespace-only commands (e.g. " ", "\t", "\n")
+        - pattern: 'cmdStr\s*==\s*""'
+          msg: 'Use strings.TrimSpace(cmdStr) == "" to catch whitespace-only commands per FINAL_SPEC_HARDENING.md P0-2'
 
-      # FINAL_SPEC_HARDENING P0-2: Empty command check must use TrimSpace
-      # Rationale: bare == "" misses whitespace-only commands (e.g. " ", "\t", "\n")
-      - pattern: 'cmdStr\s*==\s*""'
-        msg: 'Use strings.TrimSpace(cmdStr) == "" to catch whitespace-only commands per FINAL_SPEC_HARDENING.md P0-2'
+        # Hot path bans from ENGINEERING_STANDARDS.md §3.4 (INV-007)
+        # fmt.Sprintf allocates via reflection — forbidden on evaluation hot path
+        - pattern: 'fmt\.Sprintf'
+          pkg: 'internal/(classify|cel|ifc|policy)'
+          msg: "fmt.Sprintf is banned on hot path — pre-format strings or use strconv"
 
-      # Hot path bans from ENGINEERING_STANDARDS.md §3.4 (INV-007)
-      # fmt.Sprintf allocates via reflection — forbidden on evaluation hot path
-      - pattern: 'fmt\.Sprintf'
-        pkg: 'internal/(classify|cel|ifc|policy)'
-        msg: "fmt.Sprintf is banned on hot path — pre-format strings or use strconv"
+        # encoding/json.Marshal allocates — forbidden on evaluation hot path
+        - pattern: 'encoding/json\.Marshal'
+          pkg: 'internal/(classify|cel|ifc|policy)'
+          msg: "json.Marshal is banned on hot path — use pre-serialized types"
 
-      # encoding/json.Marshal allocates — forbidden on evaluation hot path
-      - pattern: 'encoding/json\.Marshal'
-        pkg: 'internal/(classify|cel|ifc|policy)'
-        msg: "json.Marshal is banned on hot path — use pre-serialized types"
+        # INV-009: Session IDs must be UUIDv4, not sequential counters
+        # Predictable IDs enable enumeration attacks on ParentSessionID
+        - pattern: 'fmt\.Sprintf\("session-%'
+          msg: "Session IDs must be UUIDv4 (uuid.New()) per INV-009 — sequential IDs enable enumeration attacks"
 
-      # INV-009: Session IDs must be UUIDv4, not sequential counters
-      # Predictable IDs enable enumeration attacks on ParentSessionID
-      - pattern: 'fmt\.Sprintf\("session-%'
-        msg: "Session IDs must be UUIDv4 (uuid.New()) per INV-009 — sequential IDs enable enumeration attacks"
+        # INV-008: ProgramCache must be a value type in EngineSnapshot, not a separate atomic.Pointer
+        # Rationale: separate pointer creates a second snapshot load point, violating the once-per-eval rule
+        - pattern: 'atomic\.Pointer\[.*ProgramCache'
+          msg: "ProgramCache must be a value type embedded in EngineSnapshot, not a separate atomic.Pointer"
 
-      # INV-008: ProgramCache must be a value type in EngineSnapshot, not a separate atomic.Pointer
-      # Rationale: separate pointer creates a second snapshot load point, violating the once-per-eval rule
-      - pattern: 'atomic\.Pointer\[.*ProgramCache'
-        msg: "ProgramCache must be a value type embedded in EngineSnapshot, not a separate atomic.Pointer"
+        # INV-005: snapshot.Store() may only be called from internal/policy.applySnapshot()
+        # Rationale: a second Store() call site would violate the single-writer invariant and create a race
+        - pattern: '\.snapshot\.Store\('
+          msg: "snapshot.Store() may only be called from internal/policy (applySnapshot) — INV-005 single-Store invariant"
 
-      # INV-005: snapshot.Store() may only be called from internal/policy.applySnapshot()
-      # Rationale: a second Store() call site would violate the single-writer invariant and create a race
-      - pattern: '\.snapshot\.Store\('
-        msg: "snapshot.Store() may only be called from internal/policy (applySnapshot) — INV-005 single-Store invariant"
+        # Wire-format terminology bans (PHASE4 §10 + ADR-011)
+        # These terms indicate leaked internal semantics into the streaming wire protocol
+        - pattern: '"session\.label_changed"'
+          msg: 'Use "label.escalated" for wire events — "session.label_changed" is banned from wire-facing code'
+        - pattern: '"escalate"'
+          pkg: 'internal/(stream|daemon)'
+          msg: '"escalate" is banned from wire-facing code — use the canonical label.escalated event type'
 
-      # Wire-format terminology bans (PHASE4 §10 + ADR-011)
-      # These terms indicate leaked internal semantics into the streaming wire protocol
-      - pattern: '"session\.label_changed"'
-        msg: 'Use "label.escalated" for wire events — "session.label_changed" is banned from wire-facing code'
-      - pattern: '"escalate"'
-        pkg: 'internal/(stream|daemon)'
-        msg: '"escalate" is banned from wire-facing code — use the canonical label.escalated event type'
-
-  depguard:
-    include-go-root: false
-    rules:
-      Main:
-        list-mode: lax
-        allow:
-          - $gostd
-          - github.com/mayjain/aegis/pkg/aegis
-          - github.com/mayjain/aegis/pkg/adapters
-          - github.com/mayjain/aegis/pkg/policy/types
-          - github.com/mayjain/aegis/internal
-          - github.com/mayjain/aegis/cmd
-          - github.com/google/uuid
-          - github.com/gorilla/websocket
+    depguard:
+      rules:
+        Main:
+          list-mode: lax
+          files:
+            - $all
+          allow:
+            - $gostd
+            - github.com/mayjain/aegis
+            - github.com/google/uuid
+            - github.com/gorilla/websocket
+          deny:
+            - pkg: "io/ioutil"
+              desc: "Deprecated: use io and os packages since Go 1.16"
+        stream-isolation:
+          list-mode: lax
+          files:
+            - "**/internal/stream/**/*.go"
+          deny:
+            - pkg: "github.com/mayjain/aegis/internal/audit"
+              desc: "internal/stream must not import internal/audit — inject via pkg/aegis.StreamTap interface"
+            - pkg: "github.com/mayjain/aegis/internal/policy"
+              desc: "internal/stream must not import internal/policy — inject via pkg/aegis.SnapshotReader interface"
 
 issues:
   exclude-rules:
