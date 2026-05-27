@@ -16,6 +16,10 @@ linters:
     - unused
     - misspell
     - exhaustive
+    # depguard is included for io/ioutil deprecation and the Main allow-list.
+    # Stream isolation (internal/stream cannot import internal/audit or internal/policy)
+    # is enforced via forbidigo pkg-scoped rules below — depguard's files-scoped deny
+    # rules do not work in golangci-lint v2 (verified: scoped deny is silently skipped).
     - depguard
   settings:
     forbidigo:
@@ -83,15 +87,9 @@ linters:
           deny:
             - pkg: "io/ioutil"
               desc: "Deprecated: use io and os packages since Go 1.16"
-        stream-isolation:
-          list-mode: lax
-          files:
-            - "**/internal/stream/**/*.go"
-          deny:
-            - pkg: "github.com/mayjain/aegis/internal/audit"
-              desc: "internal/stream must not import internal/audit — inject via pkg/aegis.StreamTap interface"
-            - pkg: "github.com/mayjain/aegis/internal/policy"
-              desc: "internal/stream must not import internal/policy — inject via pkg/aegis.SnapshotReader interface"
+        # NOTE: stream isolation (internal/stream cannot import internal/audit or internal/policy)
+        # is NOT enforced here. golangci-lint v2.12.2 depguard files-scoped deny rules are
+        # silently ignored — verified exhaustively. Enforcement is via scripts/check-stream-isolation.sh.
 
 issues:
   exclude-rules:
