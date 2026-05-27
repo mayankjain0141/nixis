@@ -110,7 +110,6 @@ func (w *Writer) Start(ctx context.Context) {
 			flush()
 			timer.Reset(batchTimeout)
 		case <-ctx.Done():
-			// Drain remaining items.
 			for {
 				select {
 				case item := <-w.ch:
@@ -155,24 +154,37 @@ func (w *Writer) Close() error {
 }
 
 // writeBatch writes a slice of items inside a single transaction.
+// If any INSERT fails, the transaction is rolled back and the batch is not persisted.
+// This is the documented fail-secure behaviour: a SQLite write failure must not silently
+// produce a partial audit trail.
 func (w *Writer) writeBatch(batch []writeItem) {
 	tx, err := w.db.Begin()
 	if err != nil {
 		return
 	}
-	defer tx.Rollback() //nolint:errcheck
 
 	for _, item := range batch {
 		if item.record != nil {
-			w.insertRecord(tx, item.record)
+			if err := w.insertRecord(tx, item.record); err != nil {
+				_ = tx.Rollback()
+				return
+			}
 		} else if item.labelRecord != nil {
-			w.insertSessionLabel(tx, item.labelRecord)
+			if err := w.insertSessionLabel(tx, item.labelRecord); err != nil {
+				_ = tx.Rollback()
+				return
+			}
 		}
 	}
-	tx.Commit() //nolint:errcheck
+
+	// Commit failure: rollback is implicit when the tx is garbage-collected, but we
+	// call it explicitly so the connection is returned to the pool immediately.
+	if err := tx.Commit(); err != nil {
+		_ = tx.Rollback()
+	}
 }
 
-func (w *Writer) insertRecord(tx *sql.Tx, r *AuditRecord) {
+func (w *Writer) insertRecord(tx *sql.Tx, r *AuditRecord) error {
 	var action string
 	switch r.Decision.Action {
 	case aegis.ActionDeny:
@@ -192,7 +204,7 @@ func (w *Writer) insertRecord(tx *sql.Tx, r *AuditRecord) {
 		argsStr = string(r.Args)
 	}
 
-	tx.Exec( //nolint:errcheck
+	_, err := tx.Exec(
 		`INSERT INTO audit_log (
 			timestamp, session_id, tool, args, action, reason, policy_id,
 			enforcing_layer,
@@ -216,10 +228,11 @@ func (w *Writer) insertRecord(tx *sql.Tx, r *AuditRecord) {
 		r.LabelAfter.Category,
 		r.LatencyNs,
 	)
+	return err
 }
 
-func (w *Writer) insertSessionLabel(tx *sql.Tx, r *SessionLabelRecord) {
-	tx.Exec( //nolint:errcheck
+func (w *Writer) insertSessionLabel(tx *sql.Tx, r *SessionLabelRecord) error {
+	_, err := tx.Exec(
 		`INSERT INTO session_labels (session_id, label_state, label_c, label_i, label_k, changed_at)
 		 VALUES (?,?,?,?,?,?)`,
 		r.SessionID,
@@ -229,6 +242,7 @@ func (w *Writer) insertSessionLabel(tx *sql.Tx, r *SessionLabelRecord) {
 		r.Label.Category,
 		r.ChangedAt,
 	)
+	return err
 }
 
 // applySchema creates the required tables if they don't exist.
@@ -277,7 +291,6 @@ func SanitizeArgs(args json.RawMessage) json.RawMessage {
 
 	var m map[string]json.RawMessage
 	if err := json.Unmarshal(args, &m); err != nil {
-		// Not a JSON object; return as-is (could be array or primitive).
 		return args
 	}
 
