@@ -85,8 +85,8 @@ export const useGovernanceStore = create<GovernanceState>()(
 
     clear() {
       set((draft) => {
-        draft.events = [];
-        draft.sessionLabels = new Map();
+        draft.events.length = 0;
+        draft.sessionLabels.clear();
         draft.totalDenials = 0;
         draft.totalAllows = 0;
       });

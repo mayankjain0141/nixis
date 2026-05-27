@@ -7,12 +7,12 @@ import (
 	"github.com/mayjain/aegis/pkg/aegis"
 )
 
-// maxUint64Label is the packed representation of the maximum SecurityLabel.
-// Used as the default ceiling value (unconstrained).
+// maxUint64Label is the packed representation of the unconstrained ceiling.
+// All bits set means every dimension is at its maximum — any label passes CheckCeiling.
 const maxUint64Label uint64 = 0xFFFFFFFFFFFFFFFF
 
-// stateOrdinal encodes the label lifecycle state as a monotone uint32.
-// States only advance — never retreat. Ordinal comparisons enforce this.
+// stateOrdinals encode the label lifecycle state machine as a monotonically
+// increasing uint32 so that atomic CAS can enforce "states never retreat."
 const (
 	stateOrdinalFresh        uint32 = 0
 	stateOrdinalEscalated    uint32 = 1
@@ -21,28 +21,37 @@ const (
 )
 
 // sessionData holds per-session mutable state.
-// All fields accessed atomically or under the sync.Map contract.
+// Fields are accessed only via atomic primitives.
 type sessionData struct {
-	label   atomic.Uint64 // packed current label — CAS-updated by Elevate
-	ceiling atomic.Uint64 // packed max allowed label; maxUint64Label = unconstrained
-	state   atomic.Uint32 // monotone state ordinal (stateOrdinal* constants)
+	label   atomic.Uint64 // packed current label — CAS-updated by Elevate only
+	ceiling atomic.Uint64 // packed ceiling; 0 = not yet set (treated as maxUint64Label)
+	state   atomic.Uint32 // monotone state ordinal (see stateOrdinal* constants)
 }
 
 // SessionLabels is a concurrent-safe registry of per-session IFC labels.
-// Each session label is updated via CAS (compare-and-swap) loops.
-// Direct Store() on the label field is FORBIDDEN outside session init. RISK-002.
+//
+// Label updates use a CAS retry loop (Elevate). Direct Store() on the label
+// field is FORBIDDEN except in the CAS winner path. RISK-002 mitigation.
 type SessionLabels struct {
-	// sync.Map: sessionID (string) → *sessionData
-	entries sync.Map
+	entries sync.Map // sessionID (string) → *sessionData
 }
 
-// loadOrCreate returns the sessionData for the given sessionID, creating it if absent.
-func (s *SessionLabels) loadOrCreate(sessionID string) *sessionData {
-	val, _ := s.entries.LoadOrStore(sessionID, &sessionData{})
-	return val.(*sessionData)
+// getOrCreate returns the *sessionData for sessionID, creating it atomically if absent.
+// It avoids allocating a new sessionData on cache hits by trying Load first.
+func (s *SessionLabels) getOrCreate(sessionID string) *sessionData {
+	if v, ok := s.entries.Load(sessionID); ok {
+		return v.(*sessionData)
+	}
+	fresh := &sessionData{}
+	if v, loaded := s.entries.LoadOrStore(sessionID, fresh); loaded {
+		// Another goroutine stored first; use their entry.
+		return v.(*sessionData)
+	}
+	return fresh
 }
 
-// advanceState advances the session state monotonically (states never retreat).
+// advanceState advances the session state monotonically.
+// It loops until the CAS succeeds or we observe that the state is already >= next.
 func advanceState(entry *sessionData, next uint32) {
 	for {
 		old := entry.state.Load()
@@ -55,68 +64,73 @@ func advanceState(entry *sessionData, next uint32) {
 	}
 }
 
-// Elevate raises the session label to incorporate the accessed resource label.
+// Elevate raises the session label to incorporate the resource label (session taint).
 //
-// This is a session taint operation, NOT a lattice Join. Key difference:
+// This is NOT the lattice Join. The key difference:
 //   - Elevate: Integrity = max(session.I, resource.I) — integrity goes UP
 //   - Join:    Integrity = min(a.I, b.I)              — integrity goes DOWN
 //
-// Implementation uses a CAS retry loop. Direct Store() is FORBIDDEN — it
-// would create a race window where a concurrent Elevate could overwrite a
-// higher label with a stale lower one. RISK-002 mitigation.
+// Implementation: CAS retry loop. Direct Store() on entry.label is FORBIDDEN —
+// a lost CAS that issues Store() would overwrite a higher concurrent label with
+// a stale lower one, silently downgrading the session. RISK-002.
 //
 // Returns the new (post-elevation) label.
 func (s *SessionLabels) Elevate(sessionID string, resource aegis.SecurityLabel) aegis.SecurityLabel {
-	entry := s.loadOrCreate(sessionID)
+	entry := s.getOrCreate(sessionID)
+
 	var result aegis.SecurityLabel
 	for {
 		old := entry.label.Load()
 		current := unpackLabel(old)
 		elevated := elevateLabel(current, resource)
 		newPacked := packLabel(elevated)
+
 		if newPacked == old {
+			// No change needed — label already dominates resource in all dimensions.
 			result = current
 			break
 		}
 		if entry.label.CompareAndSwap(old, newPacked) {
+			// CAS won — we own the write.
 			result = elevated
 			break
 		}
-		// CAS lost — another goroutine updated concurrently; retry.
+		// CAS lost — another goroutine updated first. Reload and retry.
 	}
-	// Advance state (non-blocking, monotone).
+
+	// Advance state machine monotonically after label is committed.
 	if result.Category&TaintBit != 0 {
 		advanceState(entry, stateOrdinalTainted)
 	} else if result.Confidentiality != 0 || result.Integrity != 0 || result.Category != 0 {
 		advanceState(entry, stateOrdinalEscalated)
 	}
+
 	return result
 }
 
-// Current returns the current label for the session.
-// Returns the zero SecurityLabel (minimum privilege) if the session is unknown.
+// Current returns the current label for sessionID.
+// Returns the zero SecurityLabel (minimum privilege) for unknown sessions.
 func (s *SessionLabels) Current(sessionID string) aegis.SecurityLabel {
-	val, ok := s.entries.Load(sessionID)
+	v, ok := s.entries.Load(sessionID)
 	if !ok {
 		return aegis.SecurityLabel{}
 	}
-	return unpackLabel(val.(*sessionData).label.Load())
+	return unpackLabel(v.(*sessionData).label.Load())
 }
 
-// LabelState returns the label lifecycle state for the session.
+// LabelState returns the lifecycle state for sessionID.
 //
-// State transitions (monotone — states only advance, never retreat):
-//   - fresh:             no resource access yet (zero label)
+// State machine (monotone — states only advance, never retreat):
+//   - fresh:             no resource access yet
 //   - escalated:         label raised by normal resource access
-//   - tainted_by_secret: TaintBit set in Category (set by TaintWithSecret)
-//   - declassified:      DeclassificationGate applied (label unchanged; annotation-only)
+//   - tainted_by_secret: TaintBit set in Category (via TaintWithSecret)
+//   - declassified:      DeclassificationGate applied (label unchanged; annotation only)
 func (s *SessionLabels) LabelState(sessionID string) LabelState {
-	val, ok := s.entries.Load(sessionID)
+	v, ok := s.entries.Load(sessionID)
 	if !ok {
 		return LabelStateFresh
 	}
-	entry := val.(*sessionData)
-	switch entry.state.Load() {
+	switch v.(*sessionData).state.Load() {
 	case stateOrdinalTainted:
 		return LabelStateTaintedBySecret
 	case stateOrdinalDeclassified:
@@ -128,55 +142,52 @@ func (s *SessionLabels) LabelState(sessionID string) LabelState {
 	}
 }
 
-// TaintWithSecret elevates the session label with the secret taint sentinel.
-// Sets TaintBit in Category and transitions LabelState to tainted_by_secret.
-// Returns the new label. Uses CAS loop per RISK-002.
+// TaintWithSecret sets TaintBit in the session category and transitions state
+// to tainted_by_secret. Uses the CAS loop in Elevate. RISK-002.
 func (s *SessionLabels) TaintWithSecret(sessionID string) aegis.SecurityLabel {
-	taintLabel := aegis.SecurityLabel{Category: TaintBit}
-	return s.Elevate(sessionID, taintLabel)
+	return s.Elevate(sessionID, aegis.SecurityLabel{Category: TaintBit})
 }
 
-// InitWithCeiling initialises a child session with a starting label and ceiling
-// derived from the parent's current label. Ceiling is immutable after init.
-// If parentLabel is zero (unconstrained), ceiling = maxUint64Label.
+// InitWithCeiling initialises a new child session with label=zero and ceiling=parentLabel.
+// Concurrent calls for the same sessionID are safe: the ceiling is written once
+// via a CAS that only fires on a zero (unset) ceiling.
+// If parentLabel is zero (unconstrained), the ceiling is set to maxUint64Label.
 func (s *SessionLabels) InitWithCeiling(sessionID string, parentLabel aegis.SecurityLabel) {
-	entry := s.loadOrCreate(sessionID)
+	entry := s.getOrCreate(sessionID)
+
 	packed := packLabel(parentLabel)
 	ceiling := packed
 	if ceiling == 0 {
 		ceiling = maxUint64Label
 	}
-	// Direct Store is safe here: InitWithCeiling is called once at session creation
-	// before the session entry is published to other goroutines. This is the sole
-	// legitimate Store() call on the label outside of the CAS winner path.
-	entry.label.Store(0)
-	entry.ceiling.Store(ceiling)
+
+	// CAS from 0 → ceiling. If a concurrent InitWithCeiling already set it,
+	// the CAS fails and we leave the earlier value intact (first writer wins).
+	entry.ceiling.CompareAndSwap(0, ceiling)
 }
 
-// Ceiling returns the label ceiling for the session.
-// Returns the maximum SecurityLabel (unconstrained) if not set.
+// Ceiling returns the label ceiling for sessionID.
+// Returns the maximum SecurityLabel (unconstrained) when no ceiling is set.
 func (s *SessionLabels) Ceiling(sessionID string) aegis.SecurityLabel {
-	val, ok := s.entries.Load(sessionID)
+	v, ok := s.entries.Load(sessionID)
 	if !ok {
 		return unpackLabel(maxUint64Label)
 	}
-	entry := val.(*sessionData)
-	c := entry.ceiling.Load()
+	c := v.(*sessionData).ceiling.Load()
 	if c == 0 {
 		return unpackLabel(maxUint64Label)
 	}
 	return unpackLabel(c)
 }
 
-// CheckCeiling returns true if the proposed label is within the session ceiling.
+// CheckCeiling returns true if proposed is within the session ceiling.
 func (s *SessionLabels) CheckCeiling(sessionID string, proposed aegis.SecurityLabel) bool {
-	ceiling := s.Ceiling(sessionID)
-	return Dominates(ceiling, proposed)
+	return Dominates(s.Ceiling(sessionID), proposed)
 }
 
-// markDeclassified records that the session has had DeclassificationGate applied.
-// The label itself is NOT modified (RISK-026 mitigation).
+// markDeclassified advances the session state to declassified.
+// The label itself is NOT modified — this is annotation-only. RISK-026.
 func (s *SessionLabels) markDeclassified(sessionID string) {
-	entry := s.loadOrCreate(sessionID)
+	entry := s.getOrCreate(sessionID)
 	advanceState(entry, stateOrdinalDeclassified)
 }

@@ -12,19 +12,8 @@ export interface LatencyBucket {
 const MAX_LATENCY_SAMPLES = 1000;
 const MAX_RATE_WINDOW = 60; // seconds of per-second buckets
 
-interface MetricsState {
-  latencySamples: number[];
-  latencyBucket: LatencyBucket;
-  // Events per second, keyed by unix second.
-  rateWindow: Map<number, number>;
-  totalEventsProcessed: number;
-
-  recordLatency(latencyNs: number): void;
-  recordEvent(timestampMs: number): void;
-  getEventsPerSecond(): number;
-}
-
-function computeBucket(samples: number[]): LatencyBucket {
+// computeBucket is O(n log n) — only called on explicit read, never on every write.
+function computeBucket(samples: readonly number[]): LatencyBucket {
   if (samples.length === 0) {
     return { p50: 0, p95: 0, p99: 0, maxNs: 0, sampleCount: 0 };
   }
@@ -39,10 +28,22 @@ function computeBucket(samples: number[]): LatencyBucket {
   };
 }
 
+interface MetricsState {
+  latencySamples: number[];
+  // Events per second, keyed by unix second.
+  rateWindow: Map<number, number>;
+  totalEventsProcessed: number;
+
+  recordLatency(latencyNs: number): void;
+  recordEvent(timestampMs: number): void;
+  // Computed on demand — O(n log n); do not call on the hot render path.
+  getLatencyBucket(): LatencyBucket;
+  getEventsPerSecond(): number;
+}
+
 export const useMetricsStore = create<MetricsState>()(
   immer((set, get) => ({
     latencySamples: [],
-    latencyBucket: { p50: 0, p95: 0, p99: 0, maxNs: 0, sampleCount: 0 },
     rateWindow: new Map(),
     totalEventsProcessed: 0,
 
@@ -52,7 +53,6 @@ export const useMetricsStore = create<MetricsState>()(
         if (draft.latencySamples.length > MAX_LATENCY_SAMPLES) {
           draft.latencySamples.splice(0, draft.latencySamples.length - MAX_LATENCY_SAMPLES);
         }
-        draft.latencyBucket = computeBucket(draft.latencySamples);
         draft.totalEventsProcessed++;
       });
     },
@@ -61,12 +61,15 @@ export const useMetricsStore = create<MetricsState>()(
       set((draft) => {
         const sec = Math.floor(timestampMs / 1000);
         draft.rateWindow.set(sec, (draft.rateWindow.get(sec) ?? 0) + 1);
-        // Evict buckets older than the window.
         const cutoff = sec - MAX_RATE_WINDOW;
         for (const key of draft.rateWindow.keys()) {
           if (key < cutoff) draft.rateWindow.delete(key);
         }
       });
+    },
+
+    getLatencyBucket() {
+      return computeBucket(get().latencySamples);
     },
 
     getEventsPerSecond() {

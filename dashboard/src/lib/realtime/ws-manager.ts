@@ -80,7 +80,6 @@ export function createWebSocketManager(wsUrl: string): IWebSocketManager {
   function scheduleReconnect(): void {
     setState('RECONNECTING');
     metrics.reconnectCount++;
-    metrics.lastDisconnectedAt = Date.now();
     const delay = BACKOFF_DELAYS[Math.min(reconnectAttempt, BACKOFF_DELAYS.length - 1)];
     const jitter = Math.random() * delay * 0.1; // 10% jitter
     reconnectAttempt++;
@@ -124,12 +123,12 @@ export function createWebSocketManager(wsUrl: string): IWebSocketManager {
       try {
         const parsed = JSON.parse(raw) as Record<string, unknown>;
         if (parsed.type === 'stream.heartbeat' && typeof parsed.serverTime === 'number') {
-          metrics.clockOffsetMs = parsed.serverTime as number - Date.now();
+          metrics.clockOffsetMs = parsed.serverTime - Date.now();
           lastHeartbeatAt = Date.now();
           scheduleHeartbeatCheck();
         }
         if (typeof parsed.aegissequence === 'number') {
-          lastSequenceId = Math.max(lastSequenceId, parsed.aegissequence as number);
+          lastSequenceId = Math.max(lastSequenceId, parsed.aegissequence);
         }
       } catch {
         // Non-JSON messages are allowed (e.g. pong); ignore parse failure here.

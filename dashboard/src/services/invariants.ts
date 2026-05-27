@@ -3,6 +3,7 @@
 // Stores themselves never import from each other.
 
 import type { SecurityLabel } from '../types/aegis';
+import { VERDICTS } from '../types/events';
 
 export interface InvariantResult {
   id: string;
@@ -10,6 +11,8 @@ export interface InvariantResult {
   severity: 'P0-security' | 'P1-correctness' | 'P2-performance';
   message: string;
 }
+
+const VALID_VERDICT_SET = new Set<string>(VERDICTS);
 
 // Selectors are injected so this service never imports store modules directly.
 export interface InvariantCheckerDeps {
@@ -24,14 +27,15 @@ export interface InvariantCheckerDeps {
 }
 
 export class GovernanceInvariantChecker {
-  private deps: InvariantCheckerDeps;
+  private readonly deps: InvariantCheckerDeps;
 
   constructor(deps: InvariantCheckerDeps) {
     this.deps = deps;
   }
 
-  // INV: aegisSequence is monotonically increasing across received events.
-  checkMonotonicLabelEscalation(): InvariantResult {
+  // INV: aegisSequence values in the event list are strictly increasing.
+  // A regression means an out-of-order or duplicate event was accepted into the store.
+  checkMonotonicSequence(): InvariantResult {
     const events = this.deps.getGovernanceEvents();
     let lastSeq = -1;
     for (const e of events) {
@@ -40,7 +44,7 @@ export class GovernanceInvariantChecker {
           id: 'version-monotonic',
           passed: false,
           severity: 'P0-security',
-          message: `Sequence regression: event ${e.id} has aegisSequence ${e.aegisSequence} after ${lastSeq}`,
+          message: `Sequence regression: event "${e.id}" has aegisSequence ${e.aegisSequence} after ${lastSeq}`,
         };
       }
       lastSeq = e.aegisSequence;
@@ -48,17 +52,18 @@ export class GovernanceInvariantChecker {
     return { id: 'version-monotonic', passed: true, severity: 'P0-security', message: 'OK' };
   }
 
-  // INV: Deny/require_approval events are never shown as green/allow in the UI.
+  // INV: Every stored event has a canonical verdict from the four-value vocabulary.
+  // Non-canonical strings ('escalate', 'HITL', 'block', etc.) indicate a fabricated
+  // or mis-validated event reached the store — a P0 security violation.
   checkDenyEdgesNeverGreen(): InvariantResult {
     const events = this.deps.getGovernanceEvents();
     for (const e of events) {
-      if ((e.verdict === 'deny' || e.verdict === 'require_approval') &&
-          (e.verdict as string) === 'allow') {
+      if (!VALID_VERDICT_SET.has(e.verdict)) {
         return {
           id: 'deny-edge-never-green',
           passed: false,
           severity: 'P0-security',
-          message: `Event ${e.id} has verdict ${e.verdict} but is rendered as allow`,
+          message: `Event "${e.id}" has non-canonical verdict "${e.verdict}" — expected one of: ${VERDICTS.join(', ')}`,
         };
       }
     }
@@ -66,6 +71,7 @@ export class GovernanceInvariantChecker {
   }
 
   // INV: Policy bundle version in the policy store matches the stream store's latest bundle event.
+  // A mismatch means the UI is displaying stale policy state.
   checkVersionConsistency(): InvariantResult {
     const policyVersion = this.deps.getPolicyBundleVersion();
     const streamVersion = this.deps.getStreamBundleVersion();
@@ -74,7 +80,7 @@ export class GovernanceInvariantChecker {
         id: 'version-consistency',
         passed: false,
         severity: 'P1-correctness',
-        message: `Policy bundle version ${policyVersion} does not match stream bundle version ${streamVersion}`,
+        message: `Policy bundle version ${policyVersion} does not match stream version ${streamVersion}`,
       };
     }
     return { id: 'version-consistency', passed: true, severity: 'P1-correctness', message: 'OK' };
@@ -82,7 +88,7 @@ export class GovernanceInvariantChecker {
 
   runAll(): InvariantResult[] {
     return [
-      this.checkMonotonicLabelEscalation(),
+      this.checkMonotonicSequence(),
       this.checkDenyEdgesNeverGreen(),
       this.checkVersionConsistency(),
     ];

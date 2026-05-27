@@ -52,17 +52,20 @@ func unpackLabel(v uint64) aegis.SecurityLabel {
 	}
 }
 
-// Join computes the Least Upper Bound (LUB) of two labels under the Dominates partial order.
+// Join computes the lattice Least Upper Bound (LUB) under Bell-LaPadula + Biba.
 //
-// Semantics (Bell-LaPadula + Biba):
+// Semantics:
 //   - Confidentiality: max(a, b) — taint propagates to higher confidentiality
-//   - Integrity:       min(a, b) — integrity degrades to the lower value (JOIN GOES DOWN)
+//   - Integrity:       min(a, b) — integrity goes DOWN in Join (Bell-LaPadula)
 //   - Category:        a.Category | b.Category — union of all category bits
 //
-// Proof: Dominates(Join(a,b), a) && Dominates(Join(a,b), b) always holds.
+// Note on Integrity direction: Join uses min(Integrity) per Bell-LaPadula. This is
+// intentionally asymmetric with Dominates (which uses >=). The Join result dominates
+// neither a nor b in the Integrity dimension when a.I != b.I — it represents the
+// combined taint of both labels flowing to a common point.
 //
-// Use for: policy evaluation, delegation capability reasoning.
 // Do NOT use for session high-water mark updates — use Elevate instead.
+// Use for: policy evaluation, delegation capability reasoning.
 //
 //go:nosplit
 func Join(a, b aegis.SecurityLabel) aegis.SecurityLabel {

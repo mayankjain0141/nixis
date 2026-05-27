@@ -44,8 +44,8 @@ func BenchmarkIFC_Meet(b *testing.B) {
 func BenchmarkIFC_Elevate(b *testing.B) {
 	s := &SessionLabels{}
 	resource := aegis.SecurityLabel{Confidentiality: 50, Integrity: 50, Category: CatCredentials}
-	// Pre-create session so loadOrCreate doesn't dominate timing.
-	s.loadOrCreate("bench-sess")
+	// Pre-create session so getOrCreate doesn't dominate timing.
+	s.getOrCreate("bench-sess")
 	b.ResetTimer()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
