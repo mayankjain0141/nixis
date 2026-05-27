@@ -1,0 +1,66 @@
+# Source: FINAL_SPEC_HARDENING.md P1-3
+# Gate: G5 (security tests — secret detection and delegation)
+#
+# BUILT-IN BUNDLE ONLY — project-level override is PROHIBITED.
+# This policy cannot be modified, disabled, or overridden by project-level policies.
+# Any attempt to define skipTaint: true at project level will fail policy validation.
+#
+# WARNING: Taint ALWAYS propagates regardless of the localhost exception.
+# This policy controls VERDICT only, not taint behavior.
+# If a secret (e.g. sk-... API key) is detected in the command, the session
+# IS tainted in all cases — localhost or not. The localhost exception merely
+# downgrades the VERDICT from REQUIRE_APPROVAL to AUDIT.
+#
+# Behavior:
+#   curl -H "Authorization: Bearer sk-..." http://localhost:8000    → AUDIT + session IS tainted
+#   curl -H "Authorization: Bearer sk-..." https://localhost:8000   → AUDIT + session IS tainted
+#   curl -H "Authorization: Bearer sk-..." http://127.0.0.1:8000   → AUDIT + session IS tainted
+#   curl -H "Authorization: Bearer sk-..." http://[::1]:8000        → AUDIT + session IS tainted
+#   curl -H "Authorization: Bearer sk-..." https://api.example.com  → REQUIRE_APPROVAL + session IS tainted
+#
+# Rationale for localhost exception:
+#   API keys in command text are a hygiene issue regardless of endpoint.
+#   For local development testing, taint propagation is the enforcement mechanism.
+#   Developers should use environment variables or credential managers instead.
+#
+# Correct credential injection patterns (avoid taint entirely):
+#   1. Set env vars BEFORE session start — not in command text
+#   2. Use a credential manager that injects at subprocess boundary
+
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: localhost-api-testing
+  annotations:
+    # This policy is in the built-in signed bundle only.
+    # project-level-override: prohibited
+    aegis.io/bundle: builtin
+    aegis.io/builtin-only: "true"
+spec:
+  description: "Permit API key use against localhost targets with audit; require approval for external endpoints"
+  matchConstraints:
+    tools: ["Bash"]
+    effects: ["credential_use"]
+  variables:
+    - name: targetUrl
+      # bash.targetUrl extracts URLs from curl/wget commands.
+      # Returns empty string if no URL is detected.
+      expression: 'bash.targetUrl(request.args.command)'
+    - name: isLocalhost
+      # Covers all loopback forms: localhost, 127.0.0.1, and IPv6 [::1],
+      # for both http:// and https:// schemes.
+      expression: >-
+        targetUrl.startsWith("http://localhost") ||
+        targetUrl.startsWith("https://localhost") ||
+        targetUrl.startsWith("http://127.0.0.1") ||
+        targetUrl.startsWith("https://127.0.0.1") ||
+        targetUrl.startsWith("http://[::1]") ||
+        targetUrl.startsWith("https://[::1]")
+  validations:
+    - expression: '!isLocalhost'
+      message: 'API key used against non-localhost endpoint — use environment variables or credential manager instead'
+      action: REQUIRE_APPROVAL
+  defaultAction: AUDIT
+  auditAnnotations:
+    - key: "credential_use_localhost"
+      value: '"true"'

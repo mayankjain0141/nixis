@@ -1,0 +1,68 @@
+# Source: FINAL_SPEC_HARDENING.md P1-4
+# Gate: G4 (CEL function tests), Phase 3 (policy integration tests)
+# Default: ENABLED — shipped as default-on in the built-in bundle
+
+# Behavior:
+#   git branch -D main                  → DENY   (protected branch deletion)
+#   git push --force origin main        → DENY   (force push to protected)
+#   git push -f origin main             → DENY   (force push, short flag)
+#   git push origin +main               → DENY   (force via +refspec, gitBranchTarget covers this)
+#   git push origin :main               → DENY   (delete via empty src refspec, gitBranchTarget covers this)
+#   git push origin HEAD:main           → DENY if force flag present; ALLOW otherwise
+#   git branch -D worktree-agent-123    → ALLOW  (matches safePattern)
+#   git branch -D feature-x             → REQUIRE_APPROVAL (not safe, not protected)
+#   git branch -D Main                  → DENY   (case-insensitive match on protectedPattern)
+#
+# Blind spots (documented, accepted):
+#   Shell aliases (e.g. git yolo → push --force) are not expanded before evaluation.
+#   Shell variable expansion (e.g. git branch -D $BRANCH) is not resolved.
+#   Mitigate via server-side git hooks.
+
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: git-branch-protection
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Protect primary branches from deletion and force-push operations"
+  matchConstraints:
+    tools: ["Bash"]
+  variables:
+    - name: branchName
+      # bash.gitBranchTarget handles all refspec forms:
+      #   git branch -D <branch>
+      #   git push --force origin <branch>
+      #   git push -f origin <branch>
+      #   git push origin +<branch>
+      #   git push origin :<branch>        (empty-src delete)
+      #   git push origin HEAD:<branch>
+      #   git push origin HEAD:refs/heads/<branch>
+      # Returns empty string if no branch can be extracted.
+      expression: 'bash.gitBranchTarget(request.args.command)'
+    - name: isProtected
+      # Case-insensitive: (?i) prefix makes the regex case-insensitive in CEL/RE2.
+      expression: 'branchName.matches("(?i)^(main|master|develop|release-.*)$")'
+    - name: isSafe
+      expression: 'branchName.matches("^(worktree-.*|feature/.*|fix/.*|wip/.*)$")'
+  validations:
+    - expression: 'bash.isGitBranchDelete(request.args.command) && isProtected'
+      message: 'Cannot delete protected branch'
+      action: DENY
+    - expression: 'bash.isGitBranchDelete(request.args.command) && !isSafe && !isProtected'
+      message: 'Branch deletion requires approval'
+      action: REQUIRE_APPROVAL
+    - expression: 'bash.isGitForcePush(request.args.command) && isProtected'
+      message: 'Cannot force-push to protected branch'
+      action: DENY
+  defaultAction: ALLOW
+  params:
+    protectedPattern:
+      type: string
+      # Case-insensitive matching is applied at evaluation time; the pattern itself
+      # need not include (?i) — the CEL variable applies it.
+      default: '^(main|master|develop|release-.*)$'
+    safePattern:
+      type: string
+      default: '^(worktree-.*|feature/.*|fix/.*|wip/.*)$'

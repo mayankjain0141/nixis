@@ -1,0 +1,43 @@
+# Source: FINAL_SPEC_HARDENING.md P1-2
+# Gate: G4 (CEL function tests), Phase 3 (policy integration tests)
+
+# Behavior:
+#   lsof -ti:7474 | xargs kill -9   → AUDIT (7474 is in default devPorts)
+#   lsof -ti:443 | xargs kill -9    → REQUIRE_APPROVAL (well-known port, not in devPorts)
+#   kill -9 $(lsof -ti:5173)        → AUDIT (5173 is in default devPorts)
+#   kill -9 12345                   → AUDIT (no port pattern detected; targetPort returns 0)
+#   fuser -k 3000/tcp               → AUDIT (3000 is in default devPorts)
+#
+# devPorts validation: values must be in range 1024–65535.
+#   Ports 0–1023 (well-known ports) are rejected at policy validation time with:
+#   "devPorts contains well-known port: use explicit policy for ports < 1024"
+
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: dev-port-cleanup
+  annotations:
+    aegis.io/bundle: builtin
+spec:
+  description: "Allow killing processes on known dev ports without approval; flag well-known ports"
+  matchConstraints:
+    tools: ["Bash"]
+  variables:
+    - name: targetPort
+      # bash.targetPort extracts port from patterns:
+      #   lsof -ti:PORT | xargs kill
+      #   kill -9 $(lsof -ti:PORT)
+      #   fuser -k PORT/tcp
+      # Returns 0 if no port pattern detected.
+      expression: 'bash.targetPort(request.args.command)'
+  validations:
+    - expression: '!(targetPort in params.devPorts) && targetPort > 0'
+      message: 'Port cleanup on non-dev port requires approval'
+      action: REQUIRE_APPROVAL
+  defaultAction: AUDIT
+  params:
+    devPorts:
+      type: array
+      # All values must be in range 1024–65535.
+      # Well-known ports (0–1023) are rejected at policy load time.
+      default: [3000, 3001, 5173, 7474, 8000, 8080, 9000]

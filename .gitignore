@@ -107,3 +107,25 @@ temp/
 # ===========================
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# ===========================
+# Planning & Research Docs
+# ===========================
+docs/
+research/
+archive/
+test_data/
+
+# ===========================
+# Claude Execution Files
+# ===========================
+CLAUDE.md
+SUBAGENT_PLAYBOOK.md
+.claude/
+.cursor/
+
+# ===========================
+# Test Data & Keys
+# ===========================
+testdata/
+.benchmarks/
