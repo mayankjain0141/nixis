@@ -15,6 +15,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync/atomic"
 
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/common/types"
@@ -265,7 +266,7 @@ func (l *labelLib) CompileOptions() []cel.EnvOption {
 					aC, aI, aCat, bC, bI, bCat := intVal(args[0]), intVal(args[1]), intVal(args[2]),
 						intVal(args[3]), intVal(args[4]), intVal(args[5])
 					subject := aegistypes.SecurityLabel{
-						Confidentiality: uint16(aC), //nolint:gosec // bounded by CEL int semantics; callers control inputs
+						Confidentiality: uint16(aC), //nolint:gosec // value comes from CEL int; policies control the bounds
 						Integrity:       uint16(aI),
 						Category:        uint32(aCat),
 					}
@@ -285,7 +286,7 @@ func (l *labelLib) CompileOptions() []cel.EnvOption {
 				cel.ListType(cel.IntType),
 				cel.FunctionBinding(func(args ...ref.Val) ref.Val {
 					if len(args) != 6 {
-						return types.DefaultTypeAdapter.NativeToValue([]ref.Val{})
+						return types.DefaultTypeAdapter.NativeToValue([]int64{})
 					}
 					aC, aI, aCat, bC, bI, bCat := intVal(args[0]), intVal(args[1]), intVal(args[2]),
 						intVal(args[3]), intVal(args[4]), intVal(args[5])
@@ -300,33 +301,33 @@ func (l *labelLib) CompileOptions() []cel.EnvOption {
 						Category:        uint32(bCat),
 					}
 					result := ifc.Join(a, b)
-					items := []ref.Val{
-						types.Int(result.Confidentiality),
-						types.Int(result.Integrity),
-						types.Int(result.Category),
-					}
-					return types.DefaultTypeAdapter.NativeToValue(items)
+					// Return as []int64 so CEL's NativeToValue produces a typed list<int>.
+					// Using []ref.Val would produce an untyped list that fails type-checking
+					// against the declared return type list<int>.
+					return types.DefaultTypeAdapter.NativeToValue([]int64{
+						int64(result.Confidentiality),
+						int64(result.Integrity),
+						int64(result.Category),
+					})
 				}),
 			),
 		),
-		// ifc.highWaterMark(session_id string) — returns the confidentiality int of the session label
+		// ifc.highWaterMark(session_id string) — returns the confidentiality int of the session label.
+		// Monotone: labels only increase, so repeated calls for the same session ID are non-decreasing.
 		cel.Function("ifc.highWaterMark",
 			cel.Overload("ifc_highWaterMark_string",
 				[]*cel.Type{cel.StringType},
 				cel.IntType,
 				cel.UnaryBinding(func(v ref.Val) ref.Val {
-					// highWaterMark operates on the shared SessionLabels at eval time.
-					// The sessionLabels pointer is captured in the closure via globalSessions.
-					// This is pure in the sense that it reads the current IFC state — same
-					// session, same committed label, same output (monotone).
 					sid, ok := v.(types.String)
 					if !ok {
 						return types.IntZero
 					}
-					if globalSessions == nil {
+					s := globalSessions.Load()
+					if s == nil {
 						return types.IntZero
 					}
-					label := globalSessions.Current(string(sid))
+					label := s.Current(string(sid))
 					return types.Int(label.Confidentiality)
 				}),
 			),
@@ -336,16 +337,15 @@ func (l *labelLib) CompileOptions() []cel.EnvOption {
 
 func (l *labelLib) ProgramOptions() []cel.ProgramOption { return nil }
 
-// globalSessions is set once at NewCELEnvironment call time by SetSessionLabels.
-// It is read-only on the hot path. This avoids threading *ifc.SessionLabels through
-// every CEL activation map (which would allocate).
-var globalSessions *ifc.SessionLabels
+// globalSessions holds the session label registry for ifc.highWaterMark.
+// atomic.Pointer ensures safe concurrent access between goroutines that call
+// Evaluate (readers) and any call to SetSessionLabels (writer).
+var globalSessions atomic.Pointer[ifc.SessionLabels]
 
 // SetSessionLabels injects the session label registry for use by ifc.highWaterMark.
-// Must be called before any CEL evaluation that uses ifc.highWaterMark.
-// Thread-safe: write happens at startup before any goroutines call Evaluate.
+// Safe to call at any time; the pointer swap is atomic.
 func SetSessionLabels(s *ifc.SessionLabels) {
-	globalSessions = s
+	globalSessions.Store(s)
 }
 
 // intVal safely converts a ref.Val to int64.
@@ -427,19 +427,21 @@ func bashTargetPort(cmd string) int {
 	return 0
 }
 
-// reTargetURL matches curl/wget URL arguments.
-var reTargetURL = regexp.MustCompile(`(?:curl|wget)\s+(?:[^\s]+\s+)*?(https?://[^\s'"]+|https?://[^\s'"]+)`)
+// reTargetURL matches a URL (http:// or https://) following curl or wget and any flags/headers.
+// Capture group 1 is the URL. The non-greedy .*? skips over flags and header values.
+var reTargetURL = regexp.MustCompile(`(?:curl|wget)\b.*?(https?://[^\s'"]+)`)
 
 // bashTargetURL extracts the URL from a curl/wget command. Returns empty if no URL found.
 func bashTargetURL(cmd string) string {
-	// Scan for http:// or https:// tokens.
+	// Fast path: scan space-delimited tokens for a URL prefix.
+	// This correctly handles unquoted URLs without regex backtracking.
 	tokens := strings.Fields(cmd)
 	for _, t := range tokens {
 		if strings.HasPrefix(t, "http://") || strings.HasPrefix(t, "https://") {
 			return t
 		}
 	}
-	// Fallback to regex for quoted URLs.
+	// Fallback: regex for URLs that are embedded mid-token or quoted.
 	if m := reTargetURL.FindStringSubmatch(cmd); m != nil {
 		return m[1]
 	}
@@ -486,7 +488,8 @@ func extractBranchFromBranchCmd(args []string) string {
 
 // extractBranchFromPushCmd extracts the branch from `git push [flags] [remote] [refspec]` args.
 func extractBranchFromPushCmd(args []string) string {
-	// Strip flags like --force, -f, --tags, etc.
+	// Separate flags (start with "-") from positional arguments.
+	// Positional args are: [remote, refspec] in that order.
 	nonFlags := make([]string, 0, len(args))
 	for _, a := range args {
 		if strings.HasPrefix(a, "-") {
@@ -494,36 +497,34 @@ func extractBranchFromPushCmd(args []string) string {
 		}
 		nonFlags = append(nonFlags, a)
 	}
-	// nonFlags[0] is the remote (e.g. "origin"), nonFlags[1] is the refspec if present.
-	// Forms handled:
-	//   git push origin main           → main
-	//   git push origin +main          → main
-	//   git push origin :main          → main  (empty src = delete)
-	//   git push origin HEAD:main      → main
-	//   git push origin HEAD:refs/heads/main → main
+
+	// Forms handled (after flag removal):
+	//   git push origin main             → nonFlags=[origin, main]       → main
+	//   git push origin +main            → nonFlags=[origin, +main]      → main
+	//   git push origin :main            → nonFlags=[origin, :main]      → main
+	//   git push origin HEAD:main        → nonFlags=[origin, HEAD:main]  → main
+	//   git push origin HEAD:refs/heads/main → nonFlags=[origin, HEAD:refs/heads/main] → main
+	//
+	// When there is no explicit refspec (nonFlags has only the remote), git pushes the
+	// current branch to its upstream — we cannot determine the branch from the command
+	// text alone, so return "".
 	if len(nonFlags) < 2 {
-		// No explicit refspec — check if remote arg itself carries +refspec.
-		for _, a := range nonFlags {
-			if strings.HasPrefix(a, "+") {
-				return strings.ToLower(strings.TrimPrefix(a, "+"))
-			}
-		}
 		return ""
 	}
+	// The last non-flag argument is the refspec (or branch name).
 	refspec := nonFlags[len(nonFlags)-1]
 	return parseRefspec(refspec)
 }
 
-// parseRefspec parses a git refspec into the destination branch name.
+// parseRefspec parses a git refspec into the destination branch name (lowercase).
 func parseRefspec(refspec string) string {
-	// +main  → main (force refspec)
+	// +main → main (force-push refspec prefix)
 	refspec = strings.TrimPrefix(refspec, "+")
 
-	// :main  → main (delete remote)
+	// :main → main (delete remote branch via empty src)
 	refspec = strings.TrimPrefix(refspec, ":")
 
-	// HEAD:main → main
-	// HEAD:refs/heads/main → main
+	// HEAD:main or HEAD:refs/heads/main → take the part after ":"
 	if idx := strings.Index(refspec, ":"); idx >= 0 {
 		refspec = refspec[idx+1:]
 	}
@@ -578,23 +579,29 @@ func bashIsGitBranchDelete(cmd string) bool {
 	return false
 }
 
-// bashFindSearchRoot extracts the search root directory from a `find` command.
-// Returns empty string if not a find command.
-// Symlinks in the path are resolved via filepath.EvalSymlinks (fail-secure: returns "" on error).
+// bashFindSearchRoot extracts the search root directory from a `find` command and resolves
+// symlinks. Returns empty string if not a find command or if path resolution fails.
+//
+// Fail-secure (INV-014): on any filepath.EvalSymlinks error (path does not exist, broken
+// symlink, permission denied), the function returns "" rather than a raw unresolved path.
+// A policy comparing the result to a project root would then treat the unknown location
+// conservatively (outside project), rather than making a decision based on an unverified path.
 func bashFindSearchRoot(cmd string) string {
 	tokens := strings.Fields(cmd)
 	if len(tokens) < 2 || tokens[0] != "find" {
 		return ""
 	}
-	// The first non-flag argument after "find" is the path.
+	// The first non-flag argument after "find" is the search path.
 	for _, t := range tokens[1:] {
 		if strings.HasPrefix(t, "-") {
 			continue
 		}
-		resolved, err := filepath.EvalSymlinks(t)
+		resolved, err := filepath.EvalSymlinks(filepath.Clean(t))
 		if err != nil {
-			// Fail-secure: path may not exist yet (e.g. in expressions); return as-is.
-			return filepath.Clean(t)
+			// Fail-secure: do NOT return filepath.Clean(t).
+			// An unresolved path returned to a policy is indistinguishable from a real path,
+			// and could allow boundary-check bypass if the policy uses string prefix matching.
+			return ""
 		}
 		return resolved
 	}
@@ -615,5 +622,6 @@ func pathIsWithinProject(path, root string) bool {
 	if !strings.HasSuffix(canonicalProject, "/") {
 		canonicalProject += "/"
 	}
-	return strings.HasPrefix(canonicalSearch, canonicalProject) || canonicalSearch == strings.TrimSuffix(canonicalProject, "/")
+	return strings.HasPrefix(canonicalSearch, canonicalProject) ||
+		canonicalSearch == strings.TrimSuffix(canonicalProject, "/")
 }

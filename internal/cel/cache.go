@@ -50,10 +50,12 @@ func (c *ProgramCache) SourceLocation(policyID string) string {
 // Version returns the snapshot version this cache was compiled for.
 func (c *ProgramCache) Version() uint64 { return c.version }
 
-// itoa converts an int to string without using fmt or strconv (both of which
-// are acceptable here since this is not the hot path — but we keep it simple).
+// itoa converts a non-negative int to its decimal string representation.
+// SourceLine values from policy YAML are expected to be >= 1; this function
+// is only called when sourceLine > 0. Negative values are clamped to "0"
+// rather than producing a garbled or empty string.
 func itoa(n int) string {
-	if n == 0 {
+	if n <= 0 {
 		return "0"
 	}
 	buf := [20]byte{}

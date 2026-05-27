@@ -2,11 +2,13 @@ package cel_test
 
 import (
 	"encoding/json"
+	"path/filepath"
 	"testing"
 
 	"github.com/google/cel-go/common/types"
 	"github.com/mayjain/aegis/internal/cel"
 	"github.com/mayjain/aegis/internal/classify"
+	"github.com/mayjain/aegis/internal/ifc"
 	aegis "github.com/mayjain/aegis/pkg/aegis"
 	policy_types "github.com/mayjain/aegis/pkg/policy/types"
 )
@@ -241,23 +243,45 @@ func TestProgramCache_IsValueType(t *testing.T) {
 	}
 	original := mustCompile(t, env, templates)
 
-	// Copy the cache by value.
+	// Copy the cache by value — this is what EngineSnapshot does when it embeds ProgramCache.
 	copyCache := *original
 
-	// Verify both have the same programs.
+	// Both the original and the copy must see the same compiled programs.
 	if _, ok := copyCache.Get("p1"); !ok {
 		t.Error("copy missing p1")
 	}
 	if _, ok := copyCache.Get("p2"); !ok {
 		t.Error("copy missing p2")
 	}
-
-	// The copy is independent: adding a program to one doesn't affect the other.
-	// Since ProgramCache's map is shared (shallow copy), this test verifies the
-	// value-type semantics as specified: copies share the immutable read-only state,
-	// which is correct per INV-008 (programs are immutable after CompileAll).
 	if _, ok := original.Get("p1"); !ok {
 		t.Error("original lost p1 after copy")
+	}
+	if _, ok := original.Get("p2"); !ok {
+		t.Error("original lost p2 after copy")
+	}
+
+	// Verify versions agree.
+	if original.Version() != copyCache.Version() {
+		t.Errorf("Version mismatch after copy: original=%d copy=%d", original.Version(), copyCache.Version())
+	}
+
+	// Compile a second cache with different templates and verify the first is unaffected.
+	// This exercises the key INV-008 contract: ProgramCache is embedded by value in
+	// EngineSnapshot. When a new snapshot is built (CompileAll returns a new *ProgramCache),
+	// old snapshots that copied the struct value must not be corrupted.
+	templates2 := []policy_types.PolicyTemplate{
+		{ID: "p3", Expression: `risk_level == "high"`},
+	}
+	second := mustCompile(t, env, templates2)
+
+	if _, ok := original.Get("p1"); !ok {
+		t.Error("original.p1 disappeared after second CompileAll")
+	}
+	if _, ok := second.Get("p1"); ok {
+		t.Error("second cache should not contain p1 from the first compile")
+	}
+	if _, ok := second.Get("p3"); !ok {
+		t.Error("second cache missing p3")
 	}
 }
 
@@ -593,26 +617,35 @@ func TestCEL_BranchProtection_CaseInsensitive(t *testing.T) {
 }
 
 func TestCEL_FindSearchRoot_AbsolutePath(t *testing.T) {
+	// bash.findSearchRoot resolves symlinks via filepath.EvalSymlinks before returning.
+	// On macOS /tmp → /private/tmp; on Linux /tmp → /tmp.
+	// We must compute the expected value the same way the implementation does, not
+	// assume a platform-specific resolved path in the test.
+	searchPath := "/usr"
+	expected, err := filepath.EvalSymlinks(filepath.Clean(searchPath))
+	if err != nil {
+		t.Skipf("cannot resolve %q on this platform: %v", searchPath, err)
+	}
+
 	env := mustNewEnv(t)
-	// bash.findSearchRoot resolves symlinks, so on macOS /tmp → /private/tmp.
-	// We use /usr which is a real directory and not a symlink on both Linux and macOS.
 	templates := []policy_types.PolicyTemplate{
-		{ID: "find-root", Expression: `bash.findSearchRoot(args.command).startsWith("/usr")`},
+		// Expression uses the actual resolved path so the test is platform-independent.
+		{ID: "find-root", Expression: `bash.findSearchRoot(args.command) == "` + expected + `"`},
 	}
 	cache := mustCompile(t, env, templates)
 	prog, _ := cache.Get("find-root")
 	builder := cel.NewActivationBuilder()
 	req := aegis.CheckRequest{
 		Tool:      "Bash",
-		Args:      argsJSON(t, map[string]any{"command": `find /usr -name "*.env"`}),
+		Args:      argsJSON(t, map[string]any{"command": `find ` + searchPath + ` -name "*.env"`}),
 		SessionID: "s",
 	}
-	val, err := builder.Evaluate(prog, req, classify.VerdictEntry{})
-	if err != nil {
-		t.Fatalf("Evaluate: %v", err)
+	val, evalErr := builder.Evaluate(prog, req, classify.VerdictEntry{})
+	if evalErr != nil {
+		t.Fatalf("Evaluate: %v", evalErr)
 	}
 	if val != types.True {
-		t.Errorf("expected findSearchRoot to start with /usr, got %v", val)
+		t.Errorf("expected findSearchRoot(%q) == %q, got %v", searchPath, expected, val)
 	}
 }
 
@@ -800,5 +833,163 @@ func TestCEL_EvalDeterministic(t *testing.T) {
 			t.Errorf("non-deterministic result at iteration %d: %s != %s", i, cur, prev)
 		}
 		prev = cur
+	}
+}
+
+// --- Regression tests for bugs found during code review ---
+
+// TestCEL_FindSearchRoot_NonExistentPath_FailSecure verifies that bashFindSearchRoot
+// returns "" (not a raw cleaned path) when the search root does not exist on disk.
+// The old code returned filepath.Clean(t) on EvalSymlinks error, which could allow
+// a policy boundary check to be bypassed via a crafted non-existent path string.
+func TestCEL_FindSearchRoot_NonExistentPath_FailSecure(t *testing.T) {
+	env := mustNewEnv(t)
+	templates := []policy_types.PolicyTemplate{
+		{ID: "find-nonexist", Expression: `bash.findSearchRoot(args.command) == ""`},
+	}
+	cache := mustCompile(t, env, templates)
+	prog, _ := cache.Get("find-nonexist")
+	builder := cel.NewActivationBuilder()
+
+	// This path does not exist on disk — EvalSymlinks will fail.
+	req := aegis.CheckRequest{
+		Tool:      "Bash",
+		Args:      argsJSON(t, map[string]any{"command": `find /this/path/does/not/exist -name "*.env"`}),
+		SessionID: "s",
+	}
+	val, err := builder.Evaluate(prog, req, classify.VerdictEntry{})
+	if err != nil {
+		t.Fatalf("Evaluate: %v", err)
+	}
+	if val != types.True {
+		t.Errorf("expected findSearchRoot(\"/this/path/does/not/exist\") == \"\", got %v (fail-secure violated)", val)
+	}
+}
+
+// TestCEL_SourceLocation_NegativeSourceLine verifies that negative SourceLine values
+// produce a sane SourceLocation string rather than a garbled one.
+// The old itoa loop ran `for n > 0` which never executes for n < 0, producing "".
+func TestCEL_SourceLocation_NegativeSourceLine(t *testing.T) {
+	env := mustNewEnv(t)
+	templates := []policy_types.PolicyTemplate{
+		{
+			ID:         "neg-line",
+			Expression: `tool == "Bash"`,
+			SourceFile: "policies/test.yaml",
+			SourceLine: -5,
+		},
+	}
+	cache := mustCompile(t, env, templates)
+	// SourceLine <= 0 → SourceLocation returns only the file, not file:line.
+	loc := cache.SourceLocation("neg-line")
+	if loc != "policies/test.yaml" {
+		t.Errorf("SourceLocation with SourceLine=-5: got %q, want %q", loc, "policies/test.yaml")
+	}
+}
+
+// TestCEL_LabelJoin_ReturnsCorrectValues verifies that label.join produces the
+// mathematically correct LUB result, not just a list of the right size.
+// The old code used []ref.Val which could produce an untyped list; we now use []int64.
+func TestCEL_LabelJoin_ReturnsCorrectValues(t *testing.T) {
+	env := mustNewEnv(t)
+
+	// Join({C:5, I:3, Cat:0}, {C:3, I:7, Cat:0})
+	// Expected: C=max(5,3)=5, I=min(3,7)=3 (Bell-LaPadula Join: integrity goes DOWN), Cat=0|0=0
+	templates := []policy_types.PolicyTemplate{
+		// label.join returns [conf, integrity, category].
+		// Index 0 = confidentiality = 5
+		{ID: "join-conf", Expression: `label.join(5, 3, 0, 3, 7, 0)[0] == 5`},
+		// Index 1 = integrity = min(3, 7) = 3 (Join: integrity goes DOWN)
+		{ID: "join-int", Expression: `label.join(5, 3, 0, 3, 7, 0)[1] == 3`},
+		// Index 2 = category = 0 | 0 = 0
+		{ID: "join-cat", Expression: `label.join(5, 3, 0, 3, 7, 0)[2] == 0`},
+	}
+	cache := mustCompile(t, env, templates)
+	builder := cel.NewActivationBuilder()
+	req := aegis.CheckRequest{Tool: "Read", SessionID: "s"}
+
+	for _, tmpl := range templates {
+		prog, ok := cache.Get(tmpl.ID)
+		if !ok {
+			t.Fatalf("program %q not found", tmpl.ID)
+		}
+		val, err := builder.Evaluate(prog, req, classify.VerdictEntry{})
+		if err != nil {
+			t.Fatalf("%s: Evaluate: %v", tmpl.ID, err)
+		}
+		if val != types.True {
+			t.Errorf("%s: expression %q evaluated to %v, expected true", tmpl.ID, tmpl.Expression, val)
+		}
+	}
+}
+
+// TestCEL_SetSessionLabels_ConcurrentSafe verifies that SetSessionLabels and concurrent
+// ifc.highWaterMark evaluations do not race. The old implementation used a plain pointer
+// assignment which is a data race under the Go memory model.
+func TestCEL_SetSessionLabels_ConcurrentSafe(t *testing.T) {
+	sessions := &ifc.SessionLabels{}
+	cel.SetSessionLabels(sessions)
+
+	env := mustNewEnv(t)
+	templates := []policy_types.PolicyTemplate{
+		{ID: "hwm", Expression: `ifc.highWaterMark(session_id) >= 0`},
+	}
+	cache := mustCompile(t, env, templates)
+	prog, _ := cache.Get("hwm")
+	builder := cel.NewActivationBuilder()
+
+	done := make(chan struct{})
+
+	// Writer goroutine: repeatedly calls SetSessionLabels.
+	go func() {
+		for i := 0; i < 100; i++ {
+			cel.SetSessionLabels(sessions)
+		}
+		close(done)
+	}()
+
+	// Reader goroutines: concurrently evaluate expressions that call ifc.highWaterMark.
+	req := aegis.CheckRequest{Tool: "Bash", SessionID: "concurrent-session"}
+	for i := 0; i < 10; i++ {
+		go func() {
+			for j := 0; j < 20; j++ {
+				_, _ = builder.Evaluate(prog, req, classify.VerdictEntry{})
+			}
+		}()
+	}
+
+	<-done
+	// If the race detector fires, the test fails. No assertion needed beyond non-crash.
+}
+
+// TestCEL_GitBranchTarget_PushNoRefspec verifies that git push with only a remote
+// (no explicit refspec) returns "" — we cannot determine the branch from command text.
+func TestCEL_GitBranchTarget_PushNoRefspec(t *testing.T) {
+	env := mustNewEnv(t)
+	templates := []policy_types.PolicyTemplate{
+		{ID: "no-refspec", Expression: `bash.gitBranchTarget(args.command) == ""`},
+	}
+	cache := mustCompile(t, env, templates)
+	prog, _ := cache.Get("no-refspec")
+	builder := cel.NewActivationBuilder()
+
+	cmds := []string{
+		"git push origin",         // only remote, no refspec
+		"git push --force origin", // force flag but still no refspec
+		"git push -f origin",
+	}
+	for _, cmd := range cmds {
+		req := aegis.CheckRequest{
+			Tool:      "Bash",
+			Args:      argsJSON(t, map[string]any{"command": cmd}),
+			SessionID: "s",
+		}
+		val, err := builder.Evaluate(prog, req, classify.VerdictEntry{})
+		if err != nil {
+			t.Fatalf("Evaluate(%q): %v", cmd, err)
+		}
+		if val != types.True {
+			t.Errorf("gitBranchTarget(%q): expected empty string for ambiguous push, got %v", cmd, val)
+		}
 	}
 }
