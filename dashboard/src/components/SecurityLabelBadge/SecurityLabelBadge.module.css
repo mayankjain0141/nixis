@@ -1,0 +1,89 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: monospace;
+  font-size: 11px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  padding: 1px 5px;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.card {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: monospace;
+  font-size: 12px;
+  border-radius: 4px;
+  border: 1px solid #3a3a3a;
+  padding: 8px 12px;
+  background: #1a1a1a;
+  min-width: 160px;
+}
+
+.dim {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dimLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: #888;
+  text-transform: uppercase;
+}
+
+.dimValue {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Neutral — zero value, applied directly to dimValue elements */
+.dimValueNeutral {
+  color: #888;
+}
+
+/* Confidentiality elevated (>0) — amber/orange */
+.confElevated {
+  color: #f59e0b;
+}
+
+/* Integrity elevated (>0) — blue */
+.intElevated {
+  color: #3b82f6;
+}
+
+/* Category tainted (non-zero) — red accent */
+.catTainted {
+  color: #ef4444;
+}
+
+/* Compact badge color based on dominant elevation */
+.badgeNeutral {
+  background: #2a2a2a;
+  border-color: #444;
+  color: #888;
+}
+
+.badgeConf {
+  background: #2d2000;
+  border-color: #f59e0b88;
+  color: #f59e0b;
+}
+
+.badgeInt {
+  background: #001828;
+  border-color: #3b82f688;
+  color: #3b82f6;
+}
+
+.badgeTainted {
+  background: #2d0000;
+  border-color: #ef444488;
+  color: #ef4444;
+}
