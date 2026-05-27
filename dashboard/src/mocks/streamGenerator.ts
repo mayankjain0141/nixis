@@ -31,7 +31,7 @@ function makeLabel(seed: number) {
   const conf = (s % 4) * 16384;
   const integ = ((s >>> 4) % 4) * 16384;
   const cat = (s >>> 8) % 8;
-  return { confidentiality: conf, integrity: integ, category: cat };
+  return { confidentiality: conf, integrity: integ, categories: cat };
 }
 
 function makeSessionId(index: number): string {

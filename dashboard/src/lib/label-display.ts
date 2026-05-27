@@ -27,7 +27,7 @@ export function categoriesToStrings(bitmask: number): string[] {
 
 export function formatSecurityLabel(label: SecurityLabel): string {
   const level = confidentialityToLevel(label.confidentiality);
-  const cats = categoriesToStrings(label.category);
+  const cats = categoriesToStrings(label.categories);
   if (cats.length === 0) return level;
   return `${level}{${cats.join(',')}}`;
 }

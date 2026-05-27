@@ -1,10 +1,10 @@
-// Shared TypeScript types mirroring pkg/aegis wire format.
-// Field names match the Go struct fields exactly (pkg/aegis/types.go, pkg/aegis/stream.go).
+// Shared TypeScript types mirroring the IFC-001 JSON wire format.
+// Field names match JSON wire tags from 05_INTERFACE_REGISTRY.md, not Go struct field names.
 
 export interface SecurityLabel {
   confidentiality: number; // uint16, 0 = minimum privilege
   integrity: number;       // uint16, 0 = minimum privilege
-  category: number;        // uint32 per ADR-016
+  categories: number;      // uint32 bitmask — wire field is "categories" per IFC-001 json:"categories"
 }
 
 export type Action = 'deny' | 'allow' | 'require_approval' | 'audit';

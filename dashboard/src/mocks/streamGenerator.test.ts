@@ -21,7 +21,7 @@ describe('createMockStreamEvent', () => {
     expect(event.sessionId.length).toBeGreaterThan(0);
     expect(typeof event.label.confidentiality).toBe('number');
     expect(typeof event.label.integrity).toBe('number');
-    expect(typeof event.label.category).toBe('number');
+    expect(typeof event.label.categories).toBe('number');
     expect(typeof event.timestamp).toBe('number');
   });
 
@@ -133,7 +133,7 @@ describe('createMockEventSequence', () => {
     for (const e of events) {
       expect(typeof e.label.confidentiality).toBe('number');
       expect(typeof e.label.integrity).toBe('number');
-      expect(typeof e.label.category).toBe('number');
+      expect(typeof e.label.categories).toBe('number');
     }
   });
 

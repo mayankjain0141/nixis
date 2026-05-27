@@ -9,7 +9,7 @@ export interface SecurityLabelBadgeProps {
 }
 
 function badgeColorClass(label: SecurityLabel): string {
-  if (label.category !== 0) return styles.badgeTainted;
+  if (label.categories !== 0) return styles.badgeTainted;
   if (label.confidentiality > 0) return styles.badgeConf;
   if (label.integrity > 0) return styles.badgeInt;
   return styles.badgeNeutral;
@@ -18,7 +18,7 @@ function badgeColorClass(label: SecurityLabel): string {
 function buildAriaLabel(label: SecurityLabel): string {
   const confLevel = confidentialityToLevel(label.confidentiality);
   const intLevel = confidentialityToLevel(label.integrity);
-  const cats = categoriesToStrings(label.category);
+  const cats = categoriesToStrings(label.categories);
   const catPart = cats.length > 0 ? `, categories: ${cats.join(', ')}` : '';
   return (
     `Security label: confidentiality ${confLevel} (${label.confidentiality}), ` +
@@ -30,7 +30,7 @@ export function SecurityLabelBadge({ label, variant = 'compact', className }: Se
   if (variant === 'compact') {
     const colorClass = badgeColorClass(label);
     const confLevel = confidentialityToLevel(label.confidentiality);
-    const cats = categoriesToStrings(label.category);
+    const cats = categoriesToStrings(label.categories);
     const display = cats.length > 0 ? `${confLevel}{${cats.join(',')}}` : confLevel;
     return (
       <span
@@ -63,9 +63,9 @@ export function SecurityLabelBadge({ label, variant = 'compact', className }: Se
       </div>
       <div className={styles.dim}>
         <span className={styles.dimLabel}>K</span>
-        <span className={`${styles.dimValue} ${label.category !== 0 ? styles.catTainted : styles.dimValueNeutral}`}>
-          {label.category !== 0
-            ? categoriesToStrings(label.category).join(', ') || `0x${label.category.toString(16)}`
+        <span className={`${styles.dimValue} ${label.categories !== 0 ? styles.catTainted : styles.dimValueNeutral}`}>
+          {label.categories !== 0
+            ? categoriesToStrings(label.categories).join(', ') || `0x${label.categories.toString(16)}`
             : '—'}
         </span>
       </div>

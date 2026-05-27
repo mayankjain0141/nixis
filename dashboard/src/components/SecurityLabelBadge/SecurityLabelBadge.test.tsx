@@ -3,9 +3,9 @@ import { render, screen } from '@testing-library/react';
 import { SecurityLabelBadge } from './SecurityLabelBadge';
 import type { SecurityLabel } from '../../types/aegis';
 
-const zeroLabel: SecurityLabel = { confidentiality: 0, integrity: 0, category: 0 };
-const confLabel: SecurityLabel = { confidentiality: 32768, integrity: 32768, category: 0 };
-const taintedLabel: SecurityLabel = { confidentiality: 32768, integrity: 16384, category: 1 };
+const zeroLabel: SecurityLabel = { confidentiality: 0, integrity: 0, categories: 0 };
+const confLabel: SecurityLabel = { confidentiality: 32768, integrity: 32768, categories: 0 };
+const taintedLabel: SecurityLabel = { confidentiality: 32768, integrity: 16384, categories: 1 };
 
 describe('SecurityLabelBadge', () => {
   describe('compact variant', () => {
