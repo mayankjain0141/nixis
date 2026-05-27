@@ -266,14 +266,14 @@ func (l *labelLib) CompileOptions() []cel.EnvOption {
 					aC, aI, aCat, bC, bI, bCat := intVal(args[0]), intVal(args[1]), intVal(args[2]),
 						intVal(args[3]), intVal(args[4]), intVal(args[5])
 					subject := aegistypes.SecurityLabel{
-						Confidentiality: uint16(aC), //nolint:gosec // value comes from CEL int; policies control the bounds
-						Integrity:       uint16(aI),
-						Category:        uint32(aCat),
+						Confidentiality: clampUint16(aC),
+						Integrity:       clampUint16(aI),
+						Category:        clampUint32(aCat),
 					}
 					object := aegistypes.SecurityLabel{
-						Confidentiality: uint16(bC),
-						Integrity:       uint16(bI),
-						Category:        uint32(bCat),
+						Confidentiality: clampUint16(bC),
+						Integrity:       clampUint16(bI),
+						Category:        clampUint32(bCat),
 					}
 					return types.Bool(ifc.Dominates(subject, object))
 				}),
@@ -291,14 +291,14 @@ func (l *labelLib) CompileOptions() []cel.EnvOption {
 					aC, aI, aCat, bC, bI, bCat := intVal(args[0]), intVal(args[1]), intVal(args[2]),
 						intVal(args[3]), intVal(args[4]), intVal(args[5])
 					a := aegistypes.SecurityLabel{
-						Confidentiality: uint16(aC),
-						Integrity:       uint16(aI),
-						Category:        uint32(aCat),
+						Confidentiality: clampUint16(aC),
+						Integrity:       clampUint16(aI),
+						Category:        clampUint32(aCat),
 					}
 					b := aegistypes.SecurityLabel{
-						Confidentiality: uint16(bC),
-						Integrity:       uint16(bI),
-						Category:        uint32(bCat),
+						Confidentiality: clampUint16(bC),
+						Integrity:       clampUint16(bI),
+						Category:        clampUint32(bCat),
 					}
 					result := ifc.Join(a, b)
 					// Return as []int64 so CEL's NativeToValue produces a typed list<int>.
@@ -355,6 +355,31 @@ func intVal(v ref.Val) int64 {
 		return 0
 	}
 	return int64(i)
+}
+
+// clampUint16 converts an int64 to uint16 by clamping to [0, 65535].
+// CEL int values are int64; SecurityLabel dimensions are uint16.
+// Values outside the uint16 range are policy author errors; we clamp rather
+// than panic or truncate silently, so the result is deterministic and well-defined.
+func clampUint16(n int64) uint16 {
+	if n < 0 {
+		return 0
+	}
+	if n > 65535 {
+		return 65535
+	}
+	return uint16(n)
+}
+
+// clampUint32 converts an int64 to uint32 by clamping to [0, 4294967295].
+func clampUint32(n int64) uint32 {
+	if n < 0 {
+		return 0
+	}
+	if n > 4294967295 {
+		return 4294967295
+	}
+	return uint32(n)
 }
 
 // --- bash function implementations ---
