@@ -1,0 +1,70 @@
+import { create } from 'zustand';
+import { immer } from 'zustand/middleware/immer';
+
+export interface PolicySummary {
+  id: string;
+  name: string;
+  layer: 'cel' | 'ifc' | 'adapter' | 'delegation' | 'secret-scan';
+  enabled: boolean;
+  bundleVersion: number;
+}
+
+export interface BundleStatus {
+  version: number;
+  previousVersion: number;
+  hash: string;
+  signatureVerified: boolean;
+  policyCount: number;
+  adapterCount: number;
+  activatedAt: number;
+}
+
+const MAX_POLICIES = 500;
+
+interface PolicyState {
+  policies: PolicySummary[];
+  bundleStatus: BundleStatus | null;
+  selectedPolicyId: string | null;
+
+  setPolicies(policies: PolicySummary[]): void;
+  upsertPolicy(policy: PolicySummary): void;
+  setBundleStatus(status: BundleStatus): void;
+  selectPolicy(id: string | null): void;
+}
+
+export const usePolicyStore = create<PolicyState>()(
+  immer((set) => ({
+    policies: [],
+    bundleStatus: null,
+    selectedPolicyId: null,
+
+    setPolicies(policies) {
+      set((draft) => {
+        draft.policies = policies.slice(0, MAX_POLICIES);
+      });
+    },
+
+    upsertPolicy(policy) {
+      set((draft) => {
+        const idx = draft.policies.findIndex(p => p.id === policy.id);
+        if (idx >= 0) {
+          draft.policies[idx] = policy;
+        } else if (draft.policies.length < MAX_POLICIES) {
+          draft.policies.push(policy);
+        }
+      });
+    },
+
+    setBundleStatus(status) {
+      set((draft) => {
+        draft.bundleStatus = status;
+      });
+    },
+
+    selectPolicy(id) {
+      set((draft) => {
+        draft.selectedPolicyId = id;
+      });
+    },
+  })),
+);
