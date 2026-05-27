@@ -1,5 +1,6 @@
 // The ONLY location in the frontend that converts numeric SecurityLabel to display strings.
 // All other code uses numeric values. ADR-013 canonical mapping.
+import type { SecurityLabel } from '../types/aegis';
 
 export function confidentialityToLevel(c: number): string {
   if (c < 8192) return 'Unclassified';
@@ -21,10 +22,10 @@ export function levelToConfidentiality(level: string): number {
 const CATEGORY_NAMES = ['credentials', 'finance', 'pii', 'health', 'legal'] as const;
 
 export function categoriesToStrings(bitmask: number): string[] {
-  return CATEGORY_NAMES.filter((_, i) => (bitmask & (1 << i)) !== 0);
+  return CATEGORY_NAMES.filter((_name, i) => (bitmask & (1 << i)) !== 0);
 }
 
-export function formatSecurityLabel(label: { confidentiality: number; integrity: number; category: number }): string {
+export function formatSecurityLabel(label: SecurityLabel): string {
   const level = confidentialityToLevel(label.confidentiality);
   const cats = categoriesToStrings(label.category);
   if (cats.length === 0) return level;

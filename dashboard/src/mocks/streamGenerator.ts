@@ -21,20 +21,16 @@ const ALL_REASONS = [
   'Policy denied: high-risk operation',
 ];
 
-let _seq = 0;
-
-function nextSeq(): number {
-  return ++_seq;
-}
-
-function pickRandom<T>(arr: T[], seed: number): T {
-  return arr[Math.abs(seed) % arr.length];
+// Knuth multiplicative hash kept in uint32 range to avoid float precision loss.
+function lcg(seed: number): number {
+  return ((seed * 1664525 + 1013904223) >>> 0);
 }
 
 function makeLabel(seed: number) {
-  const conf = (seed % 4) * 16384;
-  const integ = ((seed >> 2) % 4) * 16384;
-  const cat = (seed >> 4) % 8;
+  const s = seed >>> 0;
+  const conf = (s % 4) * 16384;
+  const integ = ((s >>> 4) % 4) * 16384;
+  const cat = (s >>> 8) % 8;
   return { confidentiality: conf, integrity: integ, category: cat };
 }
 
@@ -43,19 +39,23 @@ function makeSessionId(index: number): string {
 }
 
 export function createMockStreamEvent(overrides?: Partial<StreamEvent>): StreamEvent {
-  const seed = Date.now() ^ (Math.random() * 0xffffffff | 0);
+  // Use a local counter that is independent of any sequence generator.
+  createMockStreamEvent._localSeq = (createMockStreamEvent._localSeq ?? 0) + 1;
+  const seq = createMockStreamEvent._localSeq;
+  const seed = lcg(seq ^ (Date.now() & 0xffffffff));
   const base: StreamEvent = {
     type: EVENT_TYPES.DECISION,
-    aegisSequence: nextSeq(),
-    sessionId: makeSessionId(seed & 0xf),
-    tool: pickRandom(ALL_TOOLS, seed),
-    action: pickRandom(ALL_ACTIONS, seed >> 4),
-    reason: pickRandom(ALL_REASONS, seed >> 8),
-    label: makeLabel(seed >> 12),
+    aegisSequence: seq,
+    sessionId: makeSessionId(seed % 16),
+    tool: ALL_TOOLS[(seed >>> 4) % ALL_TOOLS.length],
+    action: ALL_ACTIONS[(seed >>> 8) % ALL_ACTIONS.length],
+    reason: ALL_REASONS[(seed >>> 12) % ALL_REASONS.length],
+    label: makeLabel(seed >>> 16),
     timestamp: Date.now() * 1_000_000,
   };
   return { ...base, ...overrides };
 }
+createMockStreamEvent._localSeq = 0;
 
 export function createMockEventSequence(count: number, options: SequenceOptions = {}): StreamEvent[] {
   const {
@@ -65,7 +65,7 @@ export function createMockEventSequence(count: number, options: SequenceOptions 
     includeLabelEscalations = true,
   } = options;
 
-  let types: EventType[] = includeTypes ?? Object.values(EVENT_TYPES) as EventType[];
+  let types: EventType[] = includeTypes ?? (Object.values(EVENT_TYPES) as EventType[]);
 
   if (!includeSecretEvents) {
     types = types.filter(t => t !== EVENT_TYPES.SECRET_FOUND);
@@ -73,33 +73,29 @@ export function createMockEventSequence(count: number, options: SequenceOptions 
   if (!includeLabelEscalations) {
     types = types.filter(t => t !== EVENT_TYPES.LABEL_ESCALATED && t !== EVENT_TYPES.LABEL_TAINTED);
   }
-
   if (types.length === 0) {
     types = [EVENT_TYPES.DECISION];
   }
 
   const events: StreamEvent[] = [];
-  let seq = 0;
 
   for (let i = 0; i < count; i++) {
-    // Use LCG-style mixing to distribute values, but round-robin event types
-    // to guarantee full type coverage regardless of count.
-    const seed = (i * 1664525 + 1013904223) >>> 0;
-    const sessionIndex = i % sessionCount; // round-robin sessions to guarantee diversity
-    const typeIndex = i % types.length;    // round-robin guarantees all types covered
-    const actionIndex = (seed >> 4) % ALL_ACTIONS.length;
-    const toolIndex = (seed >> 8) % ALL_TOOLS.length;
-    const reasonIndex = (seed >> 12) % ALL_REASONS.length;
+    const seed = lcg(i);
+    // Round-robin over type and session arrays to guarantee full coverage regardless of count.
+    const typeIndex = i % types.length;
+    const sessionIndex = i % sessionCount;
+    const actionIndex = (seed >>> 4) % ALL_ACTIONS.length;
+    const toolIndex = (seed >>> 8) % ALL_TOOLS.length;
+    const reasonIndex = (seed >>> 12) % ALL_REASONS.length;
 
-    seq++;
     events.push({
       type: types[typeIndex],
-      aegisSequence: seq,
+      aegisSequence: i + 1, // 1-indexed, strictly monotonic, independent of other generators
       sessionId: makeSessionId(sessionIndex),
       tool: ALL_TOOLS[toolIndex],
       action: ALL_ACTIONS[actionIndex],
       reason: ALL_REASONS[reasonIndex],
-      label: makeLabel((seed >> 16) & 0xffff),
+      label: makeLabel(seed >>> 16),
       timestamp: (Date.now() + i * 100) * 1_000_000,
     });
   }
@@ -115,26 +111,28 @@ export interface MockStreamGenerator {
 
 export function createMockStreamGenerator(intervalMs: number): MockStreamGenerator {
   let timer: ReturnType<typeof setInterval> | null = null;
+  // Private counter; never shared with createMockStreamEvent or createMockEventSequence.
   let seq = 0;
   const listeners: Array<(e: StreamEvent) => void> = [];
-
   const allTypes = Object.values(EVENT_TYPES) as EventType[];
 
   function emit(): void {
     seq++;
-    const seed = seq * 2654435761;
-    const typeIndex = Math.abs(seed) % allTypes.length;
-    const actionIndex = Math.abs(seed >> 3) % ALL_ACTIONS.length;
-    const toolIndex = Math.abs(seed >> 7) % ALL_TOOLS.length;
+    // Keep arithmetic in uint32 to avoid float imprecision for large seq values.
+    const seed = lcg(seq);
+    // Round-robin type so coverage is guaranteed without requiring a large sample.
+    const typeIndex = (seq - 1) % allTypes.length;
+    const actionIndex = (seed >>> 3) % ALL_ACTIONS.length;
+    const toolIndex = (seed >>> 7) % ALL_TOOLS.length;
 
     const event: StreamEvent = {
       type: allTypes[typeIndex],
       aegisSequence: seq,
-      sessionId: makeSessionId(Math.abs(seed >> 11) % 3),
+      sessionId: makeSessionId((seed >>> 11) % 3),
       tool: ALL_TOOLS[toolIndex],
       action: ALL_ACTIONS[actionIndex],
       reason: '',
-      label: makeLabel(Math.abs(seed >> 15)),
+      label: makeLabel(seed >>> 15),
       timestamp: Date.now() * 1_000_000,
     };
 

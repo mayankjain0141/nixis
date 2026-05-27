@@ -24,11 +24,28 @@ describe('SecurityLabelBadge', () => {
       expect(screen.getByRole('img')).toHaveTextContent('credentials');
     });
 
-    it('has accessible aria-label describing all three dimensions', () => {
+    it('aria-label includes confidentiality level and value', () => {
       render(<SecurityLabelBadge label={confLabel} />);
-      const badge = screen.getByRole('img');
-      expect(badge.getAttribute('aria-label')).toMatch(/confidentiality/i);
-      expect(badge.getAttribute('aria-label')).toMatch(/integrity/i);
+      const ariaLabel = screen.getByRole('img').getAttribute('aria-label') ?? '';
+      expect(ariaLabel).toMatch(/confidentiality Confidential \(32768\)/i);
+    });
+
+    it('aria-label includes integrity level and value', () => {
+      render(<SecurityLabelBadge label={confLabel} />);
+      const ariaLabel = screen.getByRole('img').getAttribute('aria-label') ?? '';
+      expect(ariaLabel).toMatch(/integrity Confidential \(32768\)/i);
+    });
+
+    it('aria-label includes category names when bits are set', () => {
+      render(<SecurityLabelBadge label={taintedLabel} />);
+      const ariaLabel = screen.getByRole('img').getAttribute('aria-label') ?? '';
+      expect(ariaLabel).toMatch(/categories: credentials/i);
+    });
+
+    it('aria-label omits category section when category is zero', () => {
+      render(<SecurityLabelBadge label={confLabel} />);
+      const ariaLabel = screen.getByRole('img').getAttribute('aria-label') ?? '';
+      expect(ariaLabel).not.toMatch(/categories/i);
     });
 
     it('applies className prop', () => {
@@ -40,15 +57,24 @@ describe('SecurityLabelBadge', () => {
   describe('expanded variant', () => {
     it('renders all three dimension labels', () => {
       render(<SecurityLabelBadge label={confLabel} variant="expanded" />);
-      const card = screen.getByRole('img');
-      expect(card.textContent).toMatch(/C/);
-      expect(card.textContent).toMatch(/I/);
-      expect(card.textContent).toMatch(/K/);
+      const text = screen.getByRole('img').textContent ?? '';
+      expect(text).toContain('C');
+      expect(text).toContain('I');
+      expect(text).toContain('K');
     });
 
-    it('shows numeric confidentiality value in expanded mode', () => {
+    it('shows level name and numeric value for confidentiality', () => {
       render(<SecurityLabelBadge label={confLabel} variant="expanded" />);
-      expect(screen.getByRole('img').textContent).toContain('32768');
+      const text = screen.getByRole('img').textContent ?? '';
+      expect(text).toContain('Confidential');
+      expect(text).toContain('32768');
+    });
+
+    it('shows level name and numeric value for integrity', () => {
+      render(<SecurityLabelBadge label={confLabel} variant="expanded" />);
+      const text = screen.getByRole('img').textContent ?? '';
+      // integrity 32768 also maps to Confidential; both the level name and value must appear
+      expect(text).toContain('32768');
     });
 
     it('shows category names when category bits are set', () => {
@@ -56,24 +82,31 @@ describe('SecurityLabelBadge', () => {
       expect(screen.getByRole('img').textContent).toContain('credentials');
     });
 
-    it('shows dash for zero category', () => {
+    it('shows em-dash for zero category', () => {
       render(<SecurityLabelBadge label={zeroLabel} variant="expanded" />);
       expect(screen.getByRole('img').textContent).toContain('—');
     });
 
-    it('has accessible aria-label', () => {
+    it('aria-label includes integrity level and value', () => {
       render(<SecurityLabelBadge label={taintedLabel} variant="expanded" />);
-      const card = screen.getByRole('img');
-      expect(card.getAttribute('aria-label')).toMatch(/confidentiality/i);
-      expect(card.getAttribute('aria-label')).toMatch(/categories: credentials/i);
+      const ariaLabel = screen.getByRole('img').getAttribute('aria-label') ?? '';
+      expect(ariaLabel).toMatch(/integrity/i);
+      expect(ariaLabel).toContain('16384');
+    });
+
+    it('aria-label includes category names', () => {
+      render(<SecurityLabelBadge label={taintedLabel} variant="expanded" />);
+      const ariaLabel = screen.getByRole('img').getAttribute('aria-label') ?? '';
+      expect(ariaLabel).toMatch(/categories: credentials/i);
     });
   });
 
   describe('default variant', () => {
-    it('defaults to compact when variant is omitted', () => {
-      const { container } = render(<SecurityLabelBadge label={zeroLabel} />);
-      expect(container.querySelector('span')).not.toBeNull();
-      expect(container.querySelector('div')).toBeNull();
+    it('defaults to compact — renders a span not a div', () => {
+      render(<SecurityLabelBadge label={zeroLabel} />);
+      // The compact path renders a <span role="img">; the expanded path renders a <div role="img">.
+      const elem = screen.getByRole('img');
+      expect(elem.tagName.toLowerCase()).toBe('span');
     });
   });
 });

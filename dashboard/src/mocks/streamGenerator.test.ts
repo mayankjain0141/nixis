@@ -5,7 +5,7 @@ import {
   createMockStreamGenerator,
 } from './streamGenerator';
 import { EVENT_TYPES } from '../types/aegis';
-import type { Action } from '../types/aegis';
+import type { Action, StreamEvent } from '../types/aegis';
 
 const VALID_ACTIONS = new Set<Action>(['deny', 'allow', 'require_approval', 'audit']);
 const ALL_EVENT_TYPES = new Set(Object.values(EVENT_TYPES));
@@ -13,15 +13,16 @@ const ALL_EVENT_TYPES = new Set(Object.values(EVENT_TYPES));
 describe('createMockStreamEvent', () => {
   it('returns a valid StreamEvent with all required fields', () => {
     const event = createMockStreamEvent();
-    expect(event.type).toBeDefined();
     expect(ALL_EVENT_TYPES.has(event.type as never)).toBe(true);
     expect(typeof event.aegisSequence).toBe('number');
     expect(event.aegisSequence).toBeGreaterThan(0);
     expect(VALID_ACTIONS.has(event.action)).toBe(true);
     expect(typeof event.sessionId).toBe('string');
+    expect(event.sessionId.length).toBeGreaterThan(0);
     expect(typeof event.label.confidentiality).toBe('number');
     expect(typeof event.label.integrity).toBe('number');
     expect(typeof event.label.category).toBe('number');
+    expect(typeof event.timestamp).toBe('number');
   });
 
   it('applies overrides correctly', () => {
@@ -30,10 +31,22 @@ describe('createMockStreamEvent', () => {
     expect(event.action).toBe('deny');
   });
 
-  it('never generates content_publish action', () => {
+  it('overrides do not affect unspecified fields', () => {
+    const event = createMockStreamEvent({ action: 'deny' });
+    expect(event.type).toBeDefined();
+    expect(event.sessionId).toBeDefined();
+    expect(event.label).toBeDefined();
+  });
+
+  it('aegisSequence is positive and increases across successive calls', () => {
+    const a = createMockStreamEvent();
+    const b = createMockStreamEvent();
+    expect(b.aegisSequence).toBeGreaterThan(a.aegisSequence);
+  });
+
+  it('never generates a non-canonical action', () => {
     for (let i = 0; i < 50; i++) {
-      const event = createMockStreamEvent();
-      expect((event.action as string)).not.toBe('content_publish');
+      expect(VALID_ACTIONS.has(createMockStreamEvent().action)).toBe(true);
     }
   });
 });
@@ -44,10 +57,15 @@ describe('createMockEventSequence', () => {
     expect(events).toHaveLength(20);
   });
 
-  it('aegisSequence is monotonically increasing', () => {
+  it('returns an empty array for count = 0', () => {
+    expect(createMockEventSequence(0)).toHaveLength(0);
+  });
+
+  it('aegisSequence starts at 1 and is strictly monotonically increasing', () => {
     const events = createMockEventSequence(100);
+    expect(events[0].aegisSequence).toBe(1);
     for (let i = 1; i < events.length; i++) {
-      expect(events[i].aegisSequence).toBeGreaterThan(events[i - 1].aegisSequence);
+      expect(events[i].aegisSequence).toBe(events[i - 1].aegisSequence + 1);
     }
   });
 
@@ -65,11 +83,12 @@ describe('createMockEventSequence', () => {
     }
   });
 
-  it('covers all 12 canonical event types across a large sequence', () => {
-    const events = createMockEventSequence(240);
+  it('covers all 12 canonical event types when count >= 12', () => {
+    // Round-robin assignment: 12 events is sufficient to see all 12 types.
+    const events = createMockEventSequence(12);
     const seen = new Set(events.map(e => e.type));
     for (const t of Object.values(EVENT_TYPES)) {
-      expect(seen.has(t), `Event type ${t} was not generated`).toBe(true);
+      expect(seen.has(t), `Event type "${t}" was not generated`).toBe(true);
     }
   });
 
@@ -96,6 +115,19 @@ describe('createMockEventSequence', () => {
     }
   });
 
+  it('falls back to DECISION when all types are filtered out', () => {
+    // Exclude both secrets and escalations on a two-type includeTypes list
+    // that only has those two types — triggers the empty-fallback path.
+    const events = createMockEventSequence(10, {
+      includeTypes: [EVENT_TYPES.SECRET_FOUND, EVENT_TYPES.LABEL_ESCALATED],
+      includeSecretEvents: false,
+      includeLabelEscalations: false,
+    });
+    for (const e of events) {
+      expect(e.type).toBe(EVENT_TYPES.DECISION);
+    }
+  });
+
   it('SecurityLabel fields are always numeric', () => {
     const events = createMockEventSequence(50);
     for (const e of events) {
@@ -105,10 +137,16 @@ describe('createMockEventSequence', () => {
     }
   });
 
-  it('uses multiple sessions when sessionCount > 1', () => {
-    const events = createMockEventSequence(100, { sessionCount: 5 });
+  it('produces diverse sessionIds when sessionCount > 1', () => {
+    const events = createMockEventSequence(10, { sessionCount: 5 });
     const sessions = new Set(events.map(e => e.sessionId));
     expect(sessions.size).toBeGreaterThan(1);
+  });
+
+  it('produces one sessionId when sessionCount=1', () => {
+    const events = createMockEventSequence(20, { sessionCount: 1 });
+    const sessions = new Set(events.map(e => e.sessionId));
+    expect(sessions.size).toBe(1);
   });
 });
 
@@ -121,19 +159,20 @@ describe('createMockStreamGenerator', () => {
     vi.useRealTimers();
   });
 
-  it('emits events at the configured interval', () => {
+  it('emits one event per interval tick', () => {
     const gen = createMockStreamGenerator(100);
-    const received: ReturnType<typeof createMockStreamEvent>[] = [];
+    const received: StreamEvent[] = [];
     gen.onEvent(e => received.push(e));
     gen.start();
-    vi.advanceTimersByTime(350);
+    // Advance by exactly 4 full intervals; setInterval fires at 100, 200, 300, 400.
+    vi.advanceTimersByTime(400);
     gen.stop();
-    expect(received.length).toBe(3);
+    expect(received.length).toBe(4);
   });
 
   it('stops emitting after stop() is called', () => {
     const gen = createMockStreamGenerator(100);
-    const received: ReturnType<typeof createMockStreamEvent>[] = [];
+    const received: StreamEvent[] = [];
     gen.onEvent(e => received.push(e));
     gen.start();
     vi.advanceTimersByTime(200);
@@ -143,9 +182,20 @@ describe('createMockStreamGenerator', () => {
     expect(received.length).toBe(countAfterStop);
   });
 
+  it('calling start() twice does not create a second timer', () => {
+    const gen = createMockStreamGenerator(100);
+    const received: StreamEvent[] = [];
+    gen.onEvent(e => received.push(e));
+    gen.start();
+    gen.start(); // second call is a no-op
+    vi.advanceTimersByTime(200);
+    gen.stop();
+    expect(received.length).toBe(2); // exactly 2, not 4
+  });
+
   it('emitted events use canonical event types', () => {
     const gen = createMockStreamGenerator(50);
-    const received: ReturnType<typeof createMockStreamEvent>[] = [];
+    const received: StreamEvent[] = [];
     gen.onEvent(e => received.push(e));
     gen.start();
     vi.advanceTimersByTime(2400);
@@ -155,9 +205,23 @@ describe('createMockStreamGenerator', () => {
     }
   });
 
-  it('emitted events have monotonically increasing aegisSequence', () => {
+  it('covers all 12 canonical event types given enough ticks', () => {
     const gen = createMockStreamGenerator(50);
-    const received: ReturnType<typeof createMockStreamEvent>[] = [];
+    const received: StreamEvent[] = [];
+    gen.onEvent(e => received.push(e));
+    gen.start();
+    // 12 types, round-robin: 12 ticks × 50ms = 600ms
+    vi.advanceTimersByTime(600);
+    gen.stop();
+    const seen = new Set(received.map(e => e.type));
+    for (const t of Object.values(EVENT_TYPES)) {
+      expect(seen.has(t), `Generator never emitted event type "${t}"`).toBe(true);
+    }
+  });
+
+  it('emitted events have strictly monotonically increasing aegisSequence', () => {
+    const gen = createMockStreamGenerator(50);
+    const received: StreamEvent[] = [];
     gen.onEvent(e => received.push(e));
     gen.start();
     vi.advanceTimersByTime(1000);
@@ -167,16 +231,28 @@ describe('createMockStreamGenerator', () => {
     }
   });
 
-  it('notifies all registered listeners', () => {
+  it('notifies all registered listeners on each tick', () => {
     const gen = createMockStreamGenerator(100);
     const a: number[] = [];
     const b: number[] = [];
     gen.onEvent(() => a.push(1));
     gen.onEvent(() => b.push(1));
     gen.start();
-    vi.advanceTimersByTime(100);
+    vi.advanceTimersByTime(300);
     gen.stop();
-    expect(a.length).toBe(1);
-    expect(b.length).toBe(1);
+    expect(a.length).toBe(3);
+    expect(b.length).toBe(3);
+  });
+
+  it('emitted events have canonical actions only', () => {
+    const gen = createMockStreamGenerator(50);
+    const received: StreamEvent[] = [];
+    gen.onEvent(e => received.push(e));
+    gen.start();
+    vi.advanceTimersByTime(1000);
+    gen.stop();
+    for (const e of received) {
+      expect(VALID_ACTIONS.has(e.action)).toBe(true);
+    }
   });
 });

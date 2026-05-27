@@ -43,8 +43,8 @@
   font-weight: 500;
 }
 
-/* Neutral — zero value */
-.neutral .dimValue {
+/* Neutral — zero value, applied directly to dimValue elements */
+.dimValueNeutral {
   color: #888;
 }
 

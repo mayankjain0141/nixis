@@ -8,30 +8,34 @@ export interface SecurityLabelBadgeProps {
   className?: string;
 }
 
-function badgeColorClass(label: SecurityLabel, s: typeof styles): string {
-  if (label.category !== 0) return s.badgeTainted;
-  if (label.confidentiality > 0) return s.badgeConf;
-  if (label.integrity > 0) return s.badgeInt;
-  return s.badgeNeutral;
+function badgeColorClass(label: SecurityLabel): string {
+  if (label.category !== 0) return styles.badgeTainted;
+  if (label.confidentiality > 0) return styles.badgeConf;
+  if (label.integrity > 0) return styles.badgeInt;
+  return styles.badgeNeutral;
 }
 
-function ariaLabel(label: SecurityLabel): string {
+function buildAriaLabel(label: SecurityLabel): string {
+  const confLevel = confidentialityToLevel(label.confidentiality);
+  const intLevel = confidentialityToLevel(label.integrity);
   const cats = categoriesToStrings(label.category);
-  const level = confidentialityToLevel(label.confidentiality);
   const catPart = cats.length > 0 ? `, categories: ${cats.join(', ')}` : '';
-  return `Security label: confidentiality ${level} (${label.confidentiality}), integrity ${label.integrity}${catPart}`;
+  return (
+    `Security label: confidentiality ${confLevel} (${label.confidentiality}), ` +
+    `integrity ${intLevel} (${label.integrity})${catPart}`
+  );
 }
 
 export function SecurityLabelBadge({ label, variant = 'compact', className }: SecurityLabelBadgeProps) {
   if (variant === 'compact') {
-    const colorClass = badgeColorClass(label, styles);
-    const level = confidentialityToLevel(label.confidentiality);
+    const colorClass = badgeColorClass(label);
+    const confLevel = confidentialityToLevel(label.confidentiality);
     const cats = categoriesToStrings(label.category);
-    const display = cats.length > 0 ? `${level}{${cats.join(',')}}` : level;
+    const display = cats.length > 0 ? `${confLevel}{${cats.join(',')}}` : confLevel;
     return (
       <span
         className={`${styles.badge} ${colorClass}${className ? ` ${className}` : ''}`}
-        aria-label={ariaLabel(label)}
+        aria-label={buildAriaLabel(label)}
         role="img"
       >
         {display}
@@ -42,24 +46,24 @@ export function SecurityLabelBadge({ label, variant = 'compact', className }: Se
   return (
     <div
       className={`${styles.card}${className ? ` ${className}` : ''}`}
-      aria-label={ariaLabel(label)}
+      aria-label={buildAriaLabel(label)}
       role="img"
     >
       <div className={styles.dim}>
         <span className={styles.dimLabel}>C</span>
-        <span className={`${styles.dimValue} ${label.confidentiality > 0 ? styles.confElevated : styles.neutral}`}>
+        <span className={`${styles.dimValue} ${label.confidentiality > 0 ? styles.confElevated : styles.dimValueNeutral}`}>
           {confidentialityToLevel(label.confidentiality)} ({label.confidentiality})
         </span>
       </div>
       <div className={styles.dim}>
         <span className={styles.dimLabel}>I</span>
-        <span className={`${styles.dimValue} ${label.integrity > 0 ? styles.intElevated : styles.neutral}`}>
-          {label.integrity}
+        <span className={`${styles.dimValue} ${label.integrity > 0 ? styles.intElevated : styles.dimValueNeutral}`}>
+          {confidentialityToLevel(label.integrity)} ({label.integrity})
         </span>
       </div>
       <div className={styles.dim}>
         <span className={styles.dimLabel}>K</span>
-        <span className={`${styles.dimValue} ${label.category !== 0 ? styles.catTainted : styles.neutral}`}>
+        <span className={`${styles.dimValue} ${label.category !== 0 ? styles.catTainted : styles.dimValueNeutral}`}>
           {label.category !== 0
             ? categoriesToStrings(label.category).join(', ') || `0x${label.category.toString(16)}`
             : '—'}
