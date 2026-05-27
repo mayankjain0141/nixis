@@ -22,6 +22,7 @@ import (
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/mayjain/aegis/internal/ifc"
 	aegistypes "github.com/mayjain/aegis/pkg/aegis"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -38,8 +39,12 @@ type CELEnvironment struct {
 
 // NewCELEnvironment constructs an immutable CEL environment with Aegis-specific type
 // declarations and all custom functions registered.
-func NewCELEnvironment() (*CELEnvironment, error) {
-	env, err := cel.NewEnv(
+//
+// protoTypes registers additional proto.Message descriptors with the CEL type system.
+// Phase 1 passes no types (all variables are primitive CEL types). Future phases may
+// register proto-derived types for structured policy variables.
+func NewCELEnvironment(protoTypes ...proto.Message) (*CELEnvironment, error) {
+	opts := []cel.EnvOption{
 		// Variable declarations matching the activation map keys populated in ActivationBuilder.
 		cel.Variable("tool", cel.StringType),
 		cel.Variable("args", cel.MapType(cel.StringType, cel.DynType)),
@@ -58,7 +63,18 @@ func NewCELEnvironment() (*CELEnvironment, error) {
 
 		// label.* and ifc.* namespace
 		labelExtension(),
-	)
+	}
+
+	// Register proto.Message type descriptors if provided.
+	if len(protoTypes) > 0 {
+		anySlice := make([]any, len(protoTypes))
+		for i, t := range protoTypes {
+			anySlice[i] = t
+		}
+		opts = append(opts, cel.Types(anySlice...))
+	}
+
+	env, err := cel.NewEnv(opts...)
 	if err != nil {
 		return nil, err
 	}

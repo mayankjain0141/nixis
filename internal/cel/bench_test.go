@@ -1,6 +1,7 @@
 package cel_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/mayjain/aegis/internal/cel"
@@ -47,7 +48,7 @@ func BenchmarkCEL_EvalSimple(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, _ = builder.Evaluate(prog, req, verdict, decodedArgs)
+		_, _ = builder.Evaluate(context.Background(), prog, req, verdict, decodedArgs)
 	}
 }
 
@@ -95,6 +96,6 @@ func BenchmarkCEL_EvalComplex(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, _ = builder.Evaluate(prog, req, verdict, decodedArgs)
+		_, _ = builder.Evaluate(context.Background(), prog, req, verdict, decodedArgs)
 	}
 }

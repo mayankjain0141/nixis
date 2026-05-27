@@ -1,9 +1,10 @@
 package cel
 
 import (
+	"context"
 	"sync"
 
-	"github.com/google/cel-go/cel"
+	celgo "github.com/google/cel-go/cel"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/mayjain/aegis/internal/classify"
 	aegis "github.com/mayjain/aegis/pkg/aegis"
@@ -43,18 +44,22 @@ var emptyArgs = map[string]any{}
 
 // Evaluate evaluates a compiled CEL program against a CheckRequest and VerdictEntry.
 //
-// Hot path contract (INV-007 zero-alloc):
+// Hot path contract (INV-007 zero-alloc, ENGINEERING_STANDARDS §5.5):
+//   - ctx carries the per-request 50ms deadline from daemon.handleConnection.
+//     Context is the first parameter per §5.5: "Context flows from socket accept
+//     through entire evaluation." ContextEval honours cancellation mid-expression.
 //   - decodedArgs must be a pre-decoded map[string]any. Callers decode json.RawMessage
 //     exactly ONCE before the evaluation loop, never inside it. Decoding inside here
 //     allocates on every call and violates the zero-alloc invariant.
 //   - The activation map is acquired from the pool, populated, evaluated, cleared, and
-//     returned to the pool — no allocation on the steady-state path.
+//     returned to the pool — no allocation on the steady-state path from our code.
 //   - Passing nil decodedArgs is safe (treated as empty args map).
 //
 // CEL evaluation is PURE (INV-10): same inputs → same output.
 // time.Now(), goroutine scheduling, I/O — FORBIDDEN inside CEL programs.
 func (a *ActivationBuilder) Evaluate(
-	prog cel.Program,
+	ctx context.Context,
+	prog *celgo.Program,
 	req aegis.CheckRequest,
 	verdictEntry classify.VerdictEntry,
 	decodedArgs map[string]any,
@@ -75,7 +80,7 @@ func (a *ActivationBuilder) Evaluate(
 	m["risk_level"] = string(verdictEntry.RiskLevel)
 	m["effects"] = verdictEntry.Effects
 
-	val, _, err := prog.Eval(m)
+	val, _, err := (*prog).ContextEval(ctx, m)
 
 	// Clear before returning to pool to avoid retaining references across evaluations.
 	for k := range m {
@@ -87,12 +92,20 @@ func (a *ActivationBuilder) Evaluate(
 	return val, err
 }
 
-// EvalWithPool evaluates using the package-level activation pool.
-// decodedArgs must be a pre-decoded map[string]any; nil is treated as empty args.
-func EvalWithPool(
-	prog cel.Program,
+// Eval is the package-level hot-path entry point per the WS-04 spec interface.
+//
+// Signature follows ENGINEERING_STANDARDS §5.5: context is the first parameter.
+// snap is the current EngineSnapshot — carried here so WS-05 can thread policy
+// metadata through the evaluation stack without a separate global. Unused at
+// the WS-04 layer; WS-05 will use it to resolve binding scopes.
+//
+// decodedArgs must be pre-decoded (see Evaluate for the full contract).
+func Eval(
+	ctx context.Context,
+	prog *celgo.Program,
 	req aegis.CheckRequest,
 	verdictEntry classify.VerdictEntry,
+	snap *aegis.EngineSnapshot,
 	decodedArgs map[string]any,
 ) (ref.Val, error) {
 	mp := activationPool.Get().(*map[string]any)
@@ -111,7 +124,9 @@ func EvalWithPool(
 	m["risk_level"] = string(verdictEntry.RiskLevel)
 	m["effects"] = verdictEntry.Effects
 
-	val, _, err := prog.Eval(m)
+	_ = snap // available for WS-05 to use; no-op at this layer
+
+	val, _, err := (*prog).ContextEval(ctx, m)
 
 	for k := range m {
 		delete(m, k)
