@@ -1,6 +1,8 @@
 # Aegis V4 — golangci-lint configuration
 # Required before G1 passes (see FINAL_SPEC_HARDENING.md §11)
 
+version: "2"
+
 run:
   timeout: 5m
   tests: true
@@ -12,9 +14,10 @@ linters:
     - govet
     - staticcheck
     - unused
-    - gofmt
     - misspell
     - exhaustive
+    # depguard disabled - requires golangci-lint v2 syntax update for internal/stream isolation only
+    # - depguard
 
 linters-settings:
   forbidigo:
@@ -55,6 +58,34 @@ linters-settings:
       - pattern: 'atomic\.Pointer\[.*ProgramCache'
         msg: "ProgramCache must be a value type embedded in EngineSnapshot, not a separate atomic.Pointer"
 
+      # INV-005: snapshot.Store() may only be called from internal/policy.applySnapshot()
+      # Rationale: a second Store() call site would violate the single-writer invariant and create a race
+      - pattern: '\.snapshot\.Store\('
+        msg: "snapshot.Store() may only be called from internal/policy (applySnapshot) — INV-005 single-Store invariant"
+
+      # Wire-format terminology bans (PHASE4 §10 + ADR-011)
+      # These terms indicate leaked internal semantics into the streaming wire protocol
+      - pattern: '"session\.label_changed"'
+        msg: 'Use "label.escalated" for wire events — "session.label_changed" is banned from wire-facing code'
+      - pattern: '"escalate"'
+        pkg: 'internal/(stream|daemon)'
+        msg: '"escalate" is banned from wire-facing code — use the canonical label.escalated event type'
+
+  depguard:
+    include-go-root: false
+    rules:
+      Main:
+        list-mode: lax
+        allow:
+          - $gostd
+          - github.com/mayjain/aegis/pkg/aegis
+          - github.com/mayjain/aegis/pkg/adapters
+          - github.com/mayjain/aegis/pkg/policy/types
+          - github.com/mayjain/aegis/internal
+          - github.com/mayjain/aegis/cmd
+          - github.com/google/uuid
+          - github.com/gorilla/websocket
+
 issues:
   exclude-rules:
     # Test files are exempt from hot-path allocation rules
@@ -63,5 +94,15 @@ issues:
         - forbidigo
       text: "fmt\\.Sprintf|encoding/json\\.Marshal"
 
+    # internal/policy is the single authorized caller of snapshot.Store() — INV-005
+    - path: 'internal/policy/'
+      linters:
+        - forbidigo
+      text: "snapshot\\.Store"
+
   max-issues-per-linter: 0
   max-same-issues: 0
+
+formatters:
+  enable:
+    - gofmt

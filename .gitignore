@@ -13,7 +13,7 @@
 profile.cov
 coverage.*
 /bin/
-/pkg/
+# Note: /pkg/ is Go build cache, but our source pkg/ must be tracked
 vendor/
 go.work
 go.work.sum
