@@ -1,8 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
 import { useUIStore } from '../../stores/ui-store';
 import { useGovernanceStore, type GovernanceEvent } from '../../stores/governance-store';
 import { SecurityLabelBadge } from '../SecurityLabelBadge';
-import { confidentialityToLevel, categoriesToStrings } from '../../lib/label-display';
+import {
+  confidentialityToLevel,
+  categoriesToStrings,
+  formatSecurityLabel,
+} from '../../lib/label-display';
 
 export interface InspectorProps {
   className?: string;
@@ -11,7 +16,7 @@ export interface InspectorProps {
 interface Section {
   id: string;
   title: string;
-  render: (event: GovernanceEvent) => React.ReactElement;
+  render: (event: GovernanceEvent) => React.ReactElement | null;
 }
 
 function formatLatency(ns: number): string {
@@ -40,19 +45,47 @@ function SectionRow({ label, value }: { label: string; value: React.ReactNode })
 
 const SECTIONS: Section[] = [
   {
+    id: 'why-denied',
+    title: 'Why Denied',
+    render(event) {
+      if (event.verdict !== 'deny') return null;
+      const ext = event as GovernanceEvent & Record<string, unknown>;
+      return (
+        <div
+          style={{
+            ...sectionStyles.body,
+            borderLeft: '3px solid var(--deny, #cf222e)',
+            paddingLeft: 12,
+            marginLeft: -4,
+          }}
+          data-verdict="deny"
+        >
+          <SectionRow label="Reason" value={event.reason ?? '(no reason provided)'} />
+          {typeof ext.celExpression === 'string' && (
+            <SectionRow label="CEL Expression" value={ext.celExpression} />
+          )}
+          <SectionRow
+            label="Classification"
+            value={event.label ? formatSecurityLabel(event.label) : '—'}
+          />
+        </div>
+      );
+    },
+  },
+  {
     id: 'classification',
     title: 'Classification',
     render(event) {
       return (
         <div style={sectionStyles.body}>
           <SectionRow label="Tool" value={event.tool} />
-          <SectionRow label="Adapter Family" value={event.enforcingLayer} />
+          <SectionRow label="Enforcing Layer" value={event.enforcingLayer} />
           <SectionRow label="Risk Level" value={
             <span style={{ color: event.verdict === 'deny' ? '#cf222e' : event.verdict === 'allow' ? '#2da44e' : '#d29922' }}>
               {event.verdict}
             </span>
           } />
-          <SectionRow label="Effects" value={event.reason || '—'} />
+          <SectionRow label="Reason" value={event.reason || '—'} />
         </div>
       );
     },
@@ -81,10 +114,38 @@ const SECTIONS: Section[] = [
   {
     id: 'delegation-chain',
     title: 'Delegation Chain',
-    render(_event) {
+    render(event) {
+      const storeState = useGovernanceStore.getState() as unknown as Record<string, unknown>;
+      const rawChains = storeState.delegationChains ?? {};
+      const hops: unknown[] = rawChains instanceof Map
+        ? ((rawChains as Map<string, unknown[]>).get(event.sessionId) ?? [])
+        : ((rawChains as Record<string, unknown[]>)[event.sessionId] ?? []);
+
+      if (!Array.isArray(hops) || hops.length === 0) {
+        return (
+          <div style={sectionStyles.body}>
+            <div style={sectionStyles.emptyState}>No delegation in this session</div>
+          </div>
+        );
+      }
+
       return (
         <div style={sectionStyles.body}>
-          <div style={sectionStyles.placeholder}>No delegation chain refs in MVP-1</div>
+          {hops.map((hop: unknown, i: number) => {
+            const h = hop as Record<string, unknown>;
+            return (
+              <div key={i} style={{ marginBottom: 8 }}>
+                <span style={{ fontFamily: 'monospace', fontSize: 11 }}>
+                  Hop {String(h.hopIndex ?? i)}: {String(h.delegatorId ?? '?')} → {String(h.delegateeId ?? '?')}
+                </span>
+                <div style={{ fontSize: 10, color: '#666', marginTop: 2 }}>
+                  Granted: {h.grantedLabel ? formatSecurityLabel(h.grantedLabel as Parameters<typeof formatSecurityLabel>[0]) : '—'}
+                  {' | '}
+                  Ceiling: {h.ceilingLabel ? formatSecurityLabel(h.ceilingLabel as Parameters<typeof formatSecurityLabel>[0]) : '—'}
+                </div>
+              </div>
+            );
+          })}
         </div>
       );
     },
@@ -93,11 +154,17 @@ const SECTIONS: Section[] = [
     id: 'policy-evaluation',
     title: 'Policy Evaluation',
     render(event) {
+      const ext = event as GovernanceEvent & Record<string, unknown>;
+      const cel = typeof ext.celExpression === 'string'
+        ? ext.celExpression
+        : typeof ext.cel_expression === 'string'
+          ? ext.cel_expression
+          : '(not available)';
       return (
         <div style={sectionStyles.body}>
           <SectionRow label="Policy ID" value={event.policyId || '—'} />
           <SectionRow label="Enforcing Layer" value={event.enforcingLayer || '—'} />
-          <SectionRow label="CEL Expression" value="—" />
+          <SectionRow label="CEL Expression" value={cel} />
         </div>
       );
     },
@@ -107,9 +174,35 @@ const SECTIONS: Section[] = [
     title: 'IFC Reasoning',
     render(event) {
       const stateColor = labelStateColor(event.labelState);
+      const ext = event as GovernanceEvent & Record<string, unknown>;
+      const subj = event.label;
+      const obj = ext.requestedLabel as typeof subj | undefined;
+
+      let dominatesEl: React.ReactElement;
+      if (!subj || !obj) {
+        dominatesEl = <SectionRow label="Dominates()" value="(no requested label)" />;
+      } else {
+        const cOk = subj.confidentiality >= obj.confidentiality;
+        const iOk = subj.integrity >= obj.integrity;
+        const kOk = (subj.categories & obj.categories) === obj.categories;
+        const result = cOk && iOk && kOk;
+        dominatesEl = (
+          <div style={sectionStyles.body}>
+            <div style={{ fontFamily: 'monospace', fontSize: 11, marginBottom: 4 }}>
+              C: {subj.confidentiality} ≥ {obj.confidentiality} {cOk ? '✓' : '✗'}<br />
+              I: {subj.integrity} ≥ {obj.integrity} {iOk ? '✓' : '✗'}<br />
+              K: {subj.categories} ⊇ {obj.categories} {kOk ? '✓' : '✗'}
+            </div>
+            <div style={{ fontWeight: 600, color: result ? '#2da44e' : '#cf222e' }}>
+              Dominates(): {result ? 'YES' : 'NO'}
+            </div>
+          </div>
+        );
+      }
+
       return (
         <div style={sectionStyles.body}>
-          <SectionRow label="Dominates()" value="—" />
+          {dominatesEl}
           <SectionRow label="Label State" value={
             <span style={{ color: stateColor }}>{event.labelState}</span>
           } />
@@ -120,11 +213,20 @@ const SECTIONS: Section[] = [
   {
     id: 'capability-ceiling',
     title: 'Capability Ceiling',
-    render(_event) {
+    render(event) {
+      const ext = event as GovernanceEvent & Record<string, unknown>;
+      const ceiling = ext.capabilityCeiling as Parameters<typeof formatSecurityLabel>[0] | undefined;
+      const requested = ext.requestedLabel as Parameters<typeof formatSecurityLabel>[0] | undefined;
       return (
         <div style={sectionStyles.body}>
-          <SectionRow label="Session Ceiling" value="N/A" />
-          <SectionRow label="Requested Label" value="N/A" />
+          <SectionRow
+            label="Session Ceiling"
+            value={ceiling ? formatSecurityLabel(ceiling) : 'Not applicable for this event type'}
+          />
+          <SectionRow
+            label="Requested Label"
+            value={requested ? formatSecurityLabel(requested) : 'Not applicable for this event type'}
+          />
         </div>
       );
     },
@@ -160,12 +262,17 @@ function AccordionSection({
   event,
   isOpen,
   onToggle,
+  isDenySection,
 }: {
   section: Section;
   event: GovernanceEvent;
   isOpen: boolean;
   onToggle: () => void;
+  isDenySection: boolean;
 }) {
+  const content = section.render(event);
+  if (content === null) return null;
+
   return (
     <div style={accordionStyles.section}>
       <button
@@ -173,27 +280,62 @@ function AccordionSection({
         onClick={onToggle}
         aria-expanded={isOpen}
         aria-controls={`inspector-section-${section.id}`}
+        data-verdict={isDenySection ? 'deny' : undefined}
       >
-        <span style={accordionStyles.title}>{section.title}</span>
+        <span
+          style={{
+            ...accordionStyles.title,
+            color: isDenySection ? '#cf222e' : '#8b949e',
+          }}
+        >
+          {section.title}
+        </span>
         <span style={{ ...accordionStyles.chevron, transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
           ▾
         </span>
       </button>
       {isOpen && (
         <div id={`inspector-section-${section.id}`} style={accordionStyles.content}>
-          {section.render(event)}
+          {content}
         </div>
       )}
     </div>
   );
 }
 
-export function Inspector({ className }: InspectorProps): React.ReactElement {
-  const inspectorTarget = useUIStore((s) => s.inspectorTarget);
+const MAX_PAUSE_BUFFER = 500;
+
+export function Inspector({ className }: InspectorProps): React.ReactElement | null {
+  const open = useUIStore((s) => s.inspectorOpen);
+  const liveTarget = useUIStore((s) => s.inspectorTarget);
+  const isPaused = useUIStore((s) => s.isPaused);
+  const togglePause = useUIStore((s) => s.togglePause);
   const events = useGovernanceStore((s) => s.events);
 
-  const event = inspectorTarget
-    ? events.find((e) => e.id === inspectorTarget) ?? null
+  const [frozenTarget, setFrozenTarget] = useState(liveTarget);
+  const pauseBuffer = useRef<string[]>([]);
+
+  useEffect(() => {
+    if (!isPaused) {
+      pauseBuffer.current = [];
+      setFrozenTarget(liveTarget);
+    }
+  }, [isPaused, liveTarget]);
+
+  useEffect(() => {
+    if (isPaused && liveTarget !== frozenTarget) {
+      if (pauseBuffer.current.length < MAX_PAUSE_BUFFER && liveTarget !== null) {
+        pauseBuffer.current.push(liveTarget);
+      }
+    } else if (!isPaused) {
+      setFrozenTarget(liveTarget);
+    }
+  }, [liveTarget, isPaused, frozenTarget]);
+
+  const displayTarget = isPaused ? frozenTarget : liveTarget;
+
+  const event = displayTarget
+    ? events.find((e) => e.id === displayTarget) ?? null
     : null;
 
   const [openSections, setOpenSections] = useState<Set<string>>(
@@ -212,8 +354,13 @@ export function Inspector({ className }: InspectorProps): React.ReactElement {
     });
   }
 
+  if (!open) return null;
+
   return (
-    <div
+    <motion.aside
+      initial={{ x: 280, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      transition={{ duration: 0.25, ease: 'easeOut' }}
       style={{
         ...containerStyles.root,
         userSelect: 'text',
@@ -229,6 +376,14 @@ export function Inspector({ className }: InspectorProps): React.ReactElement {
             {event.tool}
           </span>
         )}
+        <button
+          style={containerStyles.pauseButton}
+          onClick={togglePause}
+          aria-pressed={isPaused}
+          aria-label={isPaused ? 'Resume inspector' : 'Pause inspector'}
+        >
+          {isPaused ? 'Resume' : 'Pause'}
+        </button>
       </div>
 
       {!event ? (
@@ -244,11 +399,12 @@ export function Inspector({ className }: InspectorProps): React.ReactElement {
               event={event}
               isOpen={openSections.has(section.id)}
               onToggle={() => toggleSection(section.id)}
+              isDenySection={section.id === 'why-denied' && event.verdict === 'deny'}
             />
           ))}
         </div>
       )}
-    </div>
+    </motion.aside>
   );
 }
 
@@ -285,6 +441,18 @@ const containerStyles = {
     whiteSpace: 'nowrap' as const,
     maxWidth: '140px',
   },
+  pauseButton: {
+    marginLeft: '8px',
+    padding: '2px 8px',
+    fontSize: '11px',
+    fontFamily: 'ui-monospace, Consolas, monospace',
+    background: '#21262d',
+    color: '#8b949e',
+    border: '1px solid #30363d',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    flexShrink: 0,
+  },
   empty: {
     display: 'flex',
     alignItems: 'center',
@@ -320,7 +488,6 @@ const accordionStyles = {
     fontSize: '12px',
     fontWeight: 600,
     fontFamily: 'ui-monospace, Consolas, monospace',
-    color: '#8b949e',
     textTransform: 'uppercase' as const,
     letterSpacing: '0.05em',
   },
@@ -361,7 +528,7 @@ const sectionStyles = {
     wordBreak: 'break-all' as const,
     flex: 1,
   },
-  placeholder: {
+  emptyState: {
     color: '#30363d',
     fontSize: '11px',
     fontStyle: 'italic' as const,

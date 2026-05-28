@@ -19,6 +19,7 @@
     "@types/react-window": "^1.8.8",
     "@xyflow/react": "^12.10.2",
     "d3": "^7.9.0",
+    "framer-motion": "^12.40.0",
     "immer": "^11.1.8",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
