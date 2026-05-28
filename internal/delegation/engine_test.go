@@ -491,3 +491,107 @@ func TestDelegation_Engine_ListActive_Empty(t *testing.T) {
 		t.Errorf("expected 0 chains for empty engine, got %d", len(active))
 	}
 }
+
+// TestDelegation_Revoke_EmitsToEmitFn verifies that Revoke calls the registered
+// EmitFn with eventType "delegation.revoked" and the correct chainID.
+func TestDelegation_Revoke_EmitsToEmitFn(t *testing.T) {
+	pub, priv := genKey(t)
+	eng, err := delegation.New(pub)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	now := time.Now()
+	exp := now.Add(time.Hour)
+	caps := delegation.CapabilitySet{Operations: 0b0001}
+
+	tok := makeToken(t, priv, "root", "leaf", caps, exp, nil)
+	builtChain, err := delegation.BuildChainForTest([]delegation.DelegationToken{tok}, now)
+	if err != nil {
+		t.Fatalf("BuildChainForTest: %v", err)
+	}
+
+	const chainID = "emit-revoke-test"
+	eng.Register(chainID, builtChain)
+
+	type emitCall struct {
+		eventType string
+		chainID   string
+		reason    string
+	}
+	calls := make(chan emitCall, 1)
+	eng.SetEmitFn(func(eventType, id, reason string) {
+		calls <- emitCall{eventType, id, reason}
+	})
+
+	eng.Revoke(chainID)
+
+	select {
+	case got := <-calls:
+		if got.eventType != "delegation.revoked" {
+			t.Errorf("eventType = %q, want %q", got.eventType, "delegation.revoked")
+		}
+		if got.chainID != chainID {
+			t.Errorf("chainID = %q, want %q", got.chainID, chainID)
+		}
+		if got.reason != "explicit_revocation" {
+			t.Errorf("reason = %q, want %q", got.reason, "explicit_revocation")
+		}
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("EmitFn was not called within 100ms after Revoke")
+	}
+}
+
+// TestDelegation_Expired_EmitsToEmitFn verifies that the expiry checker calls the
+// registered EmitFn with eventType "delegation.expired" for an expired chain.
+func TestDelegation_Expired_EmitsToEmitFn(t *testing.T) {
+	pub, priv := genKey(t)
+	eng, err := delegation.New(pub)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	now := time.Now()
+	// Token expired 1 second ago.
+	exp := now.Add(-time.Second)
+	caps := delegation.CapabilitySet{Operations: 0b0001}
+
+	tok := makeToken(t, priv, "root", "leaf", caps, exp, nil)
+	builtChain, err := delegation.BuildChainForTest([]delegation.DelegationToken{tok}, now.Add(-2*time.Second))
+	if err != nil {
+		t.Fatalf("BuildChainForTest: %v", err)
+	}
+
+	const chainID = "emit-expired-test"
+	eng.Register(chainID, builtChain)
+
+	type emitCall struct {
+		eventType string
+		chainID   string
+		reason    string
+	}
+	calls := make(chan emitCall, 1)
+	eng.SetEmitFn(func(eventType, id, reason string) {
+		calls <- emitCall{eventType, id, reason}
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+
+	eng.StartExpiryChecker(ctx, 10*time.Millisecond)
+
+	select {
+	case got := <-calls:
+		if got.eventType != "delegation.expired" {
+			t.Errorf("eventType = %q, want %q", got.eventType, "delegation.expired")
+		}
+		if got.chainID != chainID {
+			t.Errorf("chainID = %q, want %q", got.chainID, chainID)
+		}
+		if got.reason != "ttl_elapsed" {
+			t.Errorf("reason = %q, want %q", got.reason, "ttl_elapsed")
+		}
+	case <-time.After(200 * time.Millisecond):
+		t.Fatal("EmitFn was not called within 200ms after expiry checker started")
+	}
+}

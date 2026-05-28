@@ -14,6 +14,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/mayjain/aegis/internal/audit"
 	"github.com/mayjain/aegis/internal/bundle"
@@ -139,6 +140,15 @@ func main() {
 		fmt.Fprintf(os.Stderr, "aegis-daemon: failed to create delegation engine: %v\n", err)
 		os.Exit(exitStartupFailure)
 	}
+
+	delegEngine.SetEmitFn(func(eventType, chainID, reason string) {
+		streamSrv.Emit(ctx, aegis.StreamEvent{
+			Type:      eventType,
+			SessionID: chainID,
+			Reason:    reason,
+			Timestamp: time.Now().UnixNano(),
+		})
+	})
 
 	d := daemon.New(cfg, engine, auditWriter, streamSrv, sessions)
 	d.SetDelegationEngine(delegEngine)
