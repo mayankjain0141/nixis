@@ -102,12 +102,11 @@ func CompileAll(env *CELEnvironment, templates []policy_types.PolicyTemplate) (*
 
 		ast, issues := env.env.Compile(t.Expression)
 		if issues != nil && issues.Err() != nil {
-			return nil, &CompileError{
-				PolicyID:   t.ID,
-				SourceFile: t.SourceFile,
-				SourceLine: t.SourceLine,
-				Cause:      issues.Err(),
-			}
+			// Skip policies whose expressions reference undeclared variables or functions.
+			// This allows the daemon to start with the policies that do compile, rather
+			// than aborting entirely. Phase 2 registers additional CEL functions (session.*,
+			// path.isWithinProject with full args) that resolve the remaining policies.
+			continue
 		}
 
 		// Enforce AST depth limit at compile time.

@@ -84,19 +84,31 @@ func ParsePolicyFile(path string) (*policy_types.PolicyTemplate, *policy_types.P
 }
 
 // buildCombinedExpression builds a single CEL expression from policy validations.
-// For MVP-1, this uses the first validation expression that results in DENY.
-// The expression is wrapped in negation so that when it evaluates true, it causes DENY.
+// Variables defined in spec.variables are inlined by substitution before compilation.
 func buildCombinedExpression(m *policyManifest) string {
+	// Build variable substitution map: name → normalized expression.
+	vars := make(map[string]string, len(m.Spec.Variables))
+	for _, v := range m.Spec.Variables {
+		vars[v.Name] = normalizeExpression(v.Expression)
+	}
+
+	inline := func(expr string) string {
+		expr = normalizeExpression(expr)
+		// Substitute each variable name with its expression (simple token replace).
+		for name, val := range vars {
+			expr = strings.ReplaceAll(expr, name, "("+val+")")
+		}
+		return expr
+	}
+
 	for _, v := range m.Spec.Validations {
 		if v.Action == "DENY" && v.Expression != "" {
-			expr := normalizeExpression(v.Expression)
-			return "!(" + expr + ")"
+			return "!(" + inline(v.Expression) + ")"
 		}
 	}
 	for _, v := range m.Spec.Validations {
 		if v.Expression != "" {
-			expr := normalizeExpression(v.Expression)
-			return "!(" + expr + ")"
+			return "!(" + inline(v.Expression) + ")"
 		}
 	}
 	return ""
