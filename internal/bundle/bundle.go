@@ -1,6 +1,4 @@
 // Package bundle implements the policy bundle distribution and activation subsystem.
-// Phase 1 delivers only: the 8-state ActivationFSM, the Ed25519 KeySource,
-// and the BundleLoader interface with its RawBundle type.
 package bundle
 
 import (
@@ -12,62 +10,45 @@ import (
 	"sync/atomic"
 )
 
-// ActivationState represents one of eight lifecycle states of a policy bundle activation.
-type ActivationState int32
+// ActivationState represents a lifecycle state in the bundle activation FSM.
+// String values are used so states are self-documenting in logs and metrics.
+type ActivationState string
 
 const (
-	StateIdle           ActivationState = iota // waiting for a new bundle
-	StateFetching                              // HTTP GET in progress
-	StateVerifying                             // Ed25519 signature check
-	StateParsing                               // YAML / tar decode
-	StateCompiling                             // CEL compilation
-	StateHealthChecking                        // post-compile health probe
-	StateActivating                            // atomically swapping the live policy set
-	StateRollingBack                           // reverting to the previous bundle on failure
+	StateIdle           ActivationState = "idle"
+	StateDownloading    ActivationState = "downloading"
+	StateVerifying      ActivationState = "verifying"
+	StateStaging        ActivationState = "staging"
+	StateCompiling      ActivationState = "compiling"
+	StateHealthChecking ActivationState = "health_checking"
+	StateActivating     ActivationState = "activating"
+	StateRollback       ActivationState = "rollback"
+	StateDenyAll        ActivationState = "deny_all"
+
+	// StateFetching is an alias kept for backward compatibility with Phase 1 code.
+	StateFetching    ActivationState = "fetching"
+	StateParsing     ActivationState = "parsing"
+	StateRollingBack ActivationState = "rolling_back"
 )
 
-// String returns a human-readable name for the state.
-func (s ActivationState) String() string {
-	switch s {
-	case StateIdle:
-		return "Idle"
-	case StateFetching:
-		return "Fetching"
-	case StateVerifying:
-		return "Verifying"
-	case StateParsing:
-		return "Parsing"
-	case StateCompiling:
-		return "Compiling"
-	case StateHealthChecking:
-		return "HealthChecking"
-	case StateActivating:
-		return "Activating"
-	case StateRollingBack:
-		return "RollingBack"
-	default:
-		return fmt.Sprintf("ActivationState(%d)", int32(s))
-	}
-}
-
 // ActivationFSM guards state transitions for a bundle activation lifecycle.
-// The current state is stored as an atomic int32; mu serialises compare-and-swap
+// The current state is stored atomically; mu serialises compare-and-swap
 // transitions so no two callers can race on the same source state.
 type ActivationFSM struct {
-	state atomic.Int32
+	state atomic.Value // holds ActivationState string
 	mu    sync.Mutex
 }
 
 // NewActivationFSM returns an FSM in StateIdle.
 func NewActivationFSM() *ActivationFSM {
 	f := &ActivationFSM{}
-	f.state.Store(int32(StateIdle))
+	f.state.Store(StateIdle)
 	return f
 }
 
 // State returns the current ActivationState.
 func (f *ActivationFSM) State() ActivationState {
-	return ActivationState(f.state.Load())
+	return f.state.Load().(ActivationState)
 }
 
 // Transition moves the FSM from `from` to `to`. It returns an error if the
@@ -77,13 +58,20 @@ func (f *ActivationFSM) Transition(from, to ActivationState) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	current := ActivationState(f.state.Load())
+	current := f.state.Load().(ActivationState)
 	if current != from {
 		return fmt.Errorf("bundle FSM: cannot transition %s→%s: current state is %s",
 			from, to, current)
 	}
-	f.state.Store(int32(to))
+	f.state.Store(to)
 	return nil
+}
+
+// force sets the FSM state unconditionally. Used only in rollback paths.
+func (f *ActivationFSM) force(to ActivationState) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.state.Store(to)
 }
 
 // KeySource holds one or more Ed25519 public keys used to verify bundle signatures.
@@ -118,7 +106,7 @@ func (k *KeySource) Verify(message, sig []byte) bool {
 	return false
 }
 
-// RawBundle is the output of a successful BundleLoader.Load call.
+// RawBundle is the output of a successful bundle load.
 // Verification precedes parsing — callers may trust that Data has been
 // signature-checked before any content is inspected. (INV-009)
 type RawBundle struct {
@@ -127,9 +115,28 @@ type RawBundle struct {
 	Version uint64 // monotone bundle version from the manifest
 }
 
-// BundleLoader fetches and verifies policy bundles from a remote source.
-type BundleLoader interface {
+// BundleLoaderIface fetches and verifies policy bundles from a remote source.
+// The name avoids collision with the concrete BundleLoader struct below.
+type BundleLoaderIface interface {
 	// Load fetches a bundle from sourceURL and verifies its signature with keys
 	// before returning the raw bytes. Verification happens BEFORE parsing (INV-009).
 	Load(ctx context.Context, sourceURL string, keys *KeySource) (*RawBundle, error)
+}
+
+// Policy layer constants. Lower LayerPriority value = higher precedence (evaluated first).
+// ceiling overrides team overrides project overrides cel (the default).
+const (
+	LayerCeiling = "ceiling"
+	LayerTeam    = "team"
+	LayerProject = "project"
+	LayerCEL     = "cel"
+)
+
+// LayerPriority maps each layer name to its evaluation order.
+// Lower number = higher priority. ceiling fires before team, team before project, project before cel.
+var LayerPriority = map[string]int{
+	LayerCeiling: 0,
+	LayerTeam:    1,
+	LayerProject: 2,
+	LayerCEL:     3,
 }

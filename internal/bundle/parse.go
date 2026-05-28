@@ -19,6 +19,7 @@ type policyManifest struct {
 	} `yaml:"metadata"`
 	Spec struct {
 		Description      string `yaml:"description"`
+		Layer            string `yaml:"layer"` // ceiling | team | project | cel (default)
 		MatchConstraints struct {
 			Tools []string `yaml:"tools"`
 		} `yaml:"matchConstraints"`
@@ -71,13 +72,18 @@ func ParsePolicyFile(path string) (*policy_types.PolicyTemplate, *policy_types.P
 		SourceLine:  1,
 	}
 
+	layer := manifest.Spec.Layer
+	if _, known := LayerPriority[layer]; !known || layer == "" {
+		layer = LayerCEL
+	}
+
 	binding := &policy_types.PolicyBinding{
 		TemplateID: manifest.Metadata.Name,
 		Scope: policy_types.PolicyScope{
 			Tools: manifest.Spec.MatchConstraints.Tools,
 		},
 		Priority: 0,
-		Layer:    "cel",
+		Layer:    layer,
 	}
 
 	return template, binding, nil

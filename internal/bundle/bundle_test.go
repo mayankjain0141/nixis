@@ -125,9 +125,3 @@ func TestKeySource_Empty_ReturnsError(t *testing.T) {
 		t.Fatal("expected error when creating KeySource with no keys")
 	}
 }
-
-// --- Bundle activation placeholder ---
-
-func TestBundle_ActivationCallsEngineReload(t *testing.T) {
-	t.Skip("Engine not wired in Phase 1 skeleton — placeholder for Phase 2 integration")
-}
