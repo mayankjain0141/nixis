@@ -125,14 +125,15 @@ export function createMockStreamGenerator(intervalMs: number): MockStreamGenerat
     const actionIndex = (seed >>> 3) % ALL_ACTIONS.length;
     const toolIndex = (seed >>> 7) % ALL_TOOLS.length;
 
+    const reasonIndex = (seed >>> 15) % ALL_REASONS.length;
     const event: StreamEvent = {
       type: allTypes[typeIndex],
       aegisSequence: seq,
       sessionId: makeSessionId((seed >>> 11) % 3),
       tool: ALL_TOOLS[toolIndex],
       action: ALL_ACTIONS[actionIndex],
-      reason: '',
-      label: makeLabel(seed >>> 15),
+      reason: ALL_REASONS[reasonIndex],
+      label: makeLabel(seed >>> 19),
       timestamp: Date.now() * 1_000_000,
     };
 
