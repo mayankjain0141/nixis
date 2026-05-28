@@ -51,8 +51,9 @@ spec:
 	if template.Description != "Test policy" {
 		t.Errorf("template.Description = %q, want %q", template.Description, "Test policy")
 	}
-	if template.Expression != "!(bash.isGitForcePush(request.args.command))" {
-		t.Errorf("template.Expression = %q, want %q", template.Expression, "!(bash.isGitForcePush(request.args.command))")
+	expectedExpr := `!(bash.isGitForcePush(args["command"]))`
+	if template.Expression != expectedExpr {
+		t.Errorf("template.Expression = %q, want %q", template.Expression, expectedExpr)
 	}
 	if template.SourceFile != path {
 		t.Errorf("template.SourceFile = %q, want %q", template.SourceFile, path)

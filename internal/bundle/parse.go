@@ -89,15 +89,25 @@ func ParsePolicyFile(path string) (*policy_types.PolicyTemplate, *policy_types.P
 func buildCombinedExpression(m *policyManifest) string {
 	for _, v := range m.Spec.Validations {
 		if v.Action == "DENY" && v.Expression != "" {
-			return "!(" + v.Expression + ")"
+			expr := normalizeExpression(v.Expression)
+			return "!(" + expr + ")"
 		}
 	}
 	for _, v := range m.Spec.Validations {
 		if v.Expression != "" {
-			return "!(" + v.Expression + ")"
+			expr := normalizeExpression(v.Expression)
+			return "!(" + expr + ")"
 		}
 	}
 	return ""
+}
+
+// normalizeExpression transforms policy YAML expression syntax to CEL activation syntax.
+// The policy YAML uses `request.args.command` but CEL activation uses flat `args["command"]`.
+func normalizeExpression(expr string) string {
+	expr = strings.ReplaceAll(expr, "request.args.command", `args["command"]`)
+	expr = strings.ReplaceAll(expr, "request.args", "args")
+	return expr
 }
 
 // ParsePolicyDir parses all YAML files in a directory and returns templates and bindings.
