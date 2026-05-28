@@ -28,6 +28,14 @@ import (
 	"github.com/mayjain/aegis/pkg/aegis"
 )
 
+// Exit codes per REQ-094.
+const (
+	exitSuccess        = 0 // clean shutdown
+	exitStartupFailure = 1 // fatal error during init
+	exitRuntimeFailure = 2 // fatal error during operation
+	exitConfigError    = 3 // invalid configuration
+)
+
 func main() {
 	var (
 		socketPath  = flag.String("socket", "", "Unix socket path (default: $AEGIS_SOCKET_PATH or /tmp/aegis.sock)")
@@ -47,14 +55,14 @@ func main() {
 	auditWriter, err := audit.NewWriter(cfg.AuditDBPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "aegis-daemon: failed to open audit database %q: %v\n", cfg.AuditDBPath, err)
-		os.Exit(1)
+		os.Exit(exitStartupFailure)
 	}
 
 	sessions := &ifc.SessionLabels{}
 	celEnv, err := cel.NewCELEnvironment()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "aegis-daemon: failed to create CEL environment: %v\n", err)
-		os.Exit(1)
+		os.Exit(exitStartupFailure)
 	}
 
 	engine := policy.NewPolicyEngine(
@@ -124,12 +132,12 @@ func main() {
 	delegPub, _, err := ed25519.GenerateKey(nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "aegis-daemon: failed to generate ephemeral delegation key: %v\n", err)
-		os.Exit(1)
+		os.Exit(exitStartupFailure)
 	}
 	delegEngine, err := delegation.New(delegPub)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "aegis-daemon: failed to create delegation engine: %v\n", err)
-		os.Exit(1)
+		os.Exit(exitStartupFailure)
 	}
 
 	d := daemon.New(cfg, engine, auditWriter, streamSrv, sessions)
@@ -138,7 +146,7 @@ func main() {
 
 	if err := d.Run(ctx); err != nil {
 		fmt.Fprintf(os.Stderr, "aegis-daemon: %v\n", err)
-		os.Exit(1)
+		os.Exit(exitRuntimeFailure)
 	}
 }
 

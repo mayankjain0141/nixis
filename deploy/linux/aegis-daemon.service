@@ -1,0 +1,18 @@
+[Unit]
+Description=Aegis Governance Daemon
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/aegis-daemon -policy-dir /etc/aegis/policies -audit-db /var/lib/aegis/audit.db
+Restart=on-failure
+RestartSec=5
+User=aegis
+Group=aegis
+Environment=AEGIS_SOCKET_PATH=/tmp/aegis.sock
+StandardOutput=journal
+StandardError=journal
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
