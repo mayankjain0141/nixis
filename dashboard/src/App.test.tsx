@@ -36,6 +36,6 @@ describe('App', () => {
       </StoreProvider>,
     );
     expect(screen.getByRole('status', { name: 'Dashboard metrics' })).toBeInTheDocument();
-    expect(screen.getByText('No events yet')).toBeInTheDocument();
+    expect(screen.getByLabelText('Live governance event stream')).toBeInTheDocument();
   });
 });

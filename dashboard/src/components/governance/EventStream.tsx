@@ -1,3 +1,4 @@
+// DEPRECATED: replaced by EventStreamCanvas. Remove after Wave 4 verification.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { List, useListRef } from 'react-window';
 import type { CSSProperties, UIEvent } from 'react';
