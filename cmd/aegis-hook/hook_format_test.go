@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/mayjain/aegis/pkg/aegis"
 )
 
 func TestHookInput_ClaudeCodeFormat(t *testing.T) {
@@ -64,6 +66,70 @@ func TestHookInput_CursorFormat(t *testing.T) {
 	}
 	if m["command"] != "ls -la" {
 		t.Errorf("command = %q, want %q", m["command"], "ls -la")
+	}
+}
+
+func TestTranslateToClaudeCode_Allow(t *testing.T) {
+	resp := aegis.CheckResponse{}
+	resp.Decision.Action = aegis.ActionAllow
+
+	out := translateToClaudeCode(resp, "PreToolUse")
+
+	if out.HookSpecificOutput.HookEventName != "PreToolUse" {
+		t.Errorf("HookEventName = %q, want PreToolUse", out.HookSpecificOutput.HookEventName)
+	}
+	if out.HookSpecificOutput.PermissionDecision != "allow" {
+		t.Errorf("PermissionDecision = %q, want allow", out.HookSpecificOutput.PermissionDecision)
+	}
+	if out.HookSpecificOutput.PermissionDecisionReason != "" {
+		t.Errorf("PermissionDecisionReason should be empty for allow, got %q", out.HookSpecificOutput.PermissionDecisionReason)
+	}
+
+	// Verify the JSON shape Claude Code expects.
+	b, err := json.Marshal(out)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	hso, ok := raw["hookSpecificOutput"].(map[string]interface{})
+	if !ok {
+		t.Fatal("hookSpecificOutput key missing or wrong type")
+	}
+	if hso["permissionDecision"] != "allow" {
+		t.Errorf("JSON permissionDecision = %v, want allow", hso["permissionDecision"])
+	}
+}
+
+func TestTranslateToClaudeCode_Deny(t *testing.T) {
+	resp := aegis.CheckResponse{}
+	resp.Decision.Action = aegis.ActionDeny
+	resp.Decision.Reason = "policy P-001 prohibits rm -rf"
+
+	out := translateToClaudeCode(resp, "PreToolUse")
+
+	if out.HookSpecificOutput.PermissionDecision != "deny" {
+		t.Errorf("PermissionDecision = %q, want deny", out.HookSpecificOutput.PermissionDecision)
+	}
+	if out.HookSpecificOutput.PermissionDecisionReason != "policy P-001 prohibits rm -rf" {
+		t.Errorf("PermissionDecisionReason = %q, want reason from response", out.HookSpecificOutput.PermissionDecisionReason)
+	}
+}
+
+func TestTranslateToClaudeCode_RequireApproval(t *testing.T) {
+	resp := aegis.CheckResponse{}
+	resp.Decision.Action = aegis.ActionRequireApproval
+	resp.Decision.Reason = "requires human approval"
+
+	out := translateToClaudeCode(resp, "PreToolUse")
+
+	if out.HookSpecificOutput.PermissionDecision != "ask" {
+		t.Errorf("PermissionDecision = %q, want ask", out.HookSpecificOutput.PermissionDecision)
+	}
+	if out.HookSpecificOutput.PermissionDecisionReason != "requires human approval" {
+		t.Errorf("PermissionDecisionReason = %q, want reason from response", out.HookSpecificOutput.PermissionDecisionReason)
 	}
 }
 
