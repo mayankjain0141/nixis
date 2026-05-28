@@ -12,9 +12,11 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
+	"github.com/gorilla/websocket"
 	_ "modernc.org/sqlite"
 
 	"github.com/spf13/cobra"
@@ -51,9 +53,10 @@ var auditExportCmd = &cobra.Command{
 }
 
 var (
-	auditTailN      int
-	auditTailFollow bool
-	auditTailDB     string
+	auditTailN          int
+	auditTailFollow     bool
+	auditTailDB         string
+	auditTailStreamAddr string
 )
 
 var auditTailCmd = &cobra.Command{
@@ -75,8 +78,9 @@ func init() {
 	auditCmd.AddCommand(auditExportCmd)
 
 	auditTailCmd.Flags().IntVarP(&auditTailN, "lines", "n", 20, "Number of records to show")
-	auditTailCmd.Flags().BoolVarP(&auditTailFollow, "follow", "f", false, "Poll for new records")
+	auditTailCmd.Flags().BoolVarP(&auditTailFollow, "follow", "f", false, "Stream new records via WebSocket")
 	auditTailCmd.Flags().StringVar(&auditTailDB, "db", "", "Audit database path (default: $AEGIS_AUDIT_DB)")
+	auditTailCmd.Flags().StringVar(&auditTailStreamAddr, "stream-addr", "ws://127.0.0.1:9090/ws", "Daemon WebSocket stream address for --follow")
 	auditCmd.AddCommand(auditTailCmd)
 }
 
@@ -431,8 +435,7 @@ func runAuditTail(cmd *cobra.Command, _ []string) error {
 
 	w := bufio.NewWriter(cmd.OutOrStdout())
 
-	lastID, err := printLastN(w, db, auditTailN, 0)
-	if err != nil {
+	if _, err := printLastN(w, db, auditTailN, 0); err != nil {
 		return err
 	}
 	if err := w.Flush(); err != nil {
@@ -443,26 +446,92 @@ func runAuditTail(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
-	ticker := time.NewTicker(500 * time.Millisecond)
-	defer ticker.Stop()
+	return tailFollow(ctx, w, auditTailStreamAddr)
+}
 
+// tailFollow streams audit events from the daemon's WebSocket endpoint.
+// It connects to the stream server and prints events whose type begins with "audit.",
+// "policy.", or "bundle." — the event types that represent governance decisions.
+func tailFollow(ctx context.Context, w *bufio.Writer, addr string) error {
+	dialer := websocket.Dialer{
+		HandshakeTimeout: 5 * time.Second,
+	}
+	conn, _, err := dialer.DialContext(ctx, addr, nil)
+	if err != nil {
+		return fmt.Errorf("connect to stream at %s: %w", addr, err)
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	enc := json.NewEncoder(w)
 	for {
-		select {
-		case <-ctx.Done():
+		if ctx.Err() != nil {
 			return nil
-		case <-ticker.C:
-			newID, err := printNewSince(w, db, lastID)
-			if err != nil {
-				return err
+		}
+
+		// Apply a read deadline so we can check ctx cancellation periodically.
+		if err := conn.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
+			return fmt.Errorf("set read deadline: %w", err)
+		}
+
+		_, msg, err := conn.ReadMessage()
+		if err != nil {
+			if ctx.Err() != nil {
+				return nil
 			}
-			if newID > lastID {
-				lastID = newID
-				if err := w.Flush(); err != nil {
-					return fmt.Errorf("flush output: %w", err)
-				}
+			if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+				return nil
 			}
+			// Read deadline expired — loop to check ctx then read again.
+			if isTimeoutError(err) {
+				continue
+			}
+			return fmt.Errorf("stream read: %w", err)
+		}
+
+		// Parse the envelope to extract the event type.
+		var envelope struct {
+			Type string          `json:"type"`
+			Data json.RawMessage `json:"data"`
+		}
+		if err := json.Unmarshal(msg, &envelope); err != nil {
+			continue
+		}
+
+		// Filter for audit-relevant event types.
+		if !isAuditEventType(envelope.Type) {
+			continue
+		}
+
+		// Emit the full CloudEvent envelope as JSONL.
+		if err := enc.Encode(json.RawMessage(msg)); err != nil {
+			return fmt.Errorf("encode event: %w", err)
+		}
+		if err := w.Flush(); err != nil {
+			return fmt.Errorf("flush output: %w", err)
 		}
 	}
+}
+
+// isAuditEventType returns true for event types that represent governance decisions.
+func isAuditEventType(t string) bool {
+	return strings.HasPrefix(t, "audit.") ||
+		strings.HasPrefix(t, "policy.") ||
+		strings.HasPrefix(t, "bundle.") ||
+		t == "label.escalated" ||
+		t == "secret.detected"
+}
+
+// isTimeoutError reports whether err is a network timeout.
+func isTimeoutError(err error) bool {
+	type timeoutErr interface {
+		Timeout() bool
+	}
+	if te, ok := err.(timeoutErr); ok {
+		return te.Timeout()
+	}
+	return false
 }
 
 func printLastN(w *bufio.Writer, db *sql.DB, n int, afterID int64) (int64, error) {
@@ -507,39 +576,6 @@ func printLastN(w *bufio.Writer, db *sql.DB, n int, afterID int64) (int64, error
 		if err := enc.Encode(r); err != nil {
 			return afterID, fmt.Errorf("encode row: %w", err)
 		}
-	}
-	if maxID == 0 {
-		return afterID, nil
-	}
-	return maxID, nil
-}
-
-func printNewSince(w *bufio.Writer, db *sql.DB, afterID int64) (int64, error) {
-	rows, err := db.Query(`SELECT id, timestamp, session_id, tool, action, reason, policy_id, enforcing_layer, latency_ns
-		FROM audit_log WHERE id > ? ORDER BY id ASC`, afterID)
-	if err != nil {
-		return afterID, fmt.Errorf("query new records: %w", err)
-	}
-	defer func() {
-		_ = rows.Close()
-	}()
-
-	var maxID int64
-	enc := json.NewEncoder(w)
-	for rows.Next() {
-		r, err := scanAuditRow(rows)
-		if err != nil {
-			return afterID, fmt.Errorf("scan row: %w", err)
-		}
-		if r.ID > maxID {
-			maxID = r.ID
-		}
-		if err := enc.Encode(r); err != nil {
-			return afterID, fmt.Errorf("encode row: %w", err)
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return afterID, fmt.Errorf("iterate rows: %w", err)
 	}
 	if maxID == 0 {
 		return afterID, nil

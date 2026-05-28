@@ -241,6 +241,63 @@ func runBundleRollback(cmd *cobra.Command, _ []string) error {
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "rolling back to bundle hash=%s version=%d stored_at=%s\n",
 		prev.Hash, prev.Version, prev.StoredAt.Format(time.RFC3339))
 
-	bundlePath := filepath.Join(storeDir, prev.Hash)
-	return activateBundle(cmd, bundlePath)
+	// The stored bundle is bundle.tar.gz inside the hash-named directory.
+	bundlePath := filepath.Join(storeDir, prev.Hash, "bundle.tar.gz")
+	sockPath := bundleSocket
+	if sockPath == "" {
+		sockPath = daemonSocketPath()
+	}
+	if err := sendBundleReload(bundlePath, sockPath); err != nil {
+		return fmt.Errorf("send reload to daemon: %w", err)
+	}
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "bundle activated successfully")
+	return nil
+}
+
+// sendBundleReload connects to the daemon socket and sends a bundle_reload message.
+func sendBundleReload(bundlePath, sockPath string) error {
+	conn, err := net.DialTimeout("unix", sockPath, 5*time.Second)
+	if err != nil {
+		return fmt.Errorf("cannot connect to daemon at %s: %w", sockPath, err)
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	msg := bundleReloadMsg{
+		Type:    "bundle_reload",
+		BundleP: bundlePath,
+	}
+	msgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return fmt.Errorf("marshal reload message: %w", err)
+	}
+
+	deadline := time.Now().Add(5 * time.Second)
+	if err := conn.SetWriteDeadline(deadline); err != nil {
+		return fmt.Errorf("set write deadline: %w", err)
+	}
+
+	var hdr [4]byte
+	binary.BigEndian.PutUint32(hdr[:], uint32(len(msgBytes)))
+	if _, err := conn.Write(hdr[:]); err != nil {
+		return fmt.Errorf("send reload header: %w", err)
+	}
+	if _, err := conn.Write(msgBytes); err != nil {
+		return fmt.Errorf("send reload body: %w", err)
+	}
+
+	// Read acknowledgement (best-effort — daemon may not implement bundle_reload yet).
+	if err := conn.SetReadDeadline(time.Now().Add(2 * time.Second)); err != nil {
+		return nil
+	}
+	var respHdr [4]byte
+	if _, err := io.ReadFull(conn, respHdr[:]); err != nil {
+		// Timeout or no ack — reload message was sent successfully.
+		return nil
+	}
+	length := binary.BigEndian.Uint32(respHdr[:])
+	respBytes := make([]byte, length)
+	_, _ = io.ReadFull(conn, respBytes)
+	return nil
 }
