@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -50,9 +51,10 @@ func TestCLI_Validate_CELError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for invalid CEL, got nil")
 	}
-	combined := stderr + err.Error()
-	if !strings.Contains(combined, "bad.yaml") && !strings.Contains(combined, "bad-policy") {
-		t.Errorf("expected source reference in output, got stderr=%q err=%v", stderr, err)
+	// stderr must contain file:line format (e.g. "bad.yaml:1:")
+	matched, _ := regexp.MatchString(`bad\.yaml:\d+`, stderr)
+	if !matched {
+		t.Errorf("expected file:line format in stderr (e.g. bad.yaml:1:), got: %q (err: %v)", stderr, err)
 	}
 }
 
@@ -71,7 +73,10 @@ func TestCLI_Validate_NonExistentDir(t *testing.T) {
 func TestCLI_AuditVerify_ExitCodes(t *testing.T) {
 	t.Run("intact_empty_db", func(t *testing.T) {
 		dbPath := filepath.Join(t.TempDir(), "audit.db")
-		initAuditDB(t, dbPath)
+		db := initAuditDB(t, dbPath)
+		if err := db.Close(); err != nil {
+			t.Fatalf("close db: %v", err)
+		}
 		outBuf := &bytes.Buffer{}
 		auditDB = dbPath
 		auditFrom = ""
@@ -215,17 +220,12 @@ func writePolicy(t *testing.T, dir, filename, content string) {
 	}
 }
 
-func initAuditDB(t *testing.T, dbPath string) {
+func initAuditDB(t *testing.T, dbPath string) *sql.DB {
 	t.Helper()
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
-	defer func() {
-		if err := db.Close(); err != nil {
-			t.Fatalf("close db: %v", err)
-		}
-	}()
 	_, err = db.Exec(`
 CREATE TABLE IF NOT EXISTS audit_log (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -243,10 +243,70 @@ CREATE TABLE IF NOT EXISTS audit_log (
     label_after_c  INTEGER,
     label_after_i  INTEGER,
     label_after_k  INTEGER,
-    latency_ns     INTEGER
+    latency_ns     INTEGER,
+    chain_hash     BLOB
 );`)
 	if err != nil {
 		t.Fatalf("create table: %v", err)
+	}
+	return db
+}
+
+// insertChainedRecord inserts one audit_log row with a properly computed chain_hash.
+// Returns the new chain hash for use as the next row's predecessor.
+func insertChainedRecord(t *testing.T, db *sql.DB, prev [32]byte, ts int64, sessionID, tool, action string) [32]byte {
+	t.Helper()
+	next := computeChainHash(prev, ts, sessionID, tool, "", action, "", "", "", 0)
+	_, err := db.Exec(`INSERT INTO audit_log
+		(timestamp, session_id, tool, args, action, reason, policy_id, enforcing_layer,
+		 label_before_c, label_before_i, label_before_k,
+		 label_after_c, label_after_i, label_after_k,
+		 latency_ns, chain_hash)
+		VALUES (?,?,?,NULL,?,NULL,NULL,NULL,0,0,0,0,0,0,0,?)`,
+		ts, sessionID, tool, action, next[:])
+	if err != nil {
+		t.Fatalf("insertChainedRecord: %v", err)
+	}
+	return next
+}
+
+// TestCLI_AuditVerify_TamperedChain verifies that a tampered record causes exit non-zero.
+func TestCLI_AuditVerify_TamperedChain(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "tamper.db")
+	db := initAuditDB(t, dbPath)
+
+	// Insert 3 properly chain-linked records.
+	var prev [32]byte
+	prev = insertChainedRecord(t, db, prev, 1000, "sess1", "bash", "allow")
+	prev = insertChainedRecord(t, db, prev, 2000, "sess1", "read", "allow")
+	insertChainedRecord(t, db, prev, 3000, "sess1", "write", "deny")
+
+	// Tamper: change the action of record 2 without updating its chain_hash.
+	_, err := db.Exec(`UPDATE audit_log SET action='allow' WHERE id=2 AND action='allow'`)
+	if err != nil {
+		t.Fatalf("UPDATE (benign): %v", err)
+	}
+	// Real tamper: change tool of record 2 to something different.
+	_, err = db.Exec(`UPDATE audit_log SET tool='malicious' WHERE id=2`)
+	if err != nil {
+		t.Fatalf("tamper UPDATE: %v", err)
+	}
+
+	if err := db.Close(); err != nil {
+		t.Fatalf("close db: %v", err)
+	}
+
+	outBuf := &bytes.Buffer{}
+	auditDB = dbPath
+	auditFrom = ""
+	auditTo = ""
+	auditVerifyCmd.SetOut(outBuf)
+	verifyErr := auditVerifyCmd.RunE(auditVerifyCmd, nil)
+	if verifyErr == nil {
+		t.Fatal("expected corruption error, got nil (tamper not detected)")
+	}
+	if !strings.Contains(verifyErr.Error(), "corruption detected") {
+		t.Errorf("expected 'corruption detected' in error, got: %v", verifyErr)
 	}
 }
 

@@ -61,7 +61,8 @@ func runAuditVerify(cmd *cobra.Command, _ []string) error {
 		_ = db.Close()
 	}()
 
-	query := "SELECT id, timestamp, session_id, tool, args, action, reason, policy_id, enforcing_layer, latency_ns FROM audit_log"
+	query := `SELECT id, timestamp, session_id, tool, args, action, reason, policy_id,
+		enforcing_layer, latency_ns, chain_hash FROM audit_log`
 	var queryArgs []interface{}
 
 	switch {
@@ -102,8 +103,10 @@ func runAuditVerify(cmd *cobra.Command, _ []string) error {
 		_ = rows.Close()
 	}()
 
-	// Sequential chain: hash(prevHash || recordBytes). prevHash starts as 32 zero bytes.
-	prevHash := make([]byte, 32)
+	// Verification: for each row, recompute sha256(prevHash || fields) and compare
+	// against the stored chain_hash. A mismatch means a field was tampered.
+	// Rows with NULL chain_hash (written before this feature) are skipped.
+	var prevHash [32]byte
 	count := 0
 
 	for rows.Next() {
@@ -118,20 +121,29 @@ func runAuditVerify(cmd *cobra.Command, _ []string) error {
 			policyID       sql.NullString
 			enforcingLayer sql.NullString
 			latencyNs      sql.NullInt64
+			storedHash     []byte
 		)
 		if err := rows.Scan(&id, &timestamp, &sessionID, &tool, &args,
-			&action, &reason, &policyID, &enforcingLayer, &latencyNs); err != nil {
+			&action, &reason, &policyID, &enforcingLayer, &latencyNs, &storedHash); err != nil {
 			return fmt.Errorf("scan record %d: %w", id, err)
 		}
 
-		content := buildRecordContent(id, timestamp, sessionID, tool,
+		// Skip rows that predate the chain_hash column (NULL → zero-length blob).
+		if len(storedHash) != 32 {
+			count++
+			continue
+		}
+
+		expected := computeChainHash(prevHash, timestamp, sessionID, tool,
 			args.String, action, reason.String, policyID.String,
 			enforcingLayer.String, latencyNs.Int64)
 
-		h := sha256.New()
-		h.Write(prevHash)
-		h.Write(content)
-		prevHash = h.Sum(nil)
+		if expected != [32]byte(storedHash) {
+			return fmt.Errorf("corruption detected at record id=%d: stored hash %s does not match recomputed hash %s",
+				id, hex.EncodeToString(storedHash), hex.EncodeToString(expected[:]))
+		}
+
+		copy(prevHash[:], storedHash)
 		count++
 	}
 	if err := rows.Err(); err != nil {
@@ -139,33 +151,32 @@ func runAuditVerify(cmd *cobra.Command, _ []string) error {
 	}
 
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "OK: %d records verified, chain hash=%s\n",
-		count, hex.EncodeToString(prevHash))
+		count, hex.EncodeToString(prevHash[:]))
 	return nil
 }
 
-// buildRecordContent serialises a record into a canonical byte slice for hashing.
-func buildRecordContent(id, ts int64, sessionID, tool, args, action, reason, policyID, layer string, latencyNs int64) []byte {
-	buf := make([]byte, 0, 256)
-	buf = appendInt64LE(buf, id)
-	buf = append(buf, 0)
-	buf = appendInt64LE(buf, ts)
-	buf = append(buf, 0)
-	buf = append(buf, sessionID...)
-	buf = append(buf, 0)
-	buf = append(buf, tool...)
-	buf = append(buf, 0)
-	buf = append(buf, args...)
-	buf = append(buf, 0)
-	buf = append(buf, action...)
-	buf = append(buf, 0)
-	buf = append(buf, reason...)
-	buf = append(buf, 0)
-	buf = append(buf, policyID...)
-	buf = append(buf, 0)
-	buf = append(buf, layer...)
-	buf = append(buf, 0)
-	buf = appendInt64LE(buf, latencyNs)
-	return buf
+// computeChainHash replicates the hash logic from internal/audit.chainHash.
+// Field ordering and NUL separator MUST stay in sync with that function.
+func computeChainHash(prev [32]byte, ts int64, sessionID, tool, args, action, reason, policyID, layer string, latencyNs int64) [32]byte {
+	h := sha256.New()
+	h.Write(prev[:])
+	writeHashField(h, appendInt64LE(nil, ts))
+	writeHashField(h, []byte(sessionID))
+	writeHashField(h, []byte(tool))
+	writeHashField(h, []byte(args))
+	writeHashField(h, []byte(action))
+	writeHashField(h, []byte(reason))
+	writeHashField(h, []byte(policyID))
+	writeHashField(h, []byte(layer))
+	writeHashField(h, appendInt64LE(nil, latencyNs))
+	var result [32]byte
+	copy(result[:], h.Sum(nil))
+	return result
+}
+
+func writeHashField(h interface{ Write([]byte) (int, error) }, data []byte) {
+	_, _ = h.Write(data)
+	_, _ = h.Write([]byte{0})
 }
 
 func appendInt64LE(buf []byte, n int64) []byte {
