@@ -22,6 +22,8 @@ func init() {
 	rootCmd.AddCommand(auditCmd)
 	rootCmd.AddCommand(scanCmd)
 	rootCmd.AddCommand(bundleCmd)
+	rootCmd.AddCommand(policyCmd)
+	rootCmd.AddCommand(delegationCmd)
 }
 
 func main() {

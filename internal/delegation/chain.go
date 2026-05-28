@@ -56,6 +56,13 @@ type DelegationToken struct {
 	Signature    []byte   // Ed25519 over: Issuer+Audience+Capabilities+ExpiresAt+ParentHash
 }
 
+// CanonicalBytes returns the deterministic byte encoding of the token fields
+// covered by the signature (all fields except Signature itself).
+// Used by the CLI to sign and verify tokens.
+func (t *DelegationToken) CanonicalBytes() []byte {
+	return t.canonicalBytes()
+}
+
 // canonicalBytes returns the deterministic byte encoding of the token
 // fields that are covered by the signature: all fields except Signature itself.
 func (t *DelegationToken) canonicalBytes() []byte {
