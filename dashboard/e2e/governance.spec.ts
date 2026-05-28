@@ -18,7 +18,9 @@ test.describe('Governance Dashboard', () => {
 
   test('MetricsBar is visible', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('body')).toBeVisible();
+    const metricsBar = page.locator('[role="status"][aria-label="Dashboard metrics"]');
+    await expect(metricsBar).toBeVisible();
+    await expect(metricsBar).not.toBeEmpty();
   });
 
   test('command palette opens on Cmd+K', async ({ page }) => {
