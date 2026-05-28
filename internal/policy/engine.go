@@ -293,7 +293,7 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 		if commandText != "" {
 			content = commandText
 		} else if len(req.Args) > 0 {
-			content = string(req.Args)
+			content = string(aegis.ExtractScanTarget(req.Tool, req.Args))
 		}
 
 		if content != "" {

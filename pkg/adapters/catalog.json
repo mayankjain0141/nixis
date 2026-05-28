@@ -3,7 +3,7 @@
   {"tool":"TaskUpdate","family":"claude-code-coordination","operation":"update","effects":["state_change"],"resource_type":"agent_coordination","risk_level":"low"},
   {"tool":"TaskGet","family":"claude-code-coordination","operation":"read","effects":[],"resource_type":"agent_coordination","risk_level":"none"},
   {"tool":"TaskList","family":"claude-code-coordination","operation":"read","effects":[],"resource_type":"agent_coordination","risk_level":"none"},
-  {"tool":"SendMessage","family":"claude-code-coordination","operation":"publish","effects":["content_internal"],"resource_type":"agent_coordination","risk_level":"low"},
+  {"tool":"SendMessage","family":"claude-code-coordination","operation":"publish","effects":["content_internal","message_content"],"resource_type":"agent_coordination","risk_level":"low"},
   {"tool":"TeamCreate","family":"claude-code-coordination","operation":"create","effects":["process_coordination"],"resource_type":"agent_coordination","risk_level":"low"},
   {"tool":"TeamDelete","family":"claude-code-coordination","operation":"delete","effects":["process_coordination"],"resource_type":"agent_coordination","risk_level":"low"},
   {"tool":"Agent","family":"claude-code-coordination","operation":"create","effects":["process_coordination"],"resource_type":"agent_coordination","risk_level":"low"},
