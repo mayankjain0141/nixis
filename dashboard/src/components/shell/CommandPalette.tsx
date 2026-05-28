@@ -31,6 +31,7 @@ function buildStaticCommands(
   startMock: () => void,
   stopMock: () => void,
   setCommandPaletteOpen: (open: boolean) => void,
+  close: () => void,
 ): Command[] {
   return [
     {
@@ -46,6 +47,20 @@ function buildStaticCommands(
       category: 'filter',
       keywords: ['allow', 'pass', 'permit', 'filter', 'show'],
       execute: async () => { setFilterVerdict('allow'); },
+    },
+    {
+      id: 'filter-require_approval',
+      label: 'Filter: Show require_approval only',
+      category: 'filter',
+      keywords: ['approval', 'require', 'hitl'],
+      execute: async () => { setFilterVerdict('require_approval'); close(); },
+    },
+    {
+      id: 'filter-audit',
+      label: 'Filter: Show audit events only',
+      category: 'filter',
+      keywords: ['audit', 'checkpoint'],
+      execute: async () => { setFilterVerdict('audit'); close(); },
     },
     {
       id: 'filter-clear',
@@ -72,6 +87,57 @@ function buildStaticCommands(
       execute: async () => {
         window.dispatchEvent(new CustomEvent('aegis:navigate', { detail: { panel: 'inspector' } }));
         setCommandPaletteOpen(false);
+      },
+    },
+    {
+      id: 'panel-lattice',
+      label: 'Go to: IFC Lattice',
+      category: 'navigation',
+      keywords: ['lattice', 'ifc', 'label'],
+      execute: async () => {
+        window.dispatchEvent(new CustomEvent('aegis:navigate', { detail: { panel: 'lattice' } }));
+        close();
+      },
+    },
+    {
+      id: 'panel-metrics',
+      label: 'Go to: Metrics',
+      category: 'navigation',
+      keywords: ['metrics', 'stats', 'throughput'],
+      execute: async () => {
+        window.dispatchEvent(new CustomEvent('aegis:navigate', { detail: { panel: 'metrics' } }));
+        close();
+      },
+    },
+    {
+      id: 'panel-threats',
+      label: 'Go to: Threats',
+      category: 'navigation',
+      keywords: ['threats', 'secrets', 'drift'],
+      execute: async () => {
+        window.dispatchEvent(new CustomEvent('aegis:navigate', { detail: { panel: 'threats' } }));
+        close();
+      },
+    },
+    {
+      id: 'tt-live',
+      label: 'Time travel: Return to live',
+      category: 'time-travel',
+      keywords: ['live', 'latest', 'now', 'resume'],
+      execute: async () => {
+        const ui = useUIStore.getState() as { isPaused?: boolean; togglePause?: () => void };
+        if (ui.isPaused) ui.togglePause?.();
+        close();
+      },
+    },
+    {
+      id: 'tt-pause',
+      label: 'Time travel: Pause stream here',
+      category: 'time-travel',
+      keywords: ['pause', 'freeze', 'stop'],
+      execute: async () => {
+        (useUIStore.getState() as { togglePause?: () => void }).togglePause?.();
+        close();
       },
     },
     {
@@ -107,7 +173,6 @@ function CommandPaletteContent({
 }): React.ReactElement {
   const setCommandPaletteOpen = useUIStore((s) => s.setCommandPaletteOpen);
   const setConnectionState = useStreamStore((s) => s.setConnectionState);
-  const clearEvents = useGovernanceStore((s) => s.clear);
   const setFilterVerdict = useGovernanceStore((s) => s.setFilterVerdict);
 
   const [query, setQuery] = useState('');
@@ -132,14 +197,19 @@ function CommandPaletteContent({
         setConnectionState('RECONNECTING');
         close();
       },
-      () => { close(); },
       () => {
-        clearEvents();
+        useStreamStore.getState().setRequestMockMode(true);
+        close();
+      },
+      () => {
+        useStreamStore.getState().setRequestMockMode(false);
+        useGovernanceStore.getState().clear();
         close();
       },
       setCommandPaletteOpen,
+      close,
     ),
-    [setFilterVerdict, setConnectionState, close, clearEvents, setCommandPaletteOpen],
+    [setFilterVerdict, setConnectionState, close, setCommandPaletteOpen],
   );
 
   const allCommands = useMemo(() => {
@@ -152,7 +222,10 @@ function CommandPaletteContent({
         label: `${e.tool} — ${e.verdict}`,
         category: 'search' as const,
         keywords: [e.tool, e.sessionId],
-        execute: async () => { close(); },
+        execute: async () => {
+          useUIStore.getState().openInspector(e.id);
+          close();
+        },
       }));
     return [...staticCommands, ...eventCommands];
   }, [query, staticCommands, close]);

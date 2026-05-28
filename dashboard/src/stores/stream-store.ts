@@ -21,6 +21,7 @@ interface StreamState {
   // Messages buffered while the tab is backgrounded.
   backgroundBuffer: string[];
   parseErrorCount: number;
+  requestMockMode: boolean;
 
   setConnectionState(state: ConnectionState): void;
   updateLastSequence(seq: number): void;
@@ -29,6 +30,7 @@ interface StreamState {
   flushBuffer(): string[];
   recordParseError(): void;
   reset(): void;
+  setRequestMockMode(v: boolean): void;
 }
 
 export const useStreamStore = create<StreamState>()(
@@ -45,6 +47,7 @@ export const useStreamStore = create<StreamState>()(
     },
     backgroundBuffer: [],
     parseErrorCount: 0,
+    requestMockMode: false,
 
     setConnectionState(state) {
       set((draft) => {
@@ -103,6 +106,12 @@ export const useStreamStore = create<StreamState>()(
         draft.lastSequenceId = 0;
         draft.backgroundBuffer = [];
         draft.parseErrorCount = 0;
+      });
+    },
+
+    setRequestMockMode(v) {
+      set((draft) => {
+        draft.requestMockMode = v;
       });
     },
   })),
