@@ -401,11 +401,14 @@ func TestDaemon_HealthzEndpoint(t *testing.T) {
 	waitReady(t, ready)
 
 	// Poll until /healthz responds or timeout.
+	// DisableKeepAlives prevents the HTTP transport from keeping the connection
+	// alive in a pool after the test completes — which would cause goleak to fail.
+	client := &http.Client{Transport: &http.Transport{DisableKeepAlives: true}}
 	var resp *http.Response
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
 		var err error
-		resp, err = http.Get("http://127.0.0.1:9091/healthz")
+		resp, err = client.Get("http://127.0.0.1:9091/healthz")
 		if err == nil {
 			break
 		}

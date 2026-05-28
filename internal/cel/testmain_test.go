@@ -1,7 +1,6 @@
 package cel_test
 
 import (
-	"os"
 	"testing"
 
 	"go.uber.org/goleak"
@@ -9,5 +8,4 @@ import (
 
 func TestMain(m *testing.M) {
 	goleak.VerifyTestMain(m)
-	os.Exit(m.Run())
 }

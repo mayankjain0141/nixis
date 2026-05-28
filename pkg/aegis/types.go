@@ -69,6 +69,13 @@ const (
 type DelegationRef struct {
 	TokenID string
 	Issuer  string
+	// DeclassificationGate is non-empty when this token grants declassification authority.
+	// When set, AuditRef must also be non-empty — the audit trail proves the declassification
+	// was reviewed and approved before the token was issued.
+	DeclassificationGate string
+	// AuditRef is the audit trail reference for tokens that carry a DeclassificationGate.
+	// Validation rejects any token with a non-empty DeclassificationGate and empty AuditRef.
+	AuditRef string
 }
 
 // CheckRequest is the evaluation input.

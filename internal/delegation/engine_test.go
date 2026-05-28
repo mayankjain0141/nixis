@@ -380,3 +380,53 @@ func TestDelegation_Revoke_EmitsEvent(t *testing.T) {
 		t.Error("chain should be removed from active map after Revoke")
 	}
 }
+
+func TestDelegation_DeclassificationGate_RequiresAuditRef(t *testing.T) {
+	pub, _ := genKey(t)
+	eng, err := delegation.New(pub)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	// Token with DeclassificationGate but no AuditRef must be rejected.
+	chain := []aegis.DelegationRef{
+		{
+			TokenID:              `{}`,
+			Issuer:               "test-issuer",
+			DeclassificationGate: "TOP_SECRET",
+			AuditRef:             "",
+		},
+	}
+	err = eng.Validate(chain, time.Now())
+	if err == nil {
+		t.Fatal("expected error for DeclassificationGate with empty AuditRef, got nil")
+	}
+	if !strings.Contains(err.Error(), "DeclassificationGate") {
+		t.Errorf("error should mention DeclassificationGate, got: %v", err)
+	}
+}
+
+func TestDelegation_DeclassificationGate_WithAuditRef_PassesGate(t *testing.T) {
+	pub, _ := genKey(t)
+	eng, err := delegation.New(pub)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	// DeclassificationGate with a valid AuditRef passes the gate check (may still
+	// fail signature verification — but it must NOT be rejected for missing AuditRef).
+	chain := []aegis.DelegationRef{
+		{
+			TokenID:              `{}`,
+			Issuer:               "test-issuer",
+			DeclassificationGate: "TOP_SECRET",
+			AuditRef:             "audit-2026-001",
+		},
+	}
+	err = eng.Validate(chain, time.Now())
+	// The error (if any) must NOT be about DeclassificationGate — it should be
+	// about token decoding or signature, not the gate check.
+	if err != nil && strings.Contains(err.Error(), "DeclassificationGate") {
+		t.Errorf("should not reject token with both DeclassificationGate and AuditRef set: %v", err)
+	}
+}

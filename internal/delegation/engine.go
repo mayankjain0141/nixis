@@ -49,6 +49,12 @@ func (e *Engine) Validate(chain []aegis.DelegationRef, now time.Time) error {
 
 	tokens := make([]DelegationToken, 0, len(chain))
 	for i, ref := range chain {
+		// DeclassificationGate requires a non-empty AuditRef — spec Responsibility 6.
+		if ref.DeclassificationGate != "" && ref.AuditRef == "" {
+			return fmt.Errorf("token at index %d (issuer %s): DeclassificationGate %q requires non-empty AuditRef",
+				i, ref.Issuer, ref.DeclassificationGate)
+		}
+
 		tok, err := e.decodeAndVerify(ref, i)
 		if err != nil {
 			return err
