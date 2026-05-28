@@ -47,6 +47,7 @@ const (
 	EffectContentInternal     = "content_internal"     // SendMessage ONLY — NOT content_publish
 	EffectProcessCoordination = "process_coordination" // Agent, TeamCreate, TeamDelete
 	EffectContentPublish      = "content_publish"
+	EffectMessageContent      = "message_content" // SendMessage and similar coordination tools — triggers secret scan on message body
 )
 
 // VerdictEntry provides CLASSIFICATION only — NOT a final governance decision (RISK-009).
