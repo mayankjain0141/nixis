@@ -5,9 +5,11 @@ test.describe('Visual regression', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(500);
-    await expect(page).toHaveScreenshot('dashboard-baseline.png', {
-      maxDiffPixelRatio: 0.02,
-      mask: [page.locator('[data-testid="timestamp"]')],
+    // Run with: npx playwright test --update-snapshots  (first run only, to create baseline)
+    await expect(page).toHaveScreenshot('dashboard-full.png', {
+      threshold: 0.001,
+      animations: 'disabled',
+      mask: [page.locator('[data-testid="timestamp"]'), page.locator('time')],
     });
   });
 });

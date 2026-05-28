@@ -8,5 +8,17 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test-setup.ts'],
     exclude: ['e2e/**', 'node_modules/**'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov', 'html'],
+      thresholds: {
+        statements: 80,
+        branches: 80,
+        functions: 80,
+        lines: 80,
+      },
+      include: ['src/**'],
+      exclude: ['src/**/*.test.*', 'src/**/*.spec.*', 'src/mocks/**'],
+    },
   },
 });
