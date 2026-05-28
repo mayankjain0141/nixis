@@ -9,10 +9,17 @@ import { useStreamStore } from './stores/stream-store';
 import { usePolicyStore } from './stores/policy-store';
 import { useUIStore } from './stores/ui-store';
 import { createMockStreamGenerator } from './mocks/streamGenerator';
-import type { Verdict } from './types/events';
-import type { LabelState } from './types/events';
+import { createWebSocketManager } from './lib/realtime/ws-manager';
+import { createEventIngestionPipeline } from './lib/realtime/ingestion-pipeline';
+import { createEventBus } from './lib/realtime/event-bus';
+import { createBackpressureController } from './lib/realtime/backpressure';
+import { GovernanceInvariantChecker } from './services/invariants';
+import type { ValidatedEvent } from './lib/realtime/ingestion-pipeline';
+import type { GovernanceEvent } from './stores/governance-store';
+import type { BundleStatus } from './stores/policy-store';
+import type { StreamEvent, SecurityLabel } from './types/aegis';
+import type { LabelState, ConnectionState } from './types/events';
 
-// Check if daemon is reachable; fall back to mock generator when offline.
 const DAEMON_WS_URL = (() => {
   try {
     return import.meta.env.VITE_DAEMON_WS_URL ?? 'ws://localhost:9090/ws';
@@ -21,12 +28,113 @@ const DAEMON_WS_URL = (() => {
   }
 })();
 
-function isVerdictValue(v: string): v is Verdict {
-  return v === 'deny' || v === 'allow' || v === 'require_approval' || v === 'audit';
+// Convert the legacy mock StreamEvent to a minimal CloudEvent JSON string
+// so it feeds through the real ingestion pipeline.
+function mockEventToCloudEvent(e: StreamEvent, seq: number): string {
+  const eventType = (e.action === 'deny' || e.action === 'require_approval')
+    ? 'policy.denied'
+    : 'policy.evaluated';
+  return JSON.stringify({
+    specversion: '1.0',
+    type: eventType,
+    source: 'aegis-mock/local',
+    id: `mock-${seq}`,
+    time: new Date().toISOString(),
+    datacontenttype: 'application/json',
+    aegissequence: seq,
+    data: {
+      tool: e.tool,
+      session_id: e.sessionId,
+      decision: {
+        action: e.action,
+        reason: e.reason,
+        policy_id: 'mock-policy',
+        enforcing_layer: 'adapter',
+        labels: e.label,
+      },
+      label_state: 'fresh',
+      latency_ns: Math.floor(Math.random() * 5_000_000),
+    },
+  });
 }
 
-function isLabelStateValue(v: string): v is LabelState {
-  return v === 'fresh' || v === 'escalated' || v === 'tainted_by_secret' || v === 'declassified';
+// Route a validated event batch to the appropriate stores.
+function routeToStores(
+  events: ValidatedEvent[],
+  appendEvent: (event: GovernanceEvent) => void,
+  updateLabel: (sessionId: string, incoming: SecurityLabel, state: LabelState) => void,
+  recordLatency: (latencyNs: number) => void,
+  recordEvent: (timestampMs: number) => void,
+  setConnectionState: (state: ConnectionState) => void,
+  updateLastSequence: (seq: number) => void,
+  setBundleStatus: (status: BundleStatus) => void,
+): void {
+  for (const event of events) {
+    updateLastSequence(event.envelope.aegissequence);
+
+    switch (event.type) {
+      case 'policy.evaluated':
+      case 'policy.denied': {
+        const d = event.data;
+        const labelState: LabelState = (
+          d.label_state === 'fresh' ||
+          d.label_state === 'escalated' ||
+          d.label_state === 'tainted_by_secret' ||
+          d.label_state === 'declassified'
+        ) ? (d.label_state as LabelState) : 'fresh';
+
+        appendEvent({
+          id: event.envelope.id ?? `evt-${event.envelope.aegissequence}`,
+          sessionId: d.session_id,
+          tool: d.tool,
+          verdict: d.decision.action,
+          reason: d.decision.reason,
+          policyId: d.decision.policy_id,
+          enforcingLayer: d.decision.enforcing_layer,
+          label: d.decision.labels,
+          labelState,
+          latencyNs: d.latency_ns,
+          aegisSequence: event.envelope.aegissequence,
+          timestamp: event.envelope.time
+            ? new Date(event.envelope.time).getTime() * 1_000_000
+            : Date.now() * 1_000_000,
+        });
+        recordLatency(d.latency_ns);
+        recordEvent(Date.now());
+        updateLabel(d.session_id, d.decision.labels, labelState);
+        break;
+      }
+
+      case 'stream.heartbeat':
+        // Connection is alive; heartbeat also handled by ws-manager for clock offset.
+        break;
+
+      case 'bundle.activated': {
+        const b = event.data;
+        setBundleStatus({
+          version: b.version,
+          previousVersion: b.previousVersion ?? 0,
+          hash: b.hash,
+          signatureVerified: b.signatureVerified,
+          policyCount: b.policyCount,
+          adapterCount: b.adapterCount ?? 0,
+          activatedAt: Date.now(),
+        });
+        break;
+      }
+
+      case 'system.error':
+        if (event.data.severity === 'critical') {
+          setConnectionState('DISCONNECTED');
+        }
+        break;
+
+      default:
+        // delegation.*, audit.checkpoint, label.escalated, secret.detected,
+        // mcp.tool_drift — acknowledged but not yet routed to stores in MVP-1.
+        break;
+    }
+  }
 }
 
 export default function App() {
@@ -35,13 +143,17 @@ export default function App() {
   const recordLatency = useMetricsStore((s) => s.recordLatency);
   const recordEvent = useMetricsStore((s) => s.recordEvent);
   const setConnectionState = useStreamStore((s) => s.setConnectionState);
+  const updateLastSequence = useStreamStore((s) => s.updateLastSequence);
   const connectionState = useStreamStore((s) => s.connectionState);
   const policies = usePolicyStore((s) => s.policies);
   const bundleStatus = usePolicyStore((s) => s.bundleStatus);
+  const setBundleStatus = usePolicyStore((s) => s.setBundleStatus);
   const setCommandPaletteOpen = useUIStore((s) => s.setCommandPaletteOpen);
-  const wsRef = useRef<WebSocket | null>(null);
-  const mockGenRef = useRef<ReturnType<typeof createMockStreamGenerator> | null>(null);
 
+  const mockGenRef = useRef<ReturnType<typeof createMockStreamGenerator> | null>(null);
+  const mockSeqRef = useRef(0);
+
+  // Keyboard shortcut for command palette.
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
@@ -53,122 +165,114 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [setCommandPaletteOpen]);
 
+  // Governance invariant checker on 5s interval.
   useEffect(() => {
-    let ws: WebSocket | null = null;
+    const checker = new GovernanceInvariantChecker({
+      getGovernanceEvents: () => useGovernanceStore.getState().events.map(e => ({
+        id: e.id,
+        aegisSequence: e.aegisSequence,
+        verdict: e.verdict,
+      })),
+      getSessionLabels: () => {
+        const labels = useGovernanceStore.getState().sessionLabels;
+        const out = new Map<string, { label: import('./types/aegis').SecurityLabel; updatedAt: number }>();
+        for (const [k, v] of labels) {
+          out.set(k, { label: v.label, updatedAt: v.updatedAt });
+        }
+        return out;
+      },
+      getPolicyBundleVersion: () => usePolicyStore.getState().bundleStatus?.version ?? null,
+      getStreamBundleVersion: () => null,
+    });
+
+    const interval = setInterval(() => {
+      const violations = checker.runAll().filter(r => !r.passed);
+      if (violations.length > 0) {
+        console.warn('[aegis] invariant violations:', violations);
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Main realtime wiring: ws-manager → ingestion-pipeline → event-bus → backpressure → stores.
+  useEffect(() => {
+    const bus = createEventBus();
+    const bpController = createBackpressureController();
+
+    // Backpressure output routes to stores.
+    const unsubBp = bpController.onOutput((batch) => {
+      routeToStores(
+        batch.immediateEvents,
+        appendEvent, updateLabel, recordLatency, recordEvent,
+        setConnectionState, updateLastSequence, setBundleStatus,
+      );
+    });
+
+    // Event bus feeds backpressure.
+    const unsubBus = bus.subscribe(
+      () => true,
+      (events) => bpController.submit(events),
+      0,
+    );
+
+    const wsManager = createWebSocketManager(DAEMON_WS_URL);
+    const pipeline = createEventIngestionPipeline(wsManager);
+
+    // Validated events go to the event bus.
+    const unsubPipeline = pipeline.onValidated((event) => bus.emit(event));
+
+    // Connection state changes propagate to stream-store.
+    let stateCheckInterval: ReturnType<typeof setInterval> | null = null;
     let useMock = false;
 
     function startMock() {
+      if (useMock) return;
       useMock = true;
+      setConnectionState('DISCONNECTED');
       const gen = createMockStreamGenerator(50);
       mockGenRef.current = gen;
-      gen.onEvent((e) => {
-        if (!isVerdictValue(e.action)) return;
-        const labelState: LabelState = 'fresh';
-        appendEvent({
-          id: `mock-${e.aegisSequence}`,
-          sessionId: e.sessionId,
-          tool: e.tool,
-          verdict: e.action,
-          reason: e.reason,
-          policyId: 'mock-policy',
-          enforcingLayer: 'mock',
-          label: e.label,
-          labelState,
-          latencyNs: Math.floor(Math.random() * 5_000_000),
-          aegisSequence: e.aegisSequence,
-          timestamp: e.timestamp,
-        });
-        recordLatency(Math.floor(Math.random() * 5_000_000));
-        recordEvent(Date.now());
-        updateLabel(e.sessionId, e.label, labelState);
+      gen.onEvent((e: StreamEvent) => {
+        mockSeqRef.current++;
+        const raw = mockEventToCloudEvent(e, mockSeqRef.current);
+        pipeline.ingest(raw, { receivedAt: performance.now() });
       });
       gen.start();
     }
 
-    function tryConnect() {
-      setConnectionState('CONNECTING');
-      ws = new WebSocket(DAEMON_WS_URL);
-      wsRef.current = ws;
+    // Poll ws-manager state to update stream-store.
+    stateCheckInterval = setInterval(() => {
+      const wsState = wsManager.getState();
+      setConnectionState(wsState);
+    }, 250);
 
-      const timeout = setTimeout(() => {
-        if (ws && ws.readyState !== WebSocket.OPEN && !useMock) {
-          ws.close();
-          setConnectionState('DISCONNECTED');
-          startMock();
-        }
-      }, 2000);
+    // Connect; fall back to mock after 2s if not connected.
+    setConnectionState('CONNECTING');
+    wsManager.connect();
 
-      ws.onopen = () => {
-        clearTimeout(timeout);
-        setConnectionState('CONNECTED');
-      };
+    const fallbackTimer = setTimeout(() => {
+      if (wsManager.getState() !== 'CONNECTED' && !useMock) {
+        startMock();
+      }
+    }, 2000);
 
-      ws.onmessage = (ev: MessageEvent<string>) => {
-        try {
-          const msg = JSON.parse(ev.data) as Record<string, unknown>;
-          if (msg['type'] !== 'governance.decision') return;
-          const verdict = msg['verdict'];
-          const labelStateRaw = msg['labelState'];
-          if (typeof verdict !== 'string' || !isVerdictValue(verdict)) return;
-          const labelState: LabelState = typeof labelStateRaw === 'string' && isLabelStateValue(labelStateRaw)
-            ? labelStateRaw
-            : 'fresh';
-
-          const label = (msg['label'] as { confidentiality: number; integrity: number; categories: number }) ?? {
-            confidentiality: 0,
-            integrity: 0,
-            categories: 0,
-          };
-          const latencyNs = typeof msg['latencyNs'] === 'number' ? msg['latencyNs'] : 0;
-          const timestamp = typeof msg['timestamp'] === 'number' ? msg['timestamp'] : Date.now() * 1_000_000;
-
-          appendEvent({
-            id: String(msg['id'] ?? crypto.randomUUID()),
-            sessionId: String(msg['sessionId'] ?? ''),
-            tool: String(msg['tool'] ?? ''),
-            verdict,
-            reason: String(msg['reason'] ?? ''),
-            policyId: String(msg['policyId'] ?? ''),
-            enforcingLayer: String(msg['enforcingLayer'] ?? ''),
-            label,
-            labelState,
-            latencyNs,
-            aegisSequence: typeof msg['aegisSequence'] === 'number' ? msg['aegisSequence'] : 0,
-            timestamp,
-          });
-
-          recordLatency(latencyNs);
-          recordEvent(Date.now());
-          updateLabel(String(msg['sessionId'] ?? ''), label, labelState);
-        } catch {
-          // Malformed message — skip.
-        }
-      };
-
-      ws.onerror = () => {
-        clearTimeout(timeout);
-        if (!useMock) {
-          setConnectionState('DISCONNECTED');
-          startMock();
-        }
-      };
-
-      ws.onclose = () => {
-        clearTimeout(timeout);
-        if (!useMock) {
-          setConnectionState('DISCONNECTED');
-          startMock();
-        }
-      };
-    }
-
-    tryConnect();
+    // Wire ws-manager message to pipeline.
+    const unsubMsg = wsManager.onMessage((raw, meta) => {
+      pipeline.ingest(raw, meta);
+    });
 
     return () => {
-      ws?.close();
+      clearTimeout(fallbackTimer);
+      if (stateCheckInterval !== null) clearInterval(stateCheckInterval);
+      wsManager.disconnect();
+      unsubMsg();
+      unsubPipeline();
+      unsubBus();
+      unsubBp();
       mockGenRef.current?.stop();
+      mockGenRef.current = null;
     };
-  }, [appendEvent, updateLabel, recordLatency, recordEvent, setConnectionState]);
+  }, [appendEvent, updateLabel, recordLatency, recordEvent, setConnectionState, updateLastSequence, setBundleStatus]);
 
   return (
     <div style={styles.shell}>
@@ -291,22 +395,6 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  inspectorPlaceholder: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    alignItems: 'center',
-    gap: '4px',
-  },
-  placeholderText: {
-    color: '#30363d',
-    fontSize: '14px',
-    fontWeight: 600,
-  },
-  placeholderSub: {
-    color: '#21262d',
-    fontSize: '11px',
-    fontFamily: 'ui-monospace, Consolas, monospace',
   },
 } as const;
 
