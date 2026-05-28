@@ -109,19 +109,30 @@ describe('CommandPalette', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  // TestCommandPalette_FuzzySearch: "pol den" matches commands via keywords
-  it('TestCommandPalette_FuzzySearch: fuzzy matches on keywords across words', () => {
+  // TestCommandPalette_FuzzySearch: verifies substring, keyword, and subsequence matching
+  it('TestCommandPalette_FuzzySearch: fuzzy matches via substring, keyword, and subsequence', () => {
     render(<CommandPalette />);
     openPalette();
 
     const input = screen.getByRole('textbox', { name: 'Search commands' });
-    // "den" matches "deny" keyword on the deny filter command
-    fireEvent.change(input, { target: { value: 'den' } });
+
+    // Substring match on label: "deny" is a substring of "Filter: Show denials only"
+    fireEvent.change(input, { target: { value: 'deny' } });
     expect(screen.getByText('Filter: Show denials only')).toBeInTheDocument();
 
-    // "block" matches "block" keyword on the deny filter command
+    // Keyword match: "block" is a keyword on the deny filter but not in its label
     fireEvent.change(input, { target: { value: 'block' } });
     expect(screen.getByText('Filter: Show denials only')).toBeInTheDocument();
+
+    // Subsequence match: "flsh" is NOT a substring or keyword of any command label,
+    // but f→l→s→h appears in order in "Filter: Show denials only" (f·ilter: ·s·how ... )
+    // f=F, l=l, s=S, h=h — these characters appear in sequence in the label.
+    fireEvent.change(input, { target: { value: 'flsh' } });
+    expect(screen.getByText('Filter: Show denials only')).toBeInTheDocument();
+
+    // Non-match: "xyzzyx" cannot be matched by any algorithm against any command
+    fireEvent.change(input, { target: { value: 'xyzzyx' } });
+    expect(screen.queryByText('Filter: Show denials only')).toBeNull();
   });
 
   // TestCommandPalette_KeywordsField: all commands have non-empty keywords
