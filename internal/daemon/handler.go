@@ -1,0 +1,152 @@
+package daemon
+
+import (
+	"context"
+	"encoding/binary"
+	"encoding/json"
+	"errors"
+	"io"
+	"net"
+	"time"
+
+	"github.com/mayjain/aegis/pkg/aegis"
+)
+
+// headerSize is the byte length of the 4-byte big-endian length prefix.
+const headerSize = 4
+
+// ReadMessage reads a single length-prefixed message from r.
+//
+// Wire format: [4-byte big-endian uint32 length][JSON payload]
+//
+// Returns an error if:
+//   - The 4-byte header cannot be read.
+//   - The declared length exceeds aegis.MaxMessageSize.
+//   - The payload cannot be fully read.
+//
+// The deadline parameter is used to set a read deadline on the connection when
+// r implements net.Conn; otherwise the deadline is applied via context cancellation.
+func ReadMessage(r io.Reader, deadline time.Time, maxSize int) ([]byte, error) {
+	if c, ok := r.(net.Conn); ok && !deadline.IsZero() {
+		if err := c.SetReadDeadline(deadline); err != nil {
+			return nil, err
+		}
+	}
+
+	var hdr [headerSize]byte
+	if _, err := io.ReadFull(r, hdr[:]); err != nil {
+		return nil, err
+	}
+	length := binary.BigEndian.Uint32(hdr[:])
+
+	if int(length) > maxSize {
+		return nil, errMessageTooLarge
+	}
+
+	payload := make([]byte, length)
+	if _, err := io.ReadFull(r, payload); err != nil {
+		return nil, err
+	}
+	return payload, nil
+}
+
+// WriteMessage writes a single length-prefixed message to w.
+//
+// Wire format: [4-byte big-endian uint32 length][JSON payload]
+func WriteMessage(w io.Writer, payload []byte, deadline time.Time) error {
+	if c, ok := w.(net.Conn); ok && !deadline.IsZero() {
+		if err := c.SetWriteDeadline(deadline); err != nil {
+			return err
+		}
+	}
+
+	var hdr [headerSize]byte
+	binary.BigEndian.PutUint32(hdr[:], uint32(len(payload)))
+
+	// Use net.Buffers for a single writev syscall when available.
+	if bc, ok := w.(interface {
+		Write([]byte) (int, error)
+	}); ok {
+		if _, err := bc.Write(hdr[:]); err != nil {
+			return err
+		}
+		if _, err := bc.Write(payload); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	if _, err := w.Write(hdr[:]); err != nil {
+		return err
+	}
+	_, err := w.Write(payload)
+	return err
+}
+
+// errMessageTooLarge is returned when a framed message exceeds MaxMessageSize.
+var errMessageTooLarge = errors.New("framed message exceeds MaxMessageSize")
+
+// handleConnection serves a single Unix socket connection.
+//
+// Protocol:
+//  1. Read one framed CheckRequest (with 50ms deadline).
+//  2. Evaluate against the policy engine (within same deadline).
+//  3. Write one framed CheckResponse.
+//  4. Close the connection.
+//
+// All error paths produce a Deny response and then close; the daemon never
+// returns a raw error or a non-JSON frame to the hook (IFC-001).
+func (d *Daemon) handleConnection(conn net.Conn) {
+	defer func() { _ = conn.Close() }()
+
+	deadline := time.Now().Add(evaluationDeadline)
+
+	raw, err := ReadMessage(conn, deadline, aegis.MaxMessageSize)
+	if err != nil {
+		if errors.Is(err, errMessageTooLarge) {
+			d.writeErrorResponse(conn, deadline, "message exceeds MaxMessageSize")
+			return
+		}
+		// Connection read error — no response possible.
+		return
+	}
+
+	var req aegis.CheckRequest
+	if err := json.Unmarshal(raw, &req); err != nil {
+		d.writeErrorResponse(conn, deadline, "malformed JSON request")
+		return
+	}
+
+	ctx, cancel := context.WithDeadline(context.Background(), deadline)
+	defer cancel()
+
+	resp := d.engine.Evaluate(ctx, req)
+
+	respBytes, err := json.Marshal(resp)
+	if err != nil {
+		d.writeErrorResponse(conn, deadline, "failed to marshal response")
+		return
+	}
+
+	_ = WriteMessage(conn, respBytes, deadline)
+
+	d.auditWriter.WriteRecord(buildAuditRecord(req, resp))
+}
+
+// writeErrorResponse writes a Deny CheckResponse to conn.
+// Never returns an error to the caller — used in error paths where the
+// primary goal is to signal denial before closing.
+func (d *Daemon) writeErrorResponse(conn net.Conn, deadline time.Time, reason string) {
+	resp := aegis.CheckResponse{
+		Decision: aegis.Decision{
+			Action: aegis.ActionDeny,
+			Reason: reason,
+		},
+		EnforcingLayer: aegis.EnforcingLayerAdapter,
+	}
+	b, err := json.Marshal(resp)
+	if err != nil {
+		return
+	}
+	_ = WriteMessage(conn, b, deadline)
+}
