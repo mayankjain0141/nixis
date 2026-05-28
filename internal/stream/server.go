@@ -41,6 +41,10 @@ type client struct {
 
 	// backfill concurrency control: max 2 in-flight
 	backfillInFlight atomic.Int32
+
+	// done is closed once by handleWebSocket (via sync.Once) to signal writePump to exit.
+	done     chan struct{}
+	doneOnce sync.Once
 }
 
 // eventFilter holds server-side per-client filter state.
@@ -321,6 +325,7 @@ func (s *StreamServer) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		id:   uuid.New().String(),
 		conn: conn,
 		send: make(chan []byte, clientChanCap),
+		done: make(chan struct{}),
 	}
 
 	// Enforce max concurrent clients.
@@ -335,13 +340,14 @@ func (s *StreamServer) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	s.clients.Store(c.id, c)
 	defer func() {
-		s.clients.Delete(c.id)
 		_ = conn.Close()
 	}()
 
 	// Send state.snapshot immediately before any live events.
 	if err := s.sendStateSnapshot(c); err != nil {
 		log.Printf("stream: snapshot send error: %v", err)
+		s.clients.Delete(c.id)
+		c.doneOnce.Do(func() { close(c.done) })
 		return
 	}
 
@@ -355,7 +361,13 @@ func (s *StreamServer) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	// Reader goroutine (this goroutine) handles inbound client messages.
 	s.readPump(c)
 
-	// Wait for writer to finish after we return (connection closed).
+	// Remove client from registry so no concurrent broadcast can touch c.send.
+	s.clients.Delete(c.id)
+
+	// Signal writePump to exit via done channel (sync.Once ensures exactly one close).
+	c.doneOnce.Do(func() { close(c.done) })
+
+	// Wait for writer to finish after connection is closed.
 	<-writerDone
 }
 
@@ -382,12 +394,20 @@ func (s *StreamServer) sendStateSnapshot(c *client) error {
 
 // writePump drains the client's send channel and writes to the WebSocket.
 func (s *StreamServer) writePump(c *client) {
-	for msg := range c.send {
-		if err := c.conn.SetWriteDeadline(time.Now().Add(writeTimeout)); err != nil {
+	for {
+		select {
+		case <-c.done:
 			return
-		}
-		if err := c.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
-			return
+		case msg, ok := <-c.send:
+			if !ok {
+				return
+			}
+			if err := c.conn.SetWriteDeadline(time.Now().Add(writeTimeout)); err != nil {
+				return
+			}
+			if err := c.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+				return
+			}
 		}
 	}
 }
