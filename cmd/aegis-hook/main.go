@@ -191,20 +191,8 @@ func allowWithWarning(reason, tool string, args json.RawMessage, deadlineExceede
 		entry.ArgsHash = "sha256:" + hex.EncodeToString(h[:])
 	}
 
-	line, err := json.Marshal(entry)
-	if err != nil {
-		return
-	}
-	line = append(line, '\n')
-
-	logPath := failOpenLogPath()
-	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
-	if err != nil {
-		// Log write failure must not prevent the fail-open allow (A5).
-		return
-	}
-	_, _ = f.Write(line)
-	_ = f.Close()
+	// Log write failure must not prevent the fail-open allow (A5).
+	_ = writeFailOpen(failOpenLogPath(), entry)
 }
 
 // readStdin reads all of stdin up to aegis.MaxMessageSize before the deadline.
