@@ -100,12 +100,22 @@ func CompileAll(env *CELEnvironment, templates []policy_types.PolicyTemplate) (*
 			}
 		}
 
-		ast, issues := env.env.Compile(t.Expression)
-		if issues != nil && issues.Err() != nil {
-			// Skip policies whose expressions reference undeclared variables or functions.
-			// This allows the daemon to start with the policies that do compile, rather
-			// than aborting entirely. Phase 2 registers additional CEL functions (session.*,
-			// path.isWithinProject with full args) that resolve the remaining policies.
+		// Phase 1: parse only — syntax errors are hard failures regardless of phase.
+		parsedAst, parseIssues := env.env.Parse(t.Expression)
+		if parseIssues != nil && parseIssues.Err() != nil {
+			return nil, &CompileError{
+				PolicyID:   t.ID,
+				SourceFile: t.SourceFile,
+				SourceLine: t.SourceLine,
+				Cause:      parseIssues.Err(),
+			}
+		}
+
+		// Phase 2: type-check — skip policies referencing undeclared variables or functions.
+		// Phase 2 will register session.* and path.isWithinProject full-arg variants;
+		// those policies are deferred rather than aborting the entire startup load.
+		ast, checkIssues := env.env.Check(parsedAst)
+		if checkIssues != nil && checkIssues.Err() != nil {
 			continue
 		}
 
