@@ -9,9 +9,12 @@ package mcp
 import (
 	"context"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/json"
 	"sync"
 	"time"
+
+	_ "modernc.org/sqlite" // register sqlite driver
 )
 
 // JSONRPCRequest is a standard JSON-RPC 2.0 request.
@@ -58,16 +61,71 @@ type Upstream interface {
 }
 
 // IntegrityTracker records and checks tool definition fingerprints for drift.
+// It optionally persists baselines to a SQLite tool_registrations table.
 type IntegrityTracker struct {
-	mu       sync.RWMutex
+	mu       sync.Mutex
 	baseline map[string]ToolFingerprint
+	drifted  map[string]bool
+	db       *sql.DB // nil when not using persistence
 }
 
-// NewIntegrityTracker returns an initialised IntegrityTracker.
+// NewIntegrityTracker returns an in-memory IntegrityTracker with no persistence.
 func NewIntegrityTracker() *IntegrityTracker {
 	return &IntegrityTracker{
 		baseline: make(map[string]ToolFingerprint),
+		drifted:  make(map[string]bool),
 	}
+}
+
+// NewIntegrityTrackerWithDB returns an IntegrityTracker backed by the given
+// SQLite database. On startup it loads all existing baselines from the
+// tool_registrations table so integrity is preserved across daemon restarts.
+func NewIntegrityTrackerWithDB(db *sql.DB) (*IntegrityTracker, error) {
+	if err := applyTrackerSchema(db); err != nil {
+		return nil, err
+	}
+	t := &IntegrityTracker{
+		baseline: make(map[string]ToolFingerprint),
+		drifted:  make(map[string]bool),
+		db:       db,
+	}
+	if err := t.loadFromDB(context.Background()); err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
+func applyTrackerSchema(db *sql.DB) error {
+	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS tool_registrations (
+		name        TEXT    PRIMARY KEY,
+		hash        BLOB    NOT NULL,
+		recorded_at INTEGER NOT NULL
+	)`)
+	return err
+}
+
+func (t *IntegrityTracker) loadFromDB(ctx context.Context) error {
+	rows, err := t.db.QueryContext(ctx, `SELECT name, hash, recorded_at FROM tool_registrations`)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if cerr := rows.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
+	for rows.Next() {
+		var fp ToolFingerprint
+		var hashBytes []byte
+		if err := rows.Scan(&fp.Name, &hashBytes, &fp.RecordedAt); err != nil {
+			return err
+		}
+		if len(hashBytes) == 32 {
+			copy(fp.Hash[:], hashBytes)
+		}
+		t.baseline[fp.Name] = fp
+	}
+	return rows.Err()
 }
 
 // Fingerprint returns the SHA-256 of the canonical tool definition JSON.
@@ -82,19 +140,42 @@ func (t *IntegrityTracker) Fingerprint(tool ToolDefinition) [32]byte {
 
 // CheckDrift reports whether the tool's current definition differs from the
 // recorded baseline. The first call for a given tool name sets the baseline and
-// always returns hasDrift=false.
+// always returns hasDrift=false. When a drift is detected the tool is added to
+// the internal drifted set so subsequent tool calls are blocked until approved.
 func (t *IntegrityTracker) CheckDrift(tool ToolDefinition) (hasDrift bool, baseline [32]byte) {
 	hash := t.Fingerprint(tool)
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	existing, ok := t.baseline[tool.Name]
 	if !ok {
-		t.baseline[tool.Name] = ToolFingerprint{
+		fp := ToolFingerprint{
 			Name:       tool.Name,
 			Hash:       hash,
 			RecordedAt: time.Now().UnixNano(),
 		}
+		t.baseline[tool.Name] = fp
+		if t.db != nil {
+			t.persistBaseline(fp)
+		}
 		return false, hash
 	}
-	return existing.Hash != hash, existing.Hash
+	if existing.Hash != hash {
+		t.drifted[tool.Name] = true
+		return true, existing.Hash
+	}
+	return false, existing.Hash
+}
+
+// IsDrifted reports whether the named tool has a recorded drift against its baseline.
+func (t *IntegrityTracker) IsDrifted(name string) bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.drifted[name]
+}
+
+func (t *IntegrityTracker) persistBaseline(fp ToolFingerprint) {
+	_, _ = t.db.Exec(
+		`INSERT OR IGNORE INTO tool_registrations (name, hash, recorded_at) VALUES (?, ?, ?)`,
+		fp.Name, fp.Hash[:], fp.RecordedAt,
+	)
 }

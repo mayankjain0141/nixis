@@ -4,12 +4,63 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os/exec"
 	"sync"
 	"sync/atomic"
+	"time"
 )
+
+// CircuitBreaker implements a simple three-state (closed/open/half-open) circuit
+// breaker for upstream calls. The zero value is not usable; use NewCircuitBreaker.
+type CircuitBreaker struct {
+	mu           sync.Mutex
+	failures     int
+	threshold    int
+	openUntil    time.Time
+	halfOpenWait time.Duration
+}
+
+// NewCircuitBreaker returns a CircuitBreaker with the given failure threshold and
+// half-open wait duration. Typical values: threshold=5, halfOpenWait=30s.
+func NewCircuitBreaker(threshold int, halfOpenWait time.Duration) *CircuitBreaker {
+	return &CircuitBreaker{
+		threshold:    threshold,
+		halfOpenWait: halfOpenWait,
+	}
+}
+
+// Allow returns true when the circuit is closed (or half-open for a probe).
+// Returns false when the circuit is open and the wait has not elapsed.
+func (cb *CircuitBreaker) Allow() bool {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+	return !time.Now().Before(cb.openUntil)
+}
+
+// RecordFailure increments the failure counter. When the threshold is reached,
+// the circuit opens for halfOpenWait.
+func (cb *CircuitBreaker) RecordFailure() {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+	cb.failures++
+	if cb.failures >= cb.threshold {
+		cb.openUntil = time.Now().Add(cb.halfOpenWait)
+		cb.failures = 0
+	}
+}
+
+// RecordSuccess resets the failure counter (transitions back to closed).
+func (cb *CircuitBreaker) RecordSuccess() {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+	cb.failures = 0
+}
+
+// errCircuitOpen is returned when the circuit breaker is open.
+var errCircuitOpen = errors.New("mcp: circuit breaker open — upstream unavailable")
 
 // StdioUpstream connects to an upstream MCP server via stdin/stdout using
 // JSON-RPC 2.0. Each Call blocks until the matching response arrives.
@@ -21,6 +72,8 @@ type StdioUpstream struct {
 	mu      sync.Mutex // serialises writes to stdin
 	idCtr   atomic.Int64
 	pending sync.Map // id(string) → chan json.RawMessage
+
+	cb *CircuitBreaker
 }
 
 // NewStdioUpstream starts the given command and returns a StdioUpstream wired
@@ -45,6 +98,7 @@ func NewStdioUpstream(command string, args ...string) (*StdioUpstream, error) {
 		cmd:    cmd,
 		stdin:  stdin,
 		stdout: bufio.NewReader(stdoutPipe),
+		cb:     NewCircuitBreaker(5, 30*time.Second),
 	}
 	go u.readLoop()
 	return u, nil
@@ -72,7 +126,12 @@ func (u *StdioUpstream) readLoop() {
 }
 
 // Call sends a JSON-RPC request and waits for the matching response.
+// Returns errCircuitOpen immediately when the circuit breaker is open.
 func (u *StdioUpstream) Call(ctx context.Context, method string, params json.RawMessage) (json.RawMessage, error) {
+	if !u.cb.Allow() {
+		return nil, errCircuitOpen
+	}
+
 	id := u.idCtr.Add(1)
 	idJSON, _ := json.Marshal(id)
 
@@ -89,6 +148,7 @@ func (u *StdioUpstream) Call(ctx context.Context, method string, params json.Raw
 
 	encoded, err := json.Marshal(req)
 	if err != nil {
+		u.cb.RecordFailure()
 		return nil, fmt.Errorf("mcp: marshal: %w", err)
 	}
 	encoded = append(encoded, '\n')
@@ -97,13 +157,16 @@ func (u *StdioUpstream) Call(ctx context.Context, method string, params json.Raw
 	_, err = u.stdin.Write(encoded)
 	u.mu.Unlock()
 	if err != nil {
+		u.cb.RecordFailure()
 		return nil, fmt.Errorf("mcp: write: %w", err)
 	}
 
 	select {
 	case <-ctx.Done():
+		u.cb.RecordFailure()
 		return nil, ctx.Err()
 	case result := <-ch:
+		u.cb.RecordSuccess()
 		return result, nil
 	}
 }

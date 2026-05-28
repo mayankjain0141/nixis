@@ -2,12 +2,16 @@ package mcp_test
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/mayjain/aegis/internal/mcp"
 	"github.com/mayjain/aegis/internal/policy"
 	"github.com/mayjain/aegis/pkg/aegis"
+	_ "modernc.org/sqlite"
 )
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
@@ -88,22 +92,63 @@ func requireApprovalPipeline() *mockPipeline {
 	}}
 }
 
+func openTestDB(t *testing.T) *sql.DB {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "test.db")
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatalf("open test db: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close test db: %v", err)
+		}
+	})
+	return db
+}
+
 // ── Tests ────────────────────────────────────────────────────────────────────
 
+// TestMCP_ToolDrift_RequireApproval verifies that a tools/call to a tool whose
+// definition has drifted since the last tools/list is blocked with a
+// RequireApproval error and the upstream is never contacted.
 func TestMCP_ToolDrift_RequireApproval(t *testing.T) {
-	tracker := mcp.NewIntegrityTracker()
-
 	tool1 := mcp.ToolDefinition{Name: "bash", Description: "v1", InputSchema: json.RawMessage(`{}`)}
 	tool2 := mcp.ToolDefinition{Name: "bash", Description: "v2 — changed", InputSchema: json.RawMessage(`{}`)}
 
-	hasDrift1, _ := tracker.CheckDrift(tool1)
-	if hasDrift1 {
-		t.Fatal("first call must not report drift")
+	upstream := &mockUpstream{
+		callResult: json.RawMessage(`{"exit":0}`),
+		tools:      []mcp.ToolDefinition{tool1},
+	}
+	proxy := mcp.New(upstream, allowPipeline(), nil, "sess-drift")
+
+	// First tools/list — sets baseline for "bash".
+	id1, _ := json.Marshal(1)
+	listReq1 := mcp.JSONRPCRequest{JSONRPC: "2.0", ID: id1, Method: "tools/list"}
+	resp1 := proxy.HandleRequest(context.Background(), listReq1)
+	if resp1.Error != nil {
+		t.Fatalf("first tools/list failed: %v", resp1.Error)
 	}
 
-	hasDrift2, _ := tracker.CheckDrift(tool2)
-	if !hasDrift2 {
-		t.Fatal("second call with different description must report drift")
+	// Second tools/list — with changed description, drift detected.
+	upstream.tools = []mcp.ToolDefinition{tool2}
+	id2, _ := json.Marshal(2)
+	listReq2 := mcp.JSONRPCRequest{JSONRPC: "2.0", ID: id2, Method: "tools/list"}
+	resp2 := proxy.HandleRequest(context.Background(), listReq2)
+	if resp2.Error != nil {
+		t.Fatalf("second tools/list failed: %v", resp2.Error)
+	}
+
+	// tools/call to the drifted tool must return an error without forwarding.
+	callResp := proxy.HandleRequest(context.Background(), toolCallRequest("bash"))
+	proxy.Wait()
+
+	if callResp.Error == nil {
+		t.Fatal("expected RequireApproval error for drifted tool call")
+	}
+	// upstream.callCount must still be 0 (only ListTools was called, not Call)
+	if upstream.callCount != 0 {
+		t.Fatalf("upstream.Call must not be invoked for drifted tool, got callCount=%d", upstream.callCount)
 	}
 }
 
@@ -236,5 +281,78 @@ func TestMCP_RequireApproval_ReturnsError(t *testing.T) {
 	}
 	if upstream.callCount != 0 {
 		t.Fatalf("upstream must not be called on REQUIRE_APPROVAL, got callCount=%d", upstream.callCount)
+	}
+}
+
+// TestMCP_BaselinePersistence verifies that NewIntegrityTrackerWithDB loads
+// baselines from SQLite on construction, so drift detection survives restarts.
+func TestMCP_BaselinePersistence(t *testing.T) {
+	db := openTestDB(t)
+	tool := mcp.ToolDefinition{Name: "persist-tool", Description: "original", InputSchema: json.RawMessage(`{}`)}
+
+	// First tracker instance records the baseline.
+	tracker1, err := mcp.NewIntegrityTrackerWithDB(db)
+	if err != nil {
+		t.Fatalf("NewIntegrityTrackerWithDB: %v", err)
+	}
+	hasDrift, _ := tracker1.CheckDrift(tool)
+	if hasDrift {
+		t.Fatal("first call must not report drift")
+	}
+
+	// Second tracker instance on the same DB must load the baseline.
+	tracker2, err := mcp.NewIntegrityTrackerWithDB(db)
+	if err != nil {
+		t.Fatalf("NewIntegrityTrackerWithDB (reload): %v", err)
+	}
+	// Same definition — no drift even though this is the first CheckDrift call on tracker2.
+	hasDrift2, _ := tracker2.CheckDrift(tool)
+	if hasDrift2 {
+		t.Fatal("reloaded tracker must not report drift for unchanged tool")
+	}
+
+	// Changed definition must be detected as drift by the reloaded tracker.
+	changed := mcp.ToolDefinition{Name: "persist-tool", Description: "tampered", InputSchema: json.RawMessage(`{}`)}
+	hasDrift3, _ := tracker2.CheckDrift(changed)
+	if !hasDrift3 {
+		t.Fatal("reloaded tracker must detect drift for changed tool")
+	}
+}
+
+// TestMCP_CircuitBreaker_OpensAfterThreshold verifies that after 5 consecutive
+// upstream failures the circuit opens and subsequent calls return an error
+// without contacting the upstream.
+func TestMCP_CircuitBreaker_OpensAfterThreshold(t *testing.T) {
+	cb := mcp.NewCircuitBreaker(5, 30*time.Second)
+
+	// Record 5 failures — should open the circuit.
+	for i := 0; i < 5; i++ {
+		if !cb.Allow() {
+			t.Fatalf("circuit should be closed before threshold, iteration %d", i)
+		}
+		cb.RecordFailure()
+	}
+
+	// Circuit must now be open.
+	if cb.Allow() {
+		t.Fatal("circuit must be open after threshold failures")
+	}
+}
+
+// TestMCP_CircuitBreaker_RecoveryAfterSuccess verifies RecordSuccess resets the
+// failure count so the circuit stays closed.
+func TestMCP_CircuitBreaker_RecoveryAfterSuccess(t *testing.T) {
+	cb := mcp.NewCircuitBreaker(5, 30*time.Second)
+
+	// 4 failures followed by a success — circuit must stay closed.
+	for i := 0; i < 4; i++ {
+		cb.RecordFailure()
+	}
+	cb.RecordSuccess()
+
+	// One more failure — counter was reset, so circuit is still closed.
+	cb.RecordFailure()
+	if !cb.Allow() {
+		t.Fatal("circuit must still be closed after success reset")
 	}
 }

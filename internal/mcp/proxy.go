@@ -69,6 +69,11 @@ func (p *MCPProxy) handleToolCall(ctx context.Context, req JSONRPCRequest) JSONR
 		return errorResponse(req.ID, -32600, "invalid tools/call params")
 	}
 
+	// Drift check: fail-secure before any policy evaluation.
+	if p.tracker.IsDrifted(toolName) {
+		return errorResponse(req.ID, -32603, "tool definition has drifted — approval required")
+	}
+
 	checkReq := aegis.CheckRequest{
 		Tool:      toolName,
 		Args:      argsJSON,
