@@ -26,7 +26,7 @@ func runValidate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	_, err = cel.CompileAll(env, templates)
+	_, skipped, err := cel.CompileAll(env, templates)
 	if err != nil {
 		var compErr *cel.CompileError
 		if errors.As(err, &compErr) {
@@ -36,6 +36,9 @@ func runValidate(cmd *cobra.Command, args []string) error {
 		}
 		return err
 	}
-	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "OK: %d policies valid\n", len(templates))
+	if len(skipped) > 0 {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "WARN: %d polic(ies) skipped — undeclared CEL variables: %v\n", len(skipped), skipped)
+	}
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "OK: %d policies valid (%d skipped)\n", len(templates)-len(skipped), len(skipped))
 	return nil
 }

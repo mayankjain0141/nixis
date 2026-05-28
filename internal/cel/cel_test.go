@@ -27,7 +27,7 @@ func mustNewEnv(t *testing.T) *cel.CELEnvironment {
 
 func mustCompile(t *testing.T, env *cel.CELEnvironment, templates []policy_types.PolicyTemplate) *cel.ProgramCache {
 	t.Helper()
-	cache, err := cel.CompileAll(env, templates)
+	cache, _, err := cel.CompileAll(env, templates)
 	if err != nil {
 		t.Fatalf("CompileAll: %v", err)
 	}
@@ -314,7 +314,7 @@ func TestCEL_CompileRejectsOverLengthExpression(t *testing.T) {
 	templates := []policy_types.PolicyTemplate{
 		{ID: "too-long", Expression: long},
 	}
-	_, err := cel.CompileAll(env, templates)
+	_, _, err := cel.CompileAll(env, templates)
 	if err == nil {
 		t.Fatal("expected error for over-length expression, got nil")
 	}
@@ -325,7 +325,7 @@ func TestCEL_CompileRejectsInvalidSyntax(t *testing.T) {
 	templates := []policy_types.PolicyTemplate{
 		{ID: "bad-syntax", Expression: `tool ==`},
 	}
-	_, err := cel.CompileAll(env, templates)
+	_, _, err := cel.CompileAll(env, templates)
 	if err == nil {
 		t.Fatal("expected compile error for invalid syntax, got nil")
 	}
@@ -873,6 +873,37 @@ func TestCEL_SourceLocationThreaded(t *testing.T) {
 	want := "policies/deny.yaml:42"
 	if got != want {
 		t.Errorf("SourceLocation = %q, want %q (CheckResponse.PolicySourceLocation not populated correctly)", got, want)
+	}
+}
+
+// --- TestCompileAll_SkippedPoliciesReported ---
+
+// TestCompileAll_SkippedPoliciesReported verifies that CompileAll returns the
+// policy ID in the skipped list when the expression references an undeclared
+// variable, and that this is not treated as an error.
+func TestCompileAll_SkippedPoliciesReported(t *testing.T) {
+	env := mustNewEnv(t)
+
+	templates := []policy_types.PolicyTemplate{
+		{ID: "valid-policy", Expression: `tool == "Bash"`},
+		// session.projectRoot is not declared in Phase 1 CEL environment.
+		{ID: "undeclared-var", Expression: `session.projectRoot == "foo"`},
+	}
+
+	cache, skipped, err := cel.CompileAll(env, templates)
+	if err != nil {
+		t.Fatalf("CompileAll returned unexpected error: %v", err)
+	}
+
+	if len(skipped) != 1 || skipped[0] != "undeclared-var" {
+		t.Errorf("expected skipped=[\"undeclared-var\"], got %v", skipped)
+	}
+
+	if _, ok := cache.Get("valid-policy"); !ok {
+		t.Error("valid-policy should be in cache")
+	}
+	if _, ok := cache.Get("undeclared-var"); ok {
+		t.Error("undeclared-var should NOT be in cache — it was skipped")
 	}
 }
 

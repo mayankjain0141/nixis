@@ -2,6 +2,7 @@ package cel
 
 import (
 	"errors"
+	"log"
 
 	celgo "github.com/google/cel-go/cel"
 	"github.com/google/cel-go/checker"
@@ -84,15 +85,20 @@ func itoa(n int) string {
 //
 // Fail-closed: on the first compile failure, returns an error with policy ID and
 // source location. The caller (WS-05 policy engine) retains the previous EngineSnapshot.
-func CompileAll(env *CELEnvironment, templates []policy_types.PolicyTemplate) (*ProgramCache, error) {
+//
+// Skipped returns the IDs of policies that were skipped because their expressions
+// reference undeclared CEL variables or functions. Skipping is not an error — the
+// caller should log the skipped IDs so operators know which policies are inactive.
+func CompileAll(env *CELEnvironment, templates []policy_types.PolicyTemplate) (*ProgramCache, []string, error) {
 	cache := &ProgramCache{
 		programs: make(map[string]programMeta, len(templates)),
 	}
+	var skipped []string
 
 	for i := range templates {
 		t := &templates[i]
 		if len(t.Expression) > maxExpressionLength {
-			return nil, &CompileError{
+			return nil, nil, &CompileError{
 				PolicyID:   t.ID,
 				SourceFile: t.SourceFile,
 				SourceLine: t.SourceLine,
@@ -103,7 +109,7 @@ func CompileAll(env *CELEnvironment, templates []policy_types.PolicyTemplate) (*
 		// Phase 1: parse only — syntax errors are hard failures regardless of phase.
 		parsedAst, parseIssues := env.env.Parse(t.Expression)
 		if parseIssues != nil && parseIssues.Err() != nil {
-			return nil, &CompileError{
+			return nil, nil, &CompileError{
 				PolicyID:   t.ID,
 				SourceFile: t.SourceFile,
 				SourceLine: t.SourceLine,
@@ -116,12 +122,14 @@ func CompileAll(env *CELEnvironment, templates []policy_types.PolicyTemplate) (*
 		// those policies are deferred rather than aborting the entire startup load.
 		ast, checkIssues := env.env.Check(parsedAst)
 		if checkIssues != nil && checkIssues.Err() != nil {
+			log.Printf("WARN: policy %q skipped — undeclared CEL variable or function in expression %q: %v. Register missing functions in Phase 2 to activate this policy.", t.ID, t.Expression, checkIssues.Err())
+			skipped = append(skipped, t.ID)
 			continue
 		}
 
 		// Enforce AST depth limit at compile time.
 		if depth := astDepth(ast); depth > maxASTDepth {
-			return nil, &CompileError{
+			return nil, nil, &CompileError{
 				PolicyID:   t.ID,
 				SourceFile: t.SourceFile,
 				SourceLine: t.SourceLine,
@@ -136,7 +144,7 @@ func CompileAll(env *CELEnvironment, templates []policy_types.PolicyTemplate) (*
 		// after build, so a statically-safe expression is safe at runtime.
 		cost, costErr := env.env.EstimateCost(ast, conservativeSizeEstimator{})
 		if costErr != nil {
-			return nil, &CompileError{
+			return nil, nil, &CompileError{
 				PolicyID:   t.ID,
 				SourceFile: t.SourceFile,
 				SourceLine: t.SourceLine,
@@ -144,7 +152,7 @@ func CompileAll(env *CELEnvironment, templates []policy_types.PolicyTemplate) (*
 			}
 		}
 		if cost.Max > maxCostBudget {
-			return nil, &CompileError{
+			return nil, nil, &CompileError{
 				PolicyID:   t.ID,
 				SourceFile: t.SourceFile,
 				SourceLine: t.SourceLine,
@@ -158,7 +166,7 @@ func CompileAll(env *CELEnvironment, templates []policy_types.PolicyTemplate) (*
 		// Value 100 means: check for cancellation every 100 evaluation steps.
 		prog, err := env.env.Program(ast, celgo.InterruptCheckFrequency(100))
 		if err != nil {
-			return nil, &CompileError{
+			return nil, nil, &CompileError{
 				PolicyID:   t.ID,
 				SourceFile: t.SourceFile,
 				SourceLine: t.SourceLine,
@@ -175,7 +183,7 @@ func CompileAll(env *CELEnvironment, templates []policy_types.PolicyTemplate) (*
 		}
 	}
 
-	return cache, nil
+	return cache, skipped, nil
 }
 
 // CompileError is returned by CompileAll on the first compile failure.
