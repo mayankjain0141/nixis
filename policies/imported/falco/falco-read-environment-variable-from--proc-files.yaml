@@ -1,0 +1,23 @@
+# imported from: main via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: falco-read-environment-variable-from--proc-files
+    annotations:
+        aegis.io/falco-tags: maturity_incubating,container,filesystem,process,mitre_discovery,T1083
+        aegis.io/imported-from: aegis-import-487448035.yaml
+        aegis.io/severity: medium
+        aegis.io/source-rule: Read environment variable from /proc files
+spec:
+    description: |
+        An attempt to read process environment variables from /proc files. The consequences are akin to accessing traditional sensitive files, as sensitive data, including secrets, might be stored in environment variables. Understanding your environment, such as identifying critical namespaces, and incorporating extra filtering statements to alert exclusively for those, can enhance the rule's effectiveness.
+    matchConstraints:
+        tools:
+            - Read
+            - Write
+            - Edit
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)\\b(scsi_id|argoexec)\\b")
+          message: 'Falco rule violated: Read environment variable from /proc files'
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

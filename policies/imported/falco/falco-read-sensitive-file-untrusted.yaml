@@ -1,0 +1,23 @@
+# imported from: main via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: falco-read-sensitive-file-untrusted
+    annotations:
+        aegis.io/falco-tags: maturity_stable,host,container,filesystem,mitre_credential_access,T1555
+        aegis.io/imported-from: aegis-import-2766262408.yaml
+        aegis.io/severity: medium
+        aegis.io/source-rule: Read sensitive file untrusted
+spec:
+    description: |
+        An attempt to read any sensitive file (e.g. files containing user/password/authentication information). Exceptions are made for known trusted programs. Can be customized as needed. In modern containerized cloud infrastructures, accessing traditional Linux sensitive files might be less relevant, yet it remains valuable for baseline detections. While we provide additional rules for SSH or cloud vendor-specific credentials, you can significantly enhance your security program by crafting custom rules for critical application credentials unique to your environment.
+    matchConstraints:
+        tools:
+            - Read
+            - Write
+            - Edit
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)\\b(login_binaries|passwd_binaries|shadowutils_binaries|sudo|su|suexec|critical-stack|dzdo|rpm_binaries|deb_binaries|update-alternat|gem|npm|python_package_managers|sane-utils.post|alternatives|chef-client|apk|snapd|anacron|cron|crond|crontab|iptables|ps|lsb_release|check-new-relea|dumpe2fs|accounts-daemon|sshd|vsftpd|systemd|mysql_install_d|psql|screen|debconf-show|sa-update|pam-auth-update|pam-config|/usr/sbin/spamd|polkit-agent-he|lsattr|file|sosreport|scxcimservera|adclient|rtvscand|cockpit-session|userhelper|ossec-syscheckd|sshd-session|rkhunter|ash|bash|csh|ksh|sh|tcsh|zsh|dash|aide|aide.wrapper|update-aide.con|logcheck|syslog-summary|osqueryd|ossec-syscheckd|openvpn|update_conf|parse_mc|makemap_hash|newaliases|update_mk|update_tlsm4|update_db|update_mc|ssmtp.postinst|mailq|postalias|postfix.config.|postfix.config|postfix-script|postconf|nxexec|nxnode.bin|nxserver.bin|nxclient.bin|10_etc_sudoers.|10_passwd_group|in.proftpd|mandb|salt-call|salt-minion|pg_dumpall|pg_ctl|pg_lsclusters|pg_ctlcluster|google_oslogin_)\\b")
+          message: 'Falco rule violated: Read sensitive file untrusted'
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

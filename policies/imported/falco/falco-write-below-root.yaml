@@ -1,0 +1,24 @@
+# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: open_write and root_dir and proc_name_exists and not fd.name in (/root/.monit.state, /root/.auth_tokens, /root/.bash_his...
+# imported from: main via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: falco-write-below-root
+    annotations:
+        aegis.io/falco-tags: maturity_sandbox,host,container,filesystem,mitre_persistence,TA0003
+        aegis.io/imported-from: aegis-import-3595951451.yaml
+        aegis.io/severity: high
+        aegis.io/source-rule: Write below root
+spec:
+    description: |
+        Trying to write to any file directly below / or /root can serve as an auditing rule to track general system changes. Such rules can be noisy and challenging to interpret, particularly if your system frequently undergoes updates. However, careful profiling of your environment can transform this rule into an effective rule for detecting unusual behavior associated with system changes, including compliance-related cases. Lastly, this rule stands out as potentially the noisiest one among rules related to "write below.
+    matchConstraints:
+        tools:
+            - Read
+            - Write
+            - Edit
+    validations:
+        - expression: "false"
+          message: 'Falco rule violated: Write below root'
+          action: DENY
+    defaultAction: ALLOW

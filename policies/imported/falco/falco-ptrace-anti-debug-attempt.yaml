@@ -1,0 +1,22 @@
+# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: evt.type=ptrace and evt.arg.request contains PTRACE_TRACEME and proc_name_exists
+# imported from: main via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: falco-ptrace-anti-debug-attempt
+    annotations:
+        aegis.io/falco-tags: maturity_stable,host,container,process,mitre_defense_evasion,T1622
+        aegis.io/imported-from: aegis-import-2766262408.yaml
+        aegis.io/severity: low
+        aegis.io/source-rule: PTRACE anti-debug attempt
+spec:
+    description: |
+        Detect usage of the PTRACE system call with the PTRACE_TRACEME argument, indicating a program actively attempting to avoid debuggers attaching to the process. This behavior is typically indicative of malware activity. Read more about PTRACE in the "PTRACE attached to process" rule.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: "false"
+          message: 'Falco rule violated: PTRACE anti-debug attempt'
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

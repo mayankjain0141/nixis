@@ -1,0 +1,24 @@
+# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: ((open_write and access_repositories) or (modify and modify_repositories)) and not package_mgmt_procs and not package_mg...
+# imported from: main via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: falco-update-package-repository
+    annotations:
+        aegis.io/falco-tags: maturity_sandbox,host,container,filesystem,mitre_execution,T1072
+        aegis.io/imported-from: aegis-import-3595951451.yaml
+        aegis.io/severity: low
+        aegis.io/source-rule: Update Package Repository
+spec:
+    description: |
+        This rule generically detects updates to package repositories and can be seen as an auditing measure. Recommend evaluating its relevance for your specific environment.
+    matchConstraints:
+        tools:
+            - Read
+            - Write
+            - Edit
+    validations:
+        - expression: "false"
+          message: 'Falco rule violated: Update Package Repository'
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

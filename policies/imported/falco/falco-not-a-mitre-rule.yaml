@@ -1,0 +1,23 @@
+# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: write_etc_common
+# imported from: main via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: falco-not-a-mitre-rule
+    annotations:
+        aegis.io/falco-tags: host,container,filesystem
+        aegis.io/imported-from: aegis-import-1890421629.yaml
+        aegis.io/severity: high
+        aegis.io/source-rule: not a mitre rule
+spec:
+    description: an attempt to write to any file below /etc
+    matchConstraints:
+        tools:
+            - Read
+            - Write
+            - Edit
+    validations:
+        - expression: "false"
+          message: 'Falco rule violated: not a mitre rule'
+          action: DENY
+    defaultAction: ALLOW

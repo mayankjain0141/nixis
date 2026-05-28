@@ -1,0 +1,21 @@
+# imported from: main via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: falco-change-thread-namespace
+    annotations:
+        aegis.io/falco-tags: maturity_incubating,host,container,process,mitre_privilege_escalation,T1611
+        aegis.io/imported-from: aegis-import-487448035.yaml
+        aegis.io/severity: low
+        aegis.io/source-rule: Change thread namespace
+spec:
+    description: |
+        An attempt to alter the namespace of a process (often performed while creating a container) through the setns syscall. Conversely, the same syscall setns is triggered when an unauthorized attempt is made to break out from the container to the host, for example, when using commands like `nsenter --target 1` and similar ones. Recommending to profile your environment and refine this rule for effective operationalization.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.startsWith("containerd")
+          message: 'Falco rule violated: Change thread namespace'
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

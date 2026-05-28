@@ -1,0 +1,22 @@
+# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: spawned_process and container and proc.is_exe_upper_layer=true and not container.image.repository in (known_drop_and_exe...
+# imported from: main via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: falco-drop-and-execute-new-binary-in-container
+    annotations:
+        aegis.io/falco-tags: maturity_stable,container,process,mitre_persistence,TA0003,PCI_DSS_11.5.1
+        aegis.io/imported-from: aegis-import-2766262408.yaml
+        aegis.io/severity: critical
+        aegis.io/source-rule: Drop and execute new binary in container
+spec:
+    description: |
+        Detect if an executable not belonging to the base image of a container is being executed. The drop and execute pattern can be observed very often after an attacker gained an initial foothold. is_exe_upper_layer filter field only applies for container runtimes that use overlayfs as union mount filesystem. Adopters can utilize the provided template list known_drop_and_execute_containers containing allowed container images known to execute binaries not included in their base image. Alternatively, you could exclude non-production namespaces in Kubernetes settings by adjusting the rule further. This helps reduce noise by applying application and environment-specific knowledge to this rule. Common anti-patterns include administrators or SREs performing ad-hoc debugging.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: "false"
+          message: 'Falco rule violated: Drop and execute new binary in container'
+          action: DENY
+    defaultAction: ALLOW

@@ -1,0 +1,21 @@
+# imported from: main via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: falco-netcat-remote-code-execution-in-container
+    annotations:
+        aegis.io/falco-tags: maturity_stable,container,network,process,mitre_execution,T1059
+        aegis.io/imported-from: aegis-import-2766262408.yaml
+        aegis.io/severity: medium
+        aegis.io/source-rule: Netcat Remote Code Execution in Container
+spec:
+    description: |
+        Netcat Program runs inside container that allows remote code execution and may be utilized as a part of a variety of reverse shell payload https://github.com/swisskyrepo/PayloadsAllTheThings/. These programs are of higher relevance as they are commonly installed on UNIX-like operating systems. Can fire in combination with the "Redirect STDOUT/STDIN to Network Connection in Container" rule as it utilizes a different evt.type.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.contains(" -e")
+          message: 'Falco rule violated: Netcat Remote Code Execution in Container'
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

@@ -1,0 +1,22 @@
+# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: spawned_process and is_miner_process
+# imported from: main via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: falco-known-cryptominer-process-executed
+    annotations:
+        aegis.io/falco-tags: maturity_sandbox,host,container,process,mitre_impact,T1496
+        aegis.io/imported-from: aegis-import-3595951451.yaml
+        aegis.io/severity: critical
+        aegis.io/source-rule: Known Cryptominer Process Executed
+spec:
+    description: |
+        Detects execution of known cryptocurrency mining software by matching process names against a list of common miners. Cryptominers are commonly deployed by attackers after gaining initial access to monetize compromised systems. This rule complements the existing "Detect crypto miners using the Stratum protocol" rule by catching miners that may use renamed binaries but still match known miner process names. Consider tuning this rule if you have legitimate mining operations in your environment.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: "false"
+          message: 'Falco rule violated: Known Cryptominer Process Executed'
+          action: DENY
+    defaultAction: ALLOW

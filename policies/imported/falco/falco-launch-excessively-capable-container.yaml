@@ -1,0 +1,21 @@
+# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: container_started and excessively_capable_container and not falco_privileged_containers and not user_privileged_containe...
+# imported from: main via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: falco-launch-excessively-capable-container
+    annotations:
+        aegis.io/falco-tags: maturity_incubating,container,cis,mitre_execution,T1610
+        aegis.io/imported-from: aegis-import-487448035.yaml
+        aegis.io/severity: low
+        aegis.io/source-rule: Launch Excessively Capable Container
+spec:
+    description: |
+        Identify containers that start with a powerful set of capabilities, with exceptions for recognized trusted images. Similar to the "Launch Privileged Container" rule, this functions as a robust auditing rule. Compromised highly privileged containers can lead to substantial harm. For instance, if another rule is triggered within such a container, it might raise suspicion, prompting closer scrutiny.
+    matchConstraints:
+        tools: []
+    validations:
+        - expression: "false"
+          message: 'Falco rule violated: Launch Excessively Capable Container'
+          action: AUDIT
+    defaultAction: ALLOW

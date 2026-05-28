@@ -1,0 +1,23 @@
+# imported from: main via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: falco-read-ssh-information
+    annotations:
+        aegis.io/falco-tags: maturity_incubating,host,container,filesystem,mitre_collection,T1005
+        aegis.io/imported-from: aegis-import-487448035.yaml
+        aegis.io/severity: high
+        aegis.io/source-rule: Read ssh information
+spec:
+    description: |
+        This rule identifies attempts to read files within ssh directories using programs that are not related to ssh. It's a simple and versatile detection method that works well alongside more specific rules focused on sensitive file access. You have a couple of options for using this rule effectively: you can adjust the specialized rules to cover all the important scenarios and ensure precedence in rule smatching for those, or you can analyze the combined view of ssh-related file access across various rules on your downstream computing platform. Just like with other rules, you can narrow down monitoring to specific processes, or you can limit it to interactive access only.
+    matchConstraints:
+        tools:
+            - Read
+            - Write
+            - Edit
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)\\b(sshd|sftp-server|ssh-agent|ssh|scp|sftp|ssh-keygen|ssh-keysign|ssh-keyscan|ssh-add)\\b")
+          message: 'Falco rule violated: Read ssh information'
+          action: DENY
+    defaultAction: ALLOW

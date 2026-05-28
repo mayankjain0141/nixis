@@ -1,0 +1,22 @@
+# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: spawned_process and clear_data_procs and not user_known_remove_data_activities
+# imported from: main via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: falco-remove-bulk-data-from-disk
+    annotations:
+        aegis.io/falco-tags: maturity_stable,host,container,process,filesystem,mitre_impact,T1485
+        aegis.io/imported-from: aegis-import-2766262408.yaml
+        aegis.io/severity: medium
+        aegis.io/source-rule: Remove Bulk Data from Disk
+spec:
+    description: |
+        Detect a process running to clear bulk data from disk with the intention to destroy data, possibly interrupting availability to systems. Profile your environment and use user_known_remove_data_activities to tune this rule.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: "false"
+          message: 'Falco rule violated: Remove Bulk Data from Disk'
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

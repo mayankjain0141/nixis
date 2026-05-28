@@ -1,0 +1,24 @@
+# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: open_read and sensitive_files and server_procs and not proc_is_new and proc.name!="sshd" and not user_known_read_sensiti...
+# imported from: main via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: falco-read-sensitive-file-trusted-after-startup
+    annotations:
+        aegis.io/falco-tags: maturity_stable,host,container,filesystem,mitre_credential_access,T1555
+        aegis.io/imported-from: aegis-import-2766262408.yaml
+        aegis.io/severity: medium
+        aegis.io/source-rule: Read sensitive file trusted after startup
+spec:
+    description: |
+        An attempt to read any sensitive file (e.g. files containing user/password/authentication information) by a trusted program after startup. Trusted programs might read these files at startup to load initial state, but not afterwards. Can be customized as needed. In modern containerized cloud infrastructures, accessing traditional Linux sensitive files might be less relevant, yet it remains valuable for baseline detections. While we provide additional rules for SSH or cloud vendor-specific credentials, you can significantly enhance your security program by crafting custom rules for critical application credentials unique to your environment.
+    matchConstraints:
+        tools:
+            - Read
+            - Write
+            - Edit
+    validations:
+        - expression: "false"
+          message: 'Falco rule violated: Read sensitive file trusted after startup'
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

@@ -1,0 +1,21 @@
+# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: spawned_process and http_proxy_procs and proc.env icontains HTTP_PROXY and not allowed_ssh_proxy_env
+# imported from: main via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: falco-program-run-with-disallowed-http-proxy-env
+    annotations:
+        aegis.io/falco-tags: maturity_incubating,host,container,users,mitre_execution,T1204
+        aegis.io/imported-from: aegis-import-487448035.yaml
+        aegis.io/severity: low
+        aegis.io/source-rule: Program run with disallowed http proxy env
+spec:
+    description: |
+        Detect curl or wget usage with HTTP_PROXY environment variable. Attackers can manipulate the HTTP_PROXY variable's value to redirect application's internal HTTP requests. This could expose sensitive information like authentication keys and private data.
+    matchConstraints:
+        tools: []
+    validations:
+        - expression: "false"
+          message: 'Falco rule violated: Program run with disallowed http proxy env'
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

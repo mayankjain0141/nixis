@@ -1,0 +1,22 @@
+# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: inbound_outbound and fd.l4proto=udp and not expected_udp_traffic
+# imported from: main via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: falco-unexpected-udp-traffic
+    annotations:
+        aegis.io/falco-tags: maturity_incubating,host,container,network,mitre_exfiltration,TA0011
+        aegis.io/imported-from: aegis-import-487448035.yaml
+        aegis.io/severity: low
+        aegis.io/source-rule: Unexpected UDP Traffic
+spec:
+    description: |
+        Detecting UDP traffic on ports other than 53 (DNS) or other commonly used ports. Misusing UDP is a known TTP among attackers. Monitoring unusual network activity is highly valuable but often generates significant noise, as is the case with this detection.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: "false"
+          message: 'Falco rule violated: Unexpected UDP Traffic'
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW
