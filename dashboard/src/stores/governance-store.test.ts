@@ -108,4 +108,28 @@ describe('useGovernanceStore', () => {
       expect(s.totalAllows).toBe(0);
     });
   });
+
+  // TestStore_ElevateSemantics: updateLabel({conf:3}, {conf:5}) → result {conf:5}, never {conf:3}
+  describe('TestStore_ElevateSemantics', () => {
+    it('updateLabel({conf:3}, {conf:5}) → confidentiality becomes 5, never reverts to 3', () => {
+      useGovernanceStore.getState().updateLabel('sess-elev', { confidentiality: 3, integrity: 0, categories: 0 }, 'fresh');
+      useGovernanceStore.getState().updateLabel('sess-elev', { confidentiality: 5, integrity: 0, categories: 0 }, 'escalated');
+      const entry = useGovernanceStore.getState().sessionLabels.get('sess-elev');
+      expect(entry?.label.confidentiality).toBe(5);
+    });
+
+    it('a subsequent lower-confidentiality update never reverts the raised value', () => {
+      useGovernanceStore.getState().updateLabel('sess-elev2', { confidentiality: 5, integrity: 0, categories: 0 }, 'escalated');
+      useGovernanceStore.getState().updateLabel('sess-elev2', { confidentiality: 3, integrity: 0, categories: 0 }, 'fresh');
+      const entry = useGovernanceStore.getState().sessionLabels.get('sess-elev2');
+      expect(entry?.label.confidentiality).toBe(5);
+    });
+
+    it('integrity is elevated using max (both high-water marks preserved)', () => {
+      useGovernanceStore.getState().updateLabel('sess-int', { confidentiality: 0, integrity: 8, categories: 0 }, 'fresh');
+      useGovernanceStore.getState().updateLabel('sess-int', { confidentiality: 0, integrity: 3, categories: 0 }, 'escalated');
+      const entry = useGovernanceStore.getState().sessionLabels.get('sess-int');
+      expect(entry?.label.integrity).toBe(8);
+    });
+  });
 });
