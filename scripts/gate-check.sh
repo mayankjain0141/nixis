@@ -92,6 +92,30 @@ if [[ "$PKG" != *"dashboard"* ]]; then
                 echo "  [PASS] internal/bundle wired into daemon startup"
             fi
             ;;
+        secret)
+            # internal/secret must be imported by cmd/aegis-daemon (WithSecretScanner)
+            if ! grep -r "\"github.com/mayjain/aegis/internal/secret\"" cmd/ 2>/dev/null | grep -q "secret"; then
+                echo "  [WARN] internal/secret not imported by cmd/ — secret scanning is disabled"
+            else
+                echo "  [PASS] internal/secret wired into daemon"
+            fi
+            ;;
+        reload)
+            # internal/reload must be imported by cmd/aegis-daemon
+            if ! grep -r "\"github.com/mayjain/aegis/internal/reload\"" cmd/ 2>/dev/null | grep -q "reload"; then
+                echo "  [WARN] internal/reload not imported by cmd/ — hot-reload is disabled"
+            else
+                echo "  [PASS] internal/reload wired into daemon"
+            fi
+            ;;
+        delegation)
+            # internal/delegation must be imported by cmd/aegis-daemon (WithDelegationValidator)
+            if ! grep -r "\"github.com/mayjain/aegis/internal/delegation\"" cmd/ 2>/dev/null | grep -q "delegation"; then
+                echo "  [WARN] internal/delegation not imported by cmd/ — delegation validation is disabled"
+            else
+                echo "  [PASS] internal/delegation wired into daemon"
+            fi
+            ;;
         *)
             echo "  [SKIP] No wiring check defined for ${PKG_NAME}"
             ;;

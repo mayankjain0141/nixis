@@ -20,6 +20,8 @@ import (
 	"github.com/mayjain/aegis/internal/daemon"
 	"github.com/mayjain/aegis/internal/ifc"
 	"github.com/mayjain/aegis/internal/policy"
+	"github.com/mayjain/aegis/internal/reload"
+	"github.com/mayjain/aegis/internal/secret"
 	"github.com/mayjain/aegis/internal/stream"
 	"github.com/mayjain/aegis/pkg/aegis"
 )
@@ -57,6 +59,7 @@ func main() {
 		sessions,
 		celEnv,
 		policy.WithAuditWriter(auditWriter),
+		policy.WithSecretScanner(secret.NewScanner()),
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -77,6 +80,22 @@ func main() {
 			fmt.Fprintf(os.Stderr, "aegis-daemon: loaded %d policies from %s\n", len(templates), cfg.PolicyDir)
 		}
 	}
+	// Start reload watcher after initial policy load (spec: started AFTER initial compile).
+	reloadWatcher, rwErr := reload.NewReloadWatcher(cfg.PolicyDir, &policyReloader{
+		policyDir: cfg.PolicyDir,
+		engine:    engine,
+		ctx:       ctx,
+	})
+	if rwErr != nil {
+		fmt.Fprintf(os.Stderr, "aegis-daemon: failed to create reload watcher: %v\n", rwErr)
+	} else {
+		go func() {
+			if err := reloadWatcher.Start(ctx); err != nil && ctx.Err() == nil {
+				fmt.Fprintf(os.Stderr, "aegis-daemon: reload watcher error: %v\n", err)
+			}
+		}()
+	}
+
 	auditDone := make(chan struct{})
 	go func() {
 		defer close(auditDone)
@@ -103,6 +122,27 @@ func main() {
 		fmt.Fprintf(os.Stderr, "aegis-daemon: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+// policyReloader adapts PolicyEngine.Reload to the reload.PolicyReloader interface.
+// It re-parses the policy directory and calls engine.Reload on each file-change event.
+type policyReloader struct {
+	policyDir string
+	engine    *policy.PolicyEngine
+	ctx       context.Context
+}
+
+func (r *policyReloader) Reload() error {
+	templates, bindings, err := bundle.ParsePolicyDir(r.policyDir)
+	if err != nil {
+		return err
+	}
+	compiled := &aegis.CompiledBundle{
+		Version:   1,
+		Templates: templates,
+		Bindings:  bindings,
+	}
+	return r.engine.Reload(r.ctx, compiled)
 }
 
 // expandHome replaces a leading ~ with the user's home directory.
