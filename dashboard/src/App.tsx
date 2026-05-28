@@ -1,10 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { MetricsBar } from './components/governance/MetricsBar';
 import { EventStream } from './components/governance/EventStream';
+import { CommandPalette } from './components/shell/CommandPalette';
 import { useGovernanceStore } from './stores/governance-store';
 import { useMetricsStore } from './stores/metrics-store';
 import { useStreamStore } from './stores/stream-store';
 import { usePolicyStore } from './stores/policy-store';
+import { useUIStore } from './stores/ui-store';
 import { createMockStreamGenerator } from './mocks/streamGenerator';
 import type { Verdict } from './types/events';
 import type { LabelState } from './types/events';
@@ -35,8 +37,20 @@ export default function App() {
   const connectionState = useStreamStore((s) => s.connectionState);
   const policies = usePolicyStore((s) => s.policies);
   const bundleStatus = usePolicyStore((s) => s.bundleStatus);
+  const setCommandPaletteOpen = useUIStore((s) => s.setCommandPaletteOpen);
   const wsRef = useRef<WebSocket | null>(null);
   const mockGenRef = useRef<ReturnType<typeof createMockStreamGenerator> | null>(null);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setCommandPaletteOpen(true);
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [setCommandPaletteOpen]);
 
   useEffect(() => {
     let ws: WebSocket | null = null;
@@ -157,6 +171,7 @@ export default function App() {
 
   return (
     <div style={styles.shell}>
+      <CommandPalette />
       <MetricsBar />
       <div style={styles.body}>
         <aside style={styles.sidebar} aria-label="Connection and policy summary">
