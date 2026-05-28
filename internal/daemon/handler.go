@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/mayjain/aegis/internal/audit"
+	"github.com/mayjain/aegis/internal/otel"
 	"github.com/mayjain/aegis/pkg/aegis"
 )
 
@@ -132,6 +133,16 @@ func (d *Daemon) handleConnection(conn net.Conn) {
 	resp := d.engine.Evaluate(ctx, req)
 	d.evaluations.Add(1)
 
+	otel.RecordEvaluation(
+		ctx,
+		req.Tool,
+		req.SessionID,
+		actionString(resp.Decision.Action),
+		string(resp.EnforcingLayer),
+		resp.LatencyNs,
+		resp.Decision.Action == aegis.ActionDeny,
+	)
+
 	// Persist session label change when the decision is not a deny.
 	if d.sessions != nil && resp.Decision.Action != aegis.ActionDeny {
 		d.sessions.Elevate(req.SessionID, req.SecurityLabel)
@@ -186,6 +197,22 @@ func (d *Daemon) writeErrorResponse(conn net.Conn, deadline time.Time, reason st
 		return
 	}
 	_ = WriteMessage(conn, b, deadline)
+}
+
+// actionString converts an Action to its wire-format string, matching MarshalJSON.
+func actionString(a aegis.Action) string {
+	switch a {
+	case aegis.ActionDeny:
+		return "deny"
+	case aegis.ActionAllow:
+		return "allow"
+	case aegis.ActionRequireApproval:
+		return "require_approval"
+	case aegis.ActionAudit:
+		return "audit"
+	default:
+		return "deny"
+	}
 }
 
 // writeModeResponse writes a Deny CheckResponse for daemon mode enforcement.
