@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { List, useListRef } from 'react-window';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, UIEvent } from 'react';
 import { useGovernanceStore, type GovernanceEvent } from '../../stores/governance-store';
 import type { Verdict } from '../../types/events';
 
 const ROW_HEIGHT = 36;
 const VISIBLE_ROWS = 20;
 const LIST_HEIGHT = ROW_HEIGHT * VISIBLE_ROWS;
+// Tolerance in pixels: treat within this distance of the bottom as "at bottom".
+const SCROLL_THRESHOLD = ROW_HEIGHT;
 
 const VERDICT_COLORS: Record<Verdict, string> = {
   deny: '#cf222e',
@@ -73,9 +75,18 @@ export function EventStream() {
   const pausedRef = useRef(false);
   pausedRef.current = paused;
 
+  // Tracks how many programmatic scrollToRow calls are in-flight. Each call
+  // increments the counter; a rAF after the call decrements it. Any scroll
+  // event that arrives while the counter is >0 is programmatic and is ignored.
+  const programmaticScrollCount = useRef(0);
+
   const scrollToBottom = useCallback(() => {
     if (!pausedRef.current && listRef.current && events.length > 0) {
+      programmaticScrollCount.current++;
       listRef.current.scrollToRow({ index: events.length - 1, align: 'end' });
+      requestAnimationFrame(() => {
+        programmaticScrollCount.current = Math.max(0, programmaticScrollCount.current - 1);
+      });
     }
   }, [events.length, listRef]);
 
@@ -83,8 +94,16 @@ export function EventStream() {
     scrollToBottom();
   }, [scrollToBottom]);
 
-  function handleRowsRendered({ stopIndex }: { startIndex: number; stopIndex: number }) {
-    if (stopIndex >= events.length - 1 && pausedRef.current) {
+  function handleScroll(e: UIEvent<HTMLDivElement>) {
+    if (programmaticScrollCount.current > 0) return;
+
+    const target = e.currentTarget;
+    const totalHeight = events.length * ROW_HEIGHT;
+    const atBottom = target.scrollTop >= totalHeight - LIST_HEIGHT - SCROLL_THRESHOLD;
+
+    if (!atBottom && !pausedRef.current) {
+      setPaused(true);
+    } else if (atBottom && pausedRef.current) {
       setPaused(false);
     }
   }
@@ -92,7 +111,11 @@ export function EventStream() {
   function resumeScroll() {
     setPaused(false);
     if (listRef.current && events.length > 0) {
+      programmaticScrollCount.current++;
       listRef.current.scrollToRow({ index: events.length - 1, align: 'end' });
+      requestAnimationFrame(() => {
+        programmaticScrollCount.current = Math.max(0, programmaticScrollCount.current - 1);
+      });
     }
   }
 
@@ -133,8 +156,8 @@ export function EventStream() {
             rowCount={events.length}
             rowComponent={EventRow}
             rowProps={{ events }}
-            onRowsRendered={handleRowsRendered}
             defaultHeight={LIST_HEIGHT}
+            onScroll={handleScroll}
             role="grid"
             aria-label="Governance events"
             aria-rowcount={events.length}
