@@ -24,7 +24,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/mayjain/aegis/internal/audit"
 	"github.com/mayjain/aegis/internal/cel"
 	"github.com/mayjain/aegis/internal/classify"
 	"github.com/mayjain/aegis/internal/ifc"
@@ -111,7 +110,6 @@ type PolicyEngine struct {
 	reloadMu            sync.Mutex
 	sessions            *ifc.SessionLabels
 	celEnv              *cel.CELEnvironment
-	auditWriter         *audit.Writer
 	secretScanner       SecretScanner
 	delegationValidator DelegationValidator
 	activationBuilder   *cel.ActivationBuilder
@@ -122,13 +120,6 @@ type PolicyEngine struct {
 
 // Option configures a PolicyEngine.
 type Option func(*PolicyEngine)
-
-// WithAuditWriter sets the audit writer for the engine.
-func WithAuditWriter(w *audit.Writer) Option {
-	return func(e *PolicyEngine) {
-		e.auditWriter = w
-	}
-}
 
 // WithSecretScanner sets the secret scanner for the engine.
 func WithSecretScanner(s SecretScanner) Option {

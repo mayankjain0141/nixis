@@ -43,7 +43,7 @@ func TestE2E_CheckRequest_PolicyEvaluation_AuditWrite(t *testing.T) {
 		t.Fatalf("cel.NewCELEnvironment: %v", err)
 	}
 	sessions := &ifc.SessionLabels{}
-	engine := policy.NewPolicyEngine(sessions, celEnv, policy.WithAuditWriter(writer))
+	engine := policy.NewPolicyEngine(sessions, celEnv)
 
 	// 3. Load policies from builtin dir
 	policyDir := "../../policies/builtin"

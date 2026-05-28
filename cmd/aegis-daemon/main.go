@@ -70,7 +70,6 @@ func main() {
 	engine := policy.NewPolicyEngine(
 		sessions,
 		celEnv,
-		policy.WithAuditWriter(auditWriter),
 		policy.WithSecretScanner(secret.NewScanner()),
 	)
 
