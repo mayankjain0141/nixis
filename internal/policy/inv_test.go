@@ -222,8 +222,8 @@ func TestEngineSnapshot_Copy_IsIndependent(t *testing.T) {
 
 	// A failed third reload must not replace snap2.
 	buildErr := errors.New("intentional failure")
-	engine.buildSnapshotFunc = func(_ context.Context, _ *aegis.CompiledBundle, _ uint64) (*engineSnapshot, error) {
-		return nil, buildErr
+	engine.buildSnapshotFunc = func(_ context.Context, _ *aegis.CompiledBundle, _ uint64) (*engineSnapshot, []string, error) {
+		return nil, nil, buildErr
 	}
 	if err := engine.Reload(context.Background(), &aegis.CompiledBundle{Version: 99}); err == nil {
 		t.Fatal("expected error from injected failure")

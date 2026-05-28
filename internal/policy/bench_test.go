@@ -42,7 +42,7 @@ func BenchmarkEvaluate_CachedProgram(b *testing.B) {
 		},
 	}
 
-	programs, err := cel.CompileAll(celEnv, templates)
+	programs, _, err := cel.CompileAll(celEnv, templates)
 	if err != nil {
 		b.Fatalf("failed to compile policies: %v", err)
 	}

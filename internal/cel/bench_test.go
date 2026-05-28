@@ -25,7 +25,7 @@ func BenchmarkCEL_EvalSimple(b *testing.B) {
 	templates := []policy_types.PolicyTemplate{
 		{ID: "simple", Expression: `tool == "Read"`},
 	}
-	cache, err := cel.CompileAll(env, templates)
+	cache, _, err := cel.CompileAll(env, templates)
 	if err != nil {
 		b.Fatalf("CompileAll: %v", err)
 	}
@@ -70,7 +70,7 @@ func BenchmarkCEL_EvalComplex(b *testing.B) {
 				bash.targetPort(args.command) == 0`,
 		},
 	}
-	cache, err := cel.CompileAll(env, templates)
+	cache, _, err := cel.CompileAll(env, templates)
 	if err != nil {
 		b.Fatalf("CompileAll: %v", err)
 	}

@@ -226,7 +226,7 @@ func TestPolicyEngine_Evaluate_Pipeline_CELLayer(t *testing.T) {
 		},
 	}
 
-	programs, err := cel.CompileAll(celEnv, templates)
+	programs, _, err := cel.CompileAll(celEnv, templates)
 	if err != nil {
 		t.Fatalf("failed to compile policies: %v", err)
 	}
@@ -429,8 +429,8 @@ func TestPolicyEngine_Reload_FailedReloadKeepsOld(t *testing.T) {
 	version1 := snap1.public.Version
 
 	buildErr := errors.New("intentional build failure for test")
-	engine.buildSnapshotFunc = func(_ context.Context, _ *aegis.CompiledBundle, _ uint64) (*engineSnapshot, error) {
-		return nil, buildErr
+	engine.buildSnapshotFunc = func(_ context.Context, _ *aegis.CompiledBundle, _ uint64) (*engineSnapshot, []string, error) {
+		return nil, nil, buildErr
 	}
 
 	secondBundle := &aegis.CompiledBundle{
@@ -467,7 +467,7 @@ func TestProgramCache_IsValueType(t *testing.T) {
 		},
 	}
 
-	cache1, err := cel.CompileAll(celEnv, templates)
+	cache1, _, err := cel.CompileAll(celEnv, templates)
 	if err != nil {
 		t.Fatalf("failed to compile: %v", err)
 	}

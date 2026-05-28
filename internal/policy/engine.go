@@ -102,7 +102,7 @@ type bindingIndex struct {
 }
 
 // snapshotBuilder is the signature for buildSnapshot (injectable for testing).
-type snapshotBuilder func(ctx context.Context, bundle *aegis.CompiledBundle, version uint64) (*engineSnapshot, error)
+type snapshotBuilder func(ctx context.Context, bundle *aegis.CompiledBundle, version uint64) (*engineSnapshot, []string, error)
 
 // PolicyEngine is the top-level governance evaluator implementing aegis.Engine.
 type PolicyEngine struct {
@@ -116,6 +116,10 @@ type PolicyEngine struct {
 	// buildSnapshotFunc is injected for testing failed reload scenarios.
 	// If nil, the default buildSnapshot is used.
 	buildSnapshotFunc snapshotBuilder
+
+	// lastSkipped holds the policy IDs skipped in the most recent Reload.
+	// Written under reloadMu; safe to read after Reload returns.
+	lastSkipped []string
 }
 
 // Option configures a PolicyEngine.
@@ -351,13 +355,20 @@ func (e *PolicyEngine) Reload(ctx context.Context, bundle *aegis.CompiledBundle)
 		builder = e.buildSnapshotFunc
 	}
 
-	newSnap, err := builder(ctx, bundle, nextVersion)
+	newSnap, skipped, err := builder(ctx, bundle, nextVersion)
 	if err != nil {
 		return err
 	}
 
+	e.lastSkipped = skipped
 	e.applySnapshot(newSnap)
 	return nil
+}
+
+// SkippedPolicies returns the IDs of policies skipped in the most recent Reload
+// due to undeclared CEL variables or functions. Safe to call after Reload returns.
+func (e *PolicyEngine) SkippedPolicies() []string {
+	return e.lastSkipped
 }
 
 // applySnapshot is the ONLY place atomic.Pointer.Store() is called (INV-005).
@@ -370,10 +381,10 @@ func (e *PolicyEngine) buildSnapshot(
 	ctx context.Context,
 	bundle *aegis.CompiledBundle,
 	version uint64,
-) (*engineSnapshot, error) {
-	programs, err := cel.CompileAll(e.celEnv, bundle.Templates)
+) (*engineSnapshot, []string, error) {
+	programs, skipped, err := cel.CompileAll(e.celEnv, bundle.Templates)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	compiled := make([]compiledBinding, 0, len(bundle.Bindings))
@@ -404,7 +415,7 @@ func (e *PolicyEngine) buildSnapshot(
 		compiledAt: time.Now().UnixNano(),
 		sourceHash: bundle.Hash,
 	}
-	return snap, nil
+	return snap, skipped, nil
 }
 
 // buildBindingIndex creates an index for O(1) binding lookup by tool name.

@@ -95,7 +95,7 @@ func runPolicyLint(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = cel.CompileAll(env, templates)
+	_, _, err = cel.CompileAll(env, templates)
 	if err != nil {
 		var compErr *cel.CompileError
 		if errors.As(err, &compErr) {

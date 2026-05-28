@@ -92,7 +92,15 @@ func main() {
 			fmt.Fprintf(os.Stderr, "aegis-daemon: failed to load initial policies: %v\n", err)
 		} else {
 			initialPolicyCount = len(templates)
-			fmt.Fprintf(os.Stderr, "aegis-daemon: loaded %d policies from %s\n", initialPolicyCount, cfg.PolicyDir)
+			// engine.Reload calls cel.CompileAll internally; skipped policies are
+			// logged at WARN level by CompileAll itself. Emit a startup summary here
+			// so operators see the active count without reading through log lines.
+			if skipped := engine.SkippedPolicies(); len(skipped) > 0 {
+				fmt.Fprintf(os.Stderr, "aegis-daemon: WARNING: %d polic(ies) inactive — undeclared CEL variables: %v\n", len(skipped), skipped)
+				fmt.Fprintf(os.Stderr, "aegis-daemon: Active policies: %d of %d loaded\n", initialPolicyCount-len(skipped), initialPolicyCount)
+			} else {
+				fmt.Fprintf(os.Stderr, "aegis-daemon: loaded %d policies from %s\n", initialPolicyCount, cfg.PolicyDir)
+			}
 		}
 	}
 	if grpcAddr := os.Getenv("AEGIS_GRPC_ADDR"); grpcAddr != "" {
