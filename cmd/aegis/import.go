@@ -61,6 +61,7 @@ const (
 	formatAgentWall                 // version: "2" + tools[].action
 	formatMCPVisor                  // deny_path / deny_command_pattern / etc.
 	formatKyverno                   // apiVersion: kyverno.io/* + kind: ClusterPolicy/Policy
+	formatSigma                     // logsource + detection with condition (SigmaHQ format)
 )
 
 // ---- format-specific input structs ----
@@ -186,6 +187,30 @@ type kyvernoCondition struct {
 	Key      string `yaml:"key"`
 	Operator string `yaml:"operator"`
 	Value    string `yaml:"value"`
+}
+
+// Sigma rule format (SigmaHQ/sigma)
+type sigmaRule struct {
+	Title          string         `yaml:"title"`
+	ID             string         `yaml:"id"`
+	Status         string         `yaml:"status"`
+	Description    string         `yaml:"description"`
+	Level          string         `yaml:"level"`
+	Tags           []string       `yaml:"tags"`
+	Logsource      sigmaLogsource `yaml:"logsource"`
+	Detection      sigmaDetection `yaml:"detection"`
+	Falsepositives []string       `yaml:"falsepositives"`
+}
+
+type sigmaLogsource struct {
+	Category string `yaml:"category"`
+	Product  string `yaml:"product"`
+	Service  string `yaml:"service"`
+}
+
+type sigmaDetection struct {
+	Condition string `yaml:"condition"`
+	// Remaining fields are selection groups parsed dynamically
 }
 
 // ---- output structs ----
@@ -385,6 +410,12 @@ func detectFormatWithName(filename string, data []byte) importFormat {
 		DenyCommandPattern []string `yaml:"deny_command_pattern"`
 		DenyQueryPattern   []string `yaml:"deny_query_pattern"`
 		AllowPath          []string `yaml:"allow_path"`
+		// Sigma-specific fields
+		Logsource struct {
+			Category string `yaml:"category"`
+			Product  string `yaml:"product"`
+		} `yaml:"logsource"`
+		Detection map[string]interface{} `yaml:"detection"`
 	}
 
 	if err := yaml.Unmarshal(data, &probe); err != nil {
@@ -395,6 +426,13 @@ func detectFormatWithName(filename string, data []byte) importFormat {
 	if strings.Contains(probe.APIVersion, "kyverno.io") &&
 		(probe.Kind == "ClusterPolicy" || probe.Kind == "Policy") {
 		return formatKyverno
+	}
+
+	// Sigma: has logsource AND detection with condition
+	if (probe.Logsource.Category != "" || probe.Logsource.Product != "") && len(probe.Detection) > 0 {
+		if _, hasCondition := probe.Detection["condition"]; hasCondition {
+			return formatSigma
+		}
 	}
 
 	// AgentWall v2: version "2" + tools with action field
@@ -532,6 +570,8 @@ func convertFile(data []byte, sourcePath string) ([]aegisManifest, []string, err
 		return convertMCPVisor(data, sourcePath)
 	case formatKyverno:
 		return convertKyverno(data, sourcePath)
+	case formatSigma:
+		return convertSigma(data, sourcePath)
 	case formatUnknown:
 		fallthrough
 	default:
@@ -1260,6 +1300,419 @@ func appendSkipComment(comments []string, msg string) []string {
 		comments[len(comments)-1] = msg
 	}
 	return comments
+}
+
+// ---- Sigma converter (SigmaHQ/sigma format) ----
+
+func convertSigma(data []byte, sourcePath string) ([]aegisManifest, []string, error) {
+	var rule sigmaRule
+	if err := yaml.Unmarshal(data, &rule); err != nil {
+		return nil, nil, fmt.Errorf("parse Sigma YAML: %w", err)
+	}
+
+	// Parse detection as raw map to get selection groups
+	var detectionRaw map[string]interface{}
+	var rawRule struct {
+		Detection map[string]interface{} `yaml:"detection"`
+	}
+	if err := yaml.Unmarshal(data, &rawRule); err != nil {
+		return nil, nil, fmt.Errorf("parse Sigma detection: %w", err)
+	}
+	detectionRaw = rawRule.Detection
+
+	condition, _ := detectionRaw["condition"].(string)
+	if condition == "" {
+		return nil, nil, fmt.Errorf("sigma rule missing detection.condition")
+	}
+
+	cel, comment := translateSigmaDetection(detectionRaw, condition)
+	action := sigmaLevelToAction(rule.Level)
+	tools := sigmaLogsourceToTools(rule.Logsource)
+
+	id := sanitizeID(rule.ID)
+	if id == "" {
+		id = sanitizeID(rule.Title)
+	}
+	if id == "" {
+		id = "sigma-" + sanitizeID(filepath.Base(sourcePath))
+	}
+
+	desc := rule.Description
+	if desc == "" {
+		desc = rule.Title
+	}
+
+	severity := sigmaLevelToSeverity(rule.Level)
+
+	annotations := map[string]string{
+		"aegis.io/imported-from": filepath.Base(sourcePath),
+		"aegis.io/severity":      severity,
+		"aegis.io/source-format": "sigma",
+	}
+	if rule.ID != "" {
+		annotations["aegis.io/sigma-id"] = rule.ID
+	}
+	if len(rule.Tags) > 0 {
+		annotations["aegis.io/sigma-tags"] = strings.Join(rule.Tags, ",")
+	}
+
+	m := aegisManifest{
+		APIVersion: "aegis.io/v1",
+		Kind:       "PolicyTemplate",
+		Metadata: aegisMetadata{
+			Name:        id,
+			Annotations: annotations,
+		},
+		Spec: aegisPolicySpec{
+			Description: desc,
+			MatchConstraints: aegisMatchConstraints{
+				Tools: tools,
+			},
+			Validations: []aegisValidation{
+				{
+					Expression: cel,
+					Message:    fmt.Sprintf("Sigma: %s", rule.Title),
+					Action:     action,
+				},
+			},
+			DefaultAction: "ALLOW",
+		},
+	}
+
+	return []aegisManifest{m}, []string{comment}, nil
+}
+
+func sigmaLevelToAction(level string) string {
+	switch strings.ToLower(level) {
+	case "critical", "high":
+		return "DENY"
+	case "medium":
+		return "REQUIRE_APPROVAL"
+	default:
+		return "AUDIT"
+	}
+}
+
+func sigmaLevelToSeverity(level string) string {
+	switch strings.ToLower(level) {
+	case "critical":
+		return "critical"
+	case "high":
+		return "high"
+	case "medium":
+		return "medium"
+	case "low", "informational", "":
+		return "low"
+	default:
+		return "low"
+	}
+}
+
+func sigmaLogsourceToTools(ls sigmaLogsource) []string {
+	switch strings.ToLower(ls.Category) {
+	case "process_creation":
+		return []string{"Bash"}
+	case "file_event", "file_access", "file_delete", "file_rename", "file_change":
+		return []string{"Read", "Write", "Edit"}
+	case "network_connection", "dns_query", "firewall":
+		return []string{"Bash"}
+	default:
+		return []string{}
+	}
+}
+
+func translateSigmaDetection(detection map[string]interface{}, condition string) (cel string, comment string) {
+	selections := make(map[string]string)
+	var comments []string
+
+	for key, val := range detection {
+		if key == "condition" || key == "timeframe" {
+			continue
+		}
+		selCEL, selComment := translateSigmaSelection(key, val)
+		selections[key] = selCEL
+		if selComment != "" {
+			comments = append(comments, selComment)
+		}
+	}
+
+	resultCEL, condComment := translateSigmaCondition(condition, selections)
+	if condComment != "" {
+		comments = append(comments, condComment)
+	}
+
+	if len(comments) > 0 {
+		comment = strings.Join(comments, "; ")
+	}
+
+	return resultCEL, comment
+}
+
+func translateSigmaSelection(name string, val interface{}) (cel string, comment string) {
+	valMap, isMap := val.(map[string]interface{})
+	if !isMap {
+		return "true", fmt.Sprintf("IMPORT_TODO: selection %q has unsupported format", name)
+	}
+
+	var conditions []string
+	var comments []string
+
+	for fieldModifier, fieldVal := range valMap {
+		fieldCEL, fieldComment := translateSigmaField(fieldModifier, fieldVal)
+		if fieldCEL != "" {
+			conditions = append(conditions, fieldCEL)
+		}
+		if fieldComment != "" {
+			comments = append(comments, fieldComment)
+		}
+	}
+
+	if len(conditions) == 0 {
+		return "true", strings.Join(comments, "; ")
+	}
+
+	cel = strings.Join(conditions, " && ")
+	if len(comments) > 0 {
+		comment = strings.Join(comments, "; ")
+	}
+	return cel, comment
+}
+
+func translateSigmaField(fieldModifier string, val interface{}) (cel string, comment string) {
+	parts := strings.Split(fieldModifier, "|")
+	fieldName := parts[0]
+	modifiers := parts[1:]
+
+	celField := sigmaToCELField(fieldName)
+	if celField == "" {
+		return "", fmt.Sprintf("IMPORT_TODO: field %q cannot be mapped to Aegis context", fieldName)
+	}
+
+	values := extractSigmaValues(val)
+	if len(values) == 0 {
+		return "", fmt.Sprintf("IMPORT_TODO: field %q has no values", fieldName)
+	}
+
+	matchAll := false
+	matchType := "contains"
+
+	for _, mod := range modifiers {
+		switch strings.ToLower(mod) {
+		case "contains":
+			matchType = "contains"
+		case "startswith":
+			matchType = "startswith"
+		case "endswith":
+			matchType = "endswith"
+		case "re":
+			matchType = "regex"
+		case "all":
+			matchAll = true
+		case "base64offset", "windash", "wide", "base64", "cidr":
+			return "", fmt.Sprintf("IMPORT_TODO: modifier |%s not supported", mod)
+		}
+	}
+
+	var exprs []string
+	for _, v := range values {
+		expr := buildSigmaFieldExpr(celField, v, matchType)
+		exprs = append(exprs, expr)
+	}
+
+	if len(exprs) == 0 {
+		return "true", ""
+	}
+
+	if matchAll || len(exprs) == 1 {
+		return strings.Join(exprs, " && "), ""
+	}
+
+	return "(" + strings.Join(exprs, " || ") + ")", ""
+}
+
+func sigmaToCELField(field string) string {
+	field = strings.ToLower(field)
+	switch field {
+	case "commandline", "command_line", "cmd":
+		return "request.args.command"
+	case "image", "parentimage", "originalfilename", "currentdirectory":
+		return ""
+	case "user", "username", "accountname":
+		return ""
+	case "targetfilename", "filepath", "filename", "path":
+		return "request.args.file_path"
+	case "destinationip", "destinationhostname", "destinationport":
+		return ""
+	case "sourceip", "sourcehostname", "sourceport":
+		return ""
+	case "hashes", "md5", "sha1", "sha256", "imphash":
+		return ""
+	case "processid", "parentprocessid", "pid", "ppid":
+		return ""
+	case "queryname", "query":
+		return "request.args.query"
+	default:
+		return ""
+	}
+}
+
+func extractSigmaValues(val interface{}) []string {
+	switch v := val.(type) {
+	case string:
+		return []string{v}
+	case []interface{}:
+		var result []string
+		for _, item := range v {
+			if s, ok := item.(string); ok {
+				result = append(result, s)
+			}
+		}
+		return result
+	default:
+		return nil
+	}
+}
+
+func buildSigmaFieldExpr(field, value, matchType string) string {
+	escaped := escapeStringForCEL(value)
+	switch matchType {
+	case "contains":
+		return fmt.Sprintf(`%s.contains(%q)`, field, escaped)
+	case "startswith":
+		return fmt.Sprintf(`%s.startsWith(%q)`, field, escaped)
+	case "endswith":
+		return fmt.Sprintf(`%s.endsWith(%q)`, field, escaped)
+	case "regex":
+		return fmt.Sprintf(`%s.matches(%q)`, field, escaped)
+	default:
+		return fmt.Sprintf(`%s.contains(%q)`, field, escaped)
+	}
+}
+
+func escapeStringForCEL(s string) string {
+	return strings.ReplaceAll(s, `\`, `\\`)
+}
+
+func translateSigmaCondition(condition string, selections map[string]string) (cel string, comment string) {
+	condition = strings.TrimSpace(condition)
+
+	if sel, ok := selections[condition]; ok {
+		return sel, ""
+	}
+
+	if strings.HasPrefix(condition, "1 of ") {
+		pattern := strings.TrimPrefix(condition, "1 of ")
+		return buildSigmaOneOf(pattern, selections)
+	}
+
+	if strings.HasPrefix(condition, "all of ") {
+		pattern := strings.TrimPrefix(condition, "all of ")
+		return buildSigmaAllOf(pattern, selections)
+	}
+
+	if strings.Contains(condition, " and not ") {
+		parts := strings.SplitN(condition, " and not ", 2)
+		if len(parts) == 2 {
+			selCEL, selExists := selections[strings.TrimSpace(parts[0])]
+			filterCEL, filterExists := selections[strings.TrimSpace(parts[1])]
+			if selExists && filterExists {
+				return fmt.Sprintf("(%s) && !(%s)", selCEL, filterCEL), ""
+			}
+		}
+	}
+
+	if strings.Contains(condition, " and ") {
+		parts := strings.Split(condition, " and ")
+		var cels []string
+		for _, p := range parts {
+			p = strings.TrimSpace(p)
+			if strings.HasPrefix(p, "not ") {
+				inner := strings.TrimPrefix(p, "not ")
+				if sel, ok := selections[inner]; ok {
+					cels = append(cels, fmt.Sprintf("!(%s)", sel))
+				}
+			} else if sel, ok := selections[p]; ok {
+				cels = append(cels, sel)
+			}
+		}
+		if len(cels) > 0 {
+			return strings.Join(cels, " && "), ""
+		}
+	}
+
+	if strings.Contains(condition, " or ") {
+		parts := strings.Split(condition, " or ")
+		var cels []string
+		for _, p := range parts {
+			p = strings.TrimSpace(p)
+			if sel, ok := selections[p]; ok {
+				cels = append(cels, sel)
+			}
+		}
+		if len(cels) > 0 {
+			return "(" + strings.Join(cels, " || ") + ")", ""
+		}
+	}
+
+	return "true", fmt.Sprintf("IMPORT_TODO: complex condition %q requires manual translation", condition)
+}
+
+func buildSigmaOneOf(pattern string, selections map[string]string) (string, string) {
+	pattern = strings.TrimSpace(pattern)
+
+	if pattern == "them" || pattern == "*" {
+		var cels []string
+		for _, cel := range selections {
+			if cel != "" && cel != "true" {
+				cels = append(cels, cel)
+			}
+		}
+		if len(cels) == 0 {
+			return "true", "IMPORT_TODO: no valid selections for '1 of them'"
+		}
+		return "(" + strings.Join(cels, " || ") + ")", ""
+	}
+
+	prefix := strings.TrimSuffix(pattern, "*")
+	var cels []string
+	for name, cel := range selections {
+		if strings.HasPrefix(name, prefix) && cel != "" && cel != "true" {
+			cels = append(cels, cel)
+		}
+	}
+	if len(cels) == 0 {
+		return "true", fmt.Sprintf("IMPORT_TODO: no selections match pattern %q", pattern)
+	}
+	return "(" + strings.Join(cels, " || ") + ")", ""
+}
+
+func buildSigmaAllOf(pattern string, selections map[string]string) (string, string) {
+	pattern = strings.TrimSpace(pattern)
+
+	if pattern == "them" || pattern == "*" {
+		var cels []string
+		for _, cel := range selections {
+			if cel != "" && cel != "true" {
+				cels = append(cels, cel)
+			}
+		}
+		if len(cels) == 0 {
+			return "true", "IMPORT_TODO: no valid selections for 'all of them'"
+		}
+		return strings.Join(cels, " && "), ""
+	}
+
+	prefix := strings.TrimSuffix(pattern, "*")
+	var cels []string
+	for name, cel := range selections {
+		if strings.HasPrefix(name, prefix) && cel != "" && cel != "true" {
+			cels = append(cels, cel)
+		}
+	}
+	if len(cels) == 0 {
+		return "true", fmt.Sprintf("IMPORT_TODO: no selections match pattern %q", pattern)
+	}
+	return strings.Join(cels, " && "), ""
 }
 
 // ---- rule translation helpers ----
