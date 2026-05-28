@@ -1,0 +1,18 @@
+# imported from: claude-guardrails via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: settings-deny-040
+    annotations:
+        aegis.io/imported-from: aegis-import-3354300726.json
+        aegis.io/severity: medium
+        aegis.io/source-rule: Bash(rm -rf *)
+spec:
+    description: 'Deny rule imported from settings.json: Bash(rm -rf *)'
+    matchConstraints:
+        tools: []
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("rm -rf .*")
+          message: 'Blocked by imported settings.json rule: Bash(rm -rf *)'
+          action: DENY
+    defaultAction: ALLOW

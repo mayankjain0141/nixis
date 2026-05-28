@@ -1,0 +1,18 @@
+# imported from: agentwall via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: agentwall-query-database-options-required-limit
+    annotations:
+        aegis.io/imported-from: aegis-import-410216087.yaml
+        aegis.io/severity: low
+spec:
+    description: 'AgentWall required field: query_database.options.limit'
+    matchConstraints:
+        tools:
+            - query_database
+    validations:
+        - expression: tool == "query_database" && request.args.limit == ""
+          message: Required field limit is missing
+          action: DENY
+    defaultAction: ALLOW

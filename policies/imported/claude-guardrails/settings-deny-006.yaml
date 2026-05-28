@@ -1,0 +1,18 @@
+# imported from: claude-guardrails via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: settings-deny-006
+    annotations:
+        aegis.io/imported-from: aegis-import-1014963984.json
+        aegis.io/severity: medium
+        aegis.io/source-rule: Read ~/.config/gcloud/**
+spec:
+    description: 'Deny rule imported from settings.json: Read ~/.config/gcloud/**'
+    matchConstraints:
+        tools: []
+    validations:
+        - expression: tool == "Read ~/.config/gcloud/**"
+          message: 'Blocked by imported settings.json rule: Read ~/.config/gcloud/**'
+          action: DENY
+    defaultAction: ALLOW

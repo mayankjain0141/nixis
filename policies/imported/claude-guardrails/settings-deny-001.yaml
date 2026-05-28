@@ -1,0 +1,18 @@
+# imported from: claude-guardrails via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: settings-deny-001
+    annotations:
+        aegis.io/imported-from: aegis-import-1014963984.json
+        aegis.io/severity: medium
+        aegis.io/source-rule: Read ~/.ssh/**
+spec:
+    description: 'Deny rule imported from settings.json: Read ~/.ssh/**'
+    matchConstraints:
+        tools: []
+    validations:
+        - expression: tool == "Read ~/.ssh/**"
+          message: 'Blocked by imported settings.json rule: Read ~/.ssh/**'
+          action: DENY
+    defaultAction: ALLOW

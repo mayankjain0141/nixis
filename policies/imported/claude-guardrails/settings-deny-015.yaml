@@ -1,0 +1,18 @@
+# imported from: claude-guardrails via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: settings-deny-015
+    annotations:
+        aegis.io/imported-from: aegis-import-1014963984.json
+        aegis.io/severity: medium
+        aegis.io/source-rule: Edit ~/.claude/settings.json
+spec:
+    description: 'Deny rule imported from settings.json: Edit ~/.claude/settings.json'
+    matchConstraints:
+        tools: []
+    validations:
+        - expression: tool == "Edit ~/.claude/settings.json"
+          message: 'Blocked by imported settings.json rule: Edit ~/.claude/settings.json'
+          action: DENY
+    defaultAction: ALLOW

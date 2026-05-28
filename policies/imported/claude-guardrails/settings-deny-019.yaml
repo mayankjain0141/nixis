@@ -1,0 +1,18 @@
+# imported from: claude-guardrails via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: settings-deny-019
+    annotations:
+        aegis.io/imported-from: aegis-import-1014963984.json
+        aegis.io/severity: medium
+        aegis.io/source-rule: Bash(mkfs *)
+spec:
+    description: 'Deny rule imported from settings.json: Bash(mkfs *)'
+    matchConstraints:
+        tools: []
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("mkfs .*")
+          message: 'Blocked by imported settings.json rule: Bash(mkfs *)'
+          action: DENY
+    defaultAction: ALLOW

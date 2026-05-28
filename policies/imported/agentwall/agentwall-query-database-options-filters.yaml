@@ -1,0 +1,19 @@
+# IMPORT_TODO: unsupported schema type "object" for field filters — manual review required
+# imported from: agentwall via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: agentwall-query-database-options-filters
+    annotations:
+        aegis.io/imported-from: aegis-import-3238928408.yaml
+        aegis.io/severity: high
+spec:
+    description: 'AgentWall constraint: query_database.options.filters'
+    matchConstraints:
+        tools:
+            - query_database
+    validations:
+        - expression: "false"
+          message: AgentWall constraint violation on options.filters
+          action: DENY
+    defaultAction: ALLOW
