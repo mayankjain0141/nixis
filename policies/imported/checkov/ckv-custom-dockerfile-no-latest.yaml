@@ -1,0 +1,19 @@
+# imported from: checkov-custom-policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: ckv-custom-5
+  annotations:
+    aegis.io/imported-from: checkov-custom-policies
+    aegis.io/severity: medium
+    aegis.io/checkov-id: CKV_CUSTOM_5
+    aegis.io/checkov-source: checkov-custom-policy
+spec:
+  description: "Ensure Dockerfile does not use :latest tag — pin to specific version"
+  matchConstraints:
+    tools: ["Write", "Edit"]
+  validations:
+    - expression: 'request.args.path.matches("(?i)[Dd]ockerfile") && request.args.content.contains(":latest")'
+      action: DENY
+      message: "Checkov policy CKV_CUSTOM_5: Docker image should not use :latest tag — pin to specific version"
+  defaultAction: ALLOW

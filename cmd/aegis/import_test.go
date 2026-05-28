@@ -725,6 +725,327 @@ func TestImport_TranslatesMCPVisorQueryPattern(t *testing.T) {
 	}
 }
 
+// ---- Checkov format tests ----
+
+func TestImport_DetectsCheckovFormat(t *testing.T) {
+	input := `metadata:
+  name: "Ensure S3 bucket has encryption enabled"
+  id: "CKV2_CUSTOM_1"
+  category: "ENCRYPTION"
+definition:
+  cond_type: "attribute"
+  resource_types:
+    - "aws_s3_bucket"
+  attribute: "server_side_encryption_configuration"
+  operator: "exists"
+`
+	format := detectFormat([]byte(input))
+	if format != formatCheckov {
+		t.Errorf("expected formatCheckov, got %v", format)
+	}
+}
+
+func TestImport_DetectsCheckovFormatWithLogical(t *testing.T) {
+	input := `metadata:
+  name: "Ensure container is not running as root"
+  id: "CKV2_CUSTOM_2"
+  category: "GENERAL_SECURITY"
+definition:
+  and:
+    - cond_type: "attribute"
+      resource_types: ["kubernetes_deployment"]
+      attribute: "spec.template.spec.containers.securityContext.runAsNonRoot"
+      operator: "equals"
+      value: "true"
+`
+	format := detectFormat([]byte(input))
+	if format != formatCheckov {
+		t.Errorf("expected formatCheckov for and-based definition, got %v", format)
+	}
+}
+
+func TestImport_TranslatesCheckovNotExists(t *testing.T) {
+	input := `metadata:
+  name: "Ensure privileged containers are not used"
+  id: "CKV_CUSTOM_3"
+  category: "GENERAL_SECURITY"
+definition:
+  cond_type: "attribute"
+  resource_types:
+    - "kubernetes_deployment"
+  attribute: "privileged"
+  operator: "not_exists"
+`
+	manifests, _, err := convertCheckov([]byte(input), "checkov-test.yaml")
+	if err != nil {
+		t.Fatalf("convertCheckov failed: %v", err)
+	}
+	if len(manifests) != 1 {
+		t.Fatalf("expected 1 manifest, got %d", len(manifests))
+	}
+	m := manifests[0]
+	if m.Spec.Validations[0].Action != "DENY" {
+		t.Errorf("not_exists should produce DENY, got %s", m.Spec.Validations[0].Action)
+	}
+	expr := m.Spec.Validations[0].Expression
+	if !strings.Contains(expr, `content.contains("privileged")`) {
+		t.Errorf("not_exists should check content.contains(attr), got: %s", expr)
+	}
+	if !strings.Contains(expr, `\.yaml$`) {
+		t.Errorf("kubernetes_deployment should match yaml files, got: %s", expr)
+	}
+}
+
+func TestImport_TranslatesCheckovRegexMatch(t *testing.T) {
+	input := `metadata:
+  name: "Deny eval in scripts"
+  id: "CKV_CUSTOM_4"
+  category: "GENERAL_SECURITY"
+definition:
+  cond_type: "attribute"
+  resource_types:
+    - "dockerfile"
+  attribute: "cmd"
+  operator: "regex_match"
+  value: "eval\\s*\\("
+`
+	manifests, _, err := convertCheckov([]byte(input), "checkov-test.yaml")
+	if err != nil {
+		t.Fatalf("convertCheckov failed: %v", err)
+	}
+	if len(manifests) != 1 {
+		t.Fatalf("expected 1 manifest, got %d", len(manifests))
+	}
+	expr := manifests[0].Spec.Validations[0].Expression
+	if !strings.Contains(expr, ".matches(") {
+		t.Errorf("regex_match should use .matches(), got: %s", expr)
+	}
+	if manifests[0].Spec.Validations[0].Action != "DENY" {
+		t.Errorf("regex_match should produce DENY, got %s", manifests[0].Spec.Validations[0].Action)
+	}
+}
+
+func TestImport_TranslatesCheckovDockerfile(t *testing.T) {
+	input := `metadata:
+  name: "Ensure Dockerfile does not use latest tag"
+  id: "CKV_CUSTOM_5"
+  category: "SUPPLY_CHAIN"
+definition:
+  cond_type: "attribute"
+  resource_types:
+    - "dockerfile"
+  attribute: "image"
+  operator: "not_contains"
+  value: ":latest"
+`
+	manifests, _, err := convertCheckov([]byte(input), "checkov-test.yaml")
+	if err != nil {
+		t.Fatalf("convertCheckov failed: %v", err)
+	}
+	if len(manifests) != 1 {
+		t.Fatalf("expected 1 manifest, got %d", len(manifests))
+	}
+	m := manifests[0]
+	tools := m.Spec.MatchConstraints.Tools
+	if len(tools) == 0 || (tools[0] != "Write" && tools[0] != "Edit") {
+		t.Errorf("dockerfile policy should target Write/Edit tools, got: %v", tools)
+	}
+	expr := m.Spec.Validations[0].Expression
+	if !strings.Contains(expr, `[Dd]ockerfile`) {
+		t.Errorf("dockerfile resource should match Dockerfile path pattern, got: %s", expr)
+	}
+	if m.Spec.Validations[0].Action != "DENY" {
+		t.Errorf("not_contains should produce DENY, got %s", m.Spec.Validations[0].Action)
+	}
+}
+
+func TestImport_TranslatesCheckovLogicalAnd(t *testing.T) {
+	input := `metadata:
+  name: "Ensure containers have security context"
+  id: "CKV2_CUSTOM_6"
+  category: "GENERAL_SECURITY"
+definition:
+  and:
+    - cond_type: "attribute"
+      resource_types: ["kubernetes_deployment"]
+      attribute: "securityContext"
+      operator: "exists"
+    - cond_type: "attribute"
+      resource_types: ["kubernetes_deployment"]
+      attribute: "runAsNonRoot"
+      operator: "equals"
+      value: "true"
+`
+	manifests, _, err := convertCheckov([]byte(input), "checkov-test.yaml")
+	if err != nil {
+		t.Fatalf("convertCheckov failed: %v", err)
+	}
+	if len(manifests) != 1 {
+		t.Fatalf("expected 1 combined manifest for and conditions, got %d", len(manifests))
+	}
+	expr := manifests[0].Spec.Validations[0].Expression
+	if !strings.Contains(expr, "&&") {
+		t.Errorf("and conditions should join with &&, got: %s", expr)
+	}
+}
+
+func TestImport_CheckovNumericSkipped(t *testing.T) {
+	input := `metadata:
+  name: "Port range check"
+  id: "CKV_CUSTOM_7"
+  category: "NETWORK"
+definition:
+  cond_type: "attribute"
+  resource_types:
+    - "aws_security_group"
+  attribute: "from_port"
+  operator: "greater_than"
+  value: "22"
+`
+	manifests, comments, err := convertCheckov([]byte(input), "checkov-test.yaml")
+	if err != nil {
+		t.Fatalf("convertCheckov failed: %v", err)
+	}
+	if len(manifests) != 1 {
+		t.Fatalf("expected 1 manifest with IMPORT_TODO, got %d", len(manifests))
+	}
+	if manifests[0].Spec.Validations[0].Expression != "false" {
+		t.Errorf("numeric operator should produce 'false' CEL, got: %s", manifests[0].Spec.Validations[0].Expression)
+	}
+	if len(comments) == 0 || !strings.Contains(comments[0], "IMPORT_TODO") {
+		t.Errorf("numeric operator should have IMPORT_TODO comment, got: %v", comments)
+	}
+}
+
+func TestImport_CheckovAnnotationsPresent(t *testing.T) {
+	input := `metadata:
+  name: "S3 encryption check"
+  id: "CKV2_CUSTOM_1"
+  category: "ENCRYPTION"
+definition:
+  cond_type: "attribute"
+  resource_types:
+    - "aws_s3_bucket"
+  attribute: "server_side_encryption_configuration"
+  operator: "exists"
+`
+	manifests, _, err := convertCheckov([]byte(input), "my-policy.yaml")
+	if err != nil {
+		t.Fatalf("convertCheckov failed: %v", err)
+	}
+	if len(manifests) == 0 {
+		t.Fatal("expected at least 1 manifest")
+	}
+	m := manifests[0]
+	if m.Metadata.Annotations["aegis.io/checkov-id"] != "CKV2_CUSTOM_1" {
+		t.Errorf("expected checkov-id annotation, got: %v", m.Metadata.Annotations)
+	}
+	if m.Metadata.Annotations["aegis.io/imported-from"] != "my-policy.yaml" {
+		t.Errorf("expected imported-from annotation, got: %v", m.Metadata.Annotations)
+	}
+}
+
+// ---- catalog generate-from-catalog tests ----
+
+func TestImport_GeneratesFromCatalog(t *testing.T) {
+	entries := []catalogEntry{
+		{Tool: "rm -rf", Family: "bash", RiskLevel: "critical"},
+		{Tool: "kubectl delete", Family: "bash", RiskLevel: "high"},
+		{Tool: "ls", Family: "bash", RiskLevel: "none"},
+		{Tool: "git log", Family: "bash", RiskLevel: "none"},
+		{Tool: "shutdown", Family: "bash", RiskLevel: "critical"},
+	}
+
+	manifests, comments := generateCatalogPolicies(entries)
+
+	// Only high/critical should be included
+	if len(manifests) != 3 {
+		t.Fatalf("expected 3 manifests (rm -rf, kubectl delete, shutdown), got %d", len(manifests))
+	}
+	if len(comments) != len(manifests) {
+		t.Errorf("comments count %d != manifests count %d", len(comments), len(manifests))
+	}
+
+	// Verify actions: critical → DENY, high → REQUIRE_APPROVAL
+	byName := map[string]aegisManifest{}
+	for _, m := range manifests {
+		byName[m.Metadata.Name] = m
+	}
+
+	rmManifest, ok := byName["catalog-auto-rm--rf"]
+	if !ok {
+		// sanitizeID replaces spaces and special chars
+		for k, v := range byName {
+			if strings.Contains(k, "rm") {
+				rmManifest = v
+				ok = true
+				break
+			}
+		}
+	}
+	if !ok {
+		t.Fatalf("no manifest found for rm -rf; keys: %v", func() []string {
+			var ks []string
+			for k := range byName {
+				ks = append(ks, k)
+			}
+			return ks
+		}())
+	}
+	if rmManifest.Spec.Validations[0].Action != "DENY" {
+		t.Errorf("critical risk should produce DENY, got %s", rmManifest.Spec.Validations[0].Action)
+	}
+
+	for _, m := range manifests {
+		if strings.Contains(m.Metadata.Name, "kubectl") {
+			if m.Spec.Validations[0].Action != "REQUIRE_APPROVAL" {
+				t.Errorf("high risk should produce REQUIRE_APPROVAL, got %s", m.Spec.Validations[0].Action)
+			}
+		}
+	}
+}
+
+func TestImport_GeneratesFromCatalogAnnotations(t *testing.T) {
+	entries := []catalogEntry{
+		{Tool: "terraform destroy", Family: "bash", RiskLevel: "critical"},
+	}
+
+	manifests, _ := generateCatalogPolicies(entries)
+	if len(manifests) != 1 {
+		t.Fatalf("expected 1 manifest, got %d", len(manifests))
+	}
+
+	m := manifests[0]
+	if m.Metadata.Annotations["aegis.io/source"] != "pkg/adapters/catalog.json" {
+		t.Errorf("expected catalog source annotation, got %v", m.Metadata.Annotations)
+	}
+	if m.Metadata.Annotations["aegis.io/risk-level"] != "critical" {
+		t.Errorf("expected risk-level annotation, got %v", m.Metadata.Annotations)
+	}
+	if !strings.Contains(m.Spec.Validations[0].Expression, "terraform destroy") {
+		t.Errorf("expression should reference tool name, got: %s", m.Spec.Validations[0].Expression)
+	}
+}
+
+func TestImport_GeneratesFromCatalogBashCEL(t *testing.T) {
+	entries := []catalogEntry{
+		{Tool: "kubectl delete", Family: "bash", RiskLevel: "high"},
+	}
+
+	manifests, _ := generateCatalogPolicies(entries)
+	if len(manifests) != 1 {
+		t.Fatalf("expected 1 manifest, got %d", len(manifests))
+	}
+
+	expr := manifests[0].Spec.Validations[0].Expression
+	if !strings.Contains(expr, `tool == "Bash"`) {
+		t.Errorf("bash family should check tool == Bash, got: %s", expr)
+	}
+	if !strings.Contains(expr, "startsWith") {
+		t.Errorf("bash family should use startsWith for command, got: %s", expr)
+	}
+}
+
 // ---- GitHub URL parsing tests (no HTTP) ----
 
 func TestImport_GitHubURLDetection(t *testing.T) {

@@ -60,6 +60,7 @@ const (
 	formatSettingsJSON              // {"permissions":{"deny":[...]}}
 	formatAgentWall                 // version: "2" + tools[].action
 	formatMCPVisor                  // deny_path / deny_command_pattern / etc.
+	formatCheckov                   // metadata.id starting with CKV + definition key
 )
 
 // ---- format-specific input structs ----
@@ -106,10 +107,10 @@ type agentWallFile struct {
 }
 
 type agentWallTool struct {
-	Name       string            `yaml:"name"`
-	Action     string            `yaml:"action"`
-	Risk       string            `yaml:"risk"`
-	Parameters []agentWallParam  `yaml:"parameters"`
+	Name       string           `yaml:"name"`
+	Action     string           `yaml:"action"`
+	Risk       string           `yaml:"risk"`
+	Parameters []agentWallParam `yaml:"parameters"`
 }
 
 type agentWallParam struct {
@@ -125,6 +126,43 @@ type mcpVisorFile struct {
 	DenyQueryPattern   []string `yaml:"deny_query_pattern"`
 	MaxFileSize        int64    `yaml:"max_file_size"`
 	MaxRows            int64    `yaml:"max_rows"`
+}
+
+// ---- Checkov input structs ----
+
+type checkovFile struct {
+	Metadata   checkovMetadata   `yaml:"metadata"`
+	Definition checkovDefinition `yaml:"definition"`
+}
+
+type checkovMetadata struct {
+	Name     string `yaml:"name"`
+	ID       string `yaml:"id"`
+	Category string `yaml:"category"`
+}
+
+// checkovDefinition handles both a flat condition and logical and/or groupings.
+type checkovDefinition struct {
+	// Flat condition fields
+	CondType      string   `yaml:"cond_type"`
+	ResourceTypes []string `yaml:"resource_types"`
+	Attribute     string   `yaml:"attribute"`
+	Operator      string   `yaml:"operator"`
+	Value         string   `yaml:"value"`
+	// Logical groupings
+	And []checkovDefinition `yaml:"and"`
+	Or  []checkovDefinition `yaml:"or"`
+}
+
+// ---- catalog JSON structs ----
+
+type catalogEntry struct {
+	Tool         string   `json:"tool"`
+	Family       string   `json:"family"`
+	Operation    string   `json:"operation"`
+	Effects      []string `json:"effects"`
+	ResourceType string   `json:"resource_type"`
+	RiskLevel    string   `json:"risk_level"`
 }
 
 // ---- output structs ----
@@ -223,7 +261,7 @@ func fetchGitHub(ctx context.Context, source string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("fetch GitHub archive: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("GitHub returned HTTP %d for %s", resp.StatusCode, zipURL)
@@ -265,7 +303,7 @@ func extractPolicyFiles(zipData []byte) ([]string, error) {
 			continue
 		}
 		data, err := io.ReadAll(rc)
-		rc.Close()
+		_ = rc.Close()
 		if err != nil {
 			continue
 		}
@@ -275,10 +313,10 @@ func extractPolicyFiles(zipData []byte) ([]string, error) {
 			continue
 		}
 		if _, err := tmp.Write(data); err != nil {
-			tmp.Close()
+			_ = tmp.Close()
 			continue
 		}
-		tmp.Close()
+		_ = tmp.Close()
 		paths = append(paths, tmp.Name())
 	}
 
@@ -322,10 +360,24 @@ func detectFormatWithName(filename string, data []byte) importFormat {
 		DenyCommandPattern []string `yaml:"deny_command_pattern"`
 		DenyQueryPattern   []string `yaml:"deny_query_pattern"`
 		AllowPath          []string `yaml:"allow_path"`
+		Metadata           struct {
+			ID string `yaml:"id"`
+		} `yaml:"metadata"`
+		Definition struct {
+			CondType string        `yaml:"cond_type"`
+			And      []interface{} `yaml:"and"`
+			Or       []interface{} `yaml:"or"`
+		} `yaml:"definition"`
 	}
 
 	if err := yaml.Unmarshal(data, &probe); err != nil {
 		return formatUnknown
+	}
+
+	// Checkov: metadata.id starts with "CKV" + definition has cond_type or and/or
+	if strings.HasPrefix(probe.Metadata.ID, "CKV") &&
+		(probe.Definition.CondType != "" || len(probe.Definition.And) > 0 || len(probe.Definition.Or) > 0) {
+		return formatCheckov
 	}
 
 	// AgentWall v2: version "2" + tools with action field
@@ -461,9 +513,12 @@ func convertFile(data []byte, sourcePath string) ([]aegisManifest, []string, err
 		return convertAgentWall(data, sourcePath)
 	case formatMCPVisor:
 		return convertMCPVisor(data, sourcePath)
-	default:
+	case formatCheckov:
+		return convertCheckov(data, sourcePath)
+	case formatUnknown:
 		return nil, nil, fmt.Errorf("unknown policy format in %s: file must contain a recognized policy structure", filepath.Base(sourcePath))
 	}
+	return nil, nil, fmt.Errorf("unhandled format in %s", filepath.Base(sourcePath))
 }
 
 // ---- PolicyLayer converter ----
@@ -944,6 +999,454 @@ func appendSkipComment(comments []string, msg string) []string {
 		comments[len(comments)-1] = msg
 	}
 	return comments
+}
+
+// ---- Checkov converter ----
+
+// resourceToFilePattern maps Checkov resource_types to file path regex patterns.
+var resourceToFilePattern = map[string]string{
+	"aws_s3_bucket":           `\.tf$`,
+	"aws_iam_policy":          `\.tf$|policy\.json$`,
+	"aws_security_group":      `\.tf$`,
+	"aws_instance":            `\.tf$`,
+	"aws_lambda_function":     `\.tf$`,
+	"aws_rds_instance":        `\.tf$`,
+	"aws_kms_key":             `\.tf$`,
+	"kubernetes_deployment":   `\.yaml$|\.yml$`,
+	"kubernetes_pod":          `\.yaml$|\.yml$`,
+	"kubernetes_container":    `\.yaml$|\.yml$`,
+	"kubernetes_daemonset":    `\.yaml$|\.yml$`,
+	"kubernetes_statefulset":  `\.yaml$|\.yml$`,
+	"kubernetes_job":          `\.yaml$|\.yml$`,
+	"kubernetes_cronjob":      `\.yaml$|\.yml$`,
+	"dockerfile":              `(?i)[Dd]ockerfile`,
+	"cloudformation":          `\.yaml$|\.json$|\.template$`,
+	"helm":                    `values\.yaml$|Chart\.yaml$`,
+	"terraform":               `\.tf$|\.tfvars$`,
+	"docker_container":        `(?i)[Dd]ockerfile|docker-compose\.yml$`,
+	"azurerm_storage_account": `\.tf$`,
+	"google_storage_bucket":   `\.tf$`,
+}
+
+// convertCheckov translates a single Checkov YAML custom policy file.
+func convertCheckov(data []byte, sourcePath string) ([]aegisManifest, []string, error) {
+	var file checkovFile
+	if err := yaml.Unmarshal(data, &file); err != nil {
+		return nil, nil, fmt.Errorf("parse Checkov YAML: %w", err)
+	}
+
+	id := sanitizeID(file.Metadata.ID)
+	if id == "" {
+		id = "checkov-unknown"
+	}
+	name := file.Metadata.Name
+	if name == "" {
+		name = file.Metadata.ID
+	}
+
+	var manifests []aegisManifest
+	var comments []string
+
+	// Determine file pattern from resource_types (use first known mapping)
+	filePattern := checkovFilePattern(file.Definition.ResourceTypes)
+
+	// Handle logical and/or at top level (depth-1 only; deeper → IMPORT_TODO)
+	if len(file.Definition.And) > 0 || len(file.Definition.Or) > 0 {
+		cels, comment := translateCheckovLogical(&file.Definition, filePattern, file.Metadata.ID)
+		if comment != "" {
+			comments = append(comments, comment)
+		} else {
+			comments = append(comments, "")
+		}
+		for _, cel := range cels {
+			m := checkovManifest(id, name, file.Metadata.Category, cel, "DENY", filepath.Base(sourcePath), file.Metadata.ID)
+			manifests = append(manifests, m)
+		}
+		return manifests, comments, nil
+	}
+
+	// Flat condition
+	cel, comment, action := translateCheckovCondition(&file.Definition, filePattern)
+	manifests = append(manifests, checkovManifest(id, name, file.Metadata.Category, cel, action, filepath.Base(sourcePath), file.Metadata.ID))
+	comments = append(comments, comment)
+
+	return manifests, comments, nil
+}
+
+// checkovFilePattern returns the combined file pattern for a list of resource_types.
+func checkovFilePattern(resourceTypes []string) string {
+	seen := map[string]bool{}
+	var patterns []string
+	for _, rt := range resourceTypes {
+		if p, ok := resourceToFilePattern[strings.ToLower(rt)]; ok && !seen[p] {
+			patterns = append(patterns, p)
+			seen[p] = true
+		}
+	}
+	if len(patterns) == 0 {
+		return `.*`
+	}
+	if len(patterns) == 1 {
+		return patterns[0]
+	}
+	return strings.Join(patterns, "|")
+}
+
+// translateCheckovCondition translates a single flat Checkov condition to CEL.
+func translateCheckovCondition(def *checkovDefinition, filePattern string) (cel, comment, action string) {
+	attr := def.Attribute
+	op := def.Operator
+	val := def.Value
+
+	switch op {
+	case "exists":
+		// Content SHOULD contain the attribute name
+		cel = fmt.Sprintf(
+			`request.args.path.matches(%q) && !request.args.content.contains(%q)`,
+			filePattern, attr,
+		)
+		action = "AUDIT"
+		comment = fmt.Sprintf("IMPORT_TODO: exists check is approximate — verifies string presence of %q in file content", attr)
+		return
+
+	case "not_exists":
+		// Content must NOT contain the attribute
+		cel = fmt.Sprintf(
+			`request.args.path.matches(%q) && request.args.content.contains(%q)`,
+			filePattern, attr,
+		)
+		action = "DENY"
+		return
+
+	case "equals":
+		cel = fmt.Sprintf(
+			`request.args.path.matches(%q) && request.args.content.contains(%q)`,
+			filePattern, val,
+		)
+		action = "AUDIT"
+		comment = fmt.Sprintf("IMPORT_TODO: equals check looks for string %q — may need more precise matching", val)
+		return
+
+	case "not_equals":
+		cel = fmt.Sprintf(
+			`request.args.path.matches(%q) && !request.args.content.contains(%q)`,
+			filePattern, val,
+		)
+		action = "AUDIT"
+		comment = fmt.Sprintf("IMPORT_TODO: not_equals check looks for absence of %q — may need more precise matching", val)
+		return
+
+	case "contains":
+		cel = fmt.Sprintf(
+			`request.args.path.matches(%q) && !request.args.content.contains(%q)`,
+			filePattern, val,
+		)
+		action = "DENY"
+		return
+
+	case "not_contains":
+		cel = fmt.Sprintf(
+			`request.args.path.matches(%q) && request.args.content.contains(%q)`,
+			filePattern, val,
+		)
+		action = "DENY"
+		return
+
+	case "regex_match":
+		cel = fmt.Sprintf(
+			`request.args.path.matches(%q) && request.args.content.matches(%q)`,
+			filePattern, val,
+		)
+		action = "DENY"
+		return
+
+	case "not_regex_match":
+		cel = fmt.Sprintf(
+			`request.args.path.matches(%q) && !request.args.content.matches(%q)`,
+			filePattern, val,
+		)
+		action = "AUDIT"
+		return
+
+	case "starting_with":
+		cel = fmt.Sprintf(
+			`request.args.path.matches(%q) && request.args.content.contains(%q)`,
+			filePattern, val,
+		)
+		action = "DENY"
+		comment = fmt.Sprintf("IMPORT_TODO: starting_with translated as content.contains(%q) — verify pattern", val)
+		return
+
+	case "not_starting_with":
+		cel = fmt.Sprintf(
+			`request.args.path.matches(%q) && !request.args.content.contains(%q)`,
+			filePattern, val,
+		)
+		action = "AUDIT"
+		comment = fmt.Sprintf("IMPORT_TODO: not_starting_with translated as !content.contains(%q) — verify pattern", val)
+		return
+
+	case "ending_with":
+		cel = fmt.Sprintf(
+			`request.args.path.matches(%q) && request.args.content.contains(%q)`,
+			filePattern, val,
+		)
+		action = "DENY"
+		comment = fmt.Sprintf("IMPORT_TODO: ending_with translated as content.contains(%q) — verify pattern", val)
+		return
+
+	case "not_ending_with":
+		cel = fmt.Sprintf(
+			`request.args.path.matches(%q) && !request.args.content.contains(%q)`,
+			filePattern, val,
+		)
+		action = "AUDIT"
+		comment = fmt.Sprintf("IMPORT_TODO: not_ending_with translated as !content.contains(%q) — verify pattern", val)
+		return
+
+	case "greater_than", "less_than", "greater_than_or_equal", "less_than_or_equal":
+		cel = "false"
+		action = "AUDIT"
+		comment = fmt.Sprintf("IMPORT_TODO: numeric operator %q requires value parsing — manual review required for attribute %q", op, attr)
+		return
+
+	case "within":
+		cel = fmt.Sprintf(`request.args.path.matches(%q) && !request.args.content.contains(%q)`, filePattern, val)
+		action = "AUDIT"
+		comment = fmt.Sprintf("IMPORT_TODO: within operator translated as content.contains(%q) — verify allowed set", val)
+		return
+
+	case "not_within":
+		cel = fmt.Sprintf(`request.args.path.matches(%q) && request.args.content.contains(%q)`, filePattern, val)
+		action = "DENY"
+		comment = fmt.Sprintf("IMPORT_TODO: not_within operator translated as content.contains(%q) — verify denied set", val)
+		return
+	}
+
+	// Unknown operator
+	cel = "false"
+	action = "AUDIT"
+	comment = fmt.Sprintf("IMPORT_TODO: unsupported Checkov operator %q — manual review required", op)
+	return
+}
+
+// translateCheckovLogical handles and/or logical groups (one level deep only).
+func translateCheckovLogical(def *checkovDefinition, filePattern, policyID string) ([]string, string) {
+	conditions := def.And
+	if len(conditions) == 0 {
+		conditions = def.Or
+	}
+
+	var cels []string
+	var todos []string
+
+	for i := range conditions {
+		child := &conditions[i]
+		// Reject deeper nesting
+		if len(child.And) > 0 || len(child.Or) > 0 {
+			return []string{"false"}, fmt.Sprintf("IMPORT_TODO: %s has nested and/or deeper than 1 level — manual review required", policyID)
+		}
+		fp := checkovFilePattern(child.ResourceTypes)
+		if fp == `.*` {
+			fp = filePattern
+		}
+		cel, comment, _ := translateCheckovCondition(child, fp)
+		cels = append(cels, cel)
+		if comment != "" {
+			todos = append(todos, comment)
+		}
+	}
+
+	combined := strings.Join(cels, " && ")
+	if len(def.Or) > 0 {
+		combined = strings.Join(cels, " || ")
+	}
+
+	return []string{combined}, strings.Join(todos, "; ")
+}
+
+func checkovManifest(id, name, category, cel, action, source, originalID string) aegisManifest {
+	severity := "medium"
+	cat := strings.ToLower(category)
+	if strings.Contains(cat, "encryption") || strings.Contains(cat, "iam") || strings.Contains(cat, "secret") {
+		severity = "high"
+	}
+	return aegisManifest{
+		APIVersion: "aegis.io/v1",
+		Kind:       "PolicyTemplate",
+		Metadata: aegisMetadata{
+			Name: id,
+			Annotations: map[string]string{
+				"aegis.io/imported-from":  source,
+				"aegis.io/severity":       severity,
+				"aegis.io/checkov-id":     originalID,
+				"aegis.io/checkov-source": "checkov-custom-policy",
+			},
+		},
+		Spec: aegisPolicySpec{
+			Description: name,
+			MatchConstraints: aegisMatchConstraints{
+				Tools: []string{"Write", "Edit"},
+			},
+			Validations: []aegisValidation{
+				{
+					Expression: cel,
+					Message:    fmt.Sprintf("Checkov policy %s: %s", originalID, name),
+					Action:     action,
+				},
+			},
+			DefaultAction: "ALLOW",
+		},
+	}
+}
+
+// ---- catalog generate-from-catalog command ----
+
+var generateCatalogOutDir string
+
+var generateFromCatalogCmd = &cobra.Command{
+	Use:   "generate-from-catalog",
+	Short: "Generate Aegis policies from pkg/adapters/catalog.json for high and critical risk entries",
+	Long: `Reads pkg/adapters/catalog.json and generates Aegis PolicyTemplate YAML files
+for every entry with risk_level "high" or "critical".
+
+Example:
+  aegis policy generate-from-catalog --out policies/imported/catalog-generated/`,
+	Args: cobra.NoArgs,
+	RunE: runGenerateFromCatalog,
+}
+
+func init() {
+	generateFromCatalogCmd.Flags().StringVar(&generateCatalogOutDir, "out", "./policies/imported/catalog-generated", "Output directory for generated policies")
+	generateFromCatalogCmd.Flags().BoolVar(&importDryRun, "dry-run", false, "Print generated policies without writing files")
+	policyCmd.AddCommand(generateFromCatalogCmd)
+}
+
+func runGenerateFromCatalog(cmd *cobra.Command, _ []string) error {
+	// Resolve catalog path relative to cwd or standard location
+	catalogPath := "pkg/adapters/catalog.json"
+	if _, err := os.Stat(catalogPath); os.IsNotExist(err) {
+		// Try searching up two levels
+		catalogPath = "../../pkg/adapters/catalog.json"
+		if _, err2 := os.Stat(catalogPath); os.IsNotExist(err2) {
+			return fmt.Errorf("catalog.json not found at pkg/adapters/catalog.json or ../../pkg/adapters/catalog.json")
+		}
+	}
+
+	data, err := os.ReadFile(catalogPath)
+	if err != nil {
+		return fmt.Errorf("read catalog: %w", err)
+	}
+
+	var entries []catalogEntry
+	if err := json.Unmarshal(data, &entries); err != nil {
+		return fmt.Errorf("parse catalog JSON: %w", err)
+	}
+
+	manifests, comments := generateCatalogPolicies(entries)
+
+	if importDryRun {
+		if err := printDryRun(cmd, manifests, comments); err != nil {
+			return err
+		}
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "# generated %d policies from catalog\n", len(manifests))
+		return nil
+	}
+
+	if err := os.MkdirAll(generateCatalogOutDir, 0755); err != nil {
+		return fmt.Errorf("create output directory: %w", err)
+	}
+
+	for i, m := range manifests {
+		filename := m.Metadata.Name + ".yaml"
+		outPath := filepath.Join(generateCatalogOutDir, filename)
+
+		yamlData, err := yaml.Marshal(m)
+		if err != nil {
+			return fmt.Errorf("marshal policy %s: %w", m.Metadata.Name, err)
+		}
+
+		var content strings.Builder
+		if i < len(comments) && comments[i] != "" {
+			content.WriteString("# ")
+			content.WriteString(comments[i])
+			content.WriteString("\n")
+		}
+		content.WriteString("# auto-generated from pkg/adapters/catalog.json via aegis policy generate-from-catalog\n")
+		content.Write(yamlData)
+
+		if err := os.WriteFile(outPath, []byte(content.String()), 0644); err != nil {
+			return fmt.Errorf("write %s: %w", outPath, err)
+		}
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "wrote %s\n", outPath)
+	}
+
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "generated %d policies to %s\n", len(manifests), generateCatalogOutDir)
+	return nil
+}
+
+// generateCatalogPolicies creates Aegis manifests for high/critical catalog entries.
+func generateCatalogPolicies(entries []catalogEntry) ([]aegisManifest, []string) {
+	var manifests []aegisManifest
+	var comments []string
+
+	for _, e := range entries {
+		if e.RiskLevel != "high" && e.RiskLevel != "critical" {
+			continue
+		}
+
+		id := "catalog-auto-" + sanitizeID(e.Tool)
+		toolName := e.Tool
+		action := "REQUIRE_APPROVAL"
+		if e.RiskLevel == "critical" {
+			action = "DENY"
+		}
+
+		// Build CEL: for Bash family tools check command prefix, others check tool name
+		var cel string
+		if e.Family == "bash" {
+			cel = fmt.Sprintf(`tool == "Bash" && request.args.command.startsWith(%q)`, toolName)
+		} else {
+			cel = fmt.Sprintf(`tool == %q`, toolName)
+		}
+
+		desc := fmt.Sprintf("Require approval for %s (%s risk level: %s)", toolName, e.Family, e.RiskLevel)
+		if action == "DENY" {
+			desc = fmt.Sprintf("Deny critically-risky %s (%s)", toolName, e.Family)
+		}
+
+		m := aegisManifest{
+			APIVersion: "aegis.io/v1",
+			Kind:       "PolicyTemplate",
+			Metadata: aegisMetadata{
+				Name: id,
+				Annotations: map[string]string{
+					"aegis.io/source":     "pkg/adapters/catalog.json",
+					"aegis.io/risk-level": e.RiskLevel,
+					"aegis.io/family":     e.Family,
+					"aegis.io/severity":   e.RiskLevel,
+				},
+			},
+			Spec: aegisPolicySpec{
+				Description: desc,
+				MatchConstraints: aegisMatchConstraints{
+					Tools: []string{"Bash"},
+				},
+				Validations: []aegisValidation{
+					{
+						Expression: cel,
+						Message:    fmt.Sprintf("%s is classified as %s risk — approval required", toolName, e.RiskLevel),
+						Action:     action,
+					},
+				},
+				DefaultAction: "ALLOW",
+			},
+		}
+		manifests = append(manifests, m)
+		comments = append(comments, "")
+	}
+
+	return manifests, comments
 }
 
 // ---- rule translation helpers ----
