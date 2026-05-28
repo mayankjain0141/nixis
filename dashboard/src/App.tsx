@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { MetricsBar } from './components/governance/MetricsBar';
 import { EventStream } from './components/governance/EventStream';
 import { CommandPalette } from './components/shell/CommandPalette';
+import { Inspector } from './components/shell/Inspector';
 import { useGovernanceStore } from './stores/governance-store';
 import { useMetricsStore } from './stores/metrics-store';
 import { useStreamStore } from './stores/stream-store';
@@ -183,11 +184,8 @@ export default function App() {
           <EventStream />
         </main>
 
-        <aside style={styles.inspector} aria-label="Inspector panel (coming soon)">
-          <div style={styles.inspectorPlaceholder}>
-            <span style={styles.placeholderText}>Inspector</span>
-            <span style={styles.placeholderSub}>WS-23</span>
-          </div>
+        <aside style={styles.inspector} aria-label="Inspector panel">
+          <Inspector />
         </aside>
       </div>
     </div>

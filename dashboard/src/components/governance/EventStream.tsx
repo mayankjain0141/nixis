@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { List, useListRef } from 'react-window';
 import type { CSSProperties, UIEvent } from 'react';
 import { useGovernanceStore, type GovernanceEvent } from '../../stores/governance-store';
+import { useUIStore } from '../../stores/ui-store';
 import type { Verdict } from '../../types/events';
 
 const ROW_HEIGHT = 36;
@@ -47,14 +48,28 @@ function EventRow({
   events: readonly GovernanceEvent[];
 }) {
   const event = events[index];
+  const openInspector = useUIStore((s) => s.openInspector);
+  const inspectorTarget = useUIStore((s) => s.inspectorTarget);
   if (!event) return null;
 
   const verdictColor = VERDICT_COLORS[event.verdict];
   const ts = formatTimestamp(event.timestamp);
   const reason = truncate(event.reason || '—', 80);
+  const isSelected = inspectorTarget === event.id;
 
   return (
-    <div style={{ ...style, ...rowStyles.row }} role="row">
+    <div
+      style={{
+        ...style,
+        ...rowStyles.row,
+        cursor: 'pointer',
+        background: isSelected ? '#21262d' : undefined,
+        outline: isSelected ? '1px solid #388bfd' : undefined,
+      }}
+      role="row"
+      aria-selected={isSelected}
+      onClick={() => openInspector(event.id)}
+    >
       <span style={rowStyles.timestamp}>{ts}</span>
       <span style={rowStyles.tool} title={event.tool}>{event.tool}</span>
       <span
