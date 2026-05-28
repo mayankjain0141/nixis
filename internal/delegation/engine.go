@@ -14,11 +14,25 @@ import (
 
 const maxChainDepth = 8
 
+// EmitFn is called when a delegation lifecycle event occurs.
+// eventType is one of "delegation.revoked" or "delegation.expired".
+// If nil, events are logged only.
+type EmitFn func(eventType string, chainID string, reason string)
+
 // Engine validates Ed25519 delegation chains and tracks active chains for TTL expiry.
 type Engine struct {
 	trustedKeys  []ed25519.PublicKey
 	mu           sync.RWMutex
 	activeChains map[string]*Chain
+	emitFn       EmitFn // optional; set via SetEmitFn after construction
+}
+
+// SetEmitFn sets the function used to emit delegation CloudEvents.
+// Safe to call concurrently; replaces any previously set function.
+func (e *Engine) SetEmitFn(fn EmitFn) {
+	e.mu.Lock()
+	e.emitFn = fn
+	e.mu.Unlock()
 }
 
 // New creates a delegation Engine with the given trusted public keys (up to 3).
@@ -106,12 +120,16 @@ func (e *Engine) Register(chainID string, chain *Chain) {
 }
 
 // Revoke explicitly removes a chain from the active-chains map and emits a
-// delegation.revoked log event. Phase 3 will replace the log with a CloudEvent.
+// delegation.revoked event via the registered EmitFn (if set).
 func (e *Engine) Revoke(chainID string) {
 	e.mu.Lock()
 	delete(e.activeChains, chainID)
+	emit := e.emitFn
 	e.mu.Unlock()
 	log.Printf("delegation.revoked: chain %s explicitly revoked", chainID)
+	if emit != nil {
+		emit("delegation.revoked", chainID, "explicit_revocation")
+	}
 }
 
 // ValidateChain decodes, verifies, and builds a Chain from the given DelegationRef
@@ -175,11 +193,19 @@ func (e *Engine) StartExpiryChecker(ctx context.Context, interval time.Duration)
 // removeExpired scans the active chains and removes those with all tokens expired.
 func (e *Engine) removeExpired(now time.Time) {
 	e.mu.Lock()
-	defer e.mu.Unlock()
+	var expired []string
 	for id, chain := range e.activeChains {
 		if isChainExpired(chain, now) {
 			log.Printf("delegation: expiring chain %s (expired at %v)", id, chain.tokens[len(chain.tokens)-1].ExpiresAt)
 			delete(e.activeChains, id)
+			expired = append(expired, id)
+		}
+	}
+	emit := e.emitFn
+	e.mu.Unlock()
+	if emit != nil {
+		for _, id := range expired {
+			emit("delegation.expired", id, "ttl_elapsed")
 		}
 	}
 }

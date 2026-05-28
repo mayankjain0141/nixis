@@ -238,6 +238,20 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [setCommandPaletteOpen]);
 
+  // Handle aegis:navigate events dispatched by CommandPalette navigation commands.
+  useEffect(() => {
+    function handleNavigate(e: Event) {
+      const panel = (e as CustomEvent<{ panel: string }>).detail?.panel;
+      if (panel === 'events') {
+        document.querySelector('main[aria-label="Live event stream"]')?.scrollIntoView();
+      } else if (panel === 'inspector') {
+        document.querySelector('[aria-label="Inspector panel"]')?.scrollIntoView();
+      }
+    }
+    window.addEventListener('aegis:navigate', handleNavigate);
+    return () => window.removeEventListener('aegis:navigate', handleNavigate);
+  }, []);
+
   // Governance invariant checker on 5s interval.
   useEffect(() => {
     const checker = new GovernanceInvariantChecker({
