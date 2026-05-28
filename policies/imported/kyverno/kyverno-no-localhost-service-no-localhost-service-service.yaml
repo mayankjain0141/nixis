@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-no-localhost-service-no-localhost-service-service
+    annotations:
+        aegis.io/imported-from: aegis-import-4291154666.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Sample
+spec:
+    description: A Service of type ExternalName which points back to localhost can potentially be used to exploit vulnerabilities in some Ingress controllers. This policy audits Services of type ExternalName if the externalName field refers to localhost.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+service|expose)")
+          message: Service of type ExternalName cannot point to localhost.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

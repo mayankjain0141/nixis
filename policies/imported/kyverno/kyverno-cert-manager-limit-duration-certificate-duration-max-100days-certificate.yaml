@@ -1,0 +1,20 @@
+# IMPORT_TODO: JMESPath conditions in cert-manager-limit-duration/certificate-duration-max-100days could not be translated — kubectl pattern match generated as base condition only
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-cert-manager-limit-duration-certificate-duration-max-100days-certificate
+    annotations:
+        aegis.io/imported-from: aegis-import-2875346806.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Cert-Manager
+spec:
+    description: Kubernetes managed non-letsencrypt certificates have to be renewed in every 100 days.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: certificate duration must be < than 2400h (100 days)
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-require-container-port-names-port-name-pod
+    annotations:
+        aegis.io/imported-from: aegis-import-2691507925.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Other
+spec:
+    description: 'Containers may define ports on which they listen. In addition to a port number, a name field may optionally be used. Including a name makes it easier when defining Service resource definitions and others since the name may be referenced allowing the port number to change. This policy requires that for every containerPort defined there is also a name specified.      '
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+          message: Name is required for every containerPort.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

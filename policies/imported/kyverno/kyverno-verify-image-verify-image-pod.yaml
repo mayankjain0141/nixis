@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-verify-image-verify-image-pod
+    annotations:
+        aegis.io/imported-from: aegis-import-2600904380.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Software Supply Chain Security, EKS Best Practices
+spec:
+    description: Using the Cosign project, OCI images may be signed to ensure supply chain security is maintained. Those signatures can be verified before pulling into a cluster. This policy checks the signature of an image repo called ghcr.io/kyverno/test-verify-image to ensure it has been signed by verifying its signature against the provided public key. This policy serves as an illustration for how to configure a similar rule and will require replacing with your image(s) and keys.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+          message: Using the Cosign project, OCI images may be signed to ensure supply chain security is maintained. Those signatures can be verified before pulling into a cluster. This policy checks the signature of an image repo called ghcr.io/kyverno/test-verify-image to ensure it has been signed by verifying its signature against the provided public key. This policy serves as an illustration for how to configure a similar rule and will require replacing with your image(s) and keys.
+          action: DENY
+    defaultAction: ALLOW

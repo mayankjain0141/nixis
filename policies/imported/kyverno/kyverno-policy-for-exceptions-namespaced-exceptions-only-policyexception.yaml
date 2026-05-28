@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-policy-for-exceptions-namespaced-exceptions-only-policyexception
+    annotations:
+        aegis.io/imported-from: aegis-import-1163432214.yaml
+        aegis.io/severity: low
+        kyverno.io/category: Sample
+spec:
+    description: A PolicyException grants the applicable resource(s) or subject(s) the ability to bypass an existing Kyverno policy. Care should be taken to ensure that the allowed PolicyExceptions are scoped fine enough and according to your organization's operation. This is a Kyverno policy intended to provide guardrails for Kyverno PolicyExceptions and contains a number of rules which may help with these scoping best practices. These rules may be changed/removed depending on the exception practices to be implemented.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: An exception can only be created for a Namespaced resource, and a Namespace is required.
+          action: AUDIT
+    defaultAction: ALLOW

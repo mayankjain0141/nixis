@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-verify-git-repositories-github-repositories-only-gitrepository
+    annotations:
+        aegis.io/imported-from: aegis-import-3009354479.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Flux
+spec:
+    description: Ensures that Git repositories used for Flux deployments in a cluster originate from a specific, trusted organization. Prevents the use of untrusted or potentially risky Git repositories. Protects the integrity and security of Flux deployments.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: .spec.url must be from a repository within the organisation X
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

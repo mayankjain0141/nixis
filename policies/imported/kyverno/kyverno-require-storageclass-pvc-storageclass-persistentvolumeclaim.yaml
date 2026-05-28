@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-require-storageclass-pvc-storageclass-persistentvolumeclaim
+    annotations:
+        aegis.io/imported-from: aegis-import-622206695.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Other, Multi-Tenancy
+spec:
+    description: PersistentVolumeClaims (PVCs) and StatefulSets may optionally define a StorageClass to dynamically provision storage. In a multi-tenancy environment where StorageClasses are far more common, it is often better to require storage only be provisioned from these StorageClasses. This policy requires that PVCs and StatefulSets containing volumeClaimTemplates define the storageClassName field with some value.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: PersistentVolumeClaims must define a storageClassName.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

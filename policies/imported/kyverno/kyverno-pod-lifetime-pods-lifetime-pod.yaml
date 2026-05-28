@@ -1,0 +1,20 @@
+# IMPORT_TODO: JMESPath conditions in pod-lifetime/pods-lifetime could not be translated — kubectl pattern match generated as base condition only
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-pod-lifetime-pods-lifetime-pod
+    annotations:
+        aegis.io/imported-from: aegis-import-1005813845.yaml
+        aegis.io/severity: low
+        kyverno.io/category: Sample
+spec:
+    description: This validation is valuable when annotations are used to define durations, such as to ensure a Pod lifetime annotation does not exceed some site specific max threshold. Pod lifetime annotation can be no greater than 8 hours.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+          message: Pod lifetime exceeds limit of 8h
+          action: AUDIT
+    defaultAction: ALLOW

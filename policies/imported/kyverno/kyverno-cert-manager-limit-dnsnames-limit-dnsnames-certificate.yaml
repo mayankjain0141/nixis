@@ -1,0 +1,20 @@
+# IMPORT_TODO: JMESPath conditions in cert-manager-limit-dnsnames/limit-dnsnames could not be translated — kubectl pattern match generated as base condition only
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-cert-manager-limit-dnsnames-limit-dnsnames-certificate
+    annotations:
+        aegis.io/imported-from: aegis-import-3564060398.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Cert-Manager
+spec:
+    description: Some applications will not accept certificates containing more than a single name. This policy ensures that each certificate request contains only one DNS name entry.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: Only one dnsNames entry allowed per certificate request.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

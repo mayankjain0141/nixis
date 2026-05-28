@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-verify-flux-sources-flux-buckets-bucket
+    annotations:
+        aegis.io/imported-from: aegis-import-3172529943.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Flux
+spec:
+    description: Flux source APIs include a number of different sources such as GitRepository, Bucket, HelmRepository, and ImageRepository resources. Each of these by default can be pointed to any location. In a production environment, it may be desired to restrict these to only known sources to prevent accessing outside sources. This policy verifies that each of the Flux sources comes from a trusted location.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: .spec.endpoint must reference an address within the myorg organization.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

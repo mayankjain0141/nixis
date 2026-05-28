@@ -1,0 +1,20 @@
+# IMPORT_TODO: JMESPath conditions in restrict-networkpolicy-empty-podselector/empty-podselector could not be translated — kubectl pattern match generated as base condition only
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-restrict-networkpolicy-empty-podselector-empty-podselector-networkpolicy
+    annotations:
+        aegis.io/imported-from: aegis-import-3964971703.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Other, Multi-Tenancy
+spec:
+    description: By default, all pods in a Kubernetes cluster are allowed to communicate with each other, and all network traffic is unencrypted. It is recommended to not use an empty podSelector in order to more closely control the necessary traffic flows. This policy requires that all NetworkPolicies other than that of `default-deny` not use an empty podSelector.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: NetworkPolicies must not use an empty podSelector.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

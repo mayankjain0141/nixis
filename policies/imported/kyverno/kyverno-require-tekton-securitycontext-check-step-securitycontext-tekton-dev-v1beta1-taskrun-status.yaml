@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-require-tekton-securitycontext-check-step-securitycontext-tekton-dev-v1beta1-taskrun-status
+    annotations:
+        aegis.io/imported-from: aegis-import-2584712616.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Tekton
+spec:
+    description: A securityContext is required for each TaskRun step.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: A securityContext is required with `privileged` and `allowPrivilegeEscalation` set to `false`.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

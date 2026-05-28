@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-disallow-container-sock-mounts-validate-socket-mounts-pod
+    annotations:
+        aegis.io/imported-from: aegis-import-411553414.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Best Practices, EKS Best Practices in CEL
+spec:
+    description: Container daemon socket bind mounts allows access to the container engine on the node. This access can be used for privilege escalation and to manage containers outside of Kubernetes, and hence should not be allowed. This policy validates that the sockets used for CRI engines Docker, Containerd, and CRI-O are not used. In addition to or replacement of this policy, preventing users from mounting the parent directories (/var/run and /var) may be necessary to completely prevent socket bind mounts.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(create|run|apply).*|kubectl.*(patch|edit|set).*")
+          message: Container daemon socket bind mounts allows access to the container engine on the node. This access can be used for privilege escalation and to manage containers outside of Kubernetes, and hence should not be allowed. This policy validates that the sockets used for CRI engines Docker, Containerd, and CRI-O are not used. In addition to or replacement of this policy, preventing users from mounting the parent directories (/var/run and /var) may be necessary to completely prevent socket bind mounts.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

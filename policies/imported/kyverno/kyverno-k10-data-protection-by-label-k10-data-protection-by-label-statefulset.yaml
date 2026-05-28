@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-k10-data-protection-by-label-k10-data-protection-by-label-statefulset
+    annotations:
+        aegis.io/imported-from: aegis-import-20388936.yaml
+        aegis.io/severity: low
+        kyverno.io/category: Kasten K10 by Veeam in CEL
+spec:
+    description: Check the 'dataprotection' label that production Deployments and StatefulSet have a named K10 Policy. Use in combination with 'generate' ClusterPolicy to 'generate' a specific K10 Policy by name.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(create|run|apply).*|kubectl.*(patch|edit|set).*")
+          message: Check the 'dataprotection' label that production Deployments and StatefulSet have a named K10 Policy. Use in combination with 'generate' ClusterPolicy to 'generate' a specific K10 Policy by name.
+          action: AUDIT
+    defaultAction: ALLOW

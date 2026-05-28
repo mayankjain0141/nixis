@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-restrict-ingress-classes-validate-ingress-ingress
+    annotations:
+        aegis.io/imported-from: aegis-import-2694654595.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Sample
+spec:
+    description: Ingress classes should only be allowed which match up to deployed Ingress controllers in the cluster. Allowing users to define classes which cannot be satisfied by a deployed Ingress controller can result in either no or undesired functionality. This policy checks Ingress resources and only allows those which define `HAProxy` or `nginx` in the respective annotation. This annotation has largely been replaced as of Kubernetes 1.18 with the IngressClass resource.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: Unknown ingress class.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

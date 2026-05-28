@@ -1,0 +1,20 @@
+# IMPORT_TODO: JMESPath conditions in deny-exec-by-namespace-label/deny-exec-by-ns-label could not be translated — kubectl pattern match generated as base condition only
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-deny-exec-by-namespace-label-deny-exec-by-ns-label-pod-exec
+    annotations:
+        aegis.io/imported-from: aegis-import-541732727.yaml
+        aegis.io/severity: low
+        kyverno.io/category: Sample
+spec:
+    description: The `exec` command may be used to gain shell access, or run other commands, in a Pod's container. While this can be useful for troubleshooting purposes, it could represent an attack vector and is discouraged. This policy blocks Pod exec commands based upon a Namespace label `exec=false`.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: Executing a command in a container is forbidden for Pods running in Namespaces protected with the label "exec=false".
+          action: DENY
+    defaultAction: ALLOW

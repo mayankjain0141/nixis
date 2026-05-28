@@ -1,0 +1,19 @@
+# IMPORT_TODO: mutate rule — Aegis does not mutate requests
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-add-pod-proxies-add-pod-proxies
+    annotations:
+        aegis.io/imported-from: aegis-import-1680981996.yaml
+        aegis.io/severity: low
+        kyverno.io/category: Sample
+spec:
+    description: In restricted environments, Pods may not be allowed to egress directly to all destinations and some overrides to specific addresses may need to go through a corporate proxy. This policy adds proxy information to Pods in the form of environment variables. It will add the `env` array if not present. If any Pods have any of these env vars, they will be overwritten with the value(s) in this policy.
+    matchConstraints:
+        tools: []
+    validations:
+        - expression: "false"
+          message: 'IMPORT_TODO: mutate rule — Aegis does not mutate requests — manual review required'
+          action: AUDIT
+    defaultAction: ALLOW

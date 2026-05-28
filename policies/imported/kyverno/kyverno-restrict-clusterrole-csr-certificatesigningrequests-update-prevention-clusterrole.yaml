@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-restrict-clusterrole-csr-certificatesigningrequests-update-prevention-clusterrole
+    annotations:
+        aegis.io/imported-from: aegis-import-966126348.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Other
+spec:
+    description: ClusterRoles that grant permissions to approve CertificateSigningRequests should be minimized to reduce powerful identities in the cluster. Approving CertificateSigningRequests allows one to issue new credentials for any user or group. As such, ClusterRoles that grant permissions to approve CertificateSigningRequests are granting cluster admin privileges. Minimize such ClusterRoles to limit the number of powerful credentials that if compromised could take over the entire cluster. For more information, refer to https://docs.prismacloud.io/en/enterprise-edition/policy-reference/kubernetes-policies/kubernetes-policy-index/ensure-clusterroles-that-grant-permissions-to-approve-certificatesigningrequests-are-minimized.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(create\s+clusterrole|delete\s+clusterrole)")
+          message: Use of verbs `update` and `patch` are forbidden for certificatesigningrequests/approval.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

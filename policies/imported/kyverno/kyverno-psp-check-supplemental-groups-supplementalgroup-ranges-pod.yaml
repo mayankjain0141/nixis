@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-psp-check-supplemental-groups-supplementalgroup-ranges-pod
+    annotations:
+        aegis.io/imported-from: aegis-import-895945782.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: PSP Migration
+spec:
+    description: Supplemental groups control which group IDs containers add and can coincide with restricted groups on the host. Pod Security Policies (PSP) allowed a range of these group IDs to be specified which were allowed. This policy ensures any Pod may only specify supplementalGroup IDs between 100-200 or 500-600.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+          message: Any supplementalGroup ID must be within the range 100-200 or 500-600.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

@@ -3,6 +3,7 @@ package main
 import (
 	"archive/zip"
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -797,6 +798,397 @@ func TestImport_ParseGitHubURL(t *testing.T) {
 				t.Errorf("ref: got %q, want %q", ref.ref, tt.wantRef)
 			}
 		})
+	}
+}
+
+// ---- Kyverno tests ----
+
+func TestImport_DetectsKyvernoFormat(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  importFormat
+	}{
+		{
+			name: "ClusterPolicy",
+			input: `apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-pod-deletion
+spec:
+  validationFailureAction: Enforce
+  rules: []
+`,
+			want: formatKyverno,
+		},
+		{
+			name: "Policy",
+			input: `apiVersion: kyverno.io/v1
+kind: Policy
+metadata:
+  name: restrict-secrets
+spec:
+  validationFailureAction: Audit
+  rules: []
+`,
+			want: formatKyverno,
+		},
+		{
+			name: "v2beta1 ClusterPolicy",
+			input: `apiVersion: kyverno.io/v2beta1
+kind: ClusterPolicy
+metadata:
+  name: some-policy
+spec:
+  rules: []
+`,
+			want: formatKyverno,
+		},
+		{
+			name: "non-kyverno",
+			input: `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+`,
+			want: formatUnknown,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := detectFormat([]byte(tt.input))
+			if got != tt.want {
+				t.Errorf("detectFormat = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestImport_TranslatesKyvernoDelete(t *testing.T) {
+	input := `apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-pod-deletion
+  annotations:
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/description: "Prevents pod deletion without approval"
+spec:
+  validationFailureAction: Enforce
+  rules:
+    - name: check-deletion
+      match:
+        any:
+        - resources:
+            kinds: [Pod]
+            operations: [DELETE]
+      validate:
+        message: "Deleting pods requires approval"
+        deny:
+          conditions:
+            any: []
+`
+
+	manifests, _, err := convertKyverno([]byte(input), "restrict-pod-deletion.yaml")
+	if err != nil {
+		t.Fatalf("convertKyverno failed: %v", err)
+	}
+
+	if len(manifests) != 1 {
+		t.Fatalf("expected 1 manifest, got %d", len(manifests))
+	}
+
+	m := manifests[0]
+	expr := m.Spec.Validations[0].Expression
+	if !strings.Contains(expr, `tool == "Bash"`) {
+		t.Errorf("CEL should target Bash tool, got: %s", expr)
+	}
+	if !strings.Contains(strings.ToLower(expr), "kubectl") {
+		t.Errorf("CEL should reference kubectl, got: %s", expr)
+	}
+	if !strings.Contains(strings.ToLower(expr), "delete") {
+		t.Errorf("CEL should match delete operation, got: %s", expr)
+	}
+}
+
+func TestImport_TranslatesKyvernoEnforce(t *testing.T) {
+	enforce := `apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: enforce-policy
+spec:
+  validationFailureAction: Enforce
+  rules:
+    - name: block-ns-deletion
+      match:
+        any:
+        - resources:
+            kinds: [Namespace]
+            operations: [DELETE]
+      validate:
+        message: "Namespace deletion blocked"
+        deny:
+          conditions:
+            any: []
+`
+
+	audit := `apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: audit-policy
+spec:
+  validationFailureAction: Audit
+  rules:
+    - name: audit-ns-creation
+      match:
+        any:
+        - resources:
+            kinds: [Namespace]
+            operations: [CREATE]
+      validate:
+        message: "Namespace creation audited"
+        deny:
+          conditions:
+            any: []
+`
+
+	enforceManifests, _, err := convertKyverno([]byte(enforce), "enforce.yaml")
+	if err != nil {
+		t.Fatalf("convertKyverno (Enforce) failed: %v", err)
+	}
+	if len(enforceManifests) != 1 {
+		t.Fatalf("expected 1 manifest, got %d", len(enforceManifests))
+	}
+	if enforceManifests[0].Spec.Validations[0].Action != "DENY" {
+		t.Errorf("Enforce should produce DENY, got %s", enforceManifests[0].Spec.Validations[0].Action)
+	}
+
+	auditManifests, _, err := convertKyverno([]byte(audit), "audit.yaml")
+	if err != nil {
+		t.Fatalf("convertKyverno (Audit) failed: %v", err)
+	}
+	if len(auditManifests) != 1 {
+		t.Fatalf("expected 1 manifest, got %d", len(auditManifests))
+	}
+	if auditManifests[0].Spec.Validations[0].Action != "AUDIT" {
+		t.Errorf("Audit should produce AUDIT, got %s", auditManifests[0].Spec.Validations[0].Action)
+	}
+}
+
+func TestImport_TranslatesKyvernoSeverity(t *testing.T) {
+	tests := []struct {
+		severity   string
+		vfa        string
+		wantAction string
+	}{
+		{severity: "critical", vfa: "Audit", wantAction: "DENY"},
+		{severity: "high", vfa: "Audit", wantAction: "DENY"},
+		{severity: "medium", vfa: "Audit", wantAction: "REQUIRE_APPROVAL"},
+		{severity: "medium", vfa: "Enforce", wantAction: "DENY"},
+		{severity: "low", vfa: "Enforce", wantAction: "AUDIT"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.severity+"/"+tt.vfa, func(t *testing.T) {
+			input := fmt.Sprintf(`apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: severity-test
+  annotations:
+    policies.kyverno.io/severity: %s
+spec:
+  validationFailureAction: %s
+  rules:
+    - name: check-pod
+      match:
+        any:
+        - resources:
+            kinds: [Pod]
+            operations: [DELETE]
+      validate:
+        message: "test"
+        deny:
+          conditions:
+            any: []
+`, tt.severity, tt.vfa)
+
+			manifests, _, err := convertKyverno([]byte(input), "test.yaml")
+			if err != nil {
+				t.Fatalf("convertKyverno failed: %v", err)
+			}
+			if len(manifests) == 0 {
+				t.Fatal("expected at least 1 manifest")
+			}
+			got := manifests[0].Spec.Validations[0].Action
+			if got != tt.wantAction {
+				t.Errorf("severity=%s vfa=%s: got action %s, want %s", tt.severity, tt.vfa, got, tt.wantAction)
+			}
+		})
+	}
+}
+
+func TestImport_SkipsMutateRules(t *testing.T) {
+	input := `apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: mutate-policy
+spec:
+  validationFailureAction: Enforce
+  rules:
+    - name: add-labels
+      match:
+        any:
+        - resources:
+            kinds: [Pod]
+      mutate:
+        patchStrategicMerge:
+          metadata:
+            labels:
+              env: production
+`
+
+	manifests, comments, err := convertKyverno([]byte(input), "mutate.yaml")
+	if err != nil {
+		t.Fatalf("convertKyverno failed: %v", err)
+	}
+	if len(manifests) != 1 {
+		t.Fatalf("expected 1 IMPORT_TODO manifest for mutate rule, got %d", len(manifests))
+	}
+
+	// Expression must be "false" for IMPORT_TODO
+	if manifests[0].Spec.Validations[0].Expression != "false" {
+		t.Errorf("mutate rule should produce 'false' expression, got %s", manifests[0].Spec.Validations[0].Expression)
+	}
+	if !strings.Contains(comments[0], "IMPORT_TODO") {
+		t.Errorf("mutate rule should have IMPORT_TODO comment, got %q", comments[0])
+	}
+	if !strings.Contains(comments[0], "mutate") {
+		t.Errorf("IMPORT_TODO comment should mention mutate, got %q", comments[0])
+	}
+}
+
+func TestImport_KyvernoJMESPathConditions(t *testing.T) {
+	input := `apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-prod-deletion
+  annotations:
+    policies.kyverno.io/severity: high
+spec:
+  validationFailureAction: Enforce
+  rules:
+    - name: check-namespace
+      match:
+        any:
+        - resources:
+            kinds: [Pod]
+            operations: [DELETE]
+      validate:
+        message: "Deleting pods in production requires approval"
+        deny:
+          conditions:
+            any:
+            - key: "{{ request.namespace }}"
+              operator: Equals
+              value: production
+`
+
+	manifests, comments, err := convertKyverno([]byte(input), "restrict-prod.yaml")
+	if err != nil {
+		t.Fatalf("convertKyverno failed: %v", err)
+	}
+	if len(manifests) == 0 {
+		t.Fatal("expected at least 1 manifest even with JMESPath conditions")
+	}
+
+	// Should still generate a kubectl pattern match
+	expr := manifests[0].Spec.Validations[0].Expression
+	if !strings.Contains(expr, `tool == "Bash"`) {
+		t.Errorf("should generate Bash tool match even with JMESPath conditions, got: %s", expr)
+	}
+	// Should have IMPORT_TODO comment about JMESPath
+	if !strings.Contains(comments[0], "IMPORT_TODO") {
+		t.Errorf("JMESPath conditions should produce IMPORT_TODO comment, got %q", comments[0])
+	}
+}
+
+func TestImport_KyvernoMultipleKinds(t *testing.T) {
+	input := `apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-deletions
+spec:
+  validationFailureAction: Enforce
+  rules:
+    - name: block-deletes
+      match:
+        any:
+        - resources:
+            kinds: [Pod, Deployment, Service]
+            operations: [DELETE]
+      validate:
+        message: "Deletion requires approval"
+        deny:
+          conditions:
+            any: []
+`
+
+	manifests, _, err := convertKyverno([]byte(input), "multi-kind.yaml")
+	if err != nil {
+		t.Fatalf("convertKyverno failed: %v", err)
+	}
+	// Should produce one manifest per kind
+	if len(manifests) != 3 {
+		t.Fatalf("expected 3 manifests (one per kind), got %d", len(manifests))
+	}
+}
+
+func TestImport_KyvernoMetadataPreserved(t *testing.T) {
+	input := `apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: my-policy
+  annotations:
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/description: "Test description"
+spec:
+  validationFailureAction: Enforce
+  rules:
+    - name: check-pod
+      match:
+        any:
+        - resources:
+            kinds: [Pod]
+            operations: [DELETE]
+      validate:
+        message: "Custom message"
+        deny:
+          conditions:
+            any: []
+`
+
+	manifests, _, err := convertKyverno([]byte(input), "meta-test.yaml")
+	if err != nil {
+		t.Fatalf("convertKyverno failed: %v", err)
+	}
+	if len(manifests) == 0 {
+		t.Fatal("expected at least 1 manifest")
+	}
+
+	m := manifests[0]
+	if m.Spec.Description != "Test description" {
+		t.Errorf("description should be from annotation, got %q", m.Spec.Description)
+	}
+	if m.Metadata.Annotations["aegis.io/severity"] != "high" {
+		t.Errorf("severity annotation: got %q, want high", m.Metadata.Annotations["aegis.io/severity"])
+	}
+	if m.Metadata.Annotations["kyverno.io/category"] != "Pod Security" {
+		t.Errorf("category annotation: got %q, want 'Pod Security'", m.Metadata.Annotations["kyverno.io/category"])
+	}
+	if m.Spec.Validations[0].Message != "Custom message" {
+		t.Errorf("message should come from validate.message, got %q", m.Spec.Validations[0].Message)
 	}
 }
 

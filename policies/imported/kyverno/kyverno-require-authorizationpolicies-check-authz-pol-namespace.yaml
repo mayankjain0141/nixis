@@ -1,0 +1,20 @@
+# IMPORT_TODO: JMESPath conditions in require-authorizationpolicies/check-authz-pol could not be translated — kubectl pattern match generated as base condition only
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-require-authorizationpolicies-check-authz-pol-namespace
+    annotations:
+        aegis.io/imported-from: aegis-import-2917053961.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Istio
+spec:
+    description: An AuthorizationPolicy is used to provide access controls for traffic in the mesh and can be defined at multiple levels. For the Namespace level, all Namespaces should have at least one AuthorizationPolicy. This policy, designed to run in background mode for reporting purposes, ensures every Namespace has at least one AuthorizationPolicy.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+namespace|create\s+namespace)")
+          message: All Namespaces must have an AuthorizationPolicy.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

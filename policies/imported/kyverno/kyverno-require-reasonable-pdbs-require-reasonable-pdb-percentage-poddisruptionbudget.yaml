@@ -1,0 +1,20 @@
+# IMPORT_TODO: JMESPath conditions in require-reasonable-pdbs/require-reasonable-pdb-percentage could not be translated — kubectl pattern match generated as base condition only
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-require-reasonable-pdbs-require-reasonable-pdb-percentage-poddisruptionbudget
+    annotations:
+        aegis.io/imported-from: aegis-import-2746273779.yaml
+        aegis.io/severity: low
+        kyverno.io/category: Other
+spec:
+    description: PodDisruptionBudget resources are useful to ensuring minimum availability is maintained at all times. Achieving a balance between availability and maintainability is important. This policy validates that a PodDisruptionBudget, specified as percentages, allows 50% of the replicas to be out of service in that minAvailable should be no higher than 50% and maxUnavailable should be no lower than 50%.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: PodDisruptionBudget percentages should allow 50% out of service. minAvailable should be no higher than 50% and maxUnavailable should be no lower than 50%.
+          action: AUDIT
+    defaultAction: ALLOW

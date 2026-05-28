@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-disallow-proc-mount-check-proc-mount-pod
+    annotations:
+        aegis.io/imported-from: aegis-import-3502920148.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Pod Security Standards (Baseline)
+spec:
+    description: The default /proc masks are set up to reduce attack surface and should be required. This policy ensures nothing but the default procMount can be specified. Note that in order for users to deviate from the `Default` procMount requires setting a feature gate at the API server.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+          message: Changing the proc mount from the default is not allowed. The fields spec.containers[*].securityContext.procMount, spec.initContainers[*].securityContext.procMount, and spec.ephemeralContainers[*].securityContext.procMount must be unset or set to `Default`.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

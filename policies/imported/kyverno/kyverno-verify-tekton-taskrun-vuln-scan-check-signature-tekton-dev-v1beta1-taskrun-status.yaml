@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-verify-tekton-taskrun-vuln-scan-check-signature-tekton-dev-v1beta1-taskrun-status
+    annotations:
+        aegis.io/imported-from: aegis-import-3719797076.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Tekton
+spec:
+    description: A signed bundle is required and a vulnerability scan made by Grype must return no vulnerabilities greater than 8.0.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: A signed bundle is required and a vulnerability scan made by Grype must return no vulnerabilities greater than 8.0.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

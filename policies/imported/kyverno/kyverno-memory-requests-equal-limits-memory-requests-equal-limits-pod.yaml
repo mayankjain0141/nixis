@@ -1,0 +1,20 @@
+# IMPORT_TODO: JMESPath conditions in memory-requests-equal-limits/memory-requests-equal-limits could not be translated — kubectl pattern match generated as base condition only
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-memory-requests-equal-limits-memory-requests-equal-limits-pod
+    annotations:
+        aegis.io/imported-from: aegis-import-4205985816.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Sample
+spec:
+    description: Pods which have memory limits equal to requests could be given a QoS class of Guaranteed if they also set CPU limits equal to requests. Guaranteed is the highest schedulable class.  This policy checks that all containers in a given Pod have memory requests equal to limits.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+          message: resources.requests.memory must be equal to resources.limits.memory
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

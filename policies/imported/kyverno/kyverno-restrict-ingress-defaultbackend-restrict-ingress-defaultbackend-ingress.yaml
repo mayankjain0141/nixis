@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-restrict-ingress-defaultbackend-restrict-ingress-defaultbackend-ingress
+    annotations:
+        aegis.io/imported-from: aegis-import-2447226099.yaml
+        aegis.io/severity: high
+        kyverno.io/category: Best Practices
+spec:
+    description: An Ingress with no rules sends all traffic to a single default backend. The defaultBackend is conventionally a configuration option of the Ingress controller and is not specified in your Ingress resources. If none of the hosts or paths match the HTTP request in the Ingress objects, the traffic is routed to your default backend. In a multi-tenant environment, you want users to use explicit hosts, they should not be able to overwrite the global default backend service. This policy prohibits the use of the defaultBackend field.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: Setting the defaultBackend field is prohibited.
+          action: DENY
+    defaultAction: ALLOW

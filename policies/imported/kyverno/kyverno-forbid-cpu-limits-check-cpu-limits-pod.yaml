@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-forbid-cpu-limits-check-cpu-limits-pod
+    annotations:
+        aegis.io/imported-from: aegis-import-2826214278.yaml
+        aegis.io/severity: low
+        kyverno.io/category: Other
+spec:
+    description: Setting of CPU limits is a debatable poor practice as it can result, when defined, in potentially starving applications of much-needed CPU cycles even when they are available. Ensuring that CPU limits are not set may ensure apps run more effectively. This policy forbids any container in a Pod from defining CPU limits.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+          message: Containers may not define CPU limits.
+          action: DENY
+    defaultAction: ALLOW

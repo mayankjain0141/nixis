@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-enforce-sidecar-injection-namespace-check-istio-injection-enabled-namespace
+    annotations:
+        aegis.io/imported-from: aegis-import-2580992245.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Istio
+spec:
+    description: In order for Istio to inject sidecars to workloads deployed into Namespaces, the label `istio-injection` must be set to `enabled`. This policy ensures that all new Namespaces set `istio-inject` to `enabled`.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+namespace|create\s+namespace)")
+          message: All new Namespaces must have Istio sidecar injection enabled.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

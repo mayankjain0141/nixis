@@ -60,6 +60,7 @@ const (
 	formatSettingsJSON              // {"permissions":{"deny":[...]}}
 	formatAgentWall                 // version: "2" + tools[].action
 	formatMCPVisor                  // deny_path / deny_command_pattern / etc.
+	formatKyverno                   // apiVersion: kyverno.io/* + kind: ClusterPolicy/Policy
 )
 
 // ---- format-specific input structs ----
@@ -106,10 +107,10 @@ type agentWallFile struct {
 }
 
 type agentWallTool struct {
-	Name       string            `yaml:"name"`
-	Action     string            `yaml:"action"`
-	Risk       string            `yaml:"risk"`
-	Parameters []agentWallParam  `yaml:"parameters"`
+	Name       string           `yaml:"name"`
+	Action     string           `yaml:"action"`
+	Risk       string           `yaml:"risk"`
+	Parameters []agentWallParam `yaml:"parameters"`
 }
 
 type agentWallParam struct {
@@ -125,6 +126,66 @@ type mcpVisorFile struct {
 	DenyQueryPattern   []string `yaml:"deny_query_pattern"`
 	MaxFileSize        int64    `yaml:"max_file_size"`
 	MaxRows            int64    `yaml:"max_rows"`
+}
+
+type kyvernoPolicy struct {
+	APIVersion string            `yaml:"apiVersion"`
+	Kind       string            `yaml:"kind"`
+	Metadata   kyvernoMetadata   `yaml:"metadata"`
+	Spec       kyvernoPolicySpec `yaml:"spec"`
+}
+
+type kyvernoMetadata struct {
+	Name        string            `yaml:"name"`
+	Annotations map[string]string `yaml:"annotations"`
+}
+
+type kyvernoPolicySpec struct {
+	ValidationFailureAction string        `yaml:"validationFailureAction"`
+	Rules                   []kyvernoRule `yaml:"rules"`
+}
+
+type kyvernoRule struct {
+	Name     string                 `yaml:"name"`
+	Match    kyvernoMatch           `yaml:"match"`
+	Validate kyvernoValidate        `yaml:"validate"`
+	Mutate   map[string]interface{} `yaml:"mutate"`
+	Generate map[string]interface{} `yaml:"generate"`
+}
+
+type kyvernoMatch struct {
+	Any []kyvernoMatchResource `yaml:"any"`
+	All []kyvernoMatchResource `yaml:"all"`
+}
+
+type kyvernoMatchResource struct {
+	Resources kyvernoResources `yaml:"resources"`
+}
+
+type kyvernoResources struct {
+	Kinds      []string `yaml:"kinds"`
+	Operations []string `yaml:"operations"`
+	Namespaces []string `yaml:"namespaces"`
+}
+
+type kyvernoValidate struct {
+	Message string      `yaml:"message"`
+	Deny    kyvernoDeny `yaml:"deny"`
+}
+
+type kyvernoDeny struct {
+	Conditions kyvernoConditionSet `yaml:"conditions"`
+}
+
+type kyvernoConditionSet struct {
+	Any []kyvernoCondition `yaml:"any"`
+	All []kyvernoCondition `yaml:"all"`
+}
+
+type kyvernoCondition struct {
+	Key      string `yaml:"key"`
+	Operator string `yaml:"operator"`
+	Value    string `yaml:"value"`
 }
 
 // ---- output structs ----
@@ -223,7 +284,7 @@ func fetchGitHub(ctx context.Context, source string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("fetch GitHub archive: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("GitHub returned HTTP %d for %s", resp.StatusCode, zipURL)
@@ -265,7 +326,7 @@ func extractPolicyFiles(zipData []byte) ([]string, error) {
 			continue
 		}
 		data, err := io.ReadAll(rc)
-		rc.Close()
+		_ = rc.Close()
 		if err != nil {
 			continue
 		}
@@ -275,10 +336,10 @@ func extractPolicyFiles(zipData []byte) ([]string, error) {
 			continue
 		}
 		if _, err := tmp.Write(data); err != nil {
-			tmp.Close()
+			_ = tmp.Close()
 			continue
 		}
-		tmp.Close()
+		_ = tmp.Close()
 		paths = append(paths, tmp.Name())
 	}
 
@@ -308,9 +369,11 @@ func detectFormatWithName(filename string, data []byte) importFormat {
 
 	// Probe YAML for all other formats
 	var probe struct {
-		LayerName string `yaml:"layerName"`
-		Version   string `yaml:"version"`
-		Policies  []struct {
+		APIVersion string `yaml:"apiVersion"`
+		Kind       string `yaml:"kind"`
+		LayerName  string `yaml:"layerName"`
+		Version    string `yaml:"version"`
+		Policies   []struct {
 			Rule       string `yaml:"rule"`
 			Expression string `yaml:"expression"`
 			Action     string `yaml:"action"`
@@ -326,6 +389,12 @@ func detectFormatWithName(filename string, data []byte) importFormat {
 
 	if err := yaml.Unmarshal(data, &probe); err != nil {
 		return formatUnknown
+	}
+
+	// Kyverno: apiVersion contains kyverno.io AND kind is ClusterPolicy or Policy
+	if strings.Contains(probe.APIVersion, "kyverno.io") &&
+		(probe.Kind == "ClusterPolicy" || probe.Kind == "Policy") {
+		return formatKyverno
 	}
 
 	// AgentWall v2: version "2" + tools with action field
@@ -461,6 +530,10 @@ func convertFile(data []byte, sourcePath string) ([]aegisManifest, []string, err
 		return convertAgentWall(data, sourcePath)
 	case formatMCPVisor:
 		return convertMCPVisor(data, sourcePath)
+	case formatKyverno:
+		return convertKyverno(data, sourcePath)
+	case formatUnknown:
+		fallthrough
 	default:
 		return nil, nil, fmt.Errorf("unknown policy format in %s: file must contain a recognized policy structure", filepath.Base(sourcePath))
 	}
@@ -937,6 +1010,249 @@ func newMCPVisorManifest(id, desc, cel, action, severity, source string) aegisMa
 			DefaultAction: "ALLOW",
 		},
 	}
+}
+
+// ---- Kyverno converter ----
+
+// kyvernoKindToKubectlPattern maps a Kubernetes resource kind to the kubectl
+// command regex pattern that would trigger admission for that resource.
+func kyvernoKindToKubectlPattern(kind string, operations []string) string {
+	kindMap := map[string]string{
+		"Pod":              `kubectl.*(delete\s+pod|exec|run)`,
+		"Deployment":       `kubectl.*(delete\s+deployment|scale|rollout)`,
+		"Service":          `kubectl.*(delete\s+service|expose)`,
+		"ConfigMap":        `kubectl.*(delete\s+configmap|create\s+configmap)`,
+		"Secret":           `kubectl.*(get\s+secret|create\s+secret)`,
+		"Namespace":        `kubectl.*(delete\s+namespace|create\s+namespace)`,
+		"ClusterRole":      `kubectl.*(create\s+clusterrole|delete\s+clusterrole)`,
+		"Node":             `kubectl.*(drain|cordon|delete\s+node)`,
+		"PersistentVolume": `kubectl.*delete\s+pv`,
+	}
+
+	opPatterns := map[string]string{
+		"DELETE": `kubectl.*delete.*`,
+		"CREATE": `kubectl.*(create|run|apply).*`,
+		"UPDATE": `kubectl.*(patch|edit|set).*`,
+	}
+
+	// If operations are specified, derive pattern from operations
+	if len(operations) > 0 {
+		var parts []string
+		seen := map[string]bool{}
+		for _, op := range operations {
+			if p, ok := opPatterns[strings.ToUpper(op)]; ok && !seen[p] {
+				parts = append(parts, p)
+				seen[p] = true
+			}
+		}
+		if len(parts) == 1 {
+			return parts[0]
+		}
+		if len(parts) > 1 {
+			return strings.Join(parts, "|")
+		}
+	}
+
+	// Fall back to kind-based pattern
+	if p, ok := kindMap[kind]; ok {
+		return p
+	}
+	return `kubectl.*`
+}
+
+// kyvernoSeverityToAction maps Kyverno annotation severity to Aegis action,
+// potentially overriding the validationFailureAction-derived action.
+func kyvernoSeverityToAction(severity, baseAction string) string {
+	switch strings.ToLower(severity) {
+	case "critical", "high":
+		return "DENY"
+	case "medium":
+		if baseAction == "DENY" {
+			return "DENY"
+		}
+		return "REQUIRE_APPROVAL"
+	case "low":
+		return "AUDIT"
+	default:
+		return baseAction
+	}
+}
+
+// kyvernoValidationFailureActionToAction maps Kyverno's validationFailureAction to Aegis action.
+func kyvernoValidationFailureActionToAction(vfa string) string {
+	switch strings.ToLower(vfa) {
+	case "enforce":
+		return "DENY"
+	default:
+		return "AUDIT"
+	}
+}
+
+// kyvernoHasJMESPath returns true if the condition key contains a JMESPath template expression.
+func kyvernoHasJMESPath(key string) bool {
+	return strings.Contains(key, "{{") && strings.Contains(key, "}}")
+}
+
+// convertKyverno translates a Kyverno ClusterPolicy or Policy into Aegis manifests.
+func convertKyverno(data []byte, sourcePath string) ([]aegisManifest, []string, error) {
+	var pol kyvernoPolicy
+	if err := yaml.Unmarshal(data, &pol); err != nil {
+		return nil, nil, fmt.Errorf("parse Kyverno YAML: %w", err)
+	}
+
+	annotations := pol.Metadata.Annotations
+	severity := normalizeSeverity(annotations["policies.kyverno.io/severity"])
+	category := annotations["policies.kyverno.io/category"]
+	description := annotations["policies.kyverno.io/description"]
+	if description == "" {
+		description = pol.Metadata.Name
+	}
+
+	baseAction := kyvernoValidationFailureActionToAction(pol.Spec.ValidationFailureAction)
+
+	manifests := make([]aegisManifest, 0)
+	comments := make([]string, 0)
+
+	for _, rule := range pol.Spec.Rules {
+		// Skip non-validate rule types
+		if len(rule.Mutate) > 0 {
+			id := fmt.Sprintf("kyverno-%s-%s", sanitizeID(pol.Metadata.Name), sanitizeID(rule.Name))
+			m, comment := kyvernoImportTODO(id, "mutate rule — Aegis does not mutate requests",
+				description, severity, category, filepath.Base(sourcePath))
+			manifests = append(manifests, m)
+			comments = append(comments, comment)
+			continue
+		}
+		if len(rule.Generate) > 0 {
+			id := fmt.Sprintf("kyverno-%s-%s", sanitizeID(pol.Metadata.Name), sanitizeID(rule.Name))
+			m, comment := kyvernoImportTODO(id, "generate rule — Aegis does not generate resources",
+				description, severity, category, filepath.Base(sourcePath))
+			manifests = append(manifests, m)
+			comments = append(comments, comment)
+			continue
+		}
+
+		// Collect all matched resources across any/all
+		allResources := append(rule.Match.Any, rule.Match.All...)
+		if len(allResources) == 0 {
+			id := fmt.Sprintf("kyverno-%s-%s", sanitizeID(pol.Metadata.Name), sanitizeID(rule.Name))
+			m, comment := kyvernoImportTODO(id, "no match.any or match.all resources found",
+				description, severity, category, filepath.Base(sourcePath))
+			manifests = append(manifests, m)
+			comments = append(comments, comment)
+			continue
+		}
+
+		// Check if all deny conditions involve JMESPath — if so, still generate
+		// a kubectl pattern match as the base but mark with IMPORT_TODO for conditions.
+		allConditions := append(rule.Validate.Deny.Conditions.Any, rule.Validate.Deny.Conditions.All...)
+		hasJMESPath := false
+		for _, c := range allConditions {
+			if kyvernoHasJMESPath(c.Key) {
+				hasJMESPath = true
+				break
+			}
+		}
+
+		for _, matchRes := range allResources {
+			for _, kind := range matchRes.Resources.Kinds {
+				if kind == "" {
+					continue
+				}
+
+				ops := matchRes.Resources.Operations
+				kubectlPattern := kyvernoKindToKubectlPattern(kind, ops)
+				cel := fmt.Sprintf(`tool == "Bash" && request.args.command.matches("(?i)%s")`, kubectlPattern)
+
+				action := kyvernoSeverityToAction(annotations["policies.kyverno.io/severity"], baseAction)
+
+				msg := rule.Validate.Message
+				if msg == "" {
+					msg = description
+				}
+
+				id := fmt.Sprintf("kyverno-%s-%s-%s",
+					sanitizeID(pol.Metadata.Name),
+					sanitizeID(rule.Name),
+					sanitizeID(kind))
+
+				annots := map[string]string{
+					"aegis.io/imported-from": filepath.Base(sourcePath),
+					"aegis.io/severity":      severity,
+				}
+				if category != "" {
+					annots["kyverno.io/category"] = category
+				}
+
+				m := aegisManifest{
+					APIVersion: "aegis.io/v1",
+					Kind:       "PolicyTemplate",
+					Metadata: aegisMetadata{
+						Name:        id,
+						Annotations: annots,
+					},
+					Spec: aegisPolicySpec{
+						Description: description,
+						MatchConstraints: aegisMatchConstraints{
+							Tools: []string{"Bash"},
+						},
+						Validations: []aegisValidation{
+							{
+								Expression: cel,
+								Message:    msg,
+								Action:     action,
+							},
+						},
+						DefaultAction: "ALLOW",
+					},
+				}
+
+				comment := ""
+				if hasJMESPath {
+					comment = fmt.Sprintf("IMPORT_TODO: JMESPath conditions in %s/%s could not be translated — kubectl pattern match generated as base condition only", pol.Metadata.Name, rule.Name)
+				}
+
+				manifests = append(manifests, m)
+				comments = append(comments, comment)
+			}
+		}
+	}
+
+	return manifests, comments, nil
+}
+
+// kyvernoImportTODO creates a placeholder manifest for rules that cannot be translated.
+func kyvernoImportTODO(id, reason, description, severity, category, source string) (aegisManifest, string) {
+	annots := map[string]string{
+		"aegis.io/imported-from": source,
+		"aegis.io/severity":      severity,
+	}
+	if category != "" {
+		annots["kyverno.io/category"] = category
+	}
+	m := aegisManifest{
+		APIVersion: "aegis.io/v1",
+		Kind:       "PolicyTemplate",
+		Metadata: aegisMetadata{
+			Name:        id,
+			Annotations: annots,
+		},
+		Spec: aegisPolicySpec{
+			Description: description,
+			MatchConstraints: aegisMatchConstraints{
+				Tools: []string{},
+			},
+			Validations: []aegisValidation{
+				{
+					Expression: "false",
+					Message:    fmt.Sprintf("IMPORT_TODO: %s — manual review required", reason),
+					Action:     "AUDIT",
+				},
+			},
+			DefaultAction: "ALLOW",
+		},
+	}
+	return m, fmt.Sprintf("IMPORT_TODO: %s", reason)
 }
 
 func appendSkipComment(comments []string, msg string) []string {

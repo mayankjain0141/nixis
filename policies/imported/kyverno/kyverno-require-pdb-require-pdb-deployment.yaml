@@ -1,0 +1,20 @@
+# IMPORT_TODO: JMESPath conditions in require-pdb/require-pdb could not be translated — kubectl pattern match generated as base condition only
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-require-pdb-require-pdb-deployment
+    annotations:
+        aegis.io/imported-from: aegis-import-99674439.yaml
+        aegis.io/severity: low
+        kyverno.io/category: Sample, EKS Best Practices
+spec:
+    description: 'PodDisruptionBudget resources are useful to ensuring minimum availability is maintained at all times. This policy checks all incoming Deployments and StatefulSets to ensure they have a matching, preexisting PodDisruptionBudget. Note: This policy must be run in `enforce` mode to ensure accuracy.'
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+deployment|scale|rollout)")
+          message: There is no corresponding PodDisruptionBudget found for this Deployment.
+          action: AUDIT
+    defaultAction: ALLOW

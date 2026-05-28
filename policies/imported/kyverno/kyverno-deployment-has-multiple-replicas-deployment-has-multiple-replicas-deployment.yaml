@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-deployment-has-multiple-replicas-deployment-has-multiple-replicas-deployment
+    annotations:
+        aegis.io/imported-from: aegis-import-1369477328.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Sample
+spec:
+    description: Deployments with a single replica cannot be highly available and thus the application may suffer downtime if that one replica goes down. This policy validates that Deployments have more than one replica.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+deployment|scale|rollout)")
+          message: Deployments should have more than one replica to ensure availability.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

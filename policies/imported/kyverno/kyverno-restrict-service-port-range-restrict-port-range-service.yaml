@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-restrict-service-port-range-restrict-port-range-service
+    annotations:
+        aegis.io/imported-from: aegis-import-1288610735.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Other
+spec:
+    description: Services which are allowed to expose any port number may be able to impact other applications running on the Node which require them, or may make specifying security policy externally more challenging. This policy enforces that only the port range 32000 to 33000 may be used for Service resources.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+service|expose)")
+          message: Ports must be between 32000-33000
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

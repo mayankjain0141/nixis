@@ -1,0 +1,20 @@
+# IMPORT_TODO: JMESPath conditions in unique-routes/require-unique-routes could not be translated — kubectl pattern match generated as base condition only
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-unique-routes-require-unique-routes-route-openshift-io-v1-route
+    annotations:
+        aegis.io/imported-from: aegis-import-605795545.yaml
+        aegis.io/severity: high
+        kyverno.io/category: OpenShift
+spec:
+    description: An Route host is a URL at which services may be made available externally. In most cases, these hosts should be unique across the cluster to ensure no routing conflicts occur. This policy checks an incoming Route resource to ensure its hosts are unique to the cluster.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: The Route host name must be unique.
+          action: DENY
+    defaultAction: ALLOW

@@ -1,0 +1,20 @@
+# IMPORT_TODO: JMESPath conditions in check-linkerd-authorizationpolicy/check-server-exists could not be translated — kubectl pattern match generated as base condition only
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-check-linkerd-authorizationpolicy-check-server-exists-authorizationpolicy
+    annotations:
+        aegis.io/imported-from: aegis-import-811606723.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Linkerd
+spec:
+    description: As of Linkerd 2.12, an AuthorizationPolicy is a resource used to selectively allow traffic to either a Server or HTTPRoute resource. Creating AuthorizationPolicies is needed when a Server exists in order to control what traffic is permitted within the mesh to the Pods selected by the Server or HTTPRoute. This policy, requiring Linkerd 2.12+, checks incoming AuthorizationPolicy resources to ensure that either a matching Server or HTTPRoute exists first.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: Server or HTTPRoute not found for this AuthorizationPolicy.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

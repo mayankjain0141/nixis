@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-enforce-min-tls-version-check-for-tls-version-mesh
+    annotations:
+        aegis.io/imported-from: aegis-import-3102193104.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Consul
+spec:
+    description: This policy will check the TLS Min version to ensure that whenever the mesh is set, there is a minimum version of TLS set for all the service mesh proxies and this enforces that service mesh mTLS traffic uses TLS v1.2 or newer.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: The minimum version of TLS is TLS v1_2
+          action: DENY
+    defaultAction: ALLOW

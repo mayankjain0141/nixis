@@ -1,0 +1,20 @@
+# IMPORT_TODO: JMESPath conditions in check-routes/require-tls-routes could not be translated — kubectl pattern match generated as base condition only
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-check-routes-require-tls-routes-route-openshift-io-v1-route
+    annotations:
+        aegis.io/imported-from: aegis-import-1083747979.yaml
+        aegis.io/severity: high
+        kyverno.io/category: OpenShift
+spec:
+    description: HTTP traffic is not encrypted and hence insecure. This policy prevents configuration of OpenShift HTTP routes.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: HTTP routes are not allowed. Configure TLS for secure routes.
+          action: DENY
+    defaultAction: ALLOW

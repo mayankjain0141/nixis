@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-disallow-host-ports-range-host-port-range-pod
+    annotations:
+        aegis.io/imported-from: aegis-import-3134196571.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Pod Security Standards (Baseline) in CEL
+spec:
+    description: Access to host ports allows potential snooping of network traffic and should not be allowed, or at minimum restricted to a known list. This policy ensures the `hostPort` field is set to one in the designated list. Note that Kubernetes Pod Security Admission does not support this rule.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(create|run|apply).*|kubectl.*(patch|edit|set).*")
+          message: Access to host ports allows potential snooping of network traffic and should not be allowed, or at minimum restricted to a known list. This policy ensures the `hostPort` field is set to one in the designated list. Note that Kubernetes Pod Security Admission does not support this rule.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

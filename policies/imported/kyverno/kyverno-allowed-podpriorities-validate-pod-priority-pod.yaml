@@ -1,0 +1,20 @@
+# IMPORT_TODO: JMESPath conditions in allowed-podpriorities/validate-pod-priority could not be translated — kubectl pattern match generated as base condition only
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-allowed-podpriorities-validate-pod-priority-pod
+    annotations:
+        aegis.io/imported-from: aegis-import-958314959.yaml
+        aegis.io/severity: low
+        kyverno.io/category: Sample
+spec:
+    description: A Pod PriorityClass is used to provide a guarantee on the scheduling of a Pod relative to others. In certain cases where not all users in a cluster are trusted, a malicious user could create Pods at the highest possible priorities, causing other Pods to be evicted/not get scheduled. This policy checks the defined `priorityClassName` in a Pod spec to a dictionary of allowable PriorityClasses for the given Namespace stored in a ConfigMap. If the `priorityClassName` is not among them, the Pod is blocked.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+          message: 'The Pod PriorityClass {{ request.object.spec.priorityClassName }} is not in the list of the following PriorityClasses allowed in this Namespace: {{ podprioritydict.data."{{request.namespace}}" }}.'
+          action: AUDIT
+    defaultAction: ALLOW

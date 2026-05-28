@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-restrict-binding-system-groups-restrict-unauthenticated-rolebinding
+    annotations:
+        aegis.io/imported-from: aegis-import-1818502442.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Security, EKS Best Practices
+spec:
+    description: Certain system groups exist in Kubernetes which grant permissions that are used for certain system-level functions yet typically never appropriate for other users. This policy prevents creating bindings to some of these groups including system:anonymous, system:unauthenticated, and system:masters.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: Binding to system:unauthenticated is not allowed.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

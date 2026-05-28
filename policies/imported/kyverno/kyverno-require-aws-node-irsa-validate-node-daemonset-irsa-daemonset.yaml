@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-require-aws-node-irsa-validate-node-daemonset-irsa-daemonset
+    annotations:
+        aegis.io/imported-from: aegis-import-3298880210.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: AWS, EKS Best Practices
+spec:
+    description: According to EKS best practices, the `aws-node` DaemonSet is configured to use a role assigned to the EC2 instances to assign IPs to Pods. This role includes several AWS managed policies that effectively allow all Pods running on a Node to attach/detach ENIs, assign/unassign IP addresses, or pull images from ECR. Since this presents a risk to your cluster, it is recommended that you update the `aws-node` DaemonSet to use IRSA. This policy ensures that the `aws-node` DaemonSet running in the `kube-system` Namespace is not still using the `aws-node` ServiceAccount.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: Update the aws-node daemonset to use IRSA.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

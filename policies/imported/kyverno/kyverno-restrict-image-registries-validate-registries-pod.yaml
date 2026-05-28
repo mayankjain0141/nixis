@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-restrict-image-registries-validate-registries-pod
+    annotations:
+        aegis.io/imported-from: aegis-import-1202525796.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Best Practices, EKS Best Practices
+spec:
+    description: Images from unknown, public registries can be of dubious quality and may not be scanned and secured, representing a high degree of risk. Requiring use of known, approved registries helps reduce threat exposure by ensuring image pulls only come from them. This policy validates that container images only originate from the registry `eu.foo.io` or `bar.io`. Use of this policy requires customization to define your allowable registries.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+          message: Unknown image registry.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-disallow-security-context-constraint-anyuid-check-security-context-constraint-role
+    annotations:
+        aegis.io/imported-from: aegis-import-709304019.yaml
+        aegis.io/severity: high
+        kyverno.io/category: Security
+spec:
+    description: Disallow the use of the SecurityContextConstraint (SCC) anyuid which allows a pod to run with the UID as declared in the image instead of a random UID
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: Use of the SecurityContextConstraint (SCC) anyuid is not allowed
+          action: DENY
+    defaultAction: ALLOW

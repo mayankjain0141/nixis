@@ -1,0 +1,19 @@
+# IMPORT_TODO: generate rule — Aegis does not generate resources
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-generate-networkpolicy-existing-generate-existing-networkpolicy
+    annotations:
+        aegis.io/imported-from: aegis-import-1015833949.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Other
+spec:
+    description: A NetworkPolicy is often a critical piece when provisioning new Namespaces, but there may be existing Namespaces which also need the same resource. Creating each one individually or manipulating each Namespace in order to trigger creation is additional overhead. This policy creates a new NetworkPolicy for existing Namespaces which results in a default deny behavior and labels it with created-by=kyverno.
+    matchConstraints:
+        tools: []
+    validations:
+        - expression: "false"
+          message: 'IMPORT_TODO: generate rule — Aegis does not generate resources — manual review required'
+          action: AUDIT
+    defaultAction: ALLOW

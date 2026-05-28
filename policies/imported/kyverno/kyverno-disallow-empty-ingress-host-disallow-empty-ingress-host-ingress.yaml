@@ -1,0 +1,20 @@
+# IMPORT_TODO: JMESPath conditions in disallow-empty-ingress-host/disallow-empty-ingress-host could not be translated — kubectl pattern match generated as base condition only
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-disallow-empty-ingress-host-disallow-empty-ingress-host-ingress
+    annotations:
+        aegis.io/imported-from: aegis-import-3563756171.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Best Practices
+spec:
+    description: An ingress resource needs to define an actual host name in order to be valid. This policy ensures that there is a hostname for each rule defined.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: The Ingress host name must be defined, not empty.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

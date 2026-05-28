@@ -1,0 +1,19 @@
+# IMPORT_TODO: generate rule — Aegis does not generate resources
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-audit-event-on-exec-generate-event-on-exec
+    annotations:
+        aegis.io/imported-from: aegis-import-366172584.yaml
+        aegis.io/severity: low
+        kyverno.io/category: Other
+spec:
+    description: Kubernetes Events are limited in that the circumstances under which they are created cannot be changed and with what they are associated is fixed. It may be advantageous in many cases to augment these out-of-the-box Events with custom Events which can be custom designed to your needs. This policy generates an Event on a Pod when an exec has been made to it. It lists the userInfo of the actor performing the exec along with the command used in the exec.
+    matchConstraints:
+        tools: []
+    validations:
+        - expression: "false"
+          message: 'IMPORT_TODO: generate rule — Aegis does not generate resources — manual review required'
+          action: AUDIT
+    defaultAction: ALLOW

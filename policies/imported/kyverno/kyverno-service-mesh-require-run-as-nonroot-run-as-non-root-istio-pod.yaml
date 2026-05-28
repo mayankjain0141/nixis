@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-service-mesh-require-run-as-nonroot-run-as-non-root-istio-pod
+    annotations:
+        aegis.io/imported-from: aegis-import-729346077.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Istio, Pod Security Standards (Restricted)
+spec:
+    description: This policy is a variation of the Require runAsNonRoot policy that is a part of the Pod Security Standards (Restricted) category. It enforces the same control but with provisions for Istio's initContainer. For more information and context, see the Kyverno blog post at https://kyverno.io/blog/2024/02/04/securing-services-meshes-easier-with-kyverno/.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+          message: 'Running as root is not allowed. Either the field spec.securityContext.runAsNonRoot must be set to `true`, or the fields spec.containers[*].securityContext.runAsNonRoot, spec.initContainers[*].securityContext.runAsNonRoot, and spec.ephemeralContainers[*].securityContext.runAsNonRoot must be set to `true`.          '
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

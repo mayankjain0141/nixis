@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-require-tekton-namespace-pipelinerun-check-pipelinerun-namespace-pipelinerun
+    annotations:
+        aegis.io/imported-from: aegis-import-3057840147.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Tekton
+spec:
+    description: A Namespace is required for a PipelineRun and may not be set to `default`.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: A namespace is required and may not be set to default.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

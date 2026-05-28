@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-restrict-binding-system-groups-restrict-subject-groups-clusterrolebinding
+    annotations:
+        aegis.io/imported-from: aegis-import-2788118841.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Security, EKS Best Practices in CEL
+spec:
+    description: Certain system groups exist in Kubernetes which grant permissions that are used for certain system-level functions yet typically never appropriate for other users. This policy prevents creating bindings to some of these groups including system:anonymous, system:unauthenticated, and system:masters.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(create|run|apply).*|kubectl.*(patch|edit|set).*")
+          message: Certain system groups exist in Kubernetes which grant permissions that are used for certain system-level functions yet typically never appropriate for other users. This policy prevents creating bindings to some of these groups including system:anonymous, system:unauthenticated, and system:masters.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

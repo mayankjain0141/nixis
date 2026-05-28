@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-disallow-host-ports-host-ports-none-pod
+    annotations:
+        aegis.io/imported-from: aegis-import-459946690.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Pod Security Standards (Baseline)
+spec:
+    description: 'Access to host ports allows potential snooping of network traffic and should not be allowed, or at minimum restricted to a known list. This policy ensures the `hostPort` field is unset or set to `0`. '
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+          message: Use of host ports is disallowed. The fields spec.containers[*].ports[*].hostPort , spec.initContainers[*].ports[*].hostPort, and spec.ephemeralContainers[*].ports[*].hostPort must either be unset or set to `0`.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

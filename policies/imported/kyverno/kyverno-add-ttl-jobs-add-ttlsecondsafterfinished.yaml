@@ -1,0 +1,19 @@
+# IMPORT_TODO: mutate rule — Aegis does not mutate requests
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-add-ttl-jobs-add-ttlsecondsafterfinished
+    annotations:
+        aegis.io/imported-from: aegis-import-1215786759.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Other
+spec:
+    description: Jobs which are user created can often pile up and consume excess space in the cluster. In Kubernetes 1.23, the TTL-after-finished controller is stable and will automatically clean up these Jobs if the ttlSecondsAfterFinished is specified. This policy adds the ttlSecondsAfterFinished field to an Job that does not have an ownerReference set if not already specified.
+    matchConstraints:
+        tools: []
+    validations:
+        - expression: "false"
+          message: 'IMPORT_TODO: mutate rule — Aegis does not mutate requests — manual review required'
+          action: AUDIT
+    defaultAction: ALLOW
