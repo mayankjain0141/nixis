@@ -1,8 +1,8 @@
-// aegis-hook is the per-invocation Cursor hook binary.
+// aegis-hook is the per-invocation hook binary for Claude Code and Cursor IDE.
 //
-// It is invoked by the Cursor IDE for every tool call. It reads a CursorHookInput
-// JSON object from stdin, evaluates it against the aegis-daemon, and writes a
-// CursorHookOutput JSON object to stdout before exiting.
+// It is invoked for every tool call. It reads a HookInput JSON object from stdin,
+// evaluates it against the aegis-daemon, and writes a CursorHookOutput JSON object
+// to stdout before exiting.
 //
 // Exit codes:
 //
@@ -38,12 +38,33 @@ import (
 // totalBudget is the wall-clock deadline for the entire hook invocation.
 const totalBudget = 200 * time.Millisecond
 
-// CursorHookInput is the JSON structure Cursor sends to the hook on stdin.
-type CursorHookInput struct {
+// HookInput supports both Claude Code and Cursor IDE hook formats.
+// Claude Code sends "tool_input" and "session_id"; Cursor sends "input" and "conversation_id".
+type HookInput struct {
 	Tool           string          `json:"tool_name"`
 	Input          json.RawMessage `json:"input"`
+	ToolInput      json.RawMessage `json:"tool_input"`
 	ConversationID string          `json:"conversation_id"`
+	SessionID      string          `json:"session_id"`
 	HookEventName  string          `json:"hook_event_name"`
+}
+
+// GetInput returns the tool arguments regardless of which field name was used.
+// Cursor sends "input"; Claude Code sends "tool_input". Cursor wins on conflict.
+func (h *HookInput) GetInput() json.RawMessage {
+	if len(h.Input) > 0 && string(h.Input) != "null" {
+		return h.Input
+	}
+	return h.ToolInput
+}
+
+// GetSessionID returns the session identifier regardless of which field name was used.
+// Cursor sends "conversation_id"; Claude Code sends "session_id". Cursor wins on conflict.
+func (h *HookInput) GetSessionID() string {
+	if h.ConversationID != "" {
+		return h.ConversationID
+	}
+	return h.SessionID
 }
 
 // CursorHookOutput is the JSON structure the hook writes to stdout.
@@ -80,7 +101,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	var hookInput CursorHookInput
+	var hookInput HookInput
 	if err := json.Unmarshal(inputBytes, &hookInput); err != nil {
 		allowWithWarning("stdin_parse_error", "", nil, false)
 		os.Exit(0)
@@ -89,15 +110,15 @@ func main() {
 	// Build CheckRequest.
 	req := aegis.CheckRequest{
 		Tool:      hookInput.Tool,
-		Args:      hookInput.Input,
-		SessionID: hookInput.ConversationID,
+		Args:      hookInput.GetInput(),
+		SessionID: hookInput.GetSessionID(),
 		Timestamp: time.Now().UnixNano(),
 	}
 
 	// Connect to daemon socket.
 	conn, err := dialSocket(socketPath, deadline)
 	if err != nil {
-		allowWithWarning("daemon_unreachable", hookInput.Tool, hookInput.Input, time.Now().After(deadline))
+		allowWithWarning("daemon_unreachable", hookInput.Tool, hookInput.GetInput(), time.Now().After(deadline))
 		os.Exit(0)
 	}
 	defer func() { _ = conn.Close() }()
@@ -105,25 +126,25 @@ func main() {
 	// Serialize and send the CheckRequest.
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		allowWithWarning("marshal_error", hookInput.Tool, hookInput.Input, false)
+		allowWithWarning("marshal_error", hookInput.Tool, hookInput.GetInput(), false)
 		os.Exit(0)
 	}
 
 	if err := writeFramed(conn, reqBytes, deadline); err != nil {
-		allowWithWarning("send_error", hookInput.Tool, hookInput.Input, time.Now().After(deadline))
+		allowWithWarning("send_error", hookInput.Tool, hookInput.GetInput(), time.Now().After(deadline))
 		os.Exit(0)
 	}
 
 	// Receive CheckResponse.
 	respBytes, err := readFramed(conn, deadline)
 	if err != nil {
-		allowWithWarning("recv_error", hookInput.Tool, hookInput.Input, time.Now().After(deadline))
+		allowWithWarning("recv_error", hookInput.Tool, hookInput.GetInput(), time.Now().After(deadline))
 		os.Exit(0)
 	}
 
 	var resp aegis.CheckResponse
 	if err := json.Unmarshal(respBytes, &resp); err != nil {
-		allowWithWarning("response_parse_error", hookInput.Tool, hookInput.Input, false)
+		allowWithWarning("response_parse_error", hookInput.Tool, hookInput.GetInput(), false)
 		os.Exit(0)
 	}
 
@@ -131,7 +152,7 @@ func main() {
 	out := translateResponse(resp)
 	outBytes, err := json.Marshal(out)
 	if err != nil {
-		allowWithWarning("output_marshal_error", hookInput.Tool, hookInput.Input, false)
+		allowWithWarning("output_marshal_error", hookInput.Tool, hookInput.GetInput(), false)
 		os.Exit(0)
 	}
 
