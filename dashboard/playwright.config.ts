@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+// @axe-core/playwright is installed — use injectAxe/checkA11y in individual test files
 
 export default defineConfig({
   testDir: './e2e',
