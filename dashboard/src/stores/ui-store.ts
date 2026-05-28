@@ -21,12 +21,15 @@ interface UIState {
   inspectorTarget: string | null;
   inspectorOpen: boolean;
   commandPaletteOpen: boolean;
+  isPaused: boolean;
+  selectionVersion: number;
 
   setPanelCollapsed(id: PanelId, collapsed: boolean): void;
   setPanelSize(id: PanelId, width: number, height: number): void;
   openInspector(targetId: string): void;
   closeInspector(): void;
   setCommandPaletteOpen(open: boolean): void;
+  togglePause(): void;
 }
 
 const DEFAULT_PANELS: PanelLayout[] = [
@@ -44,6 +47,8 @@ export const useUIStore = create<UIState>()(
     inspectorTarget: null,
     inspectorOpen: false,
     commandPaletteOpen: false,
+    isPaused: false,
+    selectionVersion: 0,
 
     setPanelCollapsed(id, collapsed) {
       set((draft) => {
@@ -66,6 +71,7 @@ export const useUIStore = create<UIState>()(
       set((draft) => {
         draft.inspectorTarget = targetId;
         draft.inspectorOpen = true;
+        draft.selectionVersion += 1;
         const panel = draft.panels.get('inspector');
         if (panel) panel.collapsed = false;
       });
@@ -81,6 +87,12 @@ export const useUIStore = create<UIState>()(
     setCommandPaletteOpen(open) {
       set((draft) => {
         draft.commandPaletteOpen = open;
+      });
+    },
+
+    togglePause() {
+      set((draft) => {
+        draft.isPaused = !draft.isPaused;
       });
     },
   })),

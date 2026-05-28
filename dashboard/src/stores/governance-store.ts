@@ -3,6 +3,23 @@ import { immer } from 'zustand/middleware/immer';
 import type { SecurityLabel } from '../types/aegis';
 import type { Verdict, LabelState } from '../types/events';
 
+export interface DelegationHop {
+  hopIndex: number;
+  delegatorId: string;
+  delegateeId: string;
+  grantedLabel: {
+    confidentiality: number;
+    integrity: number;
+    categories: number;
+  };
+  ceilingLabel: {
+    confidentiality: number;
+    integrity: number;
+    categories: number;
+  };
+  expiresAt?: number;
+}
+
 export interface GovernanceEvent {
   id: string;
   sessionId: string;
@@ -40,6 +57,7 @@ function elevate(current: SecurityLabel, incoming: SecurityLabel): SecurityLabel
 interface GovernanceState {
   events: GovernanceEvent[];
   sessionLabels: Map<string, SessionLabelEntry>;
+  delegationChains: Map<string, DelegationHop[]>;
   totalDenials: number;
   totalAllows: number;
   filterVerdict: string | null;
@@ -47,6 +65,7 @@ interface GovernanceState {
   appendEvent(event: GovernanceEvent): void;
   // updateLabel applies elevate semantics — never overwrites with a lower value.
   updateLabel(sessionId: string, incoming: SecurityLabel, state: LabelState): void;
+  updateDelegationChain(sessionId: string, hops: DelegationHop[]): void;
   setFilterVerdict(verdict: string | null): void;
   clear(): void;
 }
@@ -55,6 +74,7 @@ export const useGovernanceStore = create<GovernanceState>()(
   immer((set) => ({
     events: [],
     sessionLabels: new Map(),
+    delegationChains: new Map(),
     totalDenials: 0,
     totalAllows: 0,
     filterVerdict: null,
@@ -90,6 +110,12 @@ export const useGovernanceStore = create<GovernanceState>()(
       });
     },
 
+    updateDelegationChain(sessionId, hops) {
+      set((draft) => {
+        draft.delegationChains.set(sessionId, hops);
+      });
+    },
+
     setFilterVerdict(verdict) {
       set((draft) => {
         draft.filterVerdict = verdict;
@@ -100,6 +126,7 @@ export const useGovernanceStore = create<GovernanceState>()(
       set((draft) => {
         draft.events.length = 0;
         draft.sessionLabels.clear();
+        draft.delegationChains.clear();
         draft.totalDenials = 0;
         draft.totalAllows = 0;
       });

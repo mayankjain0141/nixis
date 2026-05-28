@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { useGovernanceStore } from './governance-store';
 import type { GovernanceEvent } from './governance-store';
 import type { SecurityLabel } from '../types/aegis';
+import type { DelegationHop } from './governance-store';
 
 function makeEvent(overrides: Partial<GovernanceEvent> = {}): GovernanceEvent {
   return {
@@ -106,6 +107,25 @@ describe('useGovernanceStore', () => {
       expect(s.sessionLabels.size).toBe(0);
       expect(s.totalDenials).toBe(0);
       expect(s.totalAllows).toBe(0);
+    });
+  });
+
+  describe('updateDelegationChain', () => {
+    it('stores hops without overwriting other sessions', () => {
+      const hop: DelegationHop = {
+        hopIndex: 0,
+        delegatorId: 'alice',
+        delegateeId: 'bob',
+        grantedLabel: { confidentiality: 32768, integrity: 16384, categories: 0 },
+        ceilingLabel: { confidentiality: 16384, integrity: 8192, categories: 0 },
+      };
+      useGovernanceStore.getState().updateDelegationChain('session-1', [hop]);
+      useGovernanceStore.getState().updateDelegationChain('session-2', []);
+
+      const chains = useGovernanceStore.getState().delegationChains;
+      const s1 = chains instanceof Map ? chains.get('session-1') : (chains as Record<string, DelegationHop[]>)['session-1'];
+      expect(s1).toHaveLength(1);
+      expect(s1![0].delegatorId).toBe('alice');
     });
   });
 
