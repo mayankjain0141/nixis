@@ -1,0 +1,56 @@
+# Source: Compliance audit — environment variable enumeration
+# Gate: G4 (CEL function tests)
+# Default: ENABLED — shipped as default-on in the built-in bundle
+#
+# Behavior:
+#   env                         → AUDIT (environment enumeration)
+#   printenv                    → AUDIT (environment enumeration)
+#   set                         → AUDIT (shell variables including env)
+#   echo $AWS_SECRET_ACCESS_KEY → AUDIT (specific secret access)
+#   echo $GITHUB_TOKEN          → AUDIT (specific secret access)
+#   echo $DATABASE_PASSWORD     → AUDIT (specific secret access)
+#   echo $HOME                  → ALLOW (non-sensitive variable)
+#   echo "hello world"          → ALLOW (no variable access)
+#
+# Rationale:
+#   Environment variable access is not blocked (agents legitimately need
+#   some env vars), but all access to sensitive-looking variables is
+#   logged for compliance and incident investigation.
+
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: audit-env-var-access
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Audit environment variable enumeration and access to sensitive-looking variables"
+  matchConstraints:
+    tools: ["Bash"]
+  variables:
+    - name: isEnvEnumeration
+      # env, printenv, set commands (full enumeration)
+      expression: >-
+        request.args.command.matches("(?i)^\\s*(env|printenv|set)\\s*$")
+    - name: isSecretVarAccess
+      # echo $*_KEY, $*_SECRET, $*_TOKEN, $*_PASSWORD, $*_CREDENTIAL
+      # Also covers AWS_*, GITHUB_*, DATABASE_*, API_*
+      expression: >-
+        request.args.command.matches("(?i)\\$[A-Z_]*(KEY|SECRET|TOKEN|PASSWORD|CREDENTIAL|AUTH)[A-Z_]*") ||
+        request.args.command.matches("(?i)\\$(AWS_|GITHUB_|GITLAB_|DATABASE_|DB_|API_)[A-Z_]+")
+    - name: isExportSensitive
+      # export commands setting sensitive variables
+      expression: >-
+        request.args.command.matches("(?i)\\bexport\\s+[A-Z_]*(KEY|SECRET|TOKEN|PASSWORD|CREDENTIAL)=")
+  validations:
+    - expression: 'isEnvEnumeration'
+      message: 'Environment variable enumeration — audit trail'
+      action: AUDIT
+    - expression: 'isSecretVarAccess'
+      message: 'Sensitive environment variable access — audit trail'
+      action: AUDIT
+    - expression: 'isExportSensitive'
+      message: 'Sensitive environment variable export — audit trail'
+      action: AUDIT
+  defaultAction: ALLOW

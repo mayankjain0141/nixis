@@ -1,0 +1,80 @@
+# Source: Community research — AgentWall Safe Mode rules
+# Gate: G5 (security tests)
+# Default: ENABLED — shipped as default-on in the built-in bundle
+#
+# Behavior:
+#   sudo su                    → DENY (root shell)
+#   sudo -i                    → DENY (root login shell)
+#   sudo bash                  → DENY (root shell via bash)
+#   chmod 777 /                → DENY (world-writable root)
+#   chmod -R 777 /var          → DENY (recursive world-writable)
+#   chown -R root:root /home   → DENY (recursive root ownership)
+#   visudo                     → DENY (sudoers edit)
+#   usermod -aG sudo user      → DENY (grant sudo access)
+#   sudo apt install vim       → ALLOW (specific command with sudo)
+#   chmod 755 script.sh        → ALLOW (normal permission change)
+#
+# Rationale:
+#   AI agents should not escalate privileges or modify system security
+#   configurations. Specific privileged commands may be allowed, but
+#   obtaining unrestricted root access is blocked.
+
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: block-privilege-escalation
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Block privilege escalation patterns: root shells, permission changes, and sudoers modifications"
+  matchConstraints:
+    tools: ["Bash"]
+  variables:
+    - name: isRootShell
+      # sudo su, sudo -i, sudo -s, sudo bash, sudo sh, sudo zsh
+      expression: >-
+        request.args.command.matches("(?i)\\bsudo\\s+(su|-(i|s)|bash|sh|zsh)\\b")
+    - name: isWorldWritableRoot
+      # chmod 777 / or chmod -R 777 on system paths
+      expression: >-
+        request.args.command.matches("(?i)\\bchmod\\s+(-R\\s+)?777\\s+(/|/etc|/var|/usr|/home|/opt)\\b")
+    - name: isRootOwnershipChange
+      # chown -R root:root on system paths (not within project)
+      expression: >-
+        request.args.command.matches("(?i)\\bchown\\s+-R\\s+root(:root)?\\s+(/|/etc|/var|/usr|/home|/opt)\\b")
+    - name: isSudoersEdit
+      # visudo, editing /etc/sudoers directly
+      expression: >-
+        request.args.command.matches("(?i)\\bvisudo\\b") ||
+        request.args.command.matches("(?i)(vim?|nano|emacs|cat\\s*>).*\\s+/etc/sudoers")
+    - name: isGrantSudo
+      # usermod -aG sudo, usermod -aG wheel, gpasswd -a user sudo
+      expression: >-
+        request.args.command.matches("(?i)\\busermod\\s+.*-aG\\s+(sudo|wheel)\\b") ||
+        request.args.command.matches("(?i)\\bgpasswd\\s+-a\\s+\\w+\\s+(sudo|wheel)\\b")
+    - name: isSetuid
+      # chmod +s on binaries, chmod u+s, chmod 4755
+      expression: >-
+        request.args.command.matches("(?i)\\bchmod\\s+.*[+][sS]\\b") ||
+        request.args.command.matches("(?i)\\bchmod\\s+[247][0-7]{3}\\b")
+  validations:
+    - expression: 'isRootShell'
+      message: 'Root shell access is blocked — use specific sudo commands instead'
+      action: DENY
+    - expression: 'isWorldWritableRoot'
+      message: 'Setting world-writable permissions on system paths is blocked'
+      action: DENY
+    - expression: 'isRootOwnershipChange'
+      message: 'Recursive root ownership on system paths is blocked'
+      action: DENY
+    - expression: 'isSudoersEdit'
+      message: 'Editing sudoers configuration is blocked'
+      action: DENY
+    - expression: 'isGrantSudo'
+      message: 'Granting sudo/wheel group membership is blocked'
+      action: DENY
+    - expression: 'isSetuid'
+      message: 'Setting setuid/setgid bits is blocked'
+      action: DENY
+  defaultAction: ALLOW

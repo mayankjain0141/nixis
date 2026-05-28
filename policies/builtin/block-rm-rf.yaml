@@ -1,0 +1,52 @@
+# Source: Community research — AgentWall Safe Mode, claude-guardrails
+# Gate: G4 (CEL function tests)
+# Default: ENABLED — shipped as default-on in the built-in bundle
+#
+# Behavior:
+#   rm -rf /                → DENY (recursive force delete, sensitive path)
+#   rm -fr /tmp/build       → DENY (recursive force delete with -fr)
+#   rm -r -f /home/user     → DENY (flags in any order, sensitive path)
+#   rm -r /                 → DENY (recursive delete on root)
+#   rm -r /etc              → DENY (recursive delete on sensitive path)
+#   rm -r ./node_modules    → ALLOW (recursive but not force, not sensitive)
+#   rm file.txt             → ALLOW (simple file delete)
+#
+# Rationale:
+#   rm -rf is the most dangerous command in Unix systems. A single typo
+#   (e.g., rm -rf / tmp instead of rm -rf /tmp) can destroy an entire system.
+#   AI agents should never execute this without human review.
+
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: block-rm-rf
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Block recursive forced deletion (rm -rf) and recursive deletion of sensitive system paths"
+  matchConstraints:
+    tools: ["Bash"]
+  variables:
+    - name: isRmCommand
+      expression: 'request.args.command.matches("(?i)\\brm\\b")'
+    - name: hasRecursiveFlag
+      # Matches -r, -R, or combined flags containing r/R (e.g., -rf, -fr, -Rf)
+      expression: >-
+        request.args.command.matches("\\brm\\s+(-[a-zA-Z]*[rR][a-zA-Z]*|--recursive)")
+    - name: hasForceFlag
+      # Matches -f or combined flags containing f (e.g., -rf, -fr)
+      expression: >-
+        request.args.command.matches("\\brm\\s+(-[a-zA-Z]*f[a-zA-Z]*|--force)")
+    - name: targetsSensitivePath
+      # Root, /etc, /home, /var, /usr, /data, /opt, /srv, /boot, /lib
+      expression: >-
+        request.args.command.matches("\\brm\\s+.*\\s+(/|/etc|/home|/var|/usr|/data|/opt|/srv|/boot|/lib)(/|\\s|$)")
+  validations:
+    - expression: 'isRmCommand && hasRecursiveFlag && hasForceFlag'
+      message: 'rm -rf is blocked — recursive forced deletion is too dangerous for automated execution'
+      action: DENY
+    - expression: 'isRmCommand && hasRecursiveFlag && targetsSensitivePath'
+      message: 'Recursive deletion of system paths requires human intervention'
+      action: DENY
+  defaultAction: ALLOW

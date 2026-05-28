@@ -1,0 +1,80 @@
+# Source: Community research — AgentWall Safe Mode, catalog.json critical tools
+# Gate: G4 (CEL function tests)
+# Default: ENABLED — shipped as default-on in the built-in bundle
+#
+# Behavior:
+#   dd if=/dev/zero of=/dev/sda   → DENY (disk wiping)
+#   dd if=/dev/random of=/dev/sdb → DENY (disk wiping)
+#   mkfs.ext4 /dev/sda1           → DENY (filesystem format)
+#   mkfs -t xfs /dev/sdb          → DENY (filesystem format)
+#   shred /etc/passwd             → DENY (secure delete of system file)
+#   shred /tmp/test.txt           → ALLOW (temp file is acceptable)
+#   shutdown -h now               → DENY (system shutdown)
+#   reboot                        → DENY (system reboot)
+#   :(){ :|:& };:                 → DENY (fork bomb)
+#
+# Rationale:
+#   These commands can cause irreversible damage to systems. AI agents
+#   should never execute disk wiping, filesystem formatting, or system
+#   power operations without explicit human approval.
+
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: block-destructive-commands
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Block destructive system commands: disk wiping, filesystem formatting, and system power operations"
+  matchConstraints:
+    tools: ["Bash"]
+  variables:
+    - name: isDiskWipe
+      # dd with /dev/zero, /dev/random, /dev/urandom as input writing to device
+      expression: >-
+        request.args.command.matches("(?i)\\bdd\\b.*if=/dev/(zero|random|urandom).*of=/dev/")
+    - name: isFilesystemFormat
+      # mkfs, mkfs.ext4, mkfs.xfs, etc.
+      expression: >-
+        request.args.command.matches("(?i)\\bmkfs(\\.[a-z0-9]+)?\\b")
+    - name: isDiskPartition
+      # fdisk, gdisk, parted with write operations (not just -l/--list)
+      expression: >-
+        request.args.command.matches("(?i)\\b(fdisk|gdisk|parted)\\b") &&
+        !request.args.command.matches("(?i)\\b(fdisk|gdisk|parted)\\s+(-l|--list)")
+    - name: isSecureDeleteSystemFile
+      # shred or wipe on non-temp paths
+      expression: >-
+        request.args.command.matches("(?i)\\b(shred|wipe)\\b") &&
+        !request.args.command.matches("(?i)\\b(shred|wipe)\\b.*/tmp/")
+    - name: isPowerOperation
+      # shutdown, reboot, halt, poweroff, init 0, init 6
+      expression: >-
+        request.args.command.matches("(?i)\\b(shutdown|reboot|halt|poweroff)\\b") ||
+        request.args.command.matches("(?i)\\binit\\s+[06]\\b")
+    - name: isForkBomb
+      # Classic fork bomb patterns: :(){ :|:& };: and variants
+      expression: >-
+        request.args.command.matches(":\\(\\)\\{.*:\\|:.*\\}") ||
+        request.args.command.matches("\\$\\{.*:.*\\|.*:.*\\}")
+  validations:
+    - expression: 'isDiskWipe'
+      message: 'Disk wiping (dd with /dev/zero or /dev/random) is blocked'
+      action: DENY
+    - expression: 'isFilesystemFormat'
+      message: 'Filesystem formatting (mkfs) is blocked — this destroys all data'
+      action: DENY
+    - expression: 'isDiskPartition'
+      message: 'Disk partitioning requires human intervention'
+      action: DENY
+    - expression: 'isSecureDeleteSystemFile'
+      message: 'Secure deletion of non-temporary files is blocked'
+      action: DENY
+    - expression: 'isPowerOperation'
+      message: 'System power operations (shutdown/reboot) are blocked'
+      action: DENY
+    - expression: 'isForkBomb'
+      message: 'Fork bomb pattern detected — this would crash the system'
+      action: DENY
+  defaultAction: ALLOW
