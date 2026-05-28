@@ -1,13 +1,17 @@
 // aegis-hook is the per-invocation hook binary for Claude Code and Cursor IDE.
 //
 // It is invoked for every tool call. It reads a HookInput JSON object from stdin,
-// evaluates it against the aegis-daemon, and writes a CursorHookOutput JSON object
+// evaluates it against the aegis-daemon, and writes a hook output JSON object
 // to stdout before exiting.
 //
-// Exit codes:
+// Exit codes (Cursor):
 //
 //	0 — allow (or fail-open: daemon unreachable within deadline)
 //	2 — deny / require_approval
+//
+// Exit codes (Claude Code):
+//
+//	0 — always; decision communicated via JSON permissionDecision field
 //
 // Build constraints:
 //
@@ -67,7 +71,7 @@ func (h *HookInput) GetSessionID() string {
 	return h.SessionID
 }
 
-// CursorHookOutput is the JSON structure the hook writes to stdout.
+// CursorHookOutput is the JSON structure the hook writes to stdout for Cursor IDE.
 type CursorHookOutput struct {
 	// Decision mirrors the daemon's CheckResponse.Decision for Cursor integration.
 	Decision struct {
@@ -76,6 +80,19 @@ type CursorHookOutput struct {
 		PolicyID string `json:"policy_id,omitempty"`
 	} `json:"decision"`
 	LatencyNs int64 `json:"latency_ns"`
+}
+
+// ClaudeCodeHookOutput is the JSON structure the hook writes to stdout for Claude Code.
+// Claude Code reads this only on exit code 0; deny is communicated via permissionDecision.
+type ClaudeCodeHookOutput struct {
+	HookSpecificOutput ClaudeCodeHookSpecific `json:"hookSpecificOutput"`
+}
+
+// ClaudeCodeHookSpecific carries the decision fields inside hookSpecificOutput.
+type ClaudeCodeHookSpecific struct {
+	HookEventName            string `json:"hookEventName"`
+	PermissionDecision       string `json:"permissionDecision"`
+	PermissionDecisionReason string `json:"permissionDecisionReason,omitempty"`
 }
 
 // FailOpenEntry is appended to AEGIS_FAILOPEN_LOG when the hook fails open.
@@ -97,15 +114,18 @@ func main() {
 	// Read stdin with a deadline.
 	inputBytes, err := readStdin(deadline)
 	if err != nil {
-		allowWithWarning("stdin_read_error", "", nil, false)
+		allowWithWarning("stdin_read_error", "", nil, false, false)
 		os.Exit(0)
 	}
 
 	var hookInput HookInput
 	if err := json.Unmarshal(inputBytes, &hookInput); err != nil {
-		allowWithWarning("stdin_parse_error", "", nil, false)
+		allowWithWarning("stdin_parse_error", "", nil, false, false)
 		os.Exit(0)
 	}
+
+	// Detect IDE: Claude Code sends hook_event_name; Cursor does not.
+	isClaudeCode := hookInput.HookEventName != ""
 
 	// Build CheckRequest.
 	req := aegis.CheckRequest{
@@ -118,7 +138,7 @@ func main() {
 	// Connect to daemon socket.
 	conn, err := dialSocket(socketPath, deadline)
 	if err != nil {
-		allowWithWarning("daemon_unreachable", hookInput.Tool, hookInput.GetInput(), time.Now().After(deadline))
+		allowWithWarning("daemon_unreachable", hookInput.Tool, hookInput.GetInput(), time.Now().After(deadline), isClaudeCode)
 		os.Exit(0)
 	}
 	defer func() { _ = conn.Close() }()
@@ -126,33 +146,46 @@ func main() {
 	// Serialize and send the CheckRequest.
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		allowWithWarning("marshal_error", hookInput.Tool, hookInput.GetInput(), false)
+		allowWithWarning("marshal_error", hookInput.Tool, hookInput.GetInput(), false, isClaudeCode)
 		os.Exit(0)
 	}
 
 	if err := writeFramed(conn, reqBytes, deadline); err != nil {
-		allowWithWarning("send_error", hookInput.Tool, hookInput.GetInput(), time.Now().After(deadline))
+		allowWithWarning("send_error", hookInput.Tool, hookInput.GetInput(), time.Now().After(deadline), isClaudeCode)
 		os.Exit(0)
 	}
 
 	// Receive CheckResponse.
 	respBytes, err := readFramed(conn, deadline)
 	if err != nil {
-		allowWithWarning("recv_error", hookInput.Tool, hookInput.GetInput(), time.Now().After(deadline))
+		allowWithWarning("recv_error", hookInput.Tool, hookInput.GetInput(), time.Now().After(deadline), isClaudeCode)
 		os.Exit(0)
 	}
 
 	var resp aegis.CheckResponse
 	if err := json.Unmarshal(respBytes, &resp); err != nil {
-		allowWithWarning("response_parse_error", hookInput.Tool, hookInput.GetInput(), false)
+		allowWithWarning("response_parse_error", hookInput.Tool, hookInput.GetInput(), false, isClaudeCode)
 		os.Exit(0)
 	}
 
-	// Translate and write response to stdout.
+	if isClaudeCode {
+		// Claude Code path: always exit 0; deny is communicated via permissionDecision.
+		out := translateToClaudeCode(resp, hookInput.HookEventName)
+		outBytes, err := json.Marshal(out)
+		if err != nil {
+			allowWithWarning("output_marshal_error", hookInput.Tool, hookInput.GetInput(), false, true)
+			os.Exit(0)
+		}
+		_, _ = os.Stdout.Write(outBytes)
+		_, _ = os.Stdout.Write([]byte("\n"))
+		os.Exit(0)
+	}
+
+	// Cursor path: translate and write CursorHookOutput, exit 2 on deny/require_approval.
 	out := translateResponse(resp)
 	outBytes, err := json.Marshal(out)
 	if err != nil {
-		allowWithWarning("output_marshal_error", hookInput.Tool, hookInput.GetInput(), false)
+		allowWithWarning("output_marshal_error", hookInput.Tool, hookInput.GetInput(), false, false)
 		os.Exit(0)
 	}
 
@@ -192,14 +225,27 @@ func failOpenLogPath() string {
 
 // allowWithWarning writes an allow response to stdout and appends a FailOpenEntry
 // to AEGIS_FAILOPEN_LOG. This is the ONLY fail-open path in the system (A5, DECISION-007).
-func allowWithWarning(reason, tool string, args json.RawMessage, deadlineExceeded bool) {
+func allowWithWarning(reason, tool string, args json.RawMessage, deadlineExceeded bool, isClaudeCode bool) {
 	// Write allow response to stdout first (before potentially slow log write).
-	out := CursorHookOutput{}
-	out.Decision.Action = "allow"
-	out.Decision.Reason = fmt.Sprintf("fail-open: %s", reason)
-	if b, err := json.Marshal(out); err == nil {
-		_, _ = os.Stdout.Write(b)
-		_, _ = os.Stdout.Write([]byte("\n"))
+	if isClaudeCode {
+		out := ClaudeCodeHookOutput{
+			HookSpecificOutput: ClaudeCodeHookSpecific{
+				PermissionDecision:       "allow",
+				PermissionDecisionReason: fmt.Sprintf("fail-open: %s", reason),
+			},
+		}
+		if b, err := json.Marshal(out); err == nil {
+			_, _ = os.Stdout.Write(b)
+			_, _ = os.Stdout.Write([]byte("\n"))
+		}
+	} else {
+		out := CursorHookOutput{}
+		out.Decision.Action = "allow"
+		out.Decision.Reason = fmt.Sprintf("fail-open: %s", reason)
+		if b, err := json.Marshal(out); err == nil {
+			_, _ = os.Stdout.Write(b)
+			_, _ = os.Stdout.Write([]byte("\n"))
+		}
 	}
 
 	otel.InstrumentFailOpen().Add(context.Background(), 1)
@@ -296,6 +342,30 @@ func readFramed(conn net.Conn, deadline time.Time) ([]byte, error) {
 		return nil, err
 	}
 	return payload, nil
+}
+
+// translateToClaudeCode converts a CheckResponse into a ClaudeCodeHookOutput.
+// Claude Code always receives exit 0; the decision is communicated via permissionDecision.
+func translateToClaudeCode(resp aegis.CheckResponse, eventName string) ClaudeCodeHookOutput {
+	specific := ClaudeCodeHookSpecific{
+		HookEventName: eventName,
+	}
+	switch resp.Decision.Action {
+	case aegis.ActionAllow:
+		specific.PermissionDecision = "allow"
+	case aegis.ActionDeny:
+		specific.PermissionDecision = "deny"
+		specific.PermissionDecisionReason = resp.Decision.Reason
+	case aegis.ActionRequireApproval:
+		specific.PermissionDecision = "ask"
+		specific.PermissionDecisionReason = resp.Decision.Reason
+	case aegis.ActionAudit:
+		specific.PermissionDecision = "allow"
+	default:
+		specific.PermissionDecision = "deny"
+		specific.PermissionDecisionReason = "unknown action"
+	}
+	return ClaudeCodeHookOutput{HookSpecificOutput: specific}
 }
 
 // translateResponse converts a CheckResponse into a CursorHookOutput.
