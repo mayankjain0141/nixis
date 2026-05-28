@@ -1,17 +1,22 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
+	"context"
 	"crypto/ed25519"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/mayjain/aegis/internal/bundle"
 )
 
@@ -492,5 +497,102 @@ func TestCLI_BundleRollback_ActivatesBundle(t *testing.T) {
 	// Must NOT report "cannot connect" for the newer bundle — rollback must pick the older one.
 	if strings.Contains(stdout, newerHash[:8]) {
 		t.Errorf("output must not reference newer bundle %q as rollback target, got: %q", newerHash[:8], stdout)
+	}
+}
+
+// TestCLI_AuditTail_Follow_WebSocket verifies that tailFollow:
+//  1. Connects to the stream endpoint and receives events.
+//  2. Filters non-audit event types (heartbeats, etc.).
+//  3. Exits cleanly when the server closes — no goroutine leak.
+//  4. Does not race against the test's output read.
+func TestCLI_AuditTail_Follow_WebSocket(t *testing.T) {
+	var upgrader = websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
+
+	// policyEvent and heartbeat payloads — only policyEvent should pass the filter.
+	policyEvent := map[string]interface{}{
+		"specversion":     "1.0",
+		"id":              "evt-1",
+		"type":            "policy.evaluated",
+		"source":          "aegis-daemon/test",
+		"time":            time.Now().UTC().Format(time.RFC3339Nano),
+		"datacontenttype": "application/json",
+		"aegissequence":   1,
+		"data":            map[string]interface{}{"tool": "bash", "session_id": "s1"},
+	}
+	heartbeat := map[string]interface{}{
+		"specversion":   "1.0",
+		"id":            "hb-1",
+		"type":          "stream.heartbeat",
+		"source":        "aegis-daemon/test",
+		"time":          time.Now().UTC().Format(time.RFC3339Nano),
+		"aegissequence": 2,
+		"data":          map[string]interface{}{"serverTime": 0},
+	}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer func() { _ = conn.Close() }()
+
+		policyBytes, _ := json.Marshal(policyEvent)
+		_ = conn.WriteMessage(websocket.TextMessage, policyBytes)
+
+		hbBytes, _ := json.Marshal(heartbeat)
+		_ = conn.WriteMessage(websocket.TextMessage, hbBytes)
+
+		// Close cleanly — tailFollow must return after this.
+		_ = conn.WriteMessage(websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+	}))
+	defer srv.Close()
+
+	// Convert http:// to ws://.
+	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http")
+
+	// Run tailFollow synchronously — it must return when the server closes.
+	var outBuf bytes.Buffer
+	w := bufio.NewWriter(&outBuf)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	done := make(chan error, 1)
+	go func() {
+		done <- tailFollow(ctx, w, wsURL)
+	}()
+
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("tailFollow returned error: %v", err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("runAuditTail did not exit after server close")
+	}
+
+	// Safe to read output only after tailFollow has returned (no concurrent write).
+	output := outBuf.String()
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+
+	// Exactly one event should be emitted: the policy.evaluated one.
+	nonEmpty := 0
+	for _, l := range lines {
+		if strings.TrimSpace(l) != "" {
+			nonEmpty++
+		}
+	}
+	if nonEmpty != 1 {
+		t.Errorf("expected 1 audit event line, got %d\noutput: %q", nonEmpty, output)
+	}
+
+	// The emitted line must be valid JSON and have type "policy.evaluated".
+	if nonEmpty == 1 {
+		var m map[string]interface{}
+		if err := json.Unmarshal([]byte(strings.TrimSpace(lines[0])), &m); err != nil {
+			t.Errorf("emitted line is not valid JSON: %v", err)
+		} else if m["type"] != "policy.evaluated" {
+			t.Errorf("expected type=policy.evaluated, got %v", m["type"])
+		}
 	}
 }
