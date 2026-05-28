@@ -119,8 +119,7 @@ test_data/
 # ===========================
 # Claude Execution Files
 # ===========================
-# NOTE: CLAUDE.md is intentionally NOT ignored — it is the project governance
-# document and must be tracked. SUBAGENT_PLAYBOOK.md stays ignored (ephemeral).
+CLAUDE.md
 SUBAGENT_PLAYBOOK.md
 .claude/
 .cursor/
