@@ -8,13 +8,15 @@ import { useMetricsStore } from './stores/metrics-store';
 import { useStreamStore } from './stores/stream-store';
 import { usePolicyStore } from './stores/policy-store';
 import { useUIStore } from './stores/ui-store';
+import { useLatticeStore } from './stores/lattice-store';
+import { useThreatStore } from './stores/threat-store';
 import { createMockStreamGenerator } from './mocks/streamGenerator';
 import { createWebSocketManager } from './lib/realtime/ws-manager';
 import { createEventIngestionPipeline } from './lib/realtime/ingestion-pipeline';
 import { createEventBus } from './lib/realtime/event-bus';
 import { createBackpressureController } from './lib/realtime/backpressure';
 import { createSyncOrchestrator, atomicUpdate } from './lib/realtime/sync-orchestrator';
-import { createStreamProcessor, feedBatchToProcessor } from './lib/realtime/stream-processor';
+import { createStreamProcessor } from './lib/realtime/stream-processor';
 import { GovernanceInvariantChecker } from './services/invariants';
 import type { ValidatedEvent } from './lib/realtime/ingestion-pipeline';
 import type { GovernanceEvent } from './stores/governance-store';
@@ -60,8 +62,7 @@ function mockEventToCloudEvent(e: StreamEvent, seq: number): string {
 }
 
 // Build an atomic cross-store update for a policy event.
-// governance-store and metrics-store are committed in the same apply() call,
-// satisfying the WS-21 atomic cross-store invariant.
+// governance-store and metrics-store updated in the same apply() — WS-21 atomic cross-store invariant.
 function buildPolicyUpdate(
   event: ValidatedEvent & { type: 'policy.evaluated' | 'policy.denied' },
   appendEvent: (ev: GovernanceEvent) => void,
@@ -99,7 +100,6 @@ function buildPolicyUpdate(
   const priority = isDeny ? 'IMMEDIATE' : 'FRAME';
 
   return atomicUpdate(priority, event.type,
-    // Governance state and metrics state updated atomically in one apply() call.
     () => {
       appendEvent(govEvent);
       recordLatency(d.latency_ns);
@@ -110,7 +110,8 @@ function buildPolicyUpdate(
   );
 }
 
-// Route a batch of validated events to stores via the sync-orchestrator.
+// Route validated events to stores via the sync-orchestrator.
+// All 12 ADR-012 event types are routed; CRITICAL events use IMMEDIATE priority.
 function routeEvents(
   events: ValidatedEvent[],
   orchestrator: ReturnType<typeof createSyncOrchestrator>,
@@ -126,11 +127,9 @@ function routeEvents(
     switch (event.type) {
       case 'policy.evaluated':
       case 'policy.denied': {
-        const update = buildPolicyUpdate(
-          event, appendEvent, updateLabel,
-          recordLatency, recordEvent, updateLastSequence,
-        );
-        orchestrator.dispatchUpdate(update);
+        orchestrator.dispatchUpdate(buildPolicyUpdate(
+          event, appendEvent, updateLabel, recordLatency, recordEvent, updateLastSequence,
+        ));
         break;
       }
 
@@ -151,22 +150,60 @@ function routeEvents(
         break;
       }
 
+      case 'label.escalated': {
+        const d = event.data;
+        orchestrator.dispatchUpdate(atomicUpdate('IMMEDIATE', event.type, () => {
+          useLatticeStore.getState().upsertNode(
+            d.session_id,
+            d.label,
+            (d.label_state ?? 'escalated') as LabelState,
+          );
+          updateLastSequence(event.envelope.aegissequence);
+        }));
+        break;
+      }
+
+      case 'secret.detected':
+      case 'mcp.tool_drift': {
+        const d = event.data;
+        const tool = 'tool' in d ? (d.tool as string) : '';
+        orchestrator.dispatchUpdate(atomicUpdate('IMMEDIATE', event.type, () => {
+          useThreatStore.getState().appendThreat({
+            id: `threat-${event.envelope.aegissequence}`,
+            type: 'secret.found',
+            sessionId: 'session_id' in d ? (d.session_id as string) : '',
+            tool,
+            severity: 'critical',
+            description: event.type,
+            aegisSequence: event.envelope.aegissequence,
+            timestamp: event.envelope.time
+              ? new Date(event.envelope.time).getTime()
+              : Date.now(),
+            acknowledged: false,
+          });
+          updateLastSequence(event.envelope.aegissequence);
+        }));
+        break;
+      }
+
       case 'system.error':
         if (event.data.severity === 'critical') {
           orchestrator.dispatchUpdate(atomicUpdate('IMMEDIATE', event.type, () => {
             setConnectionState('DISCONNECTED');
           }));
+        } else {
+          updateLastSequence(event.envelope.aegissequence);
         }
         break;
 
       case 'stream.heartbeat':
-        // Handled by ws-manager for clock offset; no store update needed.
+        // ws-manager handles clock offset; sequence update still needed.
+        updateLastSequence(event.envelope.aegissequence);
         break;
 
       default:
-        // label.escalated, secret.detected, mcp.tool_drift, delegation.*,
-        // audit.checkpoint — flow through bus and stream-processor; store routing
-        // is a Phase 2 extension.
+        // delegation.created/revoked/expired, audit.checkpoint —
+        // flow through stream-processor for windowed aggregations.
         updateLastSequence(event.envelope.aegissequence);
         break;
     }
@@ -233,20 +270,18 @@ export default function App() {
 
   // Main realtime wiring:
   // ws-manager → ingestion-pipeline → event-bus → backpressure → sync-orchestrator → stores
-  //                                                             ↘ stream-processor (WS-20)
+  //                                                                    ↓ (internally)
+  //                                                             stream-processor (WS-20)
   useEffect(() => {
     const bus = createEventBus();
     const bpController = createBackpressureController();
     const streamProcessor = createStreamProcessor();
-    const orchestrator = createSyncOrchestrator();
+    // WS-21 consumes WS-20: orchestrator.dispatch(batch) calls streamProcessor.process(batch).
+    const orchestrator = createSyncOrchestrator({ streamProcessor });
 
-    // Backpressure output → sync-orchestrator → stores + stream-processor.
+    // Backpressure output → sync-orchestrator (calls stream-processor internally) → stores.
     const unsubBp = bpController.onOutput((batch) => {
-      // WS-21: sync-orchestrator consumes the full ProcessedBatch.
       orchestrator.dispatch(batch);
-      // WS-20: stream-processor consumes the batch for windowed aggregations.
-      feedBatchToProcessor(batch, streamProcessor);
-      // Route individual events to stores via orchestrator.
       routeEvents(
         batch.immediateEvents,
         orchestrator,
@@ -285,7 +320,6 @@ export default function App() {
       gen.start();
     }
 
-    // Poll ws-manager state to update stream-store.
     stateCheckInterval = setInterval(() => {
       setConnectionState(wsManager.getState());
     }, 250);

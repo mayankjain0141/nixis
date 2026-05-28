@@ -325,6 +325,10 @@ function buildCorrelationIndex(events: ReadonlyArray<ValidatedEvent>): Map<strin
 // ── Public interface ──────────────────────────────────────────────────────────
 
 export interface IStreamProcessor {
+  // Primary entry point: consumes a ProcessedBatch from the backpressure controller (WS-19).
+  // Satisfies the 08_EXECUTION_CONTEXT WS-20 interface: process(batch: ProcessedBatch).
+  process(batch: ProcessedBatch): void;
+  // Secondary entry point: process a pre-extracted slice of events.
   processBatch(events: ValidatedEvent[]): void;
   getMetrics(): DerivedMetrics;
   getFilters(): ActiveFilters;
@@ -388,7 +392,14 @@ export function createStreamProcessor(): IStreamProcessor {
     for (const h of metricsHandlers) h(m);
   }
 
-  return {
+  const processor: IStreamProcessor = {
+    // Primary entry: consume WS-19 ProcessedBatch directly.
+    process(batch) {
+      if (batch.immediateEvents.length > 0) {
+        processor.processBatch(batch.immediateEvents);
+      }
+    },
+
     processBatch(events) {
       for (const event of events) {
         if (!matchesFilter(event)) continue;
@@ -453,16 +464,5 @@ export function createStreamProcessor(): IStreamProcessor {
       return orderedList.toArray();
     },
   };
-}
-
-// ── ProcessedBatch consumer (connects WS-19 output to WS-20) ─────────────────
-// Extracts ValidatedEvent[] from a ProcessedBatch and calls processBatch.
-
-export function feedBatchToProcessor(
-  batch: ProcessedBatch,
-  processor: IStreamProcessor,
-): void {
-  if (batch.immediateEvents.length > 0) {
-    processor.processBatch(batch.immediateEvents);
-  }
+  return processor;
 }

@@ -5,6 +5,7 @@
 import { flushSync } from 'react-dom';
 import type { ProcessedBatch } from './backpressure';
 import type { ValidatedEvent } from './ingestion-pipeline';
+import type { IStreamProcessor } from './stream-processor';
 
 export type DispatchPriority = 'IMMEDIATE' | 'FRAME' | 'DEFERRED';
 export type SyncTier = DispatchPriority;
@@ -63,10 +64,13 @@ export function createSyncOrchestrator(options?: {
   maxFrameBatch?: number;
   maxDeferred?: number;
   onEvent?: (event: ValidatedEvent, priority: DispatchPriority) => void;
+  // WS-20 integration: stream processor that processes each batch before store dispatch.
+  streamProcessor?: IStreamProcessor;
 }): ISyncOrchestrator {
   const maxFrameBatch = options?.maxFrameBatch ?? DEFAULT_MAX_FRAME_BATCH;
   const maxDeferred = options?.maxDeferred ?? DEFAULT_MAX_DEFERRED;
   const onEvent = options?.onEvent;
+  const streamProcessor = options?.streamProcessor;
 
   const frameQueue: StoreUpdate[] = [];
   const deferredQueue: StoreUpdate[] = [];
@@ -132,18 +136,19 @@ export function createSyncOrchestrator(options?: {
 
   return {
     // dispatch consumes a ProcessedBatch from WS-19.
-    // CRITICAL events in immediateEvents are already flushSync'd by the backpressure
-    // controller. Here we additionally route remaining events through priority tiers
-    // and notify the onEvent hook for WS-20 integration.
+    // Calls WS-20 stream processor first (Interfaces Consumed requirement),
+    // then records counts and notifies onEvent hook.
     dispatch(batch: ProcessedBatch) {
-      // Immediate events (already flushSync'd by backpressure) — record and notify.
+      // WS-20: stream processor processes the batch for windowed aggregations.
+      if (streamProcessor !== undefined) {
+        streamProcessor.process(batch);
+      }
+
+      // Record immediate events and notify onEvent hook with per-event priority.
       for (const event of batch.immediateEvents) {
         counts.immediate++;
         if (onEvent) onEvent(event, eventPriority(event));
       }
-
-      // Coalesced summaries have no individual event — they're metrics only.
-      // No store routing needed for coalesced batches.
     },
 
     dispatchUpdate,
