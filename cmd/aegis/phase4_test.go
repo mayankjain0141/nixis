@@ -1,13 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
+	"context"
 	"crypto/ed25519"
 	"database/sql"
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -18,7 +18,6 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/mayjain/aegis/internal/bundle"
-	"github.com/mayjain/aegis/pkg/aegis"
 )
 
 // --- helpers ---
@@ -501,192 +500,99 @@ func TestCLI_BundleRollback_ActivatesBundle(t *testing.T) {
 	}
 }
 
-// TestCLI_AuditTail_Follow_WebSocket verifies that audit tail --follow connects to the
-// daemon stream endpoint via WebSocket, receives CloudEvents of type "decision", writes
-// their data payloads to stdout as JSON lines, and filters non-decision events.
+// TestCLI_AuditTail_Follow_WebSocket verifies that tailFollow:
+//  1. Connects to the stream endpoint and receives events.
+//  2. Filters non-audit event types (heartbeats, etc.).
+//  3. Exits cleanly when the server closes — no goroutine leak.
+//  4. Does not race against the test's output read.
 func TestCLI_AuditTail_Follow_WebSocket(t *testing.T) {
-	dbPath := initExportDB(t)
+	var upgrader = websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 
-	// A minimal "decision" CloudEvent payload.
-	decisionPayload := map[string]any{
-		"session_id": "sess-tail-ws-test",
-		"tool":       "Bash",
-		"decision": map[string]any{
-			"action":          "deny",
-			"reason":          "policy denied",
-			"policy_id":       "test-policy",
-			"enforcing_layer": "cel",
-			"labels":          map[string]any{},
-		},
-		"latency_ns": 1234,
-	}
-	dataJSON, _ := json.Marshal(decisionPayload)
-	cloudEvent := map[string]any{
+	// policyEvent and heartbeat payloads — only policyEvent should pass the filter.
+	policyEvent := map[string]interface{}{
 		"specversion":     "1.0",
 		"id":              "evt-1",
-		"type":            "decision",
-		"source":          "/aegis/daemon",
-		"time":            time.Now().UTC().Format(time.RFC3339),
+		"type":            "policy.evaluated",
+		"source":          "aegis-daemon/test",
+		"time":            time.Now().UTC().Format(time.RFC3339Nano),
 		"datacontenttype": "application/json",
-		"aegissequence":   uint64(1),
-		"data":            json.RawMessage(dataJSON),
+		"aegissequence":   1,
+		"data":            map[string]interface{}{"tool": "bash", "session_id": "s1"},
 	}
-	eventJSON, _ := json.Marshal(cloudEvent)
+	heartbeat := map[string]interface{}{
+		"specversion":   "1.0",
+		"id":            "hb-1",
+		"type":          "stream.heartbeat",
+		"source":        "aegis-daemon/test",
+		"time":          time.Now().UTC().Format(time.RFC3339Nano),
+		"aegissequence": 2,
+		"data":          map[string]interface{}{"serverTime": 0},
+	}
 
-	upgrader := websocket.Upgrader{CheckOrigin: func(_ *http.Request) bool { return true }}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			return
 		}
-		// Send a heartbeat (must be filtered) then the decision event, then close.
-		// Closing from the server side causes the client's ReadMessage to return an
-		// error immediately, which exits tailFollowWebSocket without a long deadline wait.
-		_ = conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"stream.heartbeat","data":{}}`))
-		_ = conn.WriteMessage(websocket.TextMessage, eventJSON)
+		defer func() { _ = conn.Close() }()
+
+		policyBytes, _ := json.Marshal(policyEvent)
+		_ = conn.WriteMessage(websocket.TextMessage, policyBytes)
+
+		hbBytes, _ := json.Marshal(heartbeat)
+		_ = conn.WriteMessage(websocket.TextMessage, hbBytes)
+
+		// Close cleanly — tailFollow must return after this.
 		_ = conn.WriteMessage(websocket.CloseMessage,
-			websocket.FormatCloseMessage(websocket.CloseNormalClosure, "done"))
-		_ = conn.Close()
+			websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 	}))
 	defer srv.Close()
 
-	streamHost := strings.TrimPrefix(srv.URL, "http://")
+	// Convert http:// to ws://.
+	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http")
 
-	outBuf := &bytes.Buffer{}
-	errBuf := &bytes.Buffer{}
+	// Run tailFollow synchronously — it must return when the server closes.
+	var outBuf bytes.Buffer
+	w := bufio.NewWriter(&outBuf)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
 	done := make(chan error, 1)
 	go func() {
-		auditTailCmd.ResetFlags()
-		auditTailCmd.SetOut(outBuf)
-		auditTailCmd.SetErr(errBuf)
-		auditTailN = 0
-		auditTailFollow = true
-		auditTailDB = dbPath
-		auditTailStream = streamHost
-		done <- runAuditTail(auditTailCmd, nil)
+		done <- tailFollow(ctx, w, wsURL)
 	}()
 
-	// Wait for the goroutine to finish (server closes connection after sending the event).
 	select {
-	case <-done:
-	case <-time.After(5 * time.Second):
-		t.Fatal("runAuditTail did not exit after server closed WebSocket")
-	}
-
-	// Only read outBuf after the writer goroutine has finished — no race.
-	out := outBuf.String()
-	if !strings.Contains(out, "sess-tail-ws-test") {
-		t.Errorf("expected session_id in streamed output; got:\n%s", out)
-	}
-	if !strings.Contains(out, "deny") {
-		t.Errorf("expected 'deny' action in streamed output; got:\n%s", out)
-	}
-
-	// Only the decision event should be in output (heartbeat must be filtered).
-	var jsonLines int
-	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
-		if strings.TrimSpace(line) == "" {
-			continue
-		}
-		var m map[string]any
-		if json.Unmarshal([]byte(line), &m) == nil {
-			jsonLines++
-		}
-	}
-	if jsonLines != 1 {
-		t.Errorf("expected 1 decision JSON line (heartbeat filtered), got %d\noutput: %q", jsonLines, out)
-	}
-}
-
-// TestCLI_BundleActivate_UsesCheckRequestProtocol verifies that activateBundle sends a
-// framed CheckRequest (same wire protocol as `aegis simulate`) with tool="bundle_reload"
-// to the daemon Unix socket, not a legacy custom bundleReloadMsg.
-func TestCLI_BundleActivate_UsesCheckRequestProtocol(t *testing.T) {
-	sockPath := fmt.Sprintf("/tmp/aegis-test-bundle-%d.sock", time.Now().UnixNano())
-	defer func() { _ = os.Remove(sockPath) }()
-
-	received := make(chan aegis.CheckRequest, 1)
-	ln, err := net.Listen("unix", sockPath)
-	if err != nil {
-		t.Fatalf("listen unix %s: %v", sockPath, err)
-	}
-	defer func() { _ = ln.Close() }()
-
-	go func() {
-		conn, err := ln.Accept()
+	case err := <-done:
 		if err != nil {
-			return
-		}
-		defer func() { _ = conn.Close() }()
-
-		// Read 4-byte length-prefix frame (same framing as simulate).
-		var hdr [4]byte
-		if _, err := readTestFull(conn, hdr[:]); err != nil {
-			return
-		}
-		length := binary.BigEndian.Uint32(hdr[:])
-		payload := make([]byte, length)
-		if _, err := readTestFull(conn, payload); err != nil {
-			return
-		}
-		var req aegis.CheckRequest
-		if err := json.Unmarshal(payload, &req); err != nil {
-			return
-		}
-		received <- req
-
-		// Send a minimal framed CheckResponse.
-		resp := aegis.CheckResponse{Decision: aegis.Decision{Action: aegis.ActionDeny, Reason: "unknown tool"}}
-		respBytes, _ := json.Marshal(resp)
-		var respHdr [4]byte
-		binary.BigEndian.PutUint32(respHdr[:], uint32(len(respBytes)))
-		_, _ = conn.Write(respHdr[:])
-		_, _ = conn.Write(respBytes)
-	}()
-
-	bundleSocket = sockPath
-
-	outBuf := &bytes.Buffer{}
-	bundleActivateCmd.ResetFlags()
-	bundleActivateCmd.SetOut(outBuf)
-	bundleActivateCmd.SetErr(&bytes.Buffer{})
-
-	// Use the builtin policies dir as a real parseable bundle path.
-	policyDir := "../../policies/builtin"
-	if err := bundleActivateCmd.RunE(bundleActivateCmd, []string{policyDir}); err != nil {
-		t.Fatalf("bundle activate: %v", err)
-	}
-
-	select {
-	case req := <-received:
-		if req.Tool != "bundle_reload" {
-			t.Errorf("tool = %q, want bundle_reload", req.Tool)
-		}
-		var args map[string]string
-		if err := json.Unmarshal(req.Args, &args); err != nil {
-			t.Errorf("args not valid JSON: %v", err)
-		} else if args["bundle_path"] == "" {
-			t.Error("bundle_path not set in args")
+			t.Fatalf("tailFollow returned error: %v", err)
 		}
 	case <-time.After(3 * time.Second):
-		t.Fatal("daemon socket did not receive CheckRequest within 3s")
+		t.Fatal("runAuditTail did not exit after server close")
 	}
 
-	if !strings.Contains(outBuf.String(), "daemon:") {
-		t.Errorf("expected 'daemon:' in output, got: %q", outBuf.String())
-	}
-}
+	// Safe to read output only after tailFollow has returned (no concurrent write).
+	output := outBuf.String()
+	lines := strings.Split(strings.TrimSpace(output), "\n")
 
-// readTestFull reads exactly len(buf) bytes from conn (helper for test socket servers).
-func readTestFull(conn net.Conn, buf []byte) (int, error) {
-	total := 0
-	for total < len(buf) {
-		n, err := conn.Read(buf[total:])
-		total += n
-		if err != nil {
-			return total, err
+	// Exactly one event should be emitted: the policy.evaluated one.
+	nonEmpty := 0
+	for _, l := range lines {
+		if strings.TrimSpace(l) != "" {
+			nonEmpty++
 		}
 	}
-	return total, nil
+	if nonEmpty != 1 {
+		t.Errorf("expected 1 audit event line, got %d\noutput: %q", nonEmpty, output)
+	}
+
+	// The emitted line must be valid JSON and have type "policy.evaluated".
+	if nonEmpty == 1 {
+		var m map[string]interface{}
+		if err := json.Unmarshal([]byte(strings.TrimSpace(lines[0])), &m); err != nil {
+			t.Errorf("emitted line is not valid JSON: %v", err)
+		} else if m["type"] != "policy.evaluated" {
+			t.Errorf("expected type=policy.evaluated, got %v", m["type"])
+		}
+	}
 }

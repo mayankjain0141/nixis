@@ -9,10 +9,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -53,10 +53,10 @@ var auditExportCmd = &cobra.Command{
 }
 
 var (
-	auditTailN      int
-	auditTailFollow bool
-	auditTailDB     string
-	auditTailStream string // WebSocket stream address for --follow
+	auditTailN          int
+	auditTailFollow     bool
+	auditTailDB         string
+	auditTailStreamAddr string
 )
 
 var auditTailCmd = &cobra.Command{
@@ -78,9 +78,9 @@ func init() {
 	auditCmd.AddCommand(auditExportCmd)
 
 	auditTailCmd.Flags().IntVarP(&auditTailN, "lines", "n", 20, "Number of records to show")
-	auditTailCmd.Flags().BoolVarP(&auditTailFollow, "follow", "f", false, "Stream live events from daemon via WebSocket")
+	auditTailCmd.Flags().BoolVarP(&auditTailFollow, "follow", "f", false, "Stream new records via WebSocket")
 	auditTailCmd.Flags().StringVar(&auditTailDB, "db", "", "Audit database path (default: $AEGIS_AUDIT_DB)")
-	auditTailCmd.Flags().StringVar(&auditTailStream, "stream", "", "Daemon stream address for --follow (default: $AEGIS_DASHBOARD_ADDR or localhost:9090)")
+	auditTailCmd.Flags().StringVar(&auditTailStreamAddr, "stream-addr", "ws://127.0.0.1:9090/ws", "Daemon WebSocket stream address for --follow")
 	auditCmd.AddCommand(auditTailCmd)
 }
 
@@ -446,80 +446,92 @@ func runAuditTail(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
-	return tailFollowWebSocket(ctx, cmd, w)
+	return tailFollow(ctx, w, auditTailStreamAddr)
 }
 
-// streamAddr returns the WebSocket address for the daemon stream endpoint.
-// Priority: --stream flag → $AEGIS_DASHBOARD_ADDR → "localhost:9090".
-func streamAddr() string {
-	if auditTailStream != "" {
-		return auditTailStream
+// tailFollow streams audit events from the daemon's WebSocket endpoint.
+// It connects to the stream server and prints events whose type begins with "audit.",
+// "policy.", or "bundle." — the event types that represent governance decisions.
+func tailFollow(ctx context.Context, w *bufio.Writer, addr string) error {
+	dialer := websocket.Dialer{
+		HandshakeTimeout: 5 * time.Second,
 	}
-	if v := os.Getenv("AEGIS_DASHBOARD_ADDR"); v != "" {
-		// strip leading ":" if bare port was set
-		if len(v) > 0 && v[0] == ':' {
-			return "localhost" + v
-		}
-		return v
-	}
-	return "localhost:9090"
-}
-
-// tailFollowWebSocket connects to the daemon stream endpoint (ws://<addr>/ws),
-// receives CloudEvents, filters for "decision" type events, and writes them to w
-// as JSON audit records — one per line — until ctx is cancelled.
-func tailFollowWebSocket(ctx context.Context, cmd *cobra.Command, w *bufio.Writer) error {
-	addr := streamAddr()
-	wsURL := "ws://" + addr + "/ws"
-
-	dialer := websocket.Dialer{HandshakeTimeout: 5 * time.Second}
-	header := http.Header{"Origin": []string{"http://" + addr}}
-	conn, _, err := dialer.DialContext(ctx, wsURL, header)
+	conn, _, err := dialer.DialContext(ctx, addr, nil)
 	if err != nil {
-		return fmt.Errorf("connect to stream at %s: %w", wsURL, err)
+		return fmt.Errorf("connect to stream at %s: %w", addr, err)
 	}
-	defer func() { _ = conn.Close() }()
-
-	_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "streaming from %s (Ctrl-C to stop)\n", wsURL)
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	enc := json.NewEncoder(w)
 	for {
-		// Respect context cancellation between reads.
-		select {
-		case <-ctx.Done():
+		if ctx.Err() != nil {
 			return nil
-		default:
 		}
 
-		_ = conn.SetReadDeadline(time.Now().Add(30 * time.Second))
+		// Apply a read deadline so we can check ctx cancellation periodically.
+		if err := conn.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
+			return fmt.Errorf("set read deadline: %w", err)
+		}
+
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
 			if ctx.Err() != nil {
 				return nil
 			}
+			if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+				return nil
+			}
+			// Read deadline expired — loop to check ctx then read again.
+			if isTimeoutError(err) {
+				continue
+			}
 			return fmt.Errorf("stream read: %w", err)
 		}
 
-		// Parse the CloudEvent envelope to check the type.
-		var ce struct {
+		// Parse the envelope to extract the event type.
+		var envelope struct {
 			Type string          `json:"type"`
 			Data json.RawMessage `json:"data"`
 		}
-		if err := json.Unmarshal(msg, &ce); err != nil {
-			continue // skip malformed frames
-		}
-		if ce.Type != "decision" {
-			continue // skip heartbeats, snapshots, etc.
+		if err := json.Unmarshal(msg, &envelope); err != nil {
+			continue
 		}
 
-		// Emit the data payload (tool, session_id, decision, latency_ns) as a JSON line.
-		if err := enc.Encode(ce.Data); err != nil {
+		// Filter for audit-relevant event types.
+		if !isAuditEventType(envelope.Type) {
+			continue
+		}
+
+		// Emit the full CloudEvent envelope as JSONL.
+		if err := enc.Encode(json.RawMessage(msg)); err != nil {
 			return fmt.Errorf("encode event: %w", err)
 		}
 		if err := w.Flush(); err != nil {
-			return fmt.Errorf("flush: %w", err)
+			return fmt.Errorf("flush output: %w", err)
 		}
 	}
+}
+
+// isAuditEventType returns true for event types that represent governance decisions.
+func isAuditEventType(t string) bool {
+	return strings.HasPrefix(t, "audit.") ||
+		strings.HasPrefix(t, "policy.") ||
+		strings.HasPrefix(t, "bundle.") ||
+		t == "label.escalated" ||
+		t == "secret.detected"
+}
+
+// isTimeoutError reports whether err is a network timeout.
+func isTimeoutError(err error) bool {
+	type timeoutErr interface {
+		Timeout() bool
+	}
+	if te, ok := err.(timeoutErr); ok {
+		return te.Timeout()
+	}
+	return false
 }
 
 func printLastN(w *bufio.Writer, db *sql.DB, n int, afterID int64) (int64, error) {
