@@ -1,0 +1,24 @@
+# IMPORTED FROM: open-policy-agent/gatekeeper-library
+CONSTRAINT: K8sAllowedRepos
+REGO LOGIC: package k8sallowedrepos  violation[{"msg": msg}] {   container := input.review.object.spec.containers[_]   not strings.any_prefix_match(container.image, input.parameters.repos)   msg := sprintf("conta...
+MANUAL REVIEW: IMPORT_TODO: Unknown constraint kind 'K8sAllowedRepos' - manual review required. Rego logic needs human translation.
+# imported from: gatekeeper-library via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: gatekeeper-k8sallowedrepos
+    annotations:
+        aegis.io/imported-from: aegis-import-3909722420.yaml
+        aegis.io/original-kind: K8sAllowedRepos
+        aegis.io/severity: high
+        aegis.io/source: open-policy-agent/gatekeeper-library
+spec:
+    description: Requires container images to begin with a string from the specified list. To prevent bypasses, ensure a '/' is added when specifying DockerHub repositories or custom registries. If exact matches or glob-like syntax are preferred, use the k8sallowedreposv2 policy.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("kubectl.*")
+          message: Requires container images to begin with a string from the specified list. To prevent bypasses, ensure a '/' is added when specifying DockerHub repositories or custom registries. If exact matches or glob-like syntax are preferred, use the k8sallowedreposv2 policy.
+          action: DENY
+    defaultAction: ALLOW

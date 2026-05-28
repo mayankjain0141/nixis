@@ -1,0 +1,23 @@
+# IMPORTED FROM: open-policy-agent/gatekeeper-library
+CONSTRAINT: K8sPSPAllowedUsers
+REGO LOGIC: package k8spspallowedusers  import data.lib.exclude_update.is_update import data.lib.exempt_container.is_exempt  violation[{"msg": msg}] {   # runAsUser, runAsGroup, supplementalGroups, fsGroup fields...
+# imported from: gatekeeper-library via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: gatekeeper-k8spspallowedusers
+    annotations:
+        aegis.io/imported-from: aegis-import-3663536539.yaml
+        aegis.io/original-kind: K8sPSPAllowedUsers
+        aegis.io/severity: high
+        aegis.io/source: open-policy-agent/gatekeeper-library
+spec:
+    description: Controls the user and group IDs of the container and some volumes. Corresponds to the `runAsUser`, `runAsGroup`, `supplementalGroups`, and `fsGroup` fields in a PodSecurityPolicy. For more information, see https://kubernetes.io/docs/concepts/policy/pod-security-policy/#users-and-groups
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("kubectl.*runAsUser.*0")
+          message: Controls the user and group IDs of the container and some volumes. Corresponds to the `runAsUser`, `runAsGroup`, `supplementalGroups`, and `fsGroup` fields in a PodSecurityPolicy. For more information, see https://kubernetes.io/docs/concepts/policy/pod-security-policy/#users-and-groups
+          action: DENY
+    defaultAction: ALLOW

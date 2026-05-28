@@ -1,0 +1,22 @@
+# IMPORTED FROM: open-policy-agent/gatekeeper-library
+CONSTRAINT: K8sBlockNodePort
+# imported from: gatekeeper-library via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: gatekeeper-block-node-port
+    annotations:
+        aegis.io/imported-from: aegis-import-424660011.yaml
+        aegis.io/original-kind: K8sBlockNodePort
+        aegis.io/severity: high
+        aegis.io/source: open-policy-agent/gatekeeper-library
+spec:
+    description: 'OPA Gatekeeper constraint block-node-port (kind: K8sBlockNodePort)'
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("kubectl.*NodePort.*")
+          message: 'OPA Gatekeeper constraint block-node-port (kind: K8sBlockNodePort)'
+          action: DENY
+    defaultAction: ALLOW

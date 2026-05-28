@@ -1,0 +1,24 @@
+# IMPORTED FROM: open-policy-agent/gatekeeper-library
+CONSTRAINT: K8sHorizontalPodAutoscaler
+REGO LOGIC: package k8shorizontalpodautoscaler  violation[{"msg": msg}] {   input.review.kind.kind == "HorizontalPodAutoscaler"   hpa := input.review.object    not input_replica_limit(hpa)   msg := sprintf("The %...
+MANUAL REVIEW: IMPORT_TODO: Unknown constraint kind 'K8sHorizontalPodAutoscaler' - manual review required. Rego logic needs human translation.
+# imported from: gatekeeper-library via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: gatekeeper-k8shorizontalpodautoscaler
+    annotations:
+        aegis.io/imported-from: aegis-import-1144756378.yaml
+        aegis.io/original-kind: K8sHorizontalPodAutoscaler
+        aegis.io/severity: high
+        aegis.io/source: open-policy-agent/gatekeeper-library
+spec:
+    description: Disallow the following scenarios when deploying `HorizontalPodAutoscalers` 1. Deployment of HorizontalPodAutoscalers with `.spec.minReplicas` or `.spec.maxReplicas` outside the ranges defined in the constraint 2. Deployment of HorizontalPodAutoscalers where the difference between `.spec.minReplicas` and `.spec.maxReplicas` is less than the configured `minimumReplicaSpread` 3. Deployment of HorizontalPodAutoscalers that do not reference a valid `scaleTargetRef` (e.g. Deployment, ReplicationController, ReplicaSet, StatefulSet).
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("kubectl.*")
+          message: Disallow the following scenarios when deploying `HorizontalPodAutoscalers` 1. Deployment of HorizontalPodAutoscalers with `.spec.minReplicas` or `.spec.maxReplicas` outside the ranges defined in the constraint 2. Deployment of HorizontalPodAutoscalers where the difference between `.spec.minReplicas` and `.spec.maxReplicas` is less than the configured `minimumReplicaSpread` 3. Deployment of HorizontalPodAutoscalers that do not reference a valid `scaleTargetRef` (e.g. Deployment, ReplicationController, ReplicaSet, StatefulSet).
+          action: DENY
+    defaultAction: ALLOW

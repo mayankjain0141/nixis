@@ -1,0 +1,28 @@
+# IMPORTED FROM: open-policy-agent/gatekeeper-library
+CONSTRAINT: K8sBlockLoadBalancer
+REGO LOGIC: package k8sblockloadbalancer  violation[{"msg": msg}] {   input.review.kind.kind == "Service"   input.review.object.spec.type == "LoadBalancer"   msg := "User is not allowed to create service of type ...
+MANUAL REVIEW: IMPORT_TODO: Unknown constraint kind 'K8sBlockLoadBalancer' - manual review required. Rego logic needs human translation.
+# imported from: gatekeeper-library via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: gatekeeper-k8sblockloadbalancer
+    annotations:
+        aegis.io/imported-from: aegis-import-3851727422.yaml
+        aegis.io/original-kind: K8sBlockLoadBalancer
+        aegis.io/severity: high
+        aegis.io/source: open-policy-agent/gatekeeper-library
+spec:
+    description: |-
+        Disallows all Services with type LoadBalancer.
+        https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("kubectl.*")
+          message: |-
+            Disallows all Services with type LoadBalancer.
+            https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer
+          action: DENY
+    defaultAction: ALLOW

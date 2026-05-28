@@ -1,0 +1,22 @@
+# IMPORTED FROM: open-policy-agent/gatekeeper-library
+CONSTRAINT: K8sPSPReadOnlyRootFilesystem
+# imported from: gatekeeper-library via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: gatekeeper-psp-readonlyrootfilesystem
+    annotations:
+        aegis.io/imported-from: aegis-import-1277937919.yaml
+        aegis.io/original-kind: K8sPSPReadOnlyRootFilesystem
+        aegis.io/severity: high
+        aegis.io/source: open-policy-agent/gatekeeper-library
+spec:
+    description: 'OPA Gatekeeper constraint psp-readonlyrootfilesystem (kind: K8sPSPReadOnlyRootFilesystem)'
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("kubectl.*(create|apply).*")
+          message: 'OPA Gatekeeper constraint psp-readonlyrootfilesystem (kind: K8sPSPReadOnlyRootFilesystem)'
+          action: AUDIT
+    defaultAction: ALLOW

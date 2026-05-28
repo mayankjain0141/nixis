@@ -1,0 +1,23 @@
+# IMPORTED FROM: open-policy-agent/gatekeeper-library
+CONSTRAINT: K8sReplicaLimits
+REGO LOGIC: package k8sreplicalimits  object_name = input.review.object.metadata.name object_kind = input.review.kind.kind  violation[{"msg": msg}] {     spec := input.review.object.spec     not input_replica_lim...
+# imported from: gatekeeper-library via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: gatekeeper-k8sreplicalimits
+    annotations:
+        aegis.io/imported-from: aegis-import-1842039934.yaml
+        aegis.io/original-kind: K8sReplicaLimits
+        aegis.io/severity: high
+        aegis.io/source: open-policy-agent/gatekeeper-library
+spec:
+    description: Requires that objects with the field `spec.replicas` (Deployments, ReplicaSets, etc.) specify a number of replicas within defined ranges.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("kubectl.*replicas.*")
+          message: Requires that objects with the field `spec.replicas` (Deployments, ReplicaSets, etc.) specify a number of replicas within defined ranges.
+          action: AUDIT
+    defaultAction: ALLOW

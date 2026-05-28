@@ -1,0 +1,23 @@
+# IMPORTED FROM: open-policy-agent/gatekeeper-library
+CONSTRAINT: VerifyDeprecatedAPI
+MANUAL REVIEW: IMPORT_TODO: Unknown constraint kind 'VerifyDeprecatedAPI' - manual review required. Rego logic needs human translation.
+# imported from: gatekeeper-library via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: gatekeeper-verify-1-27
+    annotations:
+        aegis.io/imported-from: aegis-import-1398805292.yaml
+        aegis.io/original-kind: VerifyDeprecatedAPI
+        aegis.io/severity: high
+        aegis.io/source: open-policy-agent/gatekeeper-library
+spec:
+    description: 'OPA Gatekeeper constraint verify-1.27 (kind: VerifyDeprecatedAPI)'
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("kubectl.*")
+          message: 'OPA Gatekeeper constraint verify-1.27 (kind: VerifyDeprecatedAPI)'
+          action: DENY
+    defaultAction: ALLOW

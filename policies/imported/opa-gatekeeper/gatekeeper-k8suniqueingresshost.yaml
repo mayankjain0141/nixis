@@ -1,0 +1,28 @@
+# IMPORTED FROM: open-policy-agent/gatekeeper-library
+CONSTRAINT: K8sUniqueIngressHost
+REGO LOGIC: package k8suniqueingresshost  identical(obj, review) {   obj.metadata.namespace == review.object.metadata.namespace   obj.metadata.name == review.object.metadata.name }  violation[{"msg": msg}] {   in...
+MANUAL REVIEW: IMPORT_TODO: Unknown constraint kind 'K8sUniqueIngressHost' - manual review required. Rego logic needs human translation.
+# imported from: gatekeeper-library via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: gatekeeper-k8suniqueingresshost
+    annotations:
+        aegis.io/imported-from: aegis-import-2255254425.yaml
+        aegis.io/original-kind: K8sUniqueIngressHost
+        aegis.io/severity: high
+        aegis.io/source: open-policy-agent/gatekeeper-library
+spec:
+    description: |-
+        Requires all Ingress rule hosts to be unique.
+        Does not handle hostname wildcards: https://kubernetes.io/docs/concepts/services-networking/ingress/
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("kubectl.*")
+          message: |-
+            Requires all Ingress rule hosts to be unique.
+            Does not handle hostname wildcards: https://kubernetes.io/docs/concepts/services-networking/ingress/
+          action: DENY
+    defaultAction: ALLOW
