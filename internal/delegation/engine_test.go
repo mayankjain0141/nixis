@@ -347,3 +347,36 @@ func TestDelegation_MultiKey_RotationAccepted(t *testing.T) {
 		t.Fatalf("unexpected Validate error with key2-signed token: %v", err)
 	}
 }
+
+// TestDelegation_Revoke_EmitsEvent verifies that Revoke removes the chain from
+// the active map (the log line is the event — CloudEvent is Phase 3).
+func TestDelegation_Revoke_EmitsEvent(t *testing.T) {
+	pub, priv := genKey(t)
+	eng, err := delegation.New(pub)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	now := time.Now()
+	exp := now.Add(time.Hour)
+	caps := delegation.CapabilitySet{Operations: 0b0001}
+
+	tok := makeToken(t, priv, "root", "leaf", caps, exp, nil)
+	builtChain, err := delegation.BuildChainForTest([]delegation.DelegationToken{tok}, now)
+	if err != nil {
+		t.Fatalf("BuildChainForTest: %v", err)
+	}
+
+	const chainID = "revoke-test-chain"
+	eng.Register(chainID, builtChain)
+
+	if !eng.HasActiveChain(chainID) {
+		t.Fatal("chain should be active before Revoke")
+	}
+
+	eng.Revoke(chainID)
+
+	if eng.HasActiveChain(chainID) {
+		t.Error("chain should be removed from active map after Revoke")
+	}
+}

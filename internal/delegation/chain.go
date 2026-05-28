@@ -102,20 +102,21 @@ func (t *DelegationToken) Hash() [32]byte {
 	return sha256.Sum256(t.canonicalBytes())
 }
 
-// verifySignature checks the Ed25519 signature using timing-safe comparison.
-// Returns true if sig is a valid signature over the token's canonical bytes
-// under the given public key.
+// verifySignature checks the Ed25519 signature. Returns true if sig is a valid
+// signature over msg under pub. Rejects immediately if sig is the wrong length.
+// ed25519.Verify uses constant-time operations internally.
 func verifySignature(pub ed25519.PublicKey, msg []byte, sig []byte) bool {
 	if len(sig) != ed25519.SignatureSize {
 		return false
 	}
-	// ed25519.Verify already uses constant-time operations internally.
-	// We additionally use ConstantTimeCompare on the signature length check
-	// result to avoid a branch on the length.
-	if subtle.ConstantTimeCompare([]byte{1}, []byte{1}) == 0 {
-		return false // unreachable, ensures subtle import is used
-	}
 	return ed25519.Verify(pub, msg, sig)
+}
+
+// EffectiveCeiling summarises the validated authority available to a delegation chain.
+type EffectiveCeiling struct {
+	Capabilities []string
+	MaxDepth     int
+	ExpiresAt    time.Time
 }
 
 // Chain is a validated delegation chain with a pre-computed capability ceiling.
@@ -131,6 +132,21 @@ func (c *Chain) Permits(ops, effects, resources uint16, maxRisk uint8) bool {
 		c.ceiling.Effects&effects == effects &&
 		c.ceiling.Resources&resources == resources &&
 		c.ceiling.MaxRisk >= maxRisk
+}
+
+// Ceiling returns the pre-computed EffectiveCeiling for this chain.
+// ExpiresAt is the earliest expiry across all tokens.
+func (c *Chain) Ceiling() EffectiveCeiling {
+	earliest := c.tokens[0].ExpiresAt
+	for _, tok := range c.tokens[1:] {
+		if tok.ExpiresAt.Before(earliest) {
+			earliest = tok.ExpiresAt
+		}
+	}
+	return EffectiveCeiling{
+		MaxDepth:  c.depth,
+		ExpiresAt: earliest,
+	}
 }
 
 // buildChain constructs and validates a Chain from a slice of DelegationTokens.

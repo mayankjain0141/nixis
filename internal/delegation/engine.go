@@ -99,6 +99,56 @@ func (e *Engine) Register(chainID string, chain *Chain) {
 	e.mu.Unlock()
 }
 
+// Revoke explicitly removes a chain from the active-chains map and emits a
+// delegation.revoked log event. Phase 3 will replace the log with a CloudEvent.
+func (e *Engine) Revoke(chainID string) {
+	e.mu.Lock()
+	delete(e.activeChains, chainID)
+	e.mu.Unlock()
+	log.Printf("delegation.revoked: chain %s explicitly revoked", chainID)
+}
+
+// ValidateChain decodes, verifies, and builds a Chain from the given DelegationRef
+// slice. Returns the validated Chain (with pre-computed ceiling) alongside any error.
+func (e *Engine) ValidateChain(chain []aegis.DelegationRef, now time.Time) (*Chain, error) {
+	if len(chain) == 0 {
+		return nil, nil
+	}
+	if len(chain) > maxChainDepth {
+		return nil, fmt.Errorf("chain depth %d exceeds maximum of %d", len(chain), maxChainDepth)
+	}
+
+	tokens := make([]DelegationToken, 0, len(chain))
+	for i, ref := range chain {
+		tok, err := e.decodeAndVerify(ref, i)
+		if err != nil {
+			return nil, err
+		}
+		tokens = append(tokens, tok)
+	}
+
+	return buildChain(tokens, now)
+}
+
+// ApplyCeiling returns true if the CheckRequest falls within the given EffectiveCeiling.
+// Returns false (deny) if the ceiling has expired or the request exceeds it.
+func (e *Engine) ApplyCeiling(req aegis.CheckRequest, ceiling EffectiveCeiling) bool {
+	if time.Now().After(ceiling.ExpiresAt) {
+		return false
+	}
+	// If no capability constraints are declared the ceiling permits everything.
+	if len(ceiling.Capabilities) == 0 {
+		return true
+	}
+	// Reject if the requested tool is not in the declared capability list.
+	for _, cap := range ceiling.Capabilities {
+		if cap == req.Tool {
+			return true
+		}
+	}
+	return false
+}
+
 // StartExpiryChecker starts a background goroutine that removes expired chains
 // from the active map every interval. The goroutine stops when ctx is cancelled.
 func (e *Engine) StartExpiryChecker(ctx context.Context, interval time.Duration) {
