@@ -13,6 +13,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -309,12 +310,12 @@ var upgrader = websocket.Upgrader{
 
 // isAllowedOrigin returns true if the origin is localhost / 127.0.0.1.
 func isAllowedOrigin(origin, _ string) bool {
-	switch origin {
-	case "http://localhost:3000", "http://localhost:9090",
-		"http://127.0.0.1:3000", "http://127.0.0.1:9090":
-		return true
+	u, err := url.Parse(origin)
+	if err != nil {
+		return false
 	}
-	return false
+	h := u.Hostname()
+	return h == "localhost" || h == "127.0.0.1"
 }
 
 // handleWebSocket upgrades an HTTP connection to WebSocket, sends state.snapshot,

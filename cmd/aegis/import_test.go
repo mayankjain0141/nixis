@@ -801,22 +801,397 @@ func TestImport_ParseGitHubURL(t *testing.T) {
 	}
 }
 
-<<<<<<< HEAD
+// ---- Sigma format tests ----
+
+func TestImport_DetectsSigmaFormat(t *testing.T) {
+	input := `title: Suspicious Rm Command
+id: abc123
+status: stable
+description: Detects suspicious rm usage
+logsource:
+    category: process_creation
+    product: linux
+detection:
+    selection:
+        CommandLine|contains:
+            - 'rm -rf /'
+            - 'rm -rf ~'
+    condition: selection
+level: high
+`
+	format := detectFormat([]byte(input))
+	if format != formatSigma {
+		t.Errorf("expected formatSigma, got %v", format)
+	}
+}
+
+func TestImport_TranslatesSigmaContains(t *testing.T) {
+	input := `title: Test Contains
+id: test-contains-001
+logsource:
+    category: process_creation
+    product: linux
+detection:
+    selection:
+        CommandLine|contains:
+            - 'rm -rf'
+            - 'dangerous'
+    condition: selection
+level: high
+`
+	manifests, _, err := convertSigma([]byte(input), "test.yaml")
+	if err != nil {
+		t.Fatalf("convertSigma failed: %v", err)
+	}
+
+	if len(manifests) != 1 {
+		t.Fatalf("expected 1 manifest, got %d", len(manifests))
+	}
+
+	expr := manifests[0].Spec.Validations[0].Expression
+	if !strings.Contains(expr, `.contains("rm -rf")`) {
+		t.Errorf("expected .contains() CEL, got: %s", expr)
+	}
+	if !strings.Contains(expr, ` || `) {
+		t.Errorf("expected OR for multiple values, got: %s", expr)
+	}
+}
+
+func TestImport_TranslatesSigmaRegex(t *testing.T) {
+	input := `title: Test Regex
+id: test-regex-001
+logsource:
+    category: process_creation
+    product: linux
+detection:
+    selection:
+        CommandLine|re: '.*curl.*\\|.*sh.*'
+    condition: selection
+level: medium
+`
+	manifests, _, err := convertSigma([]byte(input), "test.yaml")
+	if err != nil {
+		t.Fatalf("convertSigma failed: %v", err)
+	}
+
+	expr := manifests[0].Spec.Validations[0].Expression
+	if !strings.Contains(expr, `.matches(`) {
+		t.Errorf("expected .matches() CEL for regex, got: %s", expr)
+	}
+}
+
+func TestImport_TranslatesSigmaConditionFilter(t *testing.T) {
+	input := `title: Test Filter
+id: test-filter-001
+logsource:
+    category: process_creation
+    product: linux
+detection:
+    selection:
+        CommandLine|contains: 'rm -rf'
+    filter:
+        CommandLine|contains: '--dry-run'
+    condition: selection and not filter
+level: high
+`
+	manifests, _, err := convertSigma([]byte(input), "test.yaml")
+	if err != nil {
+		t.Fatalf("convertSigma failed: %v", err)
+	}
+
+	expr := manifests[0].Spec.Validations[0].Expression
+	if !strings.Contains(expr, "&&") {
+		t.Errorf("expected AND in condition, got: %s", expr)
+	}
+	if !strings.Contains(expr, "!(") {
+		t.Errorf("expected negation for filter, got: %s", expr)
+	}
+}
+
+func TestImport_TranslatesSigmaLevel(t *testing.T) {
+	tests := []struct {
+		level      string
+		wantAction string
+	}{
+		{"critical", "DENY"},
+		{"high", "DENY"},
+		{"medium", "REQUIRE_APPROVAL"},
+		{"low", "AUDIT"},
+		{"informational", "AUDIT"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.level, func(t *testing.T) {
+			input := fmt.Sprintf(`title: Test Level
+id: test-level-%s
+logsource:
+    category: process_creation
+    product: linux
+detection:
+    selection:
+        CommandLine|contains: 'test'
+    condition: selection
+level: %s
+`, tt.level, tt.level)
+
+			manifests, _, err := convertSigma([]byte(input), "test.yaml")
+			if err != nil {
+				t.Fatalf("convertSigma failed: %v", err)
+			}
+
+			got := manifests[0].Spec.Validations[0].Action
+			if got != tt.wantAction {
+				t.Errorf("level %q: got action %q, want %q", tt.level, got, tt.wantAction)
+			}
+		})
+	}
+}
+
+func TestImport_TranslatesSigmaLogsource(t *testing.T) {
+	tests := []struct {
+		category  string
+		wantTools []string
+	}{
+		{"process_creation", []string{"Bash"}},
+		{"file_event", []string{"Read", "Write", "Edit"}},
+		{"network_connection", []string{"Bash"}},
+		{"other", []string{}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.category, func(t *testing.T) {
+			input := fmt.Sprintf(`title: Test Logsource
+id: test-logsource-%s
+logsource:
+    category: %s
+    product: linux
+detection:
+    selection:
+        CommandLine|contains: 'test'
+    condition: selection
+level: low
+`, tt.category, tt.category)
+
+			manifests, _, err := convertSigma([]byte(input), "test.yaml")
+			if err != nil {
+				t.Fatalf("convertSigma failed: %v", err)
+			}
+
+			got := manifests[0].Spec.MatchConstraints.Tools
+			if len(got) != len(tt.wantTools) {
+				t.Errorf("category %q: got %d tools, want %d", tt.category, len(got), len(tt.wantTools))
+				return
+			}
+			for i, tool := range tt.wantTools {
+				if got[i] != tool {
+					t.Errorf("category %q: tool[%d] = %q, want %q", tt.category, i, got[i], tool)
+				}
+			}
+		})
+	}
+}
+
+func TestImport_TranslatesSigmaStartsWith(t *testing.T) {
+	input := `title: Test StartsWith
+id: test-startswith-001
+logsource:
+    category: process_creation
+    product: linux
+detection:
+    selection:
+        CommandLine|startswith: '/bin/bash'
+    condition: selection
+level: low
+`
+	manifests, _, err := convertSigma([]byte(input), "test.yaml")
+	if err != nil {
+		t.Fatalf("convertSigma failed: %v", err)
+	}
+
+	expr := manifests[0].Spec.Validations[0].Expression
+	if !strings.Contains(expr, `.startsWith("/bin/bash")`) {
+		t.Errorf("expected .startsWith() CEL, got: %s", expr)
+	}
+}
+
+func TestImport_TranslatesSigmaEndsWith(t *testing.T) {
+	input := `title: Test EndsWith
+id: test-endswith-001
+logsource:
+    category: process_creation
+    product: linux
+detection:
+    selection:
+        CommandLine|endswith: '.sh'
+    condition: selection
+level: low
+`
+	manifests, _, err := convertSigma([]byte(input), "test.yaml")
+	if err != nil {
+		t.Fatalf("convertSigma failed: %v", err)
+	}
+
+	expr := manifests[0].Spec.Validations[0].Expression
+	if !strings.Contains(expr, `.endsWith(".sh")`) {
+		t.Errorf("expected .endsWith() CEL, got: %s", expr)
+	}
+}
+
+func TestImport_TranslatesSigmaContainsAll(t *testing.T) {
+	input := `title: Test ContainsAll
+id: test-containsall-001
+logsource:
+    category: process_creation
+    product: linux
+detection:
+    selection:
+        CommandLine|contains|all:
+            - 'curl'
+            - 'http'
+    condition: selection
+level: high
+`
+	manifests, _, err := convertSigma([]byte(input), "test.yaml")
+	if err != nil {
+		t.Fatalf("convertSigma failed: %v", err)
+	}
+
+	expr := manifests[0].Spec.Validations[0].Expression
+	if !strings.Contains(expr, ` && `) {
+		t.Errorf("expected AND for |all modifier, got: %s", expr)
+	}
+	if !strings.Contains(expr, `.contains("curl")`) {
+		t.Errorf("expected curl check, got: %s", expr)
+	}
+	if !strings.Contains(expr, `.contains("http")`) {
+		t.Errorf("expected http check, got: %s", expr)
+	}
+}
+
+func TestImport_TranslatesSigma1OfThem(t *testing.T) {
+	input := `title: Test 1 of them
+id: test-1ofthem-001
+logsource:
+    category: process_creation
+    product: linux
+detection:
+    selection1:
+        CommandLine|contains: 'curl'
+    selection2:
+        CommandLine|contains: 'wget'
+    condition: 1 of them
+level: medium
+`
+	manifests, _, err := convertSigma([]byte(input), "test.yaml")
+	if err != nil {
+		t.Fatalf("convertSigma failed: %v", err)
+	}
+
+	expr := manifests[0].Spec.Validations[0].Expression
+	if !strings.Contains(expr, ` || `) {
+		t.Errorf("expected OR for '1 of them', got: %s", expr)
+	}
+}
+
+func TestImport_TranslatesSigmaAllOfThem(t *testing.T) {
+	input := `title: Test all of them
+id: test-allofthem-001
+logsource:
+    category: process_creation
+    product: linux
+detection:
+    selection1:
+        CommandLine|contains: 'sudo'
+    selection2:
+        CommandLine|contains: 'rm'
+    condition: all of them
+level: high
+`
+	manifests, _, err := convertSigma([]byte(input), "test.yaml")
+	if err != nil {
+		t.Fatalf("convertSigma failed: %v", err)
+	}
+
+	expr := manifests[0].Spec.Validations[0].Expression
+	if !strings.Contains(expr, ` && `) {
+		t.Errorf("expected AND for 'all of them', got: %s", expr)
+	}
+}
+
+func TestImport_SigmaUnmappableFieldAddsComment(t *testing.T) {
+	input := `title: Test Unmappable Field
+id: test-unmappable-001
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        Image|endswith: '\cmd.exe'
+    condition: selection
+level: high
+`
+	_, comments, err := convertSigma([]byte(input), "test.yaml")
+	if err != nil {
+		t.Fatalf("convertSigma failed: %v", err)
+	}
+
+	if len(comments) == 0 || !strings.Contains(comments[0], "IMPORT_TODO") {
+		t.Errorf("expected IMPORT_TODO comment for unmappable field, got: %v", comments)
+	}
+}
+
+func TestImport_ExtractPolicyFiles(t *testing.T) {
+	// Build an in-memory zip with known files
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+
+	addZipFile := func(name, content string) {
+		w, err := zw.Create(name)
+		if err != nil {
+			t.Fatalf("create zip entry %s: %v", name, err)
+		}
+		_, _ = w.Write([]byte(content))
+	}
+
+	addZipFile("repo-main/policies.yaml", `layerName: test
+policies:
+  - id: p1
+    rule: tool_definition_changed
+    action: deny
+`)
+	addZipFile("repo-main/README.md", "# README") // should be skipped
+	addZipFile("repo-main/settings.json", `{"permissions":{"deny":["WebFetch"],"allow":[]}}`)
+	addZipFile("repo-main/logo.png", "\x89PNG") // should be skipped
+
+	if err := zw.Close(); err != nil {
+		t.Fatalf("close zip: %v", err)
+	}
+
+	paths, err := extractPolicyFiles(buf.Bytes())
+	if err != nil {
+		t.Fatalf("extractPolicyFiles failed: %v", err)
+	}
+	defer func() {
+		for _, p := range paths {
+			_ = os.Remove(p)
+		}
+	}()
+
+	if len(paths) != 2 {
+		t.Fatalf("expected 2 extracted files (.yaml and .json), got %d", len(paths))
+	}
+}
+
+
 // ---- Kyverno tests ----
 
 func TestImport_DetectsKyvernoFormat(t *testing.T) {
-=======
-// ---- Falco tests ----
-
-func TestImport_DetectsFalcoFormat(t *testing.T) {
->>>>>>> agent/translator-falco
 	tests := []struct {
 		name  string
 		input string
 		want  importFormat
 	}{
 		{
-<<<<<<< HEAD
 			name: "ClusterPolicy",
 			input: `apiVersion: kyverno.io/v1
 kind: ClusterPolicy
@@ -859,40 +1234,6 @@ metadata:
   name: my-app
 `,
 			want: formatUnknown,
-=======
-			name: "rule item",
-			input: `- rule: Terminal shell in container
-  condition: spawned_process and container
-  priority: WARNING
-`,
-			want: formatFalco,
-		},
-		{
-			name: "macro item",
-			input: `- macro: shell_procs
-  condition: proc.name in (bash, sh)
-`,
-			want: formatFalco,
-		},
-		{
-			name: "list item",
-			input: `- list: shell_binaries
-  items: [bash, sh, zsh]
-`,
-			want: formatFalco,
-		},
-		{
-			name: "mixed items",
-			input: `- list: shell_binaries
-  items: [bash, sh]
-- macro: shell_procs
-  condition: proc.name in (shell_binaries)
-- rule: Shell in container
-  condition: shell_procs and container
-  priority: ERROR
-`,
-			want: formatFalco,
->>>>>>> agent/translator-falco
 		},
 	}
 
@@ -900,17 +1241,12 @@ metadata:
 		t.Run(tt.name, func(t *testing.T) {
 			got := detectFormat([]byte(tt.input))
 			if got != tt.want {
-<<<<<<< HEAD
 				t.Errorf("detectFormat = %v, want %v", got, tt.want)
-=======
-				t.Errorf("detectFormat: got %v, want %v", got, tt.want)
->>>>>>> agent/translator-falco
 			}
 		})
 	}
 }
 
-<<<<<<< HEAD
 func TestImport_TranslatesKyvernoDelete(t *testing.T) {
 	input := `apiVersion: kyverno.io/v1
 kind: ClusterPolicy
@@ -941,24 +1277,10 @@ spec:
 		t.Fatalf("convertKyverno failed: %v", err)
 	}
 
-=======
-func TestImport_TranslatesFalcoCmdlineContains(t *testing.T) {
-	input := `- rule: Dangerous rm command
-  desc: Detects rm -rf execution
-  condition: proc.cmdline contains "rm -rf"
-  priority: CRITICAL
-  tags: [process]
-`
-	manifests, comments, err := convertFalco([]byte(input), "falco.yaml")
-	if err != nil {
-		t.Fatalf("convertFalco failed: %v", err)
-	}
->>>>>>> agent/translator-falco
 	if len(manifests) != 1 {
 		t.Fatalf("expected 1 manifest, got %d", len(manifests))
 	}
 
-<<<<<<< HEAD
 	m := manifests[0]
 	expr := m.Spec.Validations[0].Expression
 	if !strings.Contains(expr, `tool == "Bash"`) {
@@ -1083,95 +1405,11 @@ spec:
 			got := manifests[0].Spec.Validations[0].Action
 			if got != tt.wantAction {
 				t.Errorf("severity=%s vfa=%s: got action %s, want %s", tt.severity, tt.vfa, got, tt.wantAction)
-=======
-	expr := manifests[0].Spec.Validations[0].Expression
-	if !strings.Contains(expr, `tool == "Bash"`) {
-		t.Errorf("expected Bash tool check, got: %s", expr)
-	}
-	if !strings.Contains(expr, `request.args.command.contains("rm -rf")`) {
-		t.Errorf("expected command contains check, got: %s", expr)
-	}
-	if comments[0] != "" {
-		t.Errorf("expected no comment for translatable condition, got: %q", comments[0])
-	}
-}
-
-func TestImport_TranslatesFalcoCmdlineStartswith(t *testing.T) {
-	input := `- rule: Curl exfiltration
-  condition: proc.cmdline startswith "curl"
-  priority: WARNING
-`
-	manifests, _, err := convertFalco([]byte(input), "falco.yaml")
-	if err != nil {
-		t.Fatalf("convertFalco failed: %v", err)
-	}
-	if len(manifests) != 1 {
-		t.Fatalf("expected 1 manifest, got %d", len(manifests))
-	}
-
-	expr := manifests[0].Spec.Validations[0].Expression
-	if !strings.Contains(expr, `request.args.command.startsWith("curl")`) {
-		t.Errorf("expected startsWith check, got: %s", expr)
-	}
-}
-
-func TestImport_TranslatesFalcoProcName(t *testing.T) {
-	input := `- rule: Netcat Remote Code Execution
-  desc: Detects netcat with -e flag
-  condition: proc.name in (nc, ncat, netcat, socat)
-  priority: CRITICAL
-`
-	manifests, comments, err := convertFalco([]byte(input), "falco.yaml")
-	if err != nil {
-		t.Fatalf("convertFalco failed: %v", err)
-	}
-	if len(manifests) != 1 {
-		t.Fatalf("expected 1 manifest, got %d", len(manifests))
-	}
-
-	expr := manifests[0].Spec.Validations[0].Expression
-	if !strings.Contains(expr, `tool == "Bash"`) {
-		t.Errorf("expected Bash tool check, got: %s", expr)
-	}
-	if !strings.Contains(expr, "nc|ncat|netcat|socat") {
-		t.Errorf("expected alternation pattern with nc/ncat/netcat/socat, got: %s", expr)
-	}
-	if !strings.Contains(expr, "matches") {
-		t.Errorf("expected matches() call, got: %s", expr)
-	}
-	if comments[0] != "" {
-		t.Errorf("expected no comment for translatable proc.name in, got: %q", comments[0])
-	}
-}
-
-func TestImport_TranslatesFalcoPriority(t *testing.T) {
-	tests := []struct {
-		priority   string
-		wantAction string
-	}{
-		{"EMERGENCY", "DENY"},
-		{"ALERT", "DENY"},
-		{"CRITICAL", "DENY"},
-		{"ERROR", "DENY"},
-		{"WARNING", "REQUIRE_APPROVAL"},
-		{"NOTICE", "REQUIRE_APPROVAL"},
-		{"INFO", "AUDIT"},
-		{"DEBUG", "AUDIT"},
-		{"", "AUDIT"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.priority, func(t *testing.T) {
-			got := falcoPriorityToAction(tt.priority)
-			if got != tt.wantAction {
-				t.Errorf("falcoPriorityToAction(%q) = %q, want %q", tt.priority, got, tt.wantAction)
->>>>>>> agent/translator-falco
 			}
 		})
 	}
 }
 
-<<<<<<< HEAD
 func TestImport_SkipsMutateRules(t *testing.T) {
 	input := `apiVersion: kyverno.io/v1
 kind: ClusterPolicy
@@ -1333,7 +1571,207 @@ spec:
 	}
 	if m.Spec.Validations[0].Message != "Custom message" {
 		t.Errorf("message should come from validate.message, got %q", m.Spec.Validations[0].Message)
-=======
+	}
+}
+
+func TestImport_ExtractPolicyFiles_Falco(t *testing.T) {
+	// Build an in-memory zip with known files
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+
+	addZipFile := func(name, content string) {
+		w, err := zw.Create(name)
+		if err != nil {
+			t.Fatalf("create zip entry %s: %v", name, err)
+		}
+		_, _ = w.Write([]byte(content))
+	}
+
+	addZipFile("repo-main/policies.yaml", `layerName: test
+policies:
+  - id: p1
+    rule: tool_definition_changed
+    action: deny
+`)
+	addZipFile("repo-main/README.md", "# README") // should be skipped
+	addZipFile("repo-main/settings.json", `{"permissions":{"deny":["WebFetch"],"allow":[]}}`)
+	addZipFile("repo-main/logo.png", "\x89PNG") // should be skipped
+
+	if err := zw.Close(); err != nil {
+		t.Fatalf("close zip: %v", err)
+	}
+
+	paths, err := extractPolicyFiles(buf.Bytes())
+	if err != nil {
+		t.Fatalf("extractPolicyFiles failed: %v", err)
+	}
+	defer func() {
+		for _, p := range paths {
+			_ = os.Remove(p)
+		}
+	}()
+
+	if len(paths) != 2 {
+		t.Fatalf("expected 2 extracted files (.yaml and .json), got %d", len(paths))
+	}
+}
+
+
+// ---- Falco tests ----
+
+func TestImport_DetectsFalcoFormat(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  importFormat
+	}{
+		{
+			name: "rule item",
+			input: `- rule: Terminal shell in container
+  condition: spawned_process and container
+  priority: WARNING
+`,
+			want: formatFalco,
+		},
+		{
+			name: "macro item",
+			input: `- macro: shell_procs
+  condition: proc.name in (bash, sh)
+`,
+			want: formatFalco,
+		},
+		{
+			name: "list item",
+			input: `- list: shell_binaries
+  items: [bash, sh, zsh]
+`,
+			want: formatFalco,
+		},
+		{
+			name: "mixed items",
+			input: `- list: shell_binaries
+  items: [bash, sh]
+- macro: shell_procs
+  condition: proc.name in (shell_binaries)
+- rule: Shell in container
+  condition: shell_procs and container
+  priority: ERROR
+`,
+			want: formatFalco,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := detectFormat([]byte(tt.input))
+			if got != tt.want {
+				t.Errorf("detectFormat: got %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestImport_TranslatesFalcoCmdlineContains(t *testing.T) {
+	input := `- rule: Dangerous rm command
+  desc: Detects rm -rf execution
+  condition: proc.cmdline contains "rm -rf"
+  priority: CRITICAL
+  tags: [process]
+`
+	manifests, comments, err := convertFalco([]byte(input), "falco.yaml")
+	if err != nil {
+		t.Fatalf("convertFalco failed: %v", err)
+	}
+	if len(manifests) != 1 {
+		t.Fatalf("expected 1 manifest, got %d", len(manifests))
+	}
+
+	expr := manifests[0].Spec.Validations[0].Expression
+	if !strings.Contains(expr, `tool == "Bash"`) {
+		t.Errorf("expected Bash tool check, got: %s", expr)
+	}
+	if !strings.Contains(expr, `request.args.command.contains("rm -rf")`) {
+		t.Errorf("expected command contains check, got: %s", expr)
+	}
+	if comments[0] != "" {
+		t.Errorf("expected no comment for translatable condition, got: %q", comments[0])
+	}
+}
+
+func TestImport_TranslatesFalcoCmdlineStartswith(t *testing.T) {
+	input := `- rule: Curl exfiltration
+  condition: proc.cmdline startswith "curl"
+  priority: WARNING
+`
+	manifests, _, err := convertFalco([]byte(input), "falco.yaml")
+	if err != nil {
+		t.Fatalf("convertFalco failed: %v", err)
+	}
+	if len(manifests) != 1 {
+		t.Fatalf("expected 1 manifest, got %d", len(manifests))
+	}
+
+	expr := manifests[0].Spec.Validations[0].Expression
+	if !strings.Contains(expr, `request.args.command.startsWith("curl")`) {
+		t.Errorf("expected startsWith check, got: %s", expr)
+	}
+}
+
+func TestImport_TranslatesFalcoProcName(t *testing.T) {
+	input := `- rule: Netcat Remote Code Execution
+  desc: Detects netcat with -e flag
+  condition: proc.name in (nc, ncat, netcat, socat)
+  priority: CRITICAL
+`
+	manifests, comments, err := convertFalco([]byte(input), "falco.yaml")
+	if err != nil {
+		t.Fatalf("convertFalco failed: %v", err)
+	}
+	if len(manifests) != 1 {
+		t.Fatalf("expected 1 manifest, got %d", len(manifests))
+	}
+
+	expr := manifests[0].Spec.Validations[0].Expression
+	if !strings.Contains(expr, `tool == "Bash"`) {
+		t.Errorf("expected Bash tool check, got: %s", expr)
+	}
+	if !strings.Contains(expr, "nc|ncat|netcat|socat") {
+		t.Errorf("expected alternation pattern with nc/ncat/netcat/socat, got: %s", expr)
+	}
+	if !strings.Contains(expr, "matches") {
+		t.Errorf("expected matches() call, got: %s", expr)
+	}
+	if comments[0] != "" {
+		t.Errorf("expected no comment for translatable proc.name in, got: %q", comments[0])
+	}
+}
+
+func TestImport_TranslatesFalcoPriority(t *testing.T) {
+	tests := []struct {
+		priority   string
+		wantAction string
+	}{
+		{"EMERGENCY", "DENY"},
+		{"ALERT", "DENY"},
+		{"CRITICAL", "DENY"},
+		{"ERROR", "DENY"},
+		{"WARNING", "REQUIRE_APPROVAL"},
+		{"NOTICE", "REQUIRE_APPROVAL"},
+		{"INFO", "AUDIT"},
+		{"DEBUG", "AUDIT"},
+		{"", "AUDIT"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.priority, func(t *testing.T) {
+			got := falcoPriorityToAction(tt.priority)
+			if got != tt.wantAction {
+				t.Errorf("falcoPriorityToAction(%q) = %q, want %q", tt.priority, got, tt.wantAction)
+			}
+		})
+	}
+}
+
 func TestImport_ResolvesFalcoList(t *testing.T) {
 	input := `- list: netcat_bins
   items: [nc, ncat, netcat]
@@ -1456,11 +1894,10 @@ func TestImport_FalcoTagsToTools(t *testing.T) {
 				t.Errorf("falcoTagsToTools(%v)[%d] = %q, want %q", tt.tags, i, got[i], tt.tools[i])
 			}
 		}
->>>>>>> agent/translator-falco
 	}
 }
 
-func TestImport_ExtractPolicyFiles(t *testing.T) {
+func TestImport_ExtractPolicyFiles_Falco(t *testing.T) {
 	// Build an in-memory zip with known files
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
@@ -1501,3 +1938,4 @@ policies:
 		t.Fatalf("expected 2 extracted files (.yaml and .json), got %d", len(paths))
 	}
 }
+
