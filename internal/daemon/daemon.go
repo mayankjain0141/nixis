@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/mayjain/aegis/internal/audit"
+	"github.com/mayjain/aegis/internal/delegation"
 	"github.com/mayjain/aegis/internal/ifc"
 	"github.com/mayjain/aegis/internal/stream"
 	"github.com/mayjain/aegis/pkg/aegis"
@@ -32,6 +33,7 @@ type Daemon struct {
 	listener    net.Listener
 	streamSrv   aegis.StreamTap    // nil disables streaming
 	sessions    *ifc.SessionLabels // nil disables session label persistence
+	delegAPI    *DelegationAPI     // nil disables delegation HTTP endpoints
 
 	// inFlight tracks the number of in-progress connection goroutines.
 	// Graceful shutdown waits for this WaitGroup before closing the audit channel.
@@ -214,7 +216,14 @@ func (d *Daemon) SetAuditContext(cancel context.CancelFunc, done <-chan struct{}
 	d.auditDone = done
 }
 
-// serveHealthz starts a minimal HTTP server on :9091 that serves /healthz.
+// SetDelegationEngine wires a delegation.Engine into the daemon so that the
+// /api/v1/delegation/* HTTP endpoints are served alongside /healthz.
+func (d *Daemon) SetDelegationEngine(engine *delegation.Engine) {
+	d.delegAPI = NewDelegationAPI(engine)
+}
+
+// serveHealthz starts a minimal HTTP server on :9091 that serves /healthz and,
+// when a delegation engine is wired, the /api/v1/delegation/* endpoints.
 // The server shuts down when ctx is cancelled.
 func (d *Daemon) serveHealthz(ctx context.Context) {
 	mux := http.NewServeMux()
@@ -222,6 +231,9 @@ func (d *Daemon) serveHealthz(ctx context.Context) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
+	if d.delegAPI != nil {
+		d.delegAPI.RegisterRoutes(mux)
+	}
 	srv := &http.Server{
 		Addr:    ":9091",
 		Handler: mux,

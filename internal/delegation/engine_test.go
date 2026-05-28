@@ -430,3 +430,64 @@ func TestDelegation_DeclassificationGate_WithAuditRef_PassesGate(t *testing.T) {
 		t.Errorf("should not reject token with both DeclassificationGate and AuditRef set: %v", err)
 	}
 }
+
+// TestDelegation_Engine_ListActive verifies that ListActive returns all registered
+// chains and that a revoked chain no longer appears.
+func TestDelegation_Engine_ListActive(t *testing.T) {
+	pub, priv := genKey(t)
+	eng, err := delegation.New(pub)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	now := time.Now()
+	exp := now.Add(time.Hour)
+	caps := delegation.CapabilitySet{Operations: 0b0001}
+
+	// Register two chains.
+	for _, id := range []string{"chain-alpha", "chain-beta"} {
+		tok := makeToken(t, priv, "root", "leaf", caps, exp, nil)
+		chain, bErr := delegation.BuildChainForTest([]delegation.DelegationToken{tok}, now)
+		if bErr != nil {
+			t.Fatalf("BuildChainForTest: %v", bErr)
+		}
+		eng.Register(id, chain)
+	}
+
+	active := eng.ListActive()
+	if len(active) != 2 {
+		t.Fatalf("expected 2 active chains, got %d", len(active))
+	}
+
+	// Revoke one.
+	eng.Revoke("chain-alpha")
+	active = eng.ListActive()
+	if len(active) != 1 {
+		t.Fatalf("expected 1 active chain after revoke, got %d", len(active))
+	}
+	if active[0].ChainID != "chain-beta" {
+		t.Errorf("expected chain-beta to remain, got %q", active[0].ChainID)
+	}
+
+	// ExpiresAt must be non-zero for a valid chain.
+	if active[0].ExpiresAt.IsZero() {
+		t.Error("ExpiresAt should not be zero for a registered chain")
+	}
+}
+
+// TestDelegation_Engine_ListActive_Empty verifies that ListActive returns an empty
+// (non-nil) slice when no chains are registered.
+func TestDelegation_Engine_ListActive_Empty(t *testing.T) {
+	pub, _ := genKey(t)
+	eng, err := delegation.New(pub)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	active := eng.ListActive()
+	if active == nil {
+		t.Error("ListActive should return non-nil empty slice, not nil")
+	}
+	if len(active) != 0 {
+		t.Errorf("expected 0 chains for empty engine, got %d", len(active))
+	}
+}

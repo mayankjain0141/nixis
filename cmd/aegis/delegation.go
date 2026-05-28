@@ -4,7 +4,9 @@ import (
 	"crypto/ed25519"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	internaldel "github.com/mayjain/aegis/internal/delegation"
@@ -150,16 +152,56 @@ func signToken(tok *internaldel.DelegationToken, privKey ed25519.PrivateKey) ([]
 	return ed25519.Sign(privKey, msg), nil
 }
 
+// daemonBaseURL returns the HTTP base URL for the daemon's management API.
+// Overridable in tests.
+var daemonBaseURL = func() string {
+	return "http://127.0.0.1:9091"
+}
+
 func runDelegationRevoke(cmd *cobra.Command, _ []string) error {
 	if delegRevokeChainID == "" {
 		return fmt.Errorf("--chain-id is required")
+	}
+	body := fmt.Sprintf(`{"chain_id":%q}`, delegRevokeChainID)
+	resp, err := http.Post(
+		daemonBaseURL()+"/api/v1/delegation/revoke",
+		"application/json",
+		strings.NewReader(body),
+	)
+	if err != nil {
+		return fmt.Errorf("cannot connect to daemon: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("daemon returned %d", resp.StatusCode)
 	}
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "revoked chain %s\n", delegRevokeChainID)
 	return nil
 }
 
 func runDelegationList(cmd *cobra.Command, _ []string) error {
-	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "delegation list requires daemon connection")
+	resp, err := http.Get(daemonBaseURL() + "/api/v1/delegation/list")
+	if err != nil {
+		return fmt.Errorf("cannot connect to daemon: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("daemon returned %d", resp.StatusCode)
+	}
+	var result struct {
+		Chains []internaldel.ActiveChainInfo `json:"chains"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return fmt.Errorf("decode response: %w", err)
+	}
+	if len(result.Chains) == 0 {
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "no active delegation chains")
+		return nil
+	}
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%-40s  %s\n", "CHAIN ID", "EXPIRES AT")
+	for _, c := range result.Chains {
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%-40s  %s\n", c.ChainID, c.ExpiresAt.Format(time.RFC3339))
+	}
 	return nil
 }
 
