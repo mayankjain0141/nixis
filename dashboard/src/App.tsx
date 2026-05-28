@@ -332,6 +332,14 @@ export default function App() {
     // Validated events go to the event bus.
     const unsubPipeline = pipeline.onValidated((event) => bus.emit(event));
 
+    // CRITICAL: Register message handler BEFORE calling connect() to avoid race condition.
+    // The daemon sends state.snapshot + bundle.activated immediately on connect.
+    // If we register the handler after connect(), those messages arrive before
+    // the handler is registered and are silently dropped, causing "No policies loaded".
+    const unsubMsg = wsManager.onMessage((raw, meta) => {
+      pipeline.ingest(raw, meta);
+    });
+
     let stateCheckInterval: ReturnType<typeof setInterval> | null = null;
     let useMock = false;
 
@@ -362,10 +370,6 @@ export default function App() {
       }
     }, 2000);
 
-    const unsubMsg = wsManager.onMessage((raw, meta) => {
-      pipeline.ingest(raw, meta);
-    });
-
     return () => {
       clearTimeout(fallbackTimer);
       if (stateCheckInterval !== null) clearInterval(stateCheckInterval);
@@ -379,7 +383,7 @@ export default function App() {
       mockGenRef.current?.stop();
       mockGenRef.current = null;
     };
-  }, [appendEvent, updateLabel, recordLatency, recordEvent, setConnectionState, updateLastSequence, setBundleStatus]);
+  }, [appendEvent, updateLabel, recordLatency, recordEvent, setConnectionState, updateLastSequence, setBundleStatus, setPolicies]);
 
   return (
     <div style={styles.shell}>
