@@ -1,0 +1,21 @@
+# imported from: sigma via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: 056a7ee1-4853-4e67-86a0-3fd9ceed7555
+    annotations:
+        aegis.io/imported-from: aegis-import-2206350417.yml
+        aegis.io/severity: medium
+        aegis.io/sigma-id: 056a7ee1-4853-4e67-86a0-3fd9ceed7555
+        aegis.io/sigma-tags: attack.defense_evasion,attack.t1027,attack.execution,attack.t1059.001
+        aegis.io/source-format: sigma
+spec:
+    description: Detects Obfuscated Powershell via RUNDLL LAUNCHER
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: request.args.command.contains("rundll32.exe") && request.args.command.contains("shell32.dll") && request.args.command.contains("shellexec_rundll") && request.args.command.contains("powershell")
+          message: 'Sigma: Invoke-Obfuscation RUNDLL LAUNCHER'
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

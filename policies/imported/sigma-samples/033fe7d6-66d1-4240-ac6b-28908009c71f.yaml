@@ -1,0 +1,21 @@
+# imported from: sigma via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: 033fe7d6-66d1-4240-ac6b-28908009c71f
+    annotations:
+        aegis.io/imported-from: aegis-import-1625458959.yml
+        aegis.io/severity: high
+        aegis.io/sigma-id: 033fe7d6-66d1-4240-ac6b-28908009c71f
+        aegis.io/sigma-tags: attack.execution,attack.g0016,attack.t1059.001
+        aegis.io/source-format: sigma
+spec:
+    description: This method detects a suspicious PowerShell command line combination as used by APT29 in a campaign against U.S. think tanks.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: request.args.command.contains("-noni") && request.args.command.contains("-ep") && request.args.command.contains("bypass") && request.args.command.contains("$")
+          message: 'Sigma: APT29'
+          action: DENY
+    defaultAction: ALLOW
