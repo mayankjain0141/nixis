@@ -13,9 +13,11 @@
     "test:ui": "vitest --ui"
   },
   "dependencies": {
+    "@types/react-window": "^1.8.8",
     "immer": "^11.1.8",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
+    "react-window": "^2.2.7",
     "zustand": "^5.0.13"
   },
   "devDependencies": {
