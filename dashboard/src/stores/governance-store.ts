@@ -58,6 +58,10 @@ export const useGovernanceStore = create<GovernanceState>()(
 
     appendEvent(event) {
       set((draft) => {
+        // Deduplicate by ID — guards against StrictMode double-mount where two
+        // generator instances start with the same sequence counter (both emit
+        // id="mock-1", "mock-2", …) and the first run's events stay in the store.
+        if (draft.events.some((e) => e.id === event.id)) return;
         draft.events.push(event);
         if (draft.events.length > MAX_EVENTS) {
           draft.events.splice(0, draft.events.length - MAX_EVENTS);
