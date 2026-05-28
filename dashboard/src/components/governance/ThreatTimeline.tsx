@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import { useThreatStore, type ThreatEvent } from '../../stores/threat-store';
 
 const CANVAS_HEIGHT = 160;

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import { useGovernanceStore, type DelegationHop } from '../../stores/governance-store';
 
