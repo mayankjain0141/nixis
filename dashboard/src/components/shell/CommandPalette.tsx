@@ -1,17 +1,32 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useUIStore } from '../../stores/ui-store';
 import { useGovernanceStore } from '../../stores/governance-store';
 import { useStreamStore } from '../../stores/stream-store';
 
 interface Command {
   id: string;
+  category: 'navigation' | 'search' | 'action' | 'filter' | 'time-travel' | 'debug';
   label: string;
-  category: string;
-  action: () => void;
+  keywords: string[];
+  execute: (params?: unknown) => Promise<void>;
 }
 
-function buildCommands(
-  setFilter: (verdict: string | null) => void,
+function fuzzyMatch(query: string, target: string, keywords: string[]): boolean {
+  if (query === '') return true;
+  const q = query.toLowerCase();
+  const t = target.toLowerCase();
+  const kw = keywords.join(' ').toLowerCase();
+  if (t.includes(q) || kw.includes(q)) return true;
+  // character subsequence match
+  let qi = 0;
+  for (let i = 0; i < t.length && qi < q.length; i++) {
+    if (t[i] === q[qi]) qi++;
+  }
+  return qi === q.length;
+}
+
+function buildStaticCommands(
+  setFilterVerdict: (verdict: string | null) => void,
   reconnect: () => void,
   startMock: () => void,
   stopMock: () => void,
@@ -20,132 +35,151 @@ function buildCommands(
   return [
     {
       id: 'filter-deny',
-      label: 'Filter: Show deny events only',
-      category: 'Filter',
-      action: () => setFilter('deny'),
+      label: 'Filter: Show denials only',
+      category: 'filter',
+      keywords: ['deny', 'block', 'filter', 'show', 'denial'],
+      execute: async () => { setFilterVerdict('deny'); },
     },
     {
       id: 'filter-allow',
       label: 'Filter: Show allow events only',
-      category: 'Filter',
-      action: () => setFilter('allow'),
+      category: 'filter',
+      keywords: ['allow', 'pass', 'permit', 'filter', 'show'],
+      execute: async () => { setFilterVerdict('allow'); },
     },
     {
       id: 'filter-clear',
       label: 'Filter: Clear all filters',
-      category: 'Filter',
-      action: () => setFilter(null),
+      category: 'filter',
+      keywords: ['clear', 'reset', 'all', 'filter', 'remove'],
+      execute: async () => { setFilterVerdict(null); },
     },
     {
       id: 'panel-stream',
       label: 'Go to: Event Stream',
-      category: 'Navigation',
-      action: () => {
-        // Navigation panels are future work — close palette only for now.
+      category: 'navigation',
+      keywords: ['go', 'navigate', 'event', 'stream', 'panel', 'jump'],
+      execute: async () => {
+        window.dispatchEvent(new CustomEvent('aegis:navigate', { detail: { panel: 'events' } }));
         setCommandPaletteOpen(false);
       },
     },
     {
       id: 'panel-inspector',
       label: 'Go to: Inspector',
-      category: 'Navigation',
-      action: () => {
+      category: 'navigation',
+      keywords: ['go', 'navigate', 'inspector', 'panel', 'jump', 'detail'],
+      execute: async () => {
+        window.dispatchEvent(new CustomEvent('aegis:navigate', { detail: { panel: 'inspector' } }));
         setCommandPaletteOpen(false);
       },
     },
     {
       id: 'connect',
       label: 'Connection: Reconnect to daemon',
-      category: 'Connection',
-      action: reconnect,
+      category: 'action',
+      keywords: ['connect', 'reconnect', 'daemon', 'websocket', 'ws'],
+      execute: async () => { reconnect(); },
     },
     {
       id: 'mock-start',
       label: 'Demo: Start mock event stream',
-      category: 'Demo',
-      action: startMock,
+      category: 'debug',
+      keywords: ['demo', 'mock', 'start', 'simulate', 'test', 'fake'],
+      execute: async () => { startMock(); },
     },
     {
       id: 'mock-stop',
       label: 'Demo: Stop mock event stream',
-      category: 'Demo',
-      action: stopMock,
+      category: 'debug',
+      keywords: ['demo', 'mock', 'stop', 'halt', 'end', 'fake'],
+      execute: async () => { stopMock(); },
     },
   ];
 }
 
-function matchesQuery(label: string, query: string): boolean {
-  if (query === '') return true;
-  return label.toLowerCase().includes(query.toLowerCase());
-}
-
-export function CommandPalette(): React.ReactElement | null {
-  const commandPaletteOpen = useUIStore((s) => s.commandPaletteOpen);
+// CommandPaletteContent is remounted (via key) each time the palette opens,
+// giving fresh state without any setState-in-effect workarounds.
+function CommandPaletteContent({
+  onClose,
+}: {
+  onClose: () => void;
+}): React.ReactElement {
   const setCommandPaletteOpen = useUIStore((s) => s.setCommandPaletteOpen);
   const setConnectionState = useStreamStore((s) => s.setConnectionState);
   const clearEvents = useGovernanceStore((s) => s.clear);
+  const setFilterVerdict = useGovernanceStore((s) => s.setFilterVerdict);
 
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const close = useCallback(() => {
-    setCommandPaletteOpen(false);
-    setQuery('');
-    setSelectedIndex(0);
-  }, [setCommandPaletteOpen]);
+  // Focus on mount — this is a real DOM side-effect, effect is correct here.
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
+  }, []);
 
-  const commands = buildCommands(
-    (_verdict) => {
-      // Filter actions: governance store filter will be wired when filter state lands.
-      close();
-    },
-    () => {
-      setConnectionState('RECONNECTING');
-      close();
-    },
-    () => {
-      close();
-    },
-    () => {
-      clearEvents();
-      close();
-    },
-    setCommandPaletteOpen,
+  const close = useCallback(() => {
+    onClose();
+  }, [onClose]);
+
+  const staticCommands = useMemo(
+    () => buildStaticCommands(
+      setFilterVerdict,
+      () => {
+        setConnectionState('RECONNECTING');
+        close();
+      },
+      () => { close(); },
+      () => {
+        clearEvents();
+        close();
+      },
+      setCommandPaletteOpen,
+    ),
+    [setFilterVerdict, setConnectionState, close, clearEvents, setCommandPaletteOpen],
   );
 
-  const filtered = commands.filter((c) => matchesQuery(c.label, query));
+  const allCommands = useMemo(() => {
+    if (query.length <= 2) return staticCommands;
+    const eventCommands: Command[] = useGovernanceStore.getState().events
+      .filter((e) => fuzzyMatch(query, e.tool, [e.sessionId, e.policyId ?? '']))
+      .slice(0, 5)
+      .map((e) => ({
+        id: `event-${e.id}`,
+        label: `${e.tool} — ${e.verdict}`,
+        category: 'search' as const,
+        keywords: [e.tool, e.sessionId],
+        execute: async () => { close(); },
+      }));
+    return [...staticCommands, ...eventCommands];
+  }, [query, staticCommands, close]);
 
-  const groupedByCategory = filtered.reduce<Map<string, Command[]>>((acc, cmd) => {
-    const group = acc.get(cmd.category) ?? [];
-    group.push(cmd);
-    acc.set(cmd.category, group);
-    return acc;
-  }, new Map());
+  const { groupedByCategory, flatFiltered } = useMemo(() => {
+    const filtered = allCommands.filter((c) => fuzzyMatch(query, c.label, c.keywords));
+    const grouped = filtered.reduce<Map<string, Command[]>>((acc, cmd) => {
+      const group = acc.get(cmd.category) ?? [];
+      group.push(cmd);
+      acc.set(cmd.category, group);
+      return acc;
+    }, new Map());
+    return { groupedByCategory: grouped, flatFiltered: Array.from(grouped.values()).flat() };
+  }, [allCommands, query]);
 
-  const flatFiltered = Array.from(groupedByCategory.values()).flat();
-
-  useEffect(() => {
-    setSelectedIndex(0);
-  }, [query]);
-
-  useEffect(() => {
-    if (commandPaletteOpen) {
-      setQuery('');
-      setSelectedIndex(0);
-      requestAnimationFrame(() => {
-        inputRef.current?.focus();
-      });
-    }
-  }, [commandPaletteOpen]);
-
-  const execute = useCallback(
-    (cmd: Command) => {
-      cmd.action();
+  const executeCmd = useCallback(
+    async (cmd: Command) => {
+      await cmd.execute();
       close();
     },
     [close],
   );
+
+  const handleQueryChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setQuery(e.target.value);
+    setSelectedIndex(0);
+  }, []);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -167,14 +201,12 @@ export function CommandPalette(): React.ReactElement | null {
       if (e.key === 'Enter') {
         e.preventDefault();
         const cmd = flatFiltered[selectedIndex];
-        if (cmd) execute(cmd);
+        if (cmd) void executeCmd(cmd);
         return;
       }
     },
-    [close, execute, flatFiltered, selectedIndex],
+    [close, executeCmd, flatFiltered, selectedIndex],
   );
-
-  if (!commandPaletteOpen) return null;
 
   let flatIndex = 0;
 
@@ -197,7 +229,7 @@ export function CommandPalette(): React.ReactElement | null {
           type="text"
           placeholder="Type a command..."
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={handleQueryChange}
           style={styles.input}
           aria-label="Search commands"
           aria-autocomplete="list"
@@ -231,7 +263,7 @@ export function CommandPalette(): React.ReactElement | null {
                       ...styles.item,
                       ...(isSelected ? styles.itemSelected : {}),
                     }}
-                    onClick={() => execute(cmd)}
+                    onClick={() => void executeCmd(cmd)}
                     onMouseEnter={() => setSelectedIndex(itemIndex)}
                   >
                     {cmd.label}
@@ -243,6 +275,20 @@ export function CommandPalette(): React.ReactElement | null {
         </div>
       </div>
     </div>
+  );
+}
+
+export function CommandPalette(): React.ReactElement | null {
+  const commandPaletteOpen = useUIStore((s) => s.commandPaletteOpen);
+  const setCommandPaletteOpen = useUIStore((s) => s.setCommandPaletteOpen);
+
+  if (!commandPaletteOpen) return null;
+
+  return (
+    <CommandPaletteContent
+      key={String(commandPaletteOpen)}
+      onClose={() => setCommandPaletteOpen(false)}
+    />
   );
 }
 
