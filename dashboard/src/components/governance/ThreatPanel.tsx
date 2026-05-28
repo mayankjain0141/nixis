@@ -1,3 +1,4 @@
+// DEPRECATED: replaced by ThreatTimeline. Remove after Wave 4 verification.
 import { useThreatStore, type ThreatEvent, type ThreatSeverity } from '../../stores/threat-store';
 
 const SEVERITY_COLORS: Record<ThreatSeverity, string> = {

@@ -1,3 +1,4 @@
+// DEPRECATED: replaced by LatticeHasseDiagram. Remove after Wave 4 verification.
 import { useLatticeStore, type LatticeNode } from '../../stores/lattice-store';
 import type { LabelState } from '../../types/events';
 

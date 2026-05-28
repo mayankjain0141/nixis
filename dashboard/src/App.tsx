@@ -1,10 +1,14 @@
 import { useEffect, useRef } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { MetricsBar } from './components/governance/MetricsBar';
-import { EventStream } from './components/governance/EventStream';
-import { LatticeView } from './components/governance/LatticeView';
+import { EventStreamCanvas } from './components/governance/EventStreamCanvas';
+import { LatticeHasseDiagram } from './components/governance/LatticeHasseDiagram';
+import { ThreatTimeline } from './components/governance/ThreatTimeline';
+import { GovernanceDAG } from './components/governance/dag/GovernanceDAG';
+import { DelegationTree } from './components/governance/DelegationTree';
+import { AuditHashChain } from './components/governance/AuditHashChain';
 import { CommandPalette } from './components/shell/CommandPalette';
 import { Inspector } from './components/shell/Inspector';
-import { ThreatPanel } from './components/governance/ThreatPanel';
 import { useGovernanceStore } from './stores/governance-store';
 import { useMetricsStore } from './stores/metrics-store';
 import { useStreamStore } from './stores/stream-store';
@@ -238,6 +242,7 @@ export default function App() {
   const setBundleStatus = usePolicyStore((s) => s.setBundleStatus);
   const setPolicies = usePolicyStore((s) => s.setPolicies);
   const setCommandPaletteOpen = useUIStore((s) => s.setCommandPaletteOpen);
+  const inspectorOpen = useUIStore((s) => s.inspectorOpen);
 
   const mockGenRef = useRef<ReturnType<typeof createMockStreamGenerator> | null>(null);
   const mockSeqRef = useRef(0);
@@ -266,6 +271,32 @@ export default function App() {
     }
     window.addEventListener('aegis:navigate', handleNavigate);
     return () => window.removeEventListener('aegis:navigate', handleNavigate);
+  }, []);
+
+  // Watch for command palette mock requests and activate/deactivate mock mode.
+  useEffect(() => {
+    const unsubMock = useStreamStore.subscribe((state, prevState) => {
+      if (state.requestMockMode === prevState.requestMockMode) return;
+      if (state.requestMockMode) {
+        useStreamStore.getState().setConnectionState('MOCK');
+        if (mockGenRef.current === null) {
+          const gen = createMockStreamGenerator(50);
+          mockGenRef.current = gen;
+          gen.onEvent((e) => {
+            mockSeqRef.current++;
+            // pipeline may not be available here; dispatch via custom event so main effect picks it up
+            const raw = mockEventToCloudEvent(e, mockSeqRef.current);
+            window.dispatchEvent(new CustomEvent('aegis:mock-event', { detail: raw }));
+          });
+          gen.start();
+        }
+      } else {
+        mockGenRef.current?.stop();
+        mockGenRef.current = null;
+        useStreamStore.getState().setConnectionState('IDLE');
+      }
+    });
+    return () => unsubMock();
   }, []);
 
   // Governance invariant checker on 5s interval.
@@ -368,6 +399,13 @@ export default function App() {
       gen.start();
     }
 
+    // Forward mock events dispatched by the requestMockMode subscriber into the live pipeline.
+    function handleMockEvent(e: Event) {
+      const raw = (e as CustomEvent<string>).detail;
+      pipeline.ingest(raw, { receivedAt: performance.now() });
+    }
+    window.addEventListener('aegis:mock-event', handleMockEvent);
+
     stateCheckInterval = setInterval(() => {
       setConnectionState(wsManager.getState());
     }, 250);
@@ -393,11 +431,13 @@ export default function App() {
       streamProcessor.reset();
       mockGenRef.current?.stop();
       mockGenRef.current = null;
+      window.removeEventListener('aegis:mock-event', handleMockEvent);
     };
   }, [appendEvent, updateLabel, recordLatency, recordEvent, setConnectionState, updateLastSequence, setBundleStatus, setPolicies]);
 
   return (
     <div style={styles.shell}>
+      {/* <DenyColorGuard /> — added when deny-guard branch merges */}
       <CommandPalette />
       <MetricsBar />
       <div style={styles.body}>
@@ -406,20 +446,34 @@ export default function App() {
           <PolicyList policies={policies} bundleStatus={bundleStatus} />
           <div style={sidebarStyles.section}>
             <div style={sidebarStyles.sectionTitle}>IFC Sessions</div>
-            <LatticeView />
+            <LatticeHasseDiagram />
           </div>
+          <details style={{ marginTop: 8 }}>
+            <summary style={{ cursor: 'pointer', color: '#8b949e', fontSize: 12, padding: '4px 12px' }}>Delegation Tree</summary>
+            <DelegationTree />
+          </details>
+          <details style={{ marginTop: 8 }}>
+            <summary style={{ cursor: 'pointer', color: '#8b949e', fontSize: 12, padding: '4px 12px' }}>Audit Hash Chain</summary>
+            <AuditHashChain />
+          </details>
         </aside>
 
         <main style={styles.center} aria-label="Live event stream">
-          <EventStream />
+          <EventStreamCanvas />
+          <details style={{ marginTop: 8 }}>
+            <summary style={{ cursor: 'pointer', color: '#8b949e', fontSize: 12 }}>Governance DAG</summary>
+            <GovernanceDAG />
+          </details>
         </main>
 
         <aside style={styles.inspector} aria-label="Inspector panel">
           <div style={styles.inspectorInner}>
             <div style={styles.inspectorTop}>
-              <Inspector />
+              <AnimatePresence>
+                {inspectorOpen && <Inspector key="inspector" />}
+              </AnimatePresence>
             </div>
-            <ThreatPanel />
+            <ThreatTimeline />
           </div>
         </aside>
       </div>

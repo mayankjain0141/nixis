@@ -1,3 +1,9 @@
+:root {
+  --allow: #2da44e;
+  --deny: #cf222e;
+  --escalate: #d29922;
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
 }
