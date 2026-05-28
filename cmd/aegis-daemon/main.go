@@ -75,6 +75,9 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
+	// initialPolicyCount is set to len(templates) on a successful startup load.
+	// It is used after the stream server starts to emit bundle.activated.
+	var initialPolicyCount int
 	templates, bindings, err := bundle.ParsePolicyDir(cfg.PolicyDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "aegis-daemon: failed to parse policies from %q: %v\n", cfg.PolicyDir, err)
@@ -88,7 +91,8 @@ func main() {
 		if err := engine.Reload(ctx, compiled); err != nil {
 			fmt.Fprintf(os.Stderr, "aegis-daemon: failed to load initial policies: %v\n", err)
 		} else {
-			fmt.Fprintf(os.Stderr, "aegis-daemon: loaded %d policies from %s\n", len(templates), cfg.PolicyDir)
+			initialPolicyCount = len(templates)
+			fmt.Fprintf(os.Stderr, "aegis-daemon: loaded %d policies from %s\n", initialPolicyCount, cfg.PolicyDir)
 		}
 	}
 	if grpcAddr := os.Getenv("AEGIS_GRPC_ADDR"); grpcAddr != "" {
@@ -143,6 +147,13 @@ func main() {
 		}
 	}()
 	defer streamCancel()
+
+	// Emit bundle.activated so the dashboard shows the policies loaded at startup.
+	// The payload is stored in the stream server and replayed to each client on connect,
+	// so this call is safe to make before any clients have connected.
+	if initialPolicyCount > 0 {
+		streamSrv.EmitBundleActivated(ctx, 1, "", initialPolicyCount, false)
+	}
 
 	// Create a delegation engine with an ephemeral key so the HTTP API is
 	// available from startup. Chains are registered by the policy engine at

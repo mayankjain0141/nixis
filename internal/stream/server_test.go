@@ -457,3 +457,77 @@ func getFirstClient(s *StreamServer) *client {
 	})
 	return found
 }
+
+// TestStream_EmitBundleActivated_Broadcast verifies EmitBundleActivated sends a
+// well-formed bundle.activated CloudEvent to all connected clients.
+func TestStream_EmitBundleActivated_Broadcast(t *testing.T) {
+	s, baseURL := newTestServer(t)
+	conn := dialWS(t, baseURL)
+	_ = readMsg(t, conn) // consume state.snapshot
+
+	// Wait for the client to register.
+	for {
+		count := 0
+		s.clients.Range(func(_, _ any) bool { count++; return true })
+		if count == 1 {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	const wantCount = 5
+	s.EmitBundleActivated(context.Background(), 1, "abc123", wantCount, false)
+
+	msg := readMsg(t, conn)
+
+	if got := msg["type"]; got != "bundle.activated" {
+		t.Fatalf("type = %v, want bundle.activated", got)
+	}
+	data, ok := msg["data"].(map[string]any)
+	if !ok {
+		t.Fatalf("data field missing or not an object: %v", msg["data"])
+	}
+	gotCount, ok := data["policyCount"].(float64)
+	if !ok {
+		t.Fatalf("policyCount missing or not a number: %v", data["policyCount"])
+	}
+	if int(gotCount) != wantCount {
+		t.Errorf("policyCount = %v, want %d", gotCount, wantCount)
+	}
+	if v, ok := data["version"].(float64); !ok || v != 1 {
+		t.Errorf("version = %v, want 1", data["version"])
+	}
+}
+
+// TestStream_EmitBundleActivated_ReplayOnConnect verifies that a client connecting after
+// EmitBundleActivated receives the bundle.activated payload as part of the initial handshake.
+func TestStream_EmitBundleActivated_ReplayOnConnect(t *testing.T) {
+	s, baseURL := newTestServer(t)
+
+	// Emit before any client connects.
+	s.EmitBundleActivated(context.Background(), 2, "def456", 7, true)
+
+	conn := dialWS(t, baseURL)
+
+	// First message is state.snapshot.
+	snap := readMsg(t, conn)
+	if snap["type"] != "state.snapshot" {
+		t.Fatalf("expected state.snapshot, got %v", snap["type"])
+	}
+
+	// Second message must be the replayed bundle.activated.
+	bundle := readMsg(t, conn)
+	if got := bundle["type"]; got != "bundle.activated" {
+		t.Fatalf("type = %v, want bundle.activated", got)
+	}
+	data, ok := bundle["data"].(map[string]any)
+	if !ok {
+		t.Fatalf("data missing or wrong type: %v", bundle["data"])
+	}
+	if pc, ok := data["policyCount"].(float64); !ok || int(pc) != 7 {
+		t.Errorf("policyCount = %v, want 7", data["policyCount"])
+	}
+	if sv, ok := data["signatureVerified"].(bool); !ok || !sv {
+		t.Errorf("signatureVerified = %v, want true", data["signatureVerified"])
+	}
+}

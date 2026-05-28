@@ -2,15 +2,19 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net"
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"go.uber.org/goleak"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
 	grpcauthz "github.com/mayjain/aegis/internal/grpc"
+	"github.com/mayjain/aegis/internal/stream"
 	"github.com/mayjain/aegis/pkg/aegis"
 )
 
@@ -103,6 +107,109 @@ func (n *noopEngine) Evaluate(_ context.Context, _ aegis.CheckRequest) aegis.Che
 }
 
 var _ grpcauthz.GovernanceEngine = (*noopEngine)(nil)
+
+// TestDaemon_EmitsBundleActivatedOnStartup verifies that after EmitBundleActivated is called
+// on the StreamServer, a client connecting to the server receives a bundle.activated CloudEvent
+// with policyCount > 0 as part of the initial handshake (replay-on-connect behaviour).
+func TestDaemon_EmitsBundleActivatedOnStartup(t *testing.T) {
+	// Find a free port.
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	addr := fmt.Sprintf(":%d", ln.Addr().(*net.TCPAddr).Port)
+	_ = ln.Close()
+
+	// Build a stream server the same way main.go does.
+	srv := stream.NewStreamServer(nil, nil)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+
+	startErr := make(chan error, 1)
+	go func() {
+		startErr <- srv.Start(ctx, addr)
+	}()
+
+	// Wait for the server to bind (retry dial).
+	wsURL := "ws://127.0.0.1" + addr + "/ws"
+	var conn *websocket.Conn
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		c, _, dialErr := websocket.DefaultDialer.Dial(wsURL, nil)
+		if dialErr == nil {
+			conn = c
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if conn == nil {
+		t.Fatal("stream server did not start within 3s")
+	}
+	defer func() { _ = conn.Close() }()
+
+	// Read state.snapshot — no bundle yet.
+	_ = conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+	_, data, err := conn.ReadMessage()
+	if err != nil {
+		t.Fatalf("read snapshot: %v", err)
+	}
+	var snap map[string]any
+	if err := json.Unmarshal(data, &snap); err != nil {
+		t.Fatalf("unmarshal snapshot: %v", err)
+	}
+	if snap["type"] != "state.snapshot" {
+		t.Fatalf("expected state.snapshot first, got %v", snap["type"])
+	}
+	_ = conn.Close()
+
+	// Now simulate daemon startup: emit bundle.activated before any client connects.
+	const wantPolicies = 5
+	srv.EmitBundleActivated(ctx, 1, "deadbeef", wantPolicies, false)
+
+	// Connect a new client — it must receive the replayed bundle.activated after snapshot.
+	conn2, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("dial after emit: %v", err)
+	}
+	defer func() { _ = conn2.Close() }()
+
+	// First: state.snapshot
+	_ = conn2.SetReadDeadline(time.Now().Add(3 * time.Second))
+	_, data, err = conn2.ReadMessage()
+	if err != nil {
+		t.Fatalf("read snapshot (conn2): %v", err)
+	}
+	var snap2 map[string]any
+	if err := json.Unmarshal(data, &snap2); err != nil {
+		t.Fatalf("unmarshal snapshot2: %v", err)
+	}
+	if snap2["type"] != "state.snapshot" {
+		t.Fatalf("expected state.snapshot, got %v", snap2["type"])
+	}
+
+	// Second: replayed bundle.activated.
+	_ = conn2.SetReadDeadline(time.Now().Add(3 * time.Second))
+	_, data, err = conn2.ReadMessage()
+	if err != nil {
+		t.Fatalf("read bundle.activated: %v", err)
+	}
+	var msg map[string]any
+	if err := json.Unmarshal(data, &msg); err != nil {
+		t.Fatalf("unmarshal bundle.activated: %v", err)
+	}
+	if got := msg["type"]; got != "bundle.activated" {
+		t.Fatalf("type = %v, want bundle.activated", got)
+	}
+	d, ok := msg["data"].(map[string]any)
+	if !ok {
+		t.Fatalf("data field missing or wrong type")
+	}
+	pc, ok := d["policyCount"].(float64)
+	if !ok || int(pc) != wantPolicies {
+		t.Errorf("policyCount = %v, want %d", d["policyCount"], wantPolicies)
+	}
+}
 
 func TestExpandHome(t *testing.T) {
 	tests := []struct {
