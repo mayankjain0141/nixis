@@ -1,13 +1,15 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { createStreamProcessor, WINDOWS } from './stream-processor';
+import { createStreamProcessor, OrderedEventList } from './stream-processor';
 import type { ValidatedEvent } from './ingestion-pipeline';
 
-// Minimal valid ValidatedEvent fixture for policy.evaluated.
+// ── Fixture helpers ───────────────────────────────────────────────────────────
+
 function makePolicyEvaluated(
   seq: number,
   action: 'allow' | 'deny' | 'require_approval' | 'audit' = 'allow',
   tool = 'Shell',
   latencyNs = 1_000_000,
+  sessionId = 'sess-1',
 ): ValidatedEvent {
   return {
     type: 'policy.evaluated',
@@ -19,7 +21,7 @@ function makePolicyEvaluated(
     },
     data: {
       tool,
-      session_id: 'sess-1',
+      session_id: sessionId,
       decision: {
         action,
         reason: '',
@@ -36,11 +38,7 @@ function makePolicyEvaluated(
 function makePolicyDenied(seq: number, tool = 'GitPush', latencyNs = 2_000_000): ValidatedEvent {
   return {
     type: 'policy.denied',
-    envelope: {
-      type: 'policy.denied',
-      aegissequence: seq,
-      id: `evt-${seq}`,
-    },
+    envelope: { type: 'policy.denied', aegissequence: seq, id: `evt-${seq}` },
     data: {
       tool,
       session_id: 'sess-2',
@@ -57,111 +55,206 @@ function makePolicyDenied(seq: number, tool = 'GitPush', latencyNs = 2_000_000):
   };
 }
 
-describe('createStreamProcessor', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-  afterEach(() => {
-    vi.useRealTimers();
+// ── OrderedEventList tests ────────────────────────────────────────────────────
+
+describe('OrderedEventList', () => {
+  it('maintains ascending aegissequence order on insertion', () => {
+    const list = new OrderedEventList();
+    list.insert(makePolicyEvaluated(3));
+    list.insert(makePolicyEvaluated(1));
+    list.insert(makePolicyEvaluated(2));
+    const seqs = list.toArray().map(e => e.envelope.aegissequence);
+    expect(seqs).toEqual([1, 2, 3]);
   });
 
-  it('returns zero stats when empty', () => {
-    const sp = createStreamProcessor();
-    const s = sp.stats(5_000);
-    expect(s.eventRate).toBe(0);
-    expect(s.denyRate).toBe(0);
-    expect(s.p50Ns).toBe(0);
-    expect(s.topTools).toHaveLength(0);
-    expect(s.windowMs).toBe(5_000);
+  it('drops duplicate aegissequence silently', () => {
+    const list = new OrderedEventList();
+    list.insert(makePolicyEvaluated(1));
+    list.insert(makePolicyEvaluated(1));
+    expect(list.length).toBe(1);
   });
 
-  it('push increments eventRate', () => {
+  it('handles already-ordered insertion', () => {
+    const list = new OrderedEventList();
+    for (let i = 1; i <= 5; i++) list.insert(makePolicyEvaluated(i));
+    const seqs = list.toArray().map(e => e.envelope.aegissequence);
+    expect(seqs).toEqual([1, 2, 3, 4, 5]);
+  });
+});
+
+// ── WS-20 Acceptance Criteria ─────────────────────────────────────────────────
+
+// TestStream_AuditOrdering
+describe('TestStream_AuditOrdering', () => {
+  it('events arriving out of order are stored in sequence order in the audit trail', () => {
     const sp = createStreamProcessor();
-    sp.push(makePolicyEvaluated(1));
-    sp.push(makePolicyEvaluated(2));
-    sp.push(makePolicyEvaluated(3));
-    const s = sp.stats(5_000);
-    expect(s.eventRate).toBe(3 / 5); // 3 events / 5 seconds
+    sp.processBatch([
+      makePolicyEvaluated(3),
+      makePolicyEvaluated(1),
+      makePolicyEvaluated(2),
+    ]);
+    const ordered = sp.getOrderedEvents();
+    const seqs = ordered.map(e => e.envelope.aegissequence);
+    expect(seqs).toEqual([1, 2, 3]);
   });
 
-  it('denyRate counts deny and require_approval as denials', () => {
+  it('interleaved batches maintain strict order', () => {
     const sp = createStreamProcessor();
-    sp.push(makePolicyEvaluated(1, 'allow'));
-    sp.push(makePolicyEvaluated(2, 'deny'));
-    sp.push(makePolicyEvaluated(3, 'require_approval'));
-    sp.push(makePolicyEvaluated(4, 'audit'));
-    const s = sp.stats(5_000);
-    expect(s.denyRate).toBeCloseTo(2 / 4);
+    sp.processBatch([makePolicyEvaluated(5), makePolicyEvaluated(2)]);
+    sp.processBatch([makePolicyEvaluated(1), makePolicyEvaluated(4), makePolicyEvaluated(3)]);
+    const seqs = sp.getOrderedEvents().map(e => e.envelope.aegissequence);
+    expect(seqs).toEqual([1, 2, 3, 4, 5]);
+  });
+});
+
+// TestStream_WindowedAggregation
+describe('TestStream_WindowedAggregation', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('30s window counts only events within the last 30 seconds', () => {
+    const sp = createStreamProcessor();
+    sp.processBatch([
+      makePolicyEvaluated(1, 'allow'),
+      makePolicyEvaluated(2, 'deny'),
+      makePolicyEvaluated(3, 'allow'),
+    ]);
+    vi.advanceTimersByTime(35_000);
+    sp.processBatch([
+      makePolicyEvaluated(4, 'audit'),
+      makePolicyEvaluated(5, 'allow'),
+    ]);
+    const w = sp.getWindow('LAST_30S');
+    expect(w.allow + w.deny + w.require_approval + w.audit).toBe(2);
+    expect(w.allow).toBe(1);
+    expect(w.audit).toBe(1);
+    expect(w.deny).toBe(0);
   });
 
-  it('policy.denied events contribute to deny distribution', () => {
+  it('5s window excludes events older than 5 seconds', () => {
     const sp = createStreamProcessor();
-    sp.push(makePolicyDenied(1));
-    sp.push(makePolicyDenied(2));
-    const s = sp.stats(5_000);
-    expect(s.distribution.deny).toBe(2);
-    expect(s.denyRate).toBe(1.0);
-  });
-
-  it('topTools returns sorted by count, max 5', () => {
-    const sp = createStreamProcessor();
-    const tools = ['Shell', 'Read', 'Write', 'Edit', 'Bash', 'WebFetch'];
-    for (let i = 0; i < 10; i++) sp.push(makePolicyEvaluated(i, 'allow', 'Shell'));
-    for (const tool of tools.slice(1)) sp.push(makePolicyEvaluated(100 + tools.indexOf(tool), 'allow', tool));
-    const s = sp.stats(5_000);
-    expect(s.topTools).toHaveLength(5); // max 5
-    expect(s.topTools[0].tool).toBe('Shell'); // most frequent first
-    expect(s.topTools[0].count).toBe(10);
-  });
-
-  it('percentiles compute correctly', () => {
-    const sp = createStreamProcessor();
-    // Push 10 events with known latencies 1ns..10ns
-    for (let i = 1; i <= 10; i++) {
-      sp.push(makePolicyEvaluated(i, 'allow', 'Shell', i));
-    }
-    const s = sp.stats(5_000);
-    expect(s.p50Ns).toBeGreaterThan(0);
-    expect(s.p95Ns).toBeGreaterThanOrEqual(s.p50Ns);
-    expect(s.p99Ns).toBeGreaterThanOrEqual(s.p95Ns);
-  });
-
-  it('entries outside the window are excluded', () => {
-    const sp = createStreamProcessor();
-    // Push one event now, then advance time past the 5s window.
-    sp.push(makePolicyEvaluated(1));
+    sp.processBatch([makePolicyEvaluated(1, 'deny')]);
     vi.advanceTimersByTime(6_000);
-    const s = sp.stats(5_000);
-    expect(s.eventRate).toBe(0);
+    const w = sp.getWindow('LAST_5S');
+    expect(w.allow + w.deny + w.require_approval + w.audit).toBe(0);
   });
 
-  it('allStats returns stats for all 4 windows', () => {
+  it('windowDurationMs matches the requested window', () => {
     const sp = createStreamProcessor();
-    sp.push(makePolicyEvaluated(1));
-    const all = sp.allStats();
-    expect(all).toHaveLength(4);
-    const windowIds = all.map(s => s.windowMs);
-    for (const w of WINDOWS) {
-      expect(windowIds).toContain(w);
-    }
+    expect(sp.getWindow('LAST_5S').windowDurationMs).toBe(5_000);
+    expect(sp.getWindow('LAST_30S').windowDurationMs).toBe(30_000);
+    expect(sp.getWindow('LAST_5MIN').windowDurationMs).toBe(300_000);
+    expect(sp.getWindow('LAST_1HR').windowDurationMs).toBe(3_600_000);
+  });
+});
+
+// ── Additional interface compliance tests ─────────────────────────────────────
+
+describe('createStreamProcessor', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('getMetrics returns zero state when empty', () => {
+    const sp = createStreamProcessor();
+    const m = sp.getMetrics();
+    expect(m.verdicts.allow).toBe(0);
+    expect(m.verdicts.deny).toBe(0);
+    expect(m.latency.p50Ns).toBe(0);
+    expect(m.throughput.totalEvents).toBe(0);
+    expect(m.tools.topTools).toHaveLength(0);
   });
 
-  it('reset clears all entries', () => {
+  it('getMetrics reflects pushed events', () => {
     const sp = createStreamProcessor();
-    sp.push(makePolicyEvaluated(1));
-    sp.push(makePolicyEvaluated(2));
+    sp.processBatch([makePolicyEvaluated(1, 'allow'), makePolicyEvaluated(2, 'deny')]);
+    const m = sp.getMetrics();
+    expect(m.verdicts.allow).toBe(1);
+    expect(m.verdicts.deny).toBe(1);
+    expect(m.throughput.totalEvents).toBe(2);
+  });
+
+  it('onMetricsUpdate fires handler after each processBatch', () => {
+    const sp = createStreamProcessor();
+    const updates: number[] = [];
+    sp.onMetricsUpdate(m => updates.push(m.throughput.totalEvents));
+    sp.processBatch([makePolicyEvaluated(1)]);
+    sp.processBatch([makePolicyEvaluated(2)]);
+    expect(updates).toEqual([1, 2]);
+  });
+
+  it('onMetricsUpdate returns unsubscribe function', () => {
+    const sp = createStreamProcessor();
+    const updates: number[] = [];
+    const unsub = sp.onMetricsUpdate(m => updates.push(m.throughput.totalEvents));
+    sp.processBatch([makePolicyEvaluated(1)]);
+    unsub();
+    sp.processBatch([makePolicyEvaluated(2)]);
+    expect(updates).toHaveLength(1);
+  });
+
+  it('setFilter restricts to specified verdicts', () => {
+    const sp = createStreamProcessor();
+    sp.setFilter({ verdicts: ['deny'] });
+    sp.processBatch([
+      makePolicyEvaluated(1, 'allow'),
+      makePolicyEvaluated(2, 'deny'),
+      makePolicyEvaluated(3, 'allow'),
+    ]);
+    const m = sp.getMetrics();
+    expect(m.verdicts.deny).toBe(1);
+    expect(m.verdicts.allow).toBe(0);
+  });
+
+  it('getFilters returns current filter state', () => {
+    const sp = createStreamProcessor();
+    sp.setFilter({ verdicts: ['deny', 'require_approval'], tools: ['Shell'] });
+    const f = sp.getFilters();
+    expect(f.verdicts).toEqual(['deny', 'require_approval']);
+    expect(f.tools).toEqual(['Shell']);
+  });
+
+  it('getCorrelatedEvents links delegation events to policy events by session', () => {
+    const sp = createStreamProcessor();
+    const policyEvent = makePolicyEvaluated(1, 'allow', 'Shell', 1_000_000, 'sess-1');
+    const delegEvent: ValidatedEvent = {
+      type: 'delegation.created',
+      envelope: { type: 'delegation.created', aegissequence: 2, id: 'del-1' },
+      data: { subject: 'sess-1' },
+    };
+    sp.processBatch([policyEvent, delegEvent]);
+    const group = sp.getCorrelatedEvents('evt-1');
+    expect(group).not.toBeNull();
+    expect(group?.delegationEvents).toHaveLength(1);
+    expect(group?.delegationEvents[0].type).toBe('delegation.created');
+  });
+
+  it('reset clears all state', () => {
+    const sp = createStreamProcessor();
+    sp.processBatch([makePolicyEvaluated(1), makePolicyDenied(2)]);
     sp.reset();
-    const s = sp.stats(5_000);
-    expect(s.eventRate).toBe(0);
-    expect(s.topTools).toHaveLength(0);
+    expect(sp.getMetrics().throughput.totalEvents).toBe(0);
+    expect(sp.getOrderedEvents()).toHaveLength(0);
+    expect(sp.getWindow('LAST_5S').allow).toBe(0);
   });
 
-  it('computedAt is approximately now', () => {
+  it('denyRate includes require_approval in deny count', () => {
     const sp = createStreamProcessor();
-    const before = Date.now();
-    const s = sp.stats(5_000);
-    const after = Date.now();
-    expect(s.computedAt).toBeGreaterThanOrEqual(before);
-    expect(s.computedAt).toBeLessThanOrEqual(after);
+    sp.processBatch([
+      makePolicyEvaluated(1, 'allow'),
+      makePolicyEvaluated(2, 'require_approval'),
+    ]);
+    const w = sp.getWindow('LAST_5S');
+    expect(w.denyRate).toBeCloseTo(0.5);
+  });
+
+  it('latency percentiles are monotonically non-decreasing', () => {
+    const sp = createStreamProcessor();
+    for (let i = 1; i <= 20; i++) {
+      sp.processBatch([makePolicyEvaluated(i, 'allow', 'Shell', i * 100_000)]);
+    }
+    const m = sp.getMetrics();
+    expect(m.latency.p50Ns).toBeLessThanOrEqual(m.latency.p95Ns);
+    expect(m.latency.p95Ns).toBeLessThanOrEqual(m.latency.p99Ns);
+    expect(m.latency.p99Ns).toBeLessThanOrEqual(m.latency.maxNs);
   });
 });

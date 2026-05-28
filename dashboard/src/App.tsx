@@ -13,6 +13,8 @@ import { createWebSocketManager } from './lib/realtime/ws-manager';
 import { createEventIngestionPipeline } from './lib/realtime/ingestion-pipeline';
 import { createEventBus } from './lib/realtime/event-bus';
 import { createBackpressureController } from './lib/realtime/backpressure';
+import { createSyncOrchestrator, atomicUpdate } from './lib/realtime/sync-orchestrator';
+import { createStreamProcessor, feedBatchToProcessor } from './lib/realtime/stream-processor';
 import { GovernanceInvariantChecker } from './services/invariants';
 import type { ValidatedEvent } from './lib/realtime/ingestion-pipeline';
 import type { GovernanceEvent } from './stores/governance-store';
@@ -28,8 +30,7 @@ const DAEMON_WS_URL = (() => {
   }
 })();
 
-// Convert the legacy mock StreamEvent to a minimal CloudEvent JSON string
-// so it feeds through the real ingestion pipeline.
+// Convert mock StreamEvent to a CloudEvent JSON string for pipeline ingestion.
 function mockEventToCloudEvent(e: StreamEvent, seq: number): string {
   const eventType = (e.action === 'deny' || e.action === 'require_approval')
     ? 'policy.denied'
@@ -58,80 +59,115 @@ function mockEventToCloudEvent(e: StreamEvent, seq: number): string {
   });
 }
 
-// Route a validated event batch to the appropriate stores.
-function routeToStores(
-  events: ValidatedEvent[],
-  appendEvent: (event: GovernanceEvent) => void,
+// Build an atomic cross-store update for a policy event.
+// governance-store and metrics-store are committed in the same apply() call,
+// satisfying the WS-21 atomic cross-store invariant.
+function buildPolicyUpdate(
+  event: ValidatedEvent & { type: 'policy.evaluated' | 'policy.denied' },
+  appendEvent: (ev: GovernanceEvent) => void,
   updateLabel: (sessionId: string, incoming: SecurityLabel, state: LabelState) => void,
-  recordLatency: (latencyNs: number) => void,
-  recordEvent: (timestampMs: number) => void,
+  recordLatency: (ns: number) => void,
+  recordEvent: (ms: number) => void,
+  updateLastSequence: (seq: number) => void,
+) {
+  const d = event.data;
+  const labelState: LabelState = (
+    d.label_state === 'fresh' ||
+    d.label_state === 'escalated' ||
+    d.label_state === 'tainted_by_secret' ||
+    d.label_state === 'declassified'
+  ) ? (d.label_state as LabelState) : 'fresh';
+
+  const govEvent: GovernanceEvent = {
+    id: event.envelope.id ?? `evt-${event.envelope.aegissequence}`,
+    sessionId: d.session_id,
+    tool: d.tool,
+    verdict: d.decision.action,
+    reason: d.decision.reason,
+    policyId: d.decision.policy_id,
+    enforcingLayer: d.decision.enforcing_layer,
+    label: d.decision.labels,
+    labelState,
+    latencyNs: d.latency_ns,
+    aegisSequence: event.envelope.aegissequence,
+    timestamp: event.envelope.time
+      ? new Date(event.envelope.time).getTime() * 1_000_000
+      : Date.now() * 1_000_000,
+  };
+
+  const isDeny = d.decision.action === 'deny' || d.decision.action === 'require_approval';
+  const priority = isDeny ? 'IMMEDIATE' : 'FRAME';
+
+  return atomicUpdate(priority, event.type,
+    // Governance state and metrics state updated atomically in one apply() call.
+    () => {
+      appendEvent(govEvent);
+      recordLatency(d.latency_ns);
+      recordEvent(Date.now());
+    },
+    () => updateLabel(d.session_id, d.decision.labels, labelState),
+    () => updateLastSequence(event.envelope.aegissequence),
+  );
+}
+
+// Route a batch of validated events to stores via the sync-orchestrator.
+function routeEvents(
+  events: ValidatedEvent[],
+  orchestrator: ReturnType<typeof createSyncOrchestrator>,
+  appendEvent: (ev: GovernanceEvent) => void,
+  updateLabel: (sessionId: string, incoming: SecurityLabel, state: LabelState) => void,
+  recordLatency: (ns: number) => void,
+  recordEvent: (ms: number) => void,
   setConnectionState: (state: ConnectionState) => void,
   updateLastSequence: (seq: number) => void,
   setBundleStatus: (status: BundleStatus) => void,
 ): void {
   for (const event of events) {
-    updateLastSequence(event.envelope.aegissequence);
-
     switch (event.type) {
       case 'policy.evaluated':
       case 'policy.denied': {
-        const d = event.data;
-        const labelState: LabelState = (
-          d.label_state === 'fresh' ||
-          d.label_state === 'escalated' ||
-          d.label_state === 'tainted_by_secret' ||
-          d.label_state === 'declassified'
-        ) ? (d.label_state as LabelState) : 'fresh';
-
-        appendEvent({
-          id: event.envelope.id ?? `evt-${event.envelope.aegissequence}`,
-          sessionId: d.session_id,
-          tool: d.tool,
-          verdict: d.decision.action,
-          reason: d.decision.reason,
-          policyId: d.decision.policy_id,
-          enforcingLayer: d.decision.enforcing_layer,
-          label: d.decision.labels,
-          labelState,
-          latencyNs: d.latency_ns,
-          aegisSequence: event.envelope.aegissequence,
-          timestamp: event.envelope.time
-            ? new Date(event.envelope.time).getTime() * 1_000_000
-            : Date.now() * 1_000_000,
-        });
-        recordLatency(d.latency_ns);
-        recordEvent(Date.now());
-        updateLabel(d.session_id, d.decision.labels, labelState);
+        const update = buildPolicyUpdate(
+          event, appendEvent, updateLabel,
+          recordLatency, recordEvent, updateLastSequence,
+        );
+        orchestrator.dispatchUpdate(update);
         break;
       }
 
-      case 'stream.heartbeat':
-        // Connection is alive; heartbeat also handled by ws-manager for clock offset.
-        break;
-
       case 'bundle.activated': {
         const b = event.data;
-        setBundleStatus({
-          version: b.version,
-          previousVersion: b.previousVersion ?? 0,
-          hash: b.hash,
-          signatureVerified: b.signatureVerified,
-          policyCount: b.policyCount,
-          adapterCount: b.adapterCount ?? 0,
-          activatedAt: Date.now(),
-        });
+        orchestrator.dispatchUpdate(atomicUpdate('FRAME', event.type, () => {
+          setBundleStatus({
+            version: b.version,
+            previousVersion: b.previousVersion ?? 0,
+            hash: b.hash,
+            signatureVerified: b.signatureVerified,
+            policyCount: b.policyCount,
+            adapterCount: b.adapterCount ?? 0,
+            activatedAt: Date.now(),
+          });
+          updateLastSequence(event.envelope.aegissequence);
+        }));
         break;
       }
 
       case 'system.error':
         if (event.data.severity === 'critical') {
-          setConnectionState('DISCONNECTED');
+          orchestrator.dispatchUpdate(atomicUpdate('IMMEDIATE', event.type, () => {
+            setConnectionState('DISCONNECTED');
+          }));
         }
         break;
 
+      case 'stream.heartbeat':
+        // Handled by ws-manager for clock offset; no store update needed.
+        break;
+
       default:
-        // delegation.*, audit.checkpoint, label.escalated, secret.detected,
-        // mcp.tool_drift — acknowledged but not yet routed to stores in MVP-1.
+        // label.escalated, secret.detected, mcp.tool_drift, delegation.*,
+        // audit.checkpoint — flow through bus and stream-processor; store routing
+        // is a Phase 2 extension.
+        updateLastSequence(event.envelope.aegissequence);
         break;
     }
   }
@@ -175,7 +211,7 @@ export default function App() {
       })),
       getSessionLabels: () => {
         const labels = useGovernanceStore.getState().sessionLabels;
-        const out = new Map<string, { label: import('./types/aegis').SecurityLabel; updatedAt: number }>();
+        const out = new Map<string, { label: SecurityLabel; updatedAt: number }>();
         for (const [k, v] of labels) {
           out.set(k, { label: v.label, updatedAt: v.updatedAt });
         }
@@ -195,15 +231,25 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Main realtime wiring: ws-manager → ingestion-pipeline → event-bus → backpressure → stores.
+  // Main realtime wiring:
+  // ws-manager → ingestion-pipeline → event-bus → backpressure → sync-orchestrator → stores
+  //                                                             ↘ stream-processor (WS-20)
   useEffect(() => {
     const bus = createEventBus();
     const bpController = createBackpressureController();
+    const streamProcessor = createStreamProcessor();
+    const orchestrator = createSyncOrchestrator();
 
-    // Backpressure output routes to stores.
+    // Backpressure output → sync-orchestrator → stores + stream-processor.
     const unsubBp = bpController.onOutput((batch) => {
-      routeToStores(
+      // WS-21: sync-orchestrator consumes the full ProcessedBatch.
+      orchestrator.dispatch(batch);
+      // WS-20: stream-processor consumes the batch for windowed aggregations.
+      feedBatchToProcessor(batch, streamProcessor);
+      // Route individual events to stores via orchestrator.
+      routeEvents(
         batch.immediateEvents,
+        orchestrator,
         appendEvent, updateLabel, recordLatency, recordEvent,
         setConnectionState, updateLastSequence, setBundleStatus,
       );
@@ -222,7 +268,6 @@ export default function App() {
     // Validated events go to the event bus.
     const unsubPipeline = pipeline.onValidated((event) => bus.emit(event));
 
-    // Connection state changes propagate to stream-store.
     let stateCheckInterval: ReturnType<typeof setInterval> | null = null;
     let useMock = false;
 
@@ -242,11 +287,9 @@ export default function App() {
 
     // Poll ws-manager state to update stream-store.
     stateCheckInterval = setInterval(() => {
-      const wsState = wsManager.getState();
-      setConnectionState(wsState);
+      setConnectionState(wsManager.getState());
     }, 250);
 
-    // Connect; fall back to mock after 2s if not connected.
     setConnectionState('CONNECTING');
     wsManager.connect();
 
@@ -256,7 +299,6 @@ export default function App() {
       }
     }, 2000);
 
-    // Wire ws-manager message to pipeline.
     const unsubMsg = wsManager.onMessage((raw, meta) => {
       pipeline.ingest(raw, meta);
     });
@@ -269,6 +311,8 @@ export default function App() {
       unsubPipeline();
       unsubBus();
       unsubBp();
+      orchestrator.flush();
+      streamProcessor.reset();
       mockGenRef.current?.stop();
       mockGenRef.current = null;
     };
