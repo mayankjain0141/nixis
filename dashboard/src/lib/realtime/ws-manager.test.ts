@@ -185,4 +185,106 @@ describe('createWebSocketManager', () => {
     // clockOffsetMs should be approximately +50.
     expect(Math.abs(mgr.getMetrics().clockOffsetMs - 50)).toBeLessThan(5);
   });
+
+  // ── WS-16 Acceptance Criteria ───────────────────────────────────────────────
+
+  // TestWSManager_ExponentialBackoff: disconnect → reconnect attempts at 1s, 2s, 4s...
+  describe('TestWSManager_ExponentialBackoff', () => {
+    it('reconnect delays follow 1s, 2s, 4s exponential backoff sequence', async () => {
+      const mgr = createWebSocketManager('ws://localhost:9090/ws');
+      mgr.connect();
+      await Promise.resolve(); // initial open
+      expect(mgr.getState()).toBe('CONNECTED');
+
+      // First disconnect → schedules reconnect at BACKOFF_DELAYS[0]=1000ms (+≤10% jitter)
+      lastSocket?.simulateClose();
+      expect(mgr.getState()).toBe('RECONNECTING');
+      expect(mgr.getMetrics().reconnectCount).toBe(1);
+
+      // Advance 1200ms — guaranteed to exceed 1000ms + max jitter (100ms)
+      vi.advanceTimersByTime(1200);
+      await Promise.resolve(); // flush MockWebSocket onopen microtask
+      expect(mgr.getState()).toBe('CONNECTED');
+
+      // Second disconnect → BACKOFF_DELAYS[1]=2000ms (+≤10% jitter)
+      lastSocket?.simulateClose();
+      expect(mgr.getState()).toBe('RECONNECTING');
+      expect(mgr.getMetrics().reconnectCount).toBe(2);
+
+      vi.advanceTimersByTime(2400); // 2000ms + headroom
+      await Promise.resolve();
+      expect(mgr.getState()).toBe('CONNECTED');
+
+      // Third disconnect → BACKOFF_DELAYS[2]=4000ms (+≤10% jitter)
+      lastSocket?.simulateClose();
+      expect(mgr.getState()).toBe('RECONNECTING');
+      expect(mgr.getMetrics().reconnectCount).toBe(3);
+
+      vi.advanceTimersByTime(4800); // 4000ms + headroom
+      await Promise.resolve();
+      expect(mgr.getState()).toBe('CONNECTED');
+    });
+  });
+
+  // TestWSManager_ReconnectAfterRestart: daemon restarts → client reconnects and receives state.snapshot
+  describe('TestWSManager_ReconnectAfterRestart', () => {
+    it('reconnects after daemon closes connection and sends resumeFrom with last sequence', async () => {
+      const mgr = createWebSocketManager('ws://localhost:9090/ws');
+      mgr.connect();
+      await Promise.resolve();
+
+      // Receive an event so lastSequenceId > 0
+      lastSocket?.simulateMessage(JSON.stringify({
+        type: 'policy.evaluated',
+        aegissequence: 100,
+      }));
+
+      // Daemon restarts — connection closes
+      lastSocket?.simulateClose();
+      expect(mgr.getState()).toBe('RECONNECTING');
+
+      vi.advanceTimersByTime(1100);
+      await Promise.resolve();
+      expect(mgr.getState()).toBe('CONNECTED');
+
+      // Client sends resumeFrom so daemon knows where to resume backfill
+      const sent = lastSocket?.sent ?? [];
+      const resumeMsg = sent.find(s => s.includes('subscribe.filter'));
+      expect(resumeMsg).toBeDefined();
+      expect(JSON.parse(resumeMsg!).resumeFrom).toBe(100);
+    });
+  });
+
+  // TestWSManager_TabVisibilityBuffer: backgrounded tab → messages buffered up to 500
+  describe('TestWSManager_TabVisibilityBuffer', () => {
+    it('buffers at most 500 messages when tab is hidden and flushes on visibility restore', async () => {
+      const mgr = createWebSocketManager('ws://localhost:9090/ws');
+      const received: string[] = [];
+      mgr.onMessage((raw) => received.push(raw));
+      mgr.connect();
+      await Promise.resolve();
+
+      // Simulate tab going hidden
+      Object.defineProperty(document, 'visibilityState', {
+        value: 'hidden', writable: true, configurable: true,
+      });
+      document.dispatchEvent(new Event('visibilitychange'));
+
+      // Send 600 messages while tab is hidden — only first 500 buffered, rest silently dropped
+      for (let i = 0; i < 600; i++) {
+        lastSocket?.simulateMessage(JSON.stringify({ type: 'heartbeat', seq: i }));
+      }
+      // Nothing delivered yet (buffered)
+      expect(received).toHaveLength(0);
+
+      // Tab becomes visible → buffered messages flush to handlers
+      Object.defineProperty(document, 'visibilityState', {
+        value: 'visible', writable: true, configurable: true,
+      });
+      document.dispatchEvent(new Event('visibilitychange'));
+
+      // Exactly 500 delivered (buffer cap), 100 dropped silently
+      expect(received).toHaveLength(500);
+    });
+  });
 });

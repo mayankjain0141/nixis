@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
+import { flushSync as flushSyncMock } from 'react-dom';
 
 // Must be at top level — vi.mock is hoisted regardless of where it appears.
 vi.mock('react-dom', () => ({
@@ -133,6 +134,42 @@ describe('createBackpressureController', () => {
         ctrl.submit(batch);
       }
       expect(ctrl.getPressure()).toBeDefined();
+    });
+  });
+
+  // TestBackpressure_CriticalFlushSync: denial event → flushSync called synchronously
+  describe('TestBackpressure_CriticalFlushSync', () => {
+    it('flushSync is called when a DENY event is submitted', () => {
+      const ctrl = createBackpressureController();
+      ctrl.onOutput(() => {});
+      ctrl.submit([makeDeny(1)]);
+      expect(flushSyncMock).toHaveBeenCalled();
+    });
+
+    it('flushSync is called for secret.detected (CRITICAL priority)', () => {
+      const ctrl = createBackpressureController();
+      ctrl.onOutput(() => {});
+      ctrl.submit([makeSecret(1)]);
+      expect(flushSyncMock).toHaveBeenCalled();
+    });
+
+    it('flushSync is NOT called for allow events (NORMAL priority)', () => {
+      const ctrl = createBackpressureController();
+      ctrl.onOutput(() => {});
+      ctrl.submit([makeAllow(1)]);
+      expect(flushSyncMock).not.toHaveBeenCalled();
+    });
+
+    it('deny event appears in immediateEvents, dispatched via flushSync', () => {
+      const ctrl = createBackpressureController();
+      const immediateSeqs: number[] = [];
+      ctrl.onOutput((b: ProcessedBatch) => {
+        for (const e of b.immediateEvents) immediateSeqs.push(e.envelope.aegissequence);
+      });
+      ctrl.submit([makeAllow(1), makeDeny(2), makeAllow(3)]);
+      // flushSync called (for deny), deny is in immediateEvents
+      expect(flushSyncMock).toHaveBeenCalled();
+      expect(immediateSeqs).toContain(2);
     });
   });
 });
