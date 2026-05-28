@@ -33,6 +33,11 @@ export interface GovernanceEvent {
   latencyNs: number;
   aegisSequence: number;
   timestamp: number;
+  // Optional fields populated by policy.evaluated / policy.denied events
+  securityLabel?: SecurityLabel;
+  requestedLabel?: SecurityLabel;
+  capabilityCeiling?: SecurityLabel;
+  celExpression?: string;
 }
 
 export interface SessionLabelEntry {
@@ -126,7 +131,7 @@ export const useGovernanceStore = create<GovernanceState>()(
       set((draft) => {
         draft.events.length = 0;
         draft.sessionLabels.clear();
-        draft.delegationChains.clear();
+        draft.delegationChains = new Map();
         draft.totalDenials = 0;
         draft.totalAllows = 0;
       });
