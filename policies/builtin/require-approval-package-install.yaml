@@ -1,0 +1,98 @@
+# Source: Community research — AgentWall, mcp-visor
+# Gate: G4 (CEL function tests)
+# Default: ENABLED — shipped as default-on in the built-in bundle
+#
+# Behavior:
+#   npm install lodash              → REQUIRE_APPROVAL (new package)
+#   npm i express                   → REQUIRE_APPROVAL (new package)
+#   npm install                     → AUDIT (installing from existing package.json)
+#   npm ci                          → AUDIT (clean install from lockfile)
+#   pip install requests            → REQUIRE_APPROVAL (new package)
+#   pip install -r requirements.txt → AUDIT (installing from requirements)
+#   cargo add serde                 → REQUIRE_APPROVAL (new dependency)
+#   go get github.com/pkg/errors    → REQUIRE_APPROVAL (new dependency)
+#   yarn add react                  → REQUIRE_APPROVAL (new package)
+#
+# Rationale:
+#   Package installation can introduce malicious dependencies (typosquatting,
+#   dependency confusion). New packages should be reviewed, while installing
+#   from existing lockfiles/requirements is lower risk.
+
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: require-approval-package-install
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Require approval for new package installation; audit lockfile-based installs"
+  matchConstraints:
+    tools: ["Bash"]
+  variables:
+    - name: isNpmInstallNew
+      # npm install <package> or npm i <package> (not just npm install alone)
+      expression: >-
+        request.args.command.matches("(?i)\\bnpm\\s+(install|i)\\s+[a-z@]")
+    - name: isNpmInstallLockfile
+      # npm install (no args) or npm ci
+      expression: >-
+        request.args.command.matches("(?i)\\bnpm\\s+(install|i)\\s*$") ||
+        request.args.command.matches("(?i)\\bnpm\\s+ci\\b")
+    - name: isPipInstallNew
+      # pip install <package> (not -r requirements.txt)
+      expression: >-
+        request.args.command.matches("(?i)\\bpip3?\\s+install\\s+[a-z]") &&
+        !request.args.command.matches("(?i)\\bpip3?\\s+install\\s+-r\\b")
+    - name: isPipInstallRequirements
+      # pip install -r requirements.txt
+      expression: >-
+        request.args.command.matches("(?i)\\bpip3?\\s+install\\s+-r\\b")
+    - name: isCargoAdd
+      # cargo add <crate>
+      expression: >-
+        request.args.command.matches("(?i)\\bcargo\\s+add\\s+[a-z]")
+    - name: isCargoInstall
+      # cargo install <binary>
+      expression: >-
+        request.args.command.matches("(?i)\\bcargo\\s+install\\s+[a-z]")
+    - name: isGoGet
+      # go get <module>
+      expression: >-
+        request.args.command.matches("(?i)\\bgo\\s+get\\s+[a-z]")
+    - name: isYarnAddNew
+      # yarn add <package>
+      expression: >-
+        request.args.command.matches("(?i)\\byarn\\s+add\\s+[a-z@]")
+    - name: isYarnInstall
+      # yarn install (no args) or yarn (alone)
+      expression: >-
+        request.args.command.matches("(?i)\\byarn\\s+install\\s*$") ||
+        request.args.command.matches("(?i)\\byarn\\s*$")
+    - name: isPnpmAdd
+      # pnpm add <package>
+      expression: >-
+        request.args.command.matches("(?i)\\bpnpm\\s+add\\s+[a-z@]")
+  validations:
+    - expression: 'isNpmInstallNew'
+      message: 'New npm package installation requires approval — verify package legitimacy'
+      action: REQUIRE_APPROVAL
+    - expression: 'isPipInstallNew'
+      message: 'New pip package installation requires approval — verify package legitimacy'
+      action: REQUIRE_APPROVAL
+    - expression: 'isCargoAdd || isCargoInstall'
+      message: 'New cargo package installation requires approval — verify crate legitimacy'
+      action: REQUIRE_APPROVAL
+    - expression: 'isGoGet'
+      message: 'New Go module requires approval — verify module legitimacy'
+      action: REQUIRE_APPROVAL
+    - expression: 'isYarnAddNew || isPnpmAdd'
+      message: 'New yarn/pnpm package installation requires approval — verify package legitimacy'
+      action: REQUIRE_APPROVAL
+    - expression: 'isNpmInstallLockfile || isYarnInstall'
+      message: 'Installing from lockfile — audit trail'
+      action: AUDIT
+    - expression: 'isPipInstallRequirements'
+      message: 'Installing from requirements.txt — audit trail'
+      action: AUDIT
+  defaultAction: ALLOW

