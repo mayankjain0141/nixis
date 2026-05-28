@@ -42,10 +42,12 @@ interface GovernanceState {
   sessionLabels: Map<string, SessionLabelEntry>;
   totalDenials: number;
   totalAllows: number;
+  filterVerdict: string | null;
 
   appendEvent(event: GovernanceEvent): void;
   // updateLabel applies elevate semantics — never overwrites with a lower value.
   updateLabel(sessionId: string, incoming: SecurityLabel, state: LabelState): void;
+  setFilterVerdict(verdict: string | null): void;
   clear(): void;
 }
 
@@ -55,6 +57,7 @@ export const useGovernanceStore = create<GovernanceState>()(
     sessionLabels: new Map(),
     totalDenials: 0,
     totalAllows: 0,
+    filterVerdict: null,
 
     appendEvent(event) {
       set((draft) => {
@@ -84,6 +87,12 @@ export const useGovernanceStore = create<GovernanceState>()(
           state,
           updatedAt: Date.now(),
         });
+      });
+    },
+
+    setFilterVerdict(verdict) {
+      set((draft) => {
+        draft.filterVerdict = verdict;
       });
     },
 
