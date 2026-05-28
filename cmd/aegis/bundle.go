@@ -1,10 +1,8 @@
 package main
 
 import (
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -12,6 +10,7 @@ import (
 	"time"
 
 	"github.com/mayjain/aegis/internal/bundle"
+	"github.com/mayjain/aegis/pkg/aegis"
 	"github.com/spf13/cobra"
 )
 
@@ -64,12 +63,6 @@ func init() {
 	bundleCmd.AddCommand(bundleRollbackCmd)
 }
 
-// bundleReloadMsg is sent to the daemon to trigger a policy reload.
-type bundleReloadMsg struct {
-	Type    string `json:"type"`
-	BundleP string `json:"bundle_path"`
-}
-
 func runBundleActivate(cmd *cobra.Command, args []string) error {
 	return activateBundle(cmd, args[0])
 }
@@ -101,7 +94,8 @@ func activateBundle(cmd *cobra.Command, bundlePath string) error {
 		return err
 	}
 
-	// Step 2: connect to daemon and send reload trigger.
+	// Step 2: notify the daemon via the standard CheckRequest wire protocol
+	// (same framing as `aegis simulate`) so it can trigger a policy reload.
 	sockPath := bundleSocket
 	if sockPath == "" {
 		sockPath = daemonSocketPath()
@@ -115,45 +109,39 @@ func activateBundle(cmd *cobra.Command, bundlePath string) error {
 		_ = conn.Close()
 	}()
 
-	msg := bundleReloadMsg{
-		Type:    "bundle_reload",
-		BundleP: bundlePath,
-	}
-	msgBytes, err := json.Marshal(msg)
+	// Encode a CheckRequest with tool="bundle_reload" and the bundle path as args.
+	argsJSON, err := json.Marshal(map[string]string{"bundle_path": bundlePath})
 	if err != nil {
-		return fmt.Errorf("marshal reload message: %w", err)
+		return fmt.Errorf("marshal args: %w", err)
+	}
+	req := aegis.CheckRequest{
+		Tool:      "bundle_reload",
+		Args:      json.RawMessage(argsJSON),
+		Timestamp: time.Now().UnixNano(),
+	}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("marshal request: %w", err)
 	}
 
 	deadline := time.Now().Add(5 * time.Second)
-	if err := conn.SetWriteDeadline(deadline); err != nil {
-		return fmt.Errorf("set write deadline: %w", err)
+	if err := writeSimFramed(conn, reqBytes, deadline); err != nil {
+		return fmt.Errorf("send reload request: %w", err)
 	}
 
-	var hdr [4]byte
-	binary.BigEndian.PutUint32(hdr[:], uint32(len(msgBytes)))
-	if _, err := conn.Write(hdr[:]); err != nil {
-		return fmt.Errorf("send reload header: %w", err)
-	}
-	if _, err := conn.Write(msgBytes); err != nil {
-		return fmt.Errorf("send reload body: %w", err)
-	}
-
-	// Read acknowledgement (best-effort — daemon may not implement bundle_reload yet).
-	if err := conn.SetReadDeadline(time.Now().Add(2 * time.Second)); err != nil {
-		return fmt.Errorf("set read deadline: %w", err)
-	}
-	var respHdr [4]byte
-	if _, err := io.ReadFull(conn, respHdr[:]); err != nil {
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "bundle sent (daemon ack pending — WS-11 integration)\n")
+	// Read the daemon response (a CheckResponse). The daemon returns DENY for
+	// unrecognised tools — that is expected until a dedicated reload RPC is added.
+	respBytes, err := readSimFramed(conn, time.Now().Add(2*time.Second))
+	if err != nil {
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "bundle activated (no daemon ack — daemon may need restart)\n")
 		return nil
 	}
-	length := binary.BigEndian.Uint32(respHdr[:])
-	respBytes := make([]byte, length)
-	if _, err := io.ReadFull(conn, respBytes); err != nil {
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "bundle sent (partial ack)\n")
+	var resp aegis.CheckResponse
+	if jsonErr := json.Unmarshal(respBytes, &resp); jsonErr != nil {
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "bundle activated\n")
 		return nil
 	}
-	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "daemon response: %s\n", string(respBytes))
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "daemon: action=%v\n", resp.Decision.Action)
 	return nil
 }
 

@@ -9,12 +9,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
 	"syscall"
 	"time"
 
+	"github.com/gorilla/websocket"
 	_ "modernc.org/sqlite"
 
 	"github.com/spf13/cobra"
@@ -54,6 +56,7 @@ var (
 	auditTailN      int
 	auditTailFollow bool
 	auditTailDB     string
+	auditTailStream string // WebSocket stream address for --follow
 )
 
 var auditTailCmd = &cobra.Command{
@@ -75,8 +78,9 @@ func init() {
 	auditCmd.AddCommand(auditExportCmd)
 
 	auditTailCmd.Flags().IntVarP(&auditTailN, "lines", "n", 20, "Number of records to show")
-	auditTailCmd.Flags().BoolVarP(&auditTailFollow, "follow", "f", false, "Poll for new records")
+	auditTailCmd.Flags().BoolVarP(&auditTailFollow, "follow", "f", false, "Stream live events from daemon via WebSocket")
 	auditTailCmd.Flags().StringVar(&auditTailDB, "db", "", "Audit database path (default: $AEGIS_AUDIT_DB)")
+	auditTailCmd.Flags().StringVar(&auditTailStream, "stream", "", "Daemon stream address for --follow (default: $AEGIS_DASHBOARD_ADDR or localhost:9090)")
 	auditCmd.AddCommand(auditTailCmd)
 }
 
@@ -431,8 +435,7 @@ func runAuditTail(cmd *cobra.Command, _ []string) error {
 
 	w := bufio.NewWriter(cmd.OutOrStdout())
 
-	lastID, err := printLastN(w, db, auditTailN, 0)
-	if err != nil {
+	if _, err := printLastN(w, db, auditTailN, 0); err != nil {
 		return err
 	}
 	if err := w.Flush(); err != nil {
@@ -443,24 +446,78 @@ func runAuditTail(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
-	ticker := time.NewTicker(500 * time.Millisecond)
-	defer ticker.Stop()
+	return tailFollowWebSocket(ctx, cmd, w)
+}
 
+// streamAddr returns the WebSocket address for the daemon stream endpoint.
+// Priority: --stream flag → $AEGIS_DASHBOARD_ADDR → "localhost:9090".
+func streamAddr() string {
+	if auditTailStream != "" {
+		return auditTailStream
+	}
+	if v := os.Getenv("AEGIS_DASHBOARD_ADDR"); v != "" {
+		// strip leading ":" if bare port was set
+		if len(v) > 0 && v[0] == ':' {
+			return "localhost" + v
+		}
+		return v
+	}
+	return "localhost:9090"
+}
+
+// tailFollowWebSocket connects to the daemon stream endpoint (ws://<addr>/ws),
+// receives CloudEvents, filters for "decision" type events, and writes them to w
+// as JSON audit records — one per line — until ctx is cancelled.
+func tailFollowWebSocket(ctx context.Context, cmd *cobra.Command, w *bufio.Writer) error {
+	addr := streamAddr()
+	wsURL := "ws://" + addr + "/ws"
+
+	dialer := websocket.Dialer{HandshakeTimeout: 5 * time.Second}
+	header := http.Header{"Origin": []string{"http://" + addr}}
+	conn, _, err := dialer.DialContext(ctx, wsURL, header)
+	if err != nil {
+		return fmt.Errorf("connect to stream at %s: %w", wsURL, err)
+	}
+	defer func() { _ = conn.Close() }()
+
+	_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "streaming from %s (Ctrl-C to stop)\n", wsURL)
+
+	enc := json.NewEncoder(w)
 	for {
+		// Respect context cancellation between reads.
 		select {
 		case <-ctx.Done():
 			return nil
-		case <-ticker.C:
-			newID, err := printNewSince(w, db, lastID)
-			if err != nil {
-				return err
+		default:
+		}
+
+		_ = conn.SetReadDeadline(time.Now().Add(30 * time.Second))
+		_, msg, err := conn.ReadMessage()
+		if err != nil {
+			if ctx.Err() != nil {
+				return nil
 			}
-			if newID > lastID {
-				lastID = newID
-				if err := w.Flush(); err != nil {
-					return fmt.Errorf("flush output: %w", err)
-				}
-			}
+			return fmt.Errorf("stream read: %w", err)
+		}
+
+		// Parse the CloudEvent envelope to check the type.
+		var ce struct {
+			Type string          `json:"type"`
+			Data json.RawMessage `json:"data"`
+		}
+		if err := json.Unmarshal(msg, &ce); err != nil {
+			continue // skip malformed frames
+		}
+		if ce.Type != "decision" {
+			continue // skip heartbeats, snapshots, etc.
+		}
+
+		// Emit the data payload (tool, session_id, decision, latency_ns) as a JSON line.
+		if err := enc.Encode(ce.Data); err != nil {
+			return fmt.Errorf("encode event: %w", err)
+		}
+		if err := w.Flush(); err != nil {
+			return fmt.Errorf("flush: %w", err)
 		}
 	}
 }
@@ -507,39 +564,6 @@ func printLastN(w *bufio.Writer, db *sql.DB, n int, afterID int64) (int64, error
 		if err := enc.Encode(r); err != nil {
 			return afterID, fmt.Errorf("encode row: %w", err)
 		}
-	}
-	if maxID == 0 {
-		return afterID, nil
-	}
-	return maxID, nil
-}
-
-func printNewSince(w *bufio.Writer, db *sql.DB, afterID int64) (int64, error) {
-	rows, err := db.Query(`SELECT id, timestamp, session_id, tool, action, reason, policy_id, enforcing_layer, latency_ns
-		FROM audit_log WHERE id > ? ORDER BY id ASC`, afterID)
-	if err != nil {
-		return afterID, fmt.Errorf("query new records: %w", err)
-	}
-	defer func() {
-		_ = rows.Close()
-	}()
-
-	var maxID int64
-	enc := json.NewEncoder(w)
-	for rows.Next() {
-		r, err := scanAuditRow(rows)
-		if err != nil {
-			return afterID, fmt.Errorf("scan row: %w", err)
-		}
-		if r.ID > maxID {
-			maxID = r.ID
-		}
-		if err := enc.Encode(r); err != nil {
-			return afterID, fmt.Errorf("encode row: %w", err)
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return afterID, fmt.Errorf("iterate rows: %w", err)
 	}
 	if maxID == 0 {
 		return afterID, nil
