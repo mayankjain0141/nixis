@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -240,6 +242,12 @@ func runBundleRollback(cmd *cobra.Command, _ []string) error {
 	}
 	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "bundle activated successfully")
 	return nil
+}
+
+// bundleReloadMsg is sent to the daemon to trigger a policy reload.
+type bundleReloadMsg struct {
+	Type    string `json:"type"`
+	BundleP string `json:"bundle_path"`
 }
 
 // sendBundleReload connects to the daemon socket and sends a bundle_reload message.
