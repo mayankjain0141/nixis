@@ -20,6 +20,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/mayjain/aegis/internal/otel"
 	"github.com/mayjain/aegis/pkg/aegis"
 )
 
@@ -339,6 +340,7 @@ func (s *StreamServer) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.clients.Store(c.id, c)
+	otel.InstrumentStreamClients().Add(r.Context(), 1)
 	defer func() {
 		_ = conn.Close()
 	}()
@@ -347,6 +349,7 @@ func (s *StreamServer) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	if err := s.sendStateSnapshot(c); err != nil {
 		log.Printf("stream: snapshot send error: %v", err)
 		s.clients.Delete(c.id)
+		otel.InstrumentStreamClients().Add(r.Context(), -1)
 		c.doneOnce.Do(func() { close(c.done) })
 		return
 	}
@@ -363,6 +366,7 @@ func (s *StreamServer) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	// Remove client from registry so no concurrent broadcast can touch c.send.
 	s.clients.Delete(c.id)
+	otel.InstrumentStreamClients().Add(r.Context(), -1)
 
 	// Signal writePump to exit via done channel (sync.Once ensures exactly one close).
 	c.doneOnce.Do(func() { close(c.done) })

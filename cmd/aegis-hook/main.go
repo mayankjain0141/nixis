@@ -20,6 +20,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
@@ -30,6 +31,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/mayjain/aegis/internal/otel"
 	"github.com/mayjain/aegis/pkg/aegis"
 )
 
@@ -178,6 +180,8 @@ func allowWithWarning(reason, tool string, args json.RawMessage, deadlineExceede
 		_, _ = os.Stdout.Write(b)
 		_, _ = os.Stdout.Write([]byte("\n"))
 	}
+
+	otel.InstrumentFailOpen().Add(context.Background(), 1)
 
 	// Append fail-open entry to log. Budget: ~50μs.
 	entry := FailOpenEntry{

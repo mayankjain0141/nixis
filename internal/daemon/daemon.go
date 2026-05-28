@@ -18,6 +18,7 @@ import (
 	"github.com/mayjain/aegis/internal/audit"
 	"github.com/mayjain/aegis/internal/delegation"
 	"github.com/mayjain/aegis/internal/ifc"
+	"github.com/mayjain/aegis/internal/otel"
 	"github.com/mayjain/aegis/internal/stream"
 	"github.com/mayjain/aegis/pkg/aegis"
 )
@@ -203,8 +204,10 @@ func (d *Daemon) acceptLoop() {
 		// Acquire semaphore slot — blocks if maxConcurrentConnections are active.
 		d.sem <- struct{}{}
 		d.inFlight.Add(1)
+		otel.InstrumentDaemonConns().Add(context.Background(), 1)
 		go func() {
 			defer func() {
+				otel.InstrumentDaemonConns().Add(context.Background(), -1)
 				<-d.sem
 				d.inFlight.Done()
 			}()

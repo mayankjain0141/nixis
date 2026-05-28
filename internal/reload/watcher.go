@@ -8,6 +8,9 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/mayjain/aegis/internal/otel"
+	"go.opentelemetry.io/otel/attribute"
+	otelmetric "go.opentelemetry.io/otel/metric"
 )
 
 const debounceDuration = 100 * time.Millisecond
@@ -92,9 +95,13 @@ func (r *ReloadWatcher) Start(ctx context.Context) error {
 			debounceTimer = time.AfterFunc(debounceDuration, func() {
 				if err := r.engine.Reload(); err != nil {
 					reloadErrorTotal.Add(1)
+					otel.InstrumentPolicyReload().Add(context.Background(), 1,
+						otelmetric.WithAttributes(attribute.String("status", "error")))
 					slog.Error("policy reload failed; retaining last-known-good snapshot", "err", err)
 				} else {
 					reloadSuccessTotal.Add(1)
+					otel.InstrumentPolicyReload().Add(context.Background(), 1,
+						otelmetric.WithAttributes(attribute.String("status", "success")))
 					slog.Info("policy reload succeeded")
 				}
 			})

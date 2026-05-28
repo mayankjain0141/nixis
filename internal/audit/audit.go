@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/mayjain/aegis/internal/otel"
 	"github.com/mayjain/aegis/pkg/aegis"
 	_ "modernc.org/sqlite"
 )
@@ -136,6 +137,7 @@ func (w *Writer) WriteRecord(r AuditRecord) {
 	case w.ch <- writeItem{record: &r}:
 	default:
 		w.dropped.Add(1)
+		otel.InstrumentAuditDropped().Add(context.Background(), 1)
 	}
 }
 
@@ -145,6 +147,7 @@ func (w *Writer) WriteSessionLabel(r SessionLabelRecord) {
 	case w.ch <- writeItem{labelRecord: &r}:
 	default:
 		w.dropped.Add(1)
+		otel.InstrumentAuditDropped().Add(context.Background(), 1)
 	}
 }
 
