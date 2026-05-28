@@ -84,6 +84,7 @@ linters:
             - github.com/mayjain/aegis
             - github.com/google/uuid
             - github.com/gorilla/websocket
+            - github.com/zricethezav/gitleaks/v8
           deny:
             - pkg: "io/ioutil"
               desc: "Deprecated: use io and os packages since Go 1.16"
