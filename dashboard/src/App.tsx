@@ -7,6 +7,7 @@ import { ThreatTimeline } from './components/governance/ThreatTimeline';
 import { GovernanceDAG } from './components/governance/dag/GovernanceDAG';
 import { DelegationTree } from './components/governance/DelegationTree';
 import { AuditHashChain } from './components/governance/AuditHashChain';
+import { DenyColorGuard } from './services/DenyColorGuard';
 import { CommandPalette } from './components/shell/CommandPalette';
 import { Inspector } from './components/shell/Inspector';
 import { useGovernanceStore } from './stores/governance-store';
@@ -437,7 +438,7 @@ export default function App() {
 
   return (
     <div style={styles.shell}>
-      {/* <DenyColorGuard /> — added when deny-guard branch merges */}
+      <DenyColorGuard />
       <CommandPalette />
       <MetricsBar />
       <div style={styles.body}>
