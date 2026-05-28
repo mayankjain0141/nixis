@@ -25,20 +25,33 @@ type MCPProxy struct {
 	wg        sync.WaitGroup
 }
 
-// New returns an MCPProxy. scanner may be nil to skip response scanning.
+// New returns an MCPProxy using the provided tracker for drift detection.
+// Use NewIntegrityTrackerWithDB for persistence across daemon restarts.
 func New(
 	upstream Upstream,
 	pipeline GovernancePipeline,
 	scanner policy.SecretScanner,
 	sessionID string,
+	tracker *IntegrityTracker,
 ) *MCPProxy {
 	return &MCPProxy{
 		upstream:  upstream,
 		pipeline:  pipeline,
-		tracker:   NewIntegrityTracker(),
+		tracker:   tracker,
 		scanner:   scanner,
 		sessionID: sessionID,
 	}
+}
+
+// NewInMemory creates an MCPProxy with in-memory drift tracking (no persistence across restarts).
+// Use New() with NewIntegrityTrackerWithDB() for production.
+func NewInMemory(
+	upstream Upstream,
+	pipeline GovernancePipeline,
+	scanner policy.SecretScanner,
+	sessionID string,
+) *MCPProxy {
+	return New(upstream, pipeline, scanner, sessionID, NewIntegrityTracker())
 }
 
 // HandleRequest dispatches a JSON-RPC request through the governance pipeline.
