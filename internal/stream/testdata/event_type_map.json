@@ -1,0 +1,17 @@
+{
+  "policy.evaluated":   "policy.evaluated",
+  "decision":           "policy.evaluated",
+  "policy.denied":      "policy.denied",
+  "delegation.created": "delegation.created",
+  "delegation.revoked": "delegation.revoked",
+  "delegation.expired": "delegation.expired",
+  "audit.checkpoint":   "audit.checkpoint",
+  "stream.heartbeat":   "stream.heartbeat",
+  "bundle.activated":   "bundle.activated",
+  "system.error":       "system.error",
+  "label.escalated":    "label.escalated",
+  "label.tainted":      "label.escalated",
+  "secret.detected":    "secret.detected",
+  "secret.found":       "secret.detected",
+  "mcp.tool_drift":     "mcp.tool_drift"
+}
