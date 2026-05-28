@@ -21,6 +21,7 @@ import (
 	"github.com/mayjain/aegis/internal/cel"
 	"github.com/mayjain/aegis/internal/daemon"
 	"github.com/mayjain/aegis/internal/delegation"
+	grpcauthz "github.com/mayjain/aegis/internal/grpc"
 	"github.com/mayjain/aegis/internal/ifc"
 	"github.com/mayjain/aegis/internal/policy"
 	"github.com/mayjain/aegis/internal/reload"
@@ -91,6 +92,24 @@ func main() {
 			fmt.Fprintf(os.Stderr, "aegis-daemon: loaded %d policies from %s\n", len(templates), cfg.PolicyDir)
 		}
 	}
+	if grpcAddr := os.Getenv("AEGIS_GRPC_ADDR"); grpcAddr != "" {
+		grpcSrv, err := grpcauthz.NewServer(grpcauthz.Config{
+			ListenAddr: grpcAddr,
+			Engine:     engine,
+			Timeout:    50 * time.Millisecond,
+		})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "aegis-daemon: failed to create gRPC server: %v\n", err)
+			os.Exit(exitStartupFailure)
+		}
+		go func() {
+			if err := grpcSrv.Start(ctx); err != nil && ctx.Err() == nil {
+				fmt.Fprintf(os.Stderr, "aegis-daemon: gRPC server error: %v\n", err)
+			}
+		}()
+		fmt.Fprintf(os.Stderr, "aegis-daemon: gRPC ext_authz listening on %s\n", grpcAddr)
+	}
+
 	// Start reload watcher after initial policy load (spec: started AFTER initial compile).
 	reloadWatcher, rwErr := reload.NewReloadWatcher(cfg.PolicyDir, &policyReloader{
 		policyDir: cfg.PolicyDir,
