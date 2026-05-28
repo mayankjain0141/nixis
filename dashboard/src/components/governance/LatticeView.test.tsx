@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { LatticeView } from './LatticeView';
 import { useLatticeStore } from '../../stores/lattice-store';
 import type { LabelState } from '../../types/events';
