@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useUIStore } from '../../stores/ui-store';
-import { useGovernanceStore, type GovernanceEvent } from '../../stores/governance-store';
+import { useGovernanceStore, type GovernanceEvent, type DelegationHop } from '../../stores/governance-store';
 import { SecurityLabelBadge } from '../SecurityLabelBadge';
 import {
   confidentialityToLevel,
@@ -115,13 +115,10 @@ const SECTIONS: Section[] = [
     id: 'delegation-chain',
     title: 'Delegation Chain',
     render(event) {
-      const storeState = useGovernanceStore.getState() as unknown as Record<string, unknown>;
-      const rawChains = storeState.delegationChains ?? {};
-      const hops: unknown[] = rawChains instanceof Map
-        ? ((rawChains as Map<string, unknown[]>).get(event.sessionId) ?? [])
-        : ((rawChains as Record<string, unknown[]>)[event.sessionId] ?? []);
+      const hops: DelegationHop[] =
+        useGovernanceStore.getState().delegationChains.get(event.sessionId) ?? [];
 
-      if (!Array.isArray(hops) || hops.length === 0) {
+      if (hops.length === 0) {
         return (
           <div style={sectionStyles.body}>
             <div style={sectionStyles.emptyState}>No delegation in this session</div>
@@ -131,21 +128,18 @@ const SECTIONS: Section[] = [
 
       return (
         <div style={sectionStyles.body}>
-          {hops.map((hop: unknown, i: number) => {
-            const h = hop as Record<string, unknown>;
-            return (
-              <div key={i} style={{ marginBottom: 8 }}>
-                <span style={{ fontFamily: 'monospace', fontSize: 11 }}>
-                  Hop {String(h.hopIndex ?? i)}: {String(h.delegatorId ?? '?')} → {String(h.delegateeId ?? '?')}
-                </span>
-                <div style={{ fontSize: 10, color: '#666', marginTop: 2 }}>
-                  Granted: {h.grantedLabel ? formatSecurityLabel(h.grantedLabel as Parameters<typeof formatSecurityLabel>[0]) : '—'}
-                  {' | '}
-                  Ceiling: {h.ceilingLabel ? formatSecurityLabel(h.ceilingLabel as Parameters<typeof formatSecurityLabel>[0]) : '—'}
-                </div>
+          {hops.map((hop, i) => (
+            <div key={i} style={{ marginBottom: 8 }}>
+              <span style={{ fontFamily: 'monospace', fontSize: 11 }}>
+                Hop {hop.hopIndex}: {hop.delegatorId} → {hop.delegateeId}
+              </span>
+              <div style={{ fontSize: 10, color: '#666', marginTop: 2 }}>
+                Granted: {formatSecurityLabel(hop.grantedLabel)}
+                {' | '}
+                Ceiling: {formatSecurityLabel(hop.ceilingLabel)}
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       );
     },

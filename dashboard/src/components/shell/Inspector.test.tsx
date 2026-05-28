@@ -2,7 +2,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Inspector } from './Inspector';
 import { useUIStore } from '../../stores/ui-store';
-import { useGovernanceStore, type GovernanceEvent } from '../../stores/governance-store';
+import { useGovernanceStore, type GovernanceEvent, type DelegationHop } from '../../stores/governance-store';
 
 function makeEvent(overrides: Partial<GovernanceEvent> = {}): GovernanceEvent {
   return {
@@ -168,16 +168,11 @@ describe('Inspector', () => {
   });
 
   it('TestInspector_DelegationChainRenders: renders hops and removes MVP-1 stub', () => {
-    // Inject delegationChains into the store state directly
-    const store = useGovernanceStore as unknown as { setState: (s: object) => void };
-    store.setState({
-      delegationChains: {
-        'sess_chain': [
-          { hopIndex: 0, delegatorId: 'agent-A', delegateeId: 'agent-B', grantedLabel: { confidentiality: 16384, integrity: 0, categories: 0 }, ceilingLabel: { confidentiality: 32768, integrity: 0, categories: 0 } },
-          { hopIndex: 1, delegatorId: 'agent-B', delegateeId: 'agent-C', grantedLabel: { confidentiality: 8192, integrity: 0, categories: 0 }, ceilingLabel: { confidentiality: 16384, integrity: 0, categories: 0 } },
-        ],
-      },
-    });
+    const hops: DelegationHop[] = [
+      { hopIndex: 0, delegatorId: 'agent-A', delegateeId: 'agent-B', grantedLabel: { confidentiality: 16384, integrity: 0, categories: 0 }, ceilingLabel: { confidentiality: 32768, integrity: 0, categories: 0 } },
+      { hopIndex: 1, delegatorId: 'agent-B', delegateeId: 'agent-C', grantedLabel: { confidentiality: 8192, integrity: 0, categories: 0 }, ceilingLabel: { confidentiality: 16384, integrity: 0, categories: 0 } },
+    ];
+    useGovernanceStore.getState().updateDelegationChain('sess_chain', hops);
 
     const event = makeEvent({ id: 'evt-chain', sessionId: 'sess_chain' });
     useGovernanceStore.getState().appendEvent(event);
