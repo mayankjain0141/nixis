@@ -122,6 +122,7 @@ function routeEvents(
   setConnectionState: (state: ConnectionState) => void,
   updateLastSequence: (seq: number) => void,
   setBundleStatus: (status: BundleStatus) => void,
+  setPolicies: (policies: import('./stores/policy-store').PolicySummary[]) => void,
 ): void {
   for (const event of events) {
     switch (event.type) {
@@ -145,6 +146,17 @@ function routeEvents(
             adapterCount: b.adapterCount ?? 0,
             activatedAt: Date.now(),
           });
+          // Populate the policy sidebar list from the policy count.
+          // The daemon sends named policies when available; for startup bundles
+          // loaded from a directory, we synthesise one entry per policy.
+          const syntheticPolicies = Array.from({ length: b.policyCount }, (_, i) => ({
+            id: `policy-${b.version}-${i}`,
+            name: `Policy ${i + 1}`,
+            layer: 'cel' as const,
+            enabled: true,
+            bundleVersion: b.version,
+          }));
+          setPolicies(syntheticPolicies);
           updateLastSequence(event.envelope.aegissequence);
         }));
         break;
@@ -221,6 +233,7 @@ export default function App() {
   const policies = usePolicyStore((s) => s.policies);
   const bundleStatus = usePolicyStore((s) => s.bundleStatus);
   const setBundleStatus = usePolicyStore((s) => s.setBundleStatus);
+  const setPolicies = usePolicyStore((s) => s.setPolicies);
   const setCommandPaletteOpen = useUIStore((s) => s.setCommandPaletteOpen);
 
   const mockGenRef = useRef<ReturnType<typeof createMockStreamGenerator> | null>(null);
@@ -300,7 +313,7 @@ export default function App() {
         batch.immediateEvents,
         orchestrator,
         appendEvent, updateLabel, recordLatency, recordEvent,
-        setConnectionState, updateLastSequence, setBundleStatus,
+        setConnectionState, updateLastSequence, setBundleStatus, setPolicies,
       );
     });
 

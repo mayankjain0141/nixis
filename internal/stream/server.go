@@ -120,6 +120,10 @@ type StreamServer struct {
 	seq     sequenceCounter
 	events  chan aegis.StreamEvent // internal fan-out queue
 	httpSrv *http.Server
+
+	// lastBundlePayload stores the most recent bundle.activated CloudEvent payload.
+	// Replayed to each new client on connect so the dashboard always shows loaded policies.
+	lastBundlePayload atomic.Pointer[[]byte]
 }
 
 // NewStreamServer constructs a StreamServer.
@@ -375,7 +379,8 @@ func (s *StreamServer) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	<-writerDone
 }
 
-// sendStateSnapshot assembles and sends the initial state.snapshot message.
+// sendStateSnapshot assembles and sends the initial state.snapshot message,
+// followed by the most recent bundle.activated payload if one exists.
 func (s *StreamServer) sendStateSnapshot(c *client) error {
 	snap := stateSnapshot{
 		Type:     "state.snapshot",
@@ -393,7 +398,18 @@ func (s *StreamServer) sendStateSnapshot(c *client) error {
 	if err := c.conn.SetWriteDeadline(time.Now().Add(writeTimeout)); err != nil {
 		return err
 	}
-	return c.conn.WriteMessage(websocket.TextMessage, payload)
+	if err := c.conn.WriteMessage(websocket.TextMessage, payload); err != nil {
+		return err
+	}
+	// Replay the most recent bundle.activated event so the dashboard shows loaded
+	// policies even when it connects after the initial startup broadcast.
+	if p := s.lastBundlePayload.Load(); p != nil {
+		if err := c.conn.SetWriteDeadline(time.Now().Add(writeTimeout)); err != nil {
+			return err
+		}
+		return c.conn.WriteMessage(websocket.TextMessage, *p)
+	}
+	return nil
 }
 
 // writePump drains the client's send channel and writes to the WebSocket.
@@ -533,6 +549,45 @@ func (s *StreamServer) sendSystemError(c *client, reason, msg string) {
 	default:
 		droppedTotal.Add(1)
 	}
+}
+
+// EmitBundleActivated broadcasts a bundle.activated CloudEvent directly to all clients
+// and stores the payload for replay to newly connecting clients.
+// It bypasses the generic Emit path so the data payload matches BundleActivatedDataSchema
+// (version, hash, policyCount, signatureVerified) rather than the generic StreamEvent fields.
+func (s *StreamServer) EmitBundleActivated(_ context.Context, version uint64, hash string, policyCount int, signatureVerified bool) {
+	seq := s.seq.next()
+	data := map[string]any{
+		"version":           version,
+		"hash":              hash,
+		"policyCount":       policyCount,
+		"signatureVerified": signatureVerified,
+		"previousVersion":   0,
+		"adapterCount":      0,
+	}
+	raw, err := json.Marshal(data)
+	if err != nil {
+		log.Printf("stream: marshal bundle.activated data: %v", err)
+		return
+	}
+	evt := cloudEvent{
+		SpecVersion:     "1.0",
+		ID:              fmt.Sprintf("bundle-%d", seq),
+		Type:            "bundle.activated",
+		Source:          "aegis-daemon/instance-001",
+		Time:            time.Now().UTC().Format(time.RFC3339Nano),
+		DataContentType: "application/json",
+		AegisSequence:   seq,
+		Data:            raw,
+	}
+	payload, err := json.Marshal(evt)
+	if err != nil {
+		log.Printf("stream: marshal bundle.activated envelope: %v", err)
+		return
+	}
+	// Store for replay to clients that connect after the initial broadcast.
+	s.lastBundlePayload.Store(&payload)
+	s.broadcast(payload)
 }
 
 // buildCloudEvent marshals a StreamEvent into a CloudEvents v1.0 JSON payload.
