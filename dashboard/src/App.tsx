@@ -3,6 +3,7 @@ import { MetricsBar } from './components/governance/MetricsBar';
 import { EventStream } from './components/governance/EventStream';
 import { CommandPalette } from './components/shell/CommandPalette';
 import { Inspector } from './components/shell/Inspector';
+import { ThreatPanel } from './components/governance/ThreatPanel';
 import { useGovernanceStore } from './stores/governance-store';
 import { useMetricsStore } from './stores/metrics-store';
 import { useStreamStore } from './stores/stream-store';
@@ -394,7 +395,12 @@ export default function App() {
         </main>
 
         <aside style={styles.inspector} aria-label="Inspector panel">
-          <Inspector />
+          <div style={styles.inspectorInner}>
+            <div style={styles.inspectorTop}>
+              <Inspector />
+            </div>
+            <ThreatPanel />
+          </div>
         </aside>
       </div>
     </div>
@@ -498,8 +504,20 @@ const styles = {
     background: '#0d1117',
     borderLeft: '1px solid #21262d',
     display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: 'column' as const,
+    overflow: 'hidden',
+  },
+  inspectorInner: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    flex: 1,
+    overflow: 'hidden',
+  },
+  inspectorTop: {
+    flex: 1,
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column' as const,
   },
 } as const;
 
