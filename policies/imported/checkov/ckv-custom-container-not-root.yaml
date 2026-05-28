@@ -1,0 +1,19 @@
+# imported from: checkov-custom-policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: ckv2-custom-2
+  annotations:
+    aegis.io/imported-from: checkov-custom-policies
+    aegis.io/severity: medium
+    aegis.io/checkov-id: CKV2_CUSTOM_2
+    aegis.io/checkov-source: checkov-custom-policy
+spec:
+  description: "Ensure container is not running as root"
+  matchConstraints:
+    tools: ["Write", "Edit"]
+  validations:
+    - expression: 'request.args.path.matches("\\.yaml$|\\.yml$") && !request.args.content.contains("true") && !request.args.content.contains("true")'
+      action: AUDIT
+      message: "Checkov policy CKV2_CUSTOM_2: Ensure container is not running as root — runAsNonRoot should be true"
+  defaultAction: ALLOW

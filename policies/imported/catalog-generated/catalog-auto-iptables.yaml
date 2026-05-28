@@ -1,0 +1,20 @@
+# auto-generated from pkg/adapters/catalog.json via aegis policy generate-from-catalog
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: catalog-auto-iptables
+    annotations:
+        aegis.io/family: bash
+        aegis.io/risk-level: critical
+        aegis.io/severity: critical
+        aegis.io/source: pkg/adapters/catalog.json
+spec:
+    description: Deny critically-risky iptables (bash)
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.startsWith("iptables")
+          message: iptables is classified as critical risk — approval required
+          action: DENY
+    defaultAction: ALLOW

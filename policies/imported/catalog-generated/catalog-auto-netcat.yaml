@@ -1,0 +1,20 @@
+# auto-generated from pkg/adapters/catalog.json via aegis policy generate-from-catalog
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: catalog-auto-netcat
+    annotations:
+        aegis.io/family: bash
+        aegis.io/risk-level: high
+        aegis.io/severity: high
+        aegis.io/source: pkg/adapters/catalog.json
+spec:
+    description: 'Require approval for netcat (bash risk level: high)'
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.startsWith("netcat")
+          message: netcat is classified as high risk — approval required
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW
