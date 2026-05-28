@@ -1,0 +1,33 @@
+# MCP Tool Integrity Policy
+#
+# Architecture: drift detection is enforced at the MCP proxy layer (internal/mcp/proxy.go),
+# not at the CEL evaluation layer. When IntegrityTracker.IsDrifted() returns true,
+# the proxy returns an error response BEFORE CheckRequest reaches the policy engine.
+#
+# This means CEL expressions cannot observe tool fingerprint drift — the request never
+# arrives here if the tool has drifted. This policy documents that architectural decision
+# and acts as a passthrough so the built-in bundle includes an mcp_integrity entry.
+#
+# Behavior:
+#   tools/call with drifted tool definition  → DENIED at proxy layer (never reaches CEL)
+#   tools/call with matching tool definition → passes proxy, evaluated by other policies
+#   any other tool call                      → passes through this policy (ALLOW)
+#
+# Enforcement code: internal/mcp/proxy.go handleToolCall() → IntegrityTracker.IsDrifted()
+
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: mcp-tool-integrity
+  annotations:
+    aegis.io/bundle: builtin
+    aegis.io/enforcement-layer: proxy
+spec:
+  description: "MCP tool integrity baseline — drift detection enforced at proxy layer, not CEL"
+  matchConstraints:
+    tools: []
+  validations:
+    - expression: "false"
+      message: "MCP tool definition has drifted from baseline (enforced at proxy layer)"
+      action: DENY
+  defaultAction: ALLOW
