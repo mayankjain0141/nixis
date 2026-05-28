@@ -592,17 +592,35 @@ func (s *StreamServer) EmitBundleActivated(_ context.Context, version uint64, ha
 
 // buildCloudEvent marshals a StreamEvent into a CloudEvents v1.0 JSON payload.
 // seq is the aegissequence assigned in the fan-out goroutine.
+// The data payload uses the nested structure expected by the dashboard Zod schema:
+// { session_id, tool, decision: { action, reason, policy_id, enforcing_layer, labels }, label_state, latency_ns }
 func buildCloudEvent(event aegis.StreamEvent, seq uint64) ([]byte, error) {
 	wireType := event.Type
 	if !validEventTypes[wireType] {
 		wireType = normalizeEventType(wireType)
 	}
 
+	// Build labels with lowercase field names matching the dashboard SecurityLabelSchema.
+	// SecurityLabel has no json tags (fields are Confidentiality/Integrity/Category),
+	// so we construct the wire object explicitly.
+	labels := map[string]any{
+		"confidentiality": event.Label.Confidentiality,
+		"integrity":       event.Label.Integrity,
+		"categories":      event.Label.Category,
+	}
+
 	data := map[string]any{
 		"session_id": event.SessionID,
 		"tool":       event.Tool,
-		"action":     event.Action,
-		"reason":     event.Reason,
+		"decision": map[string]any{
+			"action":          event.Action,
+			"reason":          event.Reason,
+			"policy_id":       event.PolicyID,
+			"enforcing_layer": event.EnforcingLayer,
+			"labels":          labels,
+		},
+		"label_state": event.LabelState,
+		"latency_ns":  event.LatencyNs,
 	}
 	raw, err := json.Marshal(data)
 	if err != nil {
