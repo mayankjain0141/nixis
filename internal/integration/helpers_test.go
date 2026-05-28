@@ -17,6 +17,7 @@ import (
 	"github.com/mayjain/aegis/internal/cel"
 	"github.com/mayjain/aegis/internal/daemon"
 	"github.com/mayjain/aegis/internal/delegation"
+	grpcauthz "github.com/mayjain/aegis/internal/grpc"
 	"github.com/mayjain/aegis/internal/ifc"
 	"github.com/mayjain/aegis/internal/policy"
 	"github.com/mayjain/aegis/internal/secret"
@@ -29,6 +30,9 @@ type testDaemon struct {
 	socketPath  string
 	healthzAddr string
 	d           *daemon.Daemon
+	// engine is the real policy engine — exposed so tests can wire the gRPC server
+	// against the same engine as the daemon (mirrors main.go AEGIS_GRPC_ADDR wiring).
+	engine grpcauthz.GovernanceEngine
 }
 
 // startDaemon starts a real in-process daemon wired with policy engine, audit, and delegation.
@@ -144,6 +148,7 @@ func startDaemon(t *testing.T) *testDaemon {
 		socketPath:  sockPath,
 		healthzAddr: healthzAddr,
 		d:           d,
+		engine:      engine,
 	}
 }
 

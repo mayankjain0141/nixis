@@ -24,10 +24,10 @@ import (
 	"github.com/mayjain/aegis/pkg/aegis"
 )
 
-// TestIntegration_HotReload verifies that the reload watcher fires when a YAML file
-// is modified and increments the success counter.
+// TestIntegration_HotReload verifies that the reload watcher fires when a YAML policy
+// file is modified, that ReloadSuccessTotal increments, and that the reload completes
+// well within 500ms of the file write (debounce is 100ms).
 func TestIntegration_HotReload(t *testing.T) {
-	// Set up a watched directory with one policy file.
 	dir := t.TempDir()
 	src := filepath.Join(builtinPoliciesDir(t), "git-branch-protection.yaml")
 	dst := filepath.Join(dir, "git-branch-protection.yaml")
@@ -39,7 +39,6 @@ func TestIntegration_HotReload(t *testing.T) {
 		t.Fatalf("os.WriteFile policy: %v", err)
 	}
 
-	// Capture counts before watching starts.
 	successBefore := reload.ReloadSuccessTotal()
 
 	reloaded := make(chan struct{}, 1)
@@ -58,16 +57,22 @@ func TestIntegration_HotReload(t *testing.T) {
 		watchDone <- watcher.Start(ctx)
 	}()
 
-	// Trigger a change by touching the file (update mtime + content).
-	time.Sleep(50 * time.Millisecond) // let watcher establish
+	// Let fsnotify establish its watch before triggering a change.
+	time.Sleep(50 * time.Millisecond)
+
+	writeAt := time.Now()
 	if err := os.WriteFile(dst, append(data, '\n'), 0600); err != nil {
 		t.Fatalf("os.WriteFile trigger: %v", err)
 	}
 
-	// Wait for the debounce (100ms) + reload to complete.
+	// Debounce is 100ms; allow 2s total but log timing.
 	select {
 	case <-reloaded:
-		// Reload callback fired.
+		elapsed := time.Since(writeAt)
+		t.Logf("reload completed in %v after file write", elapsed)
+		if elapsed > 500*time.Millisecond {
+			t.Errorf("reload took %v, want <= 500ms (debounce=100ms)", elapsed)
+		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("reload watcher did not fire within 2s after file modification")
 	}
@@ -78,7 +83,14 @@ func TestIntegration_HotReload(t *testing.T) {
 	}
 
 	cancel()
-	<-watchDone
+	select {
+	case <-watchDone:
+	case <-time.After(2 * time.Second):
+		t.Log("warning: watcher did not stop within 2s")
+	}
+	// Allow the time.AfterFunc goroutine from the debounce to fully drain
+	// before the next test can touch OTel global state.
+	time.Sleep(50 * time.Millisecond)
 }
 
 // countingReloader satisfies reload.PolicyReloader and signals a channel on each reload.
@@ -94,13 +106,13 @@ func (r *countingReloader) Reload() error {
 	return nil
 }
 
-// TestIntegration_OTel_InstrumentsNonNil verifies that all REQ-058 OTel instrument
-// accessors return non-nil instruments without reinitializing global state.
-// The otel package pre-registers noop instruments at init() time, so accessors are
-// always safe to call. The full metric-registration test lives in internal/otel/.
-func TestIntegration_OTel_InstrumentsNonNil(t *testing.T) {
-	// These accessors must never return nil — the otel package init() pre-registers noops.
-	instruments := []struct {
+// TestIntegration_OTel_RecordEvaluation verifies that sending CheckRequests through
+// the real daemon causes otel.RecordEvaluation to fire and produce metric data.
+// TestMain initializes OTel with an in-memory exporter before any test runs, so this
+// test can safely collect from otelReader without racing against global state writes.
+func TestIntegration_OTel_RecordEvaluation(t *testing.T) {
+	// Verify all REQ-058 accessors are non-nil (noop instruments pre-registered at init).
+	for _, tc := range []struct {
 		name string
 		val  any
 	}{
@@ -112,34 +124,37 @@ func TestIntegration_OTel_InstrumentsNonNil(t *testing.T) {
 		{"InstrumentFailOpen", otel.InstrumentFailOpen()},
 		{"InstrumentAuditBufferUtil", otel.InstrumentAuditBufferUtil()},
 		{"InstrumentGitleaksMemory", otel.InstrumentGitleaksMemory()},
-	}
-	for _, inst := range instruments {
-		if inst.val == nil {
-			t.Errorf("%s() returned nil", inst.name)
+	} {
+		if tc.val == nil {
+			t.Errorf("%s() returned nil", tc.name)
 		}
 	}
 
-	// Verify daemon evaluations are counted independently of OTel.
-	// Start a daemon, send N requests (one at a time with retries), confirm counter.
 	td := startDaemon(t)
+
+	// Send 3 requests — each handleConnection calls otel.RecordEvaluation and
+	// increments otel.InstrumentDaemonConns.
 	const N = 3
 	for i := 0; i < N; i++ {
 		sendRequestRetry(t, td.socketPath, aegis.CheckRequest{
 			Tool:      "Read",
-			SessionID: "sess-otel-eval-count",
+			SessionID: "sess-otel-eval",
 		})
 	}
-	// Poll until Evaluations() reaches N (daemon processes asynchronously).
-	deadline := time.Now().Add(3 * time.Second)
-	for time.Now().Before(deadline) {
-		if td.d.Evaluations() >= N {
-			break
-		}
-		time.Sleep(10 * time.Millisecond)
+
+	// Poll until the atomic Evaluations() counter reaches N.
+	pollUntil(t, 3*time.Second, func() bool {
+		return td.d.Evaluations() >= N
+	}, "Evaluations() did not reach %d within 3s", N)
+
+	// Collect from the in-memory reader (initialized in TestMain) and verify
+	// that RecordEvaluation produced data in the histogram.
+	found := collectMetrics(t)
+	if !found["aegis_evaluation_duration_seconds"] {
+		t.Errorf("aegis_evaluation_duration_seconds not found in metrics; collected: %v", found)
 	}
-	got := td.d.Evaluations()
-	if got < N {
-		t.Errorf("Evaluations() = %d, want >= %d", got, N)
+	if !found["aegis_daemon_active_connections"] {
+		t.Errorf("aegis_daemon_active_connections not found in metrics; collected: %v", found)
 	}
 }
 
@@ -281,71 +296,44 @@ func TestIntegration_Healthz(t *testing.T) {
 	}
 }
 
-// TestIntegration_GRPCListening verifies that the ext_authz gRPC server starts,
-// accepts connections, and processes Check requests.
-func TestIntegration_GRPCListening(t *testing.T) {
+// TestIntegration_GRPCExtAuthz verifies that the ext_authz gRPC server wired to the
+// real policy engine starts, accepts Envoy-style Check RPCs, and returns correct verdicts.
+// This mirrors how main.go wires AEGIS_GRPC_ADDR: same engine, same 50ms timeout.
+func TestIntegration_GRPCExtAuthz(t *testing.T) {
+	td := startDaemon(t)
+
 	grpcAddr := freeAddr(t)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	srv, err := grpcauthz.NewServer(grpcauthz.Config{
+	grpcSrv, err := grpcauthz.NewServer(grpcauthz.Config{
 		ListenAddr: grpcAddr,
-		Engine:     &allowAllEngine{},
+		Engine:     td.engine, // real policy engine — same as AEGIS_GRPC_ADDR path in main.go
 		Timeout:    50 * time.Millisecond,
 	})
 	if err != nil {
 		t.Fatalf("grpcauthz.NewServer: %v", err)
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	srvDone := make(chan error, 1)
 	go func() {
-		srvDone <- srv.Start(ctx)
+		srvDone <- grpcSrv.Start(ctx)
 	}()
 
-	// Wait for gRPC port to be listening.
-	deadline := time.Now().Add(3 * time.Second)
+	// Poll until the gRPC TCP port is reachable.
 	var conn *grpc.ClientConn
-	for time.Now().Before(deadline) {
+	pollUntil(t, 3*time.Second, func() bool {
 		c, dialErr := grpc.NewClient(grpcAddr,
 			grpc.WithTransportCredentials(insecure.NewCredentials()))
-		if dialErr == nil {
-			conn = c
-			break
+		if dialErr != nil {
+			return false
 		}
-		time.Sleep(20 * time.Millisecond)
-	}
-	if conn == nil {
-		cancel()
-		t.Fatal("gRPC server did not become reachable within 3s")
-	}
+		conn = c
+		return true
+	}, "gRPC server did not become reachable within 3s")
 	defer func() { _ = conn.Close() }()
 
-	// Verify it is accepting real Check requests.
-	client := authv3.NewAuthorizationClient(conn)
-	checkCtx, checkCancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer checkCancel()
-
-	checkResp, err := client.Check(checkCtx, &authv3.CheckRequest{
-		Attributes: &authv3.AttributeContext{
-			Request: &authv3.AttributeContext_Request{
-				Http: &authv3.AttributeContext_HttpRequest{
-					Method: "GET",
-					Path:   "/healthz",
-				},
-			},
-		},
-	})
-	if err != nil {
-		t.Fatalf("client.Check: %v", err)
-	}
-
-	s := status.FromProto(checkResp.GetStatus())
-	if s.Code() != codes.OK {
-		t.Errorf("Check status = %v, want OK", s.Code())
-	}
-
-	// Verify the TCP port is actually open (nc -z equivalent).
+	// nc -z equivalent: verify TCP port is open.
 	tcpConn, err := net.DialTimeout("tcp", grpcAddr, 1*time.Second)
 	if err != nil {
 		t.Errorf("TCP port %s not reachable: %v", grpcAddr, err)
@@ -353,21 +341,51 @@ func TestIntegration_GRPCListening(t *testing.T) {
 		_ = tcpConn.Close()
 	}
 
+	client := authv3.NewAuthorizationClient(conn)
+
+	t.Run("nil_request_returns_deny_not_error", func(t *testing.T) {
+		// INV-011: nil request must return DENY with no gRPC transport error.
+		resp, grpcErr := grpcSrv.Check(context.Background(), nil)
+		if grpcErr != nil {
+			t.Errorf("Check(nil) must not return gRPC error, got: %v", grpcErr)
+		}
+		s := status.FromProto(resp.GetStatus())
+		if s.Code() != codes.PermissionDenied {
+			t.Errorf("Check(nil) status = %v, want PermissionDenied", s.Code())
+		}
+	})
+
+	t.Run("real_check_rpc_returns_valid_status", func(t *testing.T) {
+		// A real Envoy-style Check RPC through the policy engine must return
+		// either OK (allow) or PermissionDenied (deny) — never a gRPC transport error.
+		checkCtx, checkCancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer checkCancel()
+
+		resp, err := client.Check(checkCtx, &authv3.CheckRequest{
+			Attributes: &authv3.AttributeContext{
+				Request: &authv3.AttributeContext_Request{
+					Http: &authv3.AttributeContext_HttpRequest{
+						Method: "GET",
+						Path:   "/api/resource",
+					},
+				},
+			},
+		})
+		if err != nil {
+			t.Fatalf("client.Check: %v", err)
+		}
+		s := status.FromProto(resp.GetStatus())
+		if s.Code() != codes.OK && s.Code() != codes.PermissionDenied {
+			t.Errorf("unexpected gRPC code %v (want OK or PermissionDenied)", s.Code())
+		}
+		t.Logf("Check GET /api/resource → %v", s.Code())
+	})
+
 	cancel()
 	select {
 	case <-srvDone:
 	case <-time.After(3 * time.Second):
 		t.Log("warning: gRPC server did not stop within 3s")
-	}
-}
-
-// allowAllEngine is a test double that always returns Allow.
-type allowAllEngine struct{}
-
-func (a *allowAllEngine) Evaluate(_ context.Context, _ aegis.CheckRequest) aegis.CheckResponse {
-	return aegis.CheckResponse{
-		Decision:       aegis.Decision{Action: aegis.ActionAllow},
-		EnforcingLayer: aegis.EnforcingLayerAdapter,
 	}
 }
 
@@ -386,6 +404,19 @@ func waitForHTTP(t *testing.T, url string, timeout time.Duration) {
 		time.Sleep(20 * time.Millisecond)
 	}
 	t.Fatalf("waitForHTTP: %s did not return 200 within %s", url, timeout)
+}
+
+// pollUntil calls cond every 10ms until it returns true or timeout elapses.
+func pollUntil(t *testing.T, timeout time.Duration, cond func() bool, msg string, args ...any) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if cond() {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatalf(msg, args...)
 }
 
 // mustStringReader wraps a string as an io.Reader.
