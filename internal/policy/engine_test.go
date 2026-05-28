@@ -739,3 +739,75 @@ func BenchmarkPolicyEngine_Evaluate(b *testing.B) {
 		_ = engine.Evaluate(context.Background(), req)
 	}
 }
+
+func TestPolicyEngine_Reload_WithBuiltinPolicies(t *testing.T) {
+	sessions := &ifc.SessionLabels{}
+	celEnv, err := cel.NewCELEnvironment()
+	if err != nil {
+		t.Fatalf("failed to create CEL environment: %v", err)
+	}
+
+	engine := NewPolicyEngine(sessions, celEnv)
+
+	templates := []policy_types.PolicyTemplate{
+		{
+			ID:         "git-branch-protection",
+			Name:       "git-branch-protection",
+			Expression: `!(bash.isGitForcePush(args["command"]) && bash.gitBranchTarget(args["command"]).matches("(?i)^(main|master)$"))`,
+			SourceFile: "policies/builtin/git-branch-protection.yaml",
+			SourceLine: 50,
+		},
+	}
+	bindings := []policy_types.PolicyBinding{
+		{
+			TemplateID: "git-branch-protection",
+			Scope: policy_types.PolicyScope{
+				Tools: []string{"Bash"},
+			},
+			Layer: "cel",
+		},
+	}
+
+	bundle := &aegis.CompiledBundle{
+		Version:   1,
+		Templates: templates,
+		Bindings:  bindings,
+	}
+
+	err = engine.Reload(context.Background(), bundle)
+	if err != nil {
+		t.Fatalf("reload with builtin policies failed: %v", err)
+	}
+
+	snap := engine.snapshot.Load()
+	if snap == nil {
+		t.Fatal("expected snapshot after reload")
+	}
+	if snap.programs == nil {
+		t.Fatal("expected programs cache after reload")
+	}
+
+	prog, ok := snap.programs.Get("git-branch-protection")
+	if !ok {
+		t.Fatal("expected git-branch-protection program in cache")
+	}
+	if prog == nil {
+		t.Fatal("expected non-nil program pointer")
+	}
+
+	loc := snap.programs.SourceLocation("git-branch-protection")
+	if loc != "policies/builtin/git-branch-protection.yaml:50" {
+		t.Errorf("expected source location, got %q", loc)
+	}
+
+	if len(snap.bindings) != 1 {
+		t.Errorf("expected 1 binding, got %d", len(snap.bindings))
+	}
+	if snap.bindingIdx.byTool == nil {
+		t.Fatal("expected byTool index")
+	}
+	bashBindings := snap.bindingIdx.byTool["Bash"]
+	if len(bashBindings) != 1 {
+		t.Errorf("expected 1 Bash binding in index, got %d", len(bashBindings))
+	}
+}

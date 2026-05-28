@@ -375,14 +375,55 @@ func (e *PolicyEngine) buildSnapshot(
 	bundle *aegis.CompiledBundle,
 	version uint64,
 ) (*engineSnapshot, error) {
+	programs, err := cel.CompileAll(e.celEnv, bundle.Templates)
+	if err != nil {
+		return nil, err
+	}
+
+	compiled := make([]compiledBinding, 0, len(bundle.Bindings))
+	for i := range bundle.Bindings {
+		b := &bundle.Bindings[i]
+		cb := compiledBinding{
+			binding: *b,
+			scope:   scopeKey{},
+		}
+		if len(b.Scope.Tools) == 1 {
+			cb.scope.tool = b.Scope.Tools[0]
+		}
+		if len(b.Scope.Sessions) == 1 {
+			cb.scope.session = b.Scope.Sessions[0]
+		}
+		compiled = append(compiled, cb)
+	}
+
+	idx := buildBindingIndex(compiled)
+
 	snap := &engineSnapshot{
 		public: aegis.EngineSnapshot{
 			Version: version,
 		},
+		bindings:   compiled,
+		programs:   programs,
+		bindingIdx: idx,
 		compiledAt: time.Now().UnixNano(),
 		sourceHash: bundle.Hash,
 	}
 	return snap, nil
+}
+
+// buildBindingIndex creates an index for O(1) binding lookup by tool name.
+func buildBindingIndex(bindings []compiledBinding) bindingIndex {
+	idx := bindingIndex{
+		byTool: make(map[string][]*compiledBinding),
+		all:    make([]*compiledBinding, len(bindings)),
+	}
+	for i := range bindings {
+		idx.all[i] = &bindings[i]
+		for _, tool := range bindings[i].binding.Scope.Tools {
+			idx.byTool[tool] = append(idx.byTool[tool], &bindings[i])
+		}
+	}
+	return idx
 }
 
 // matchBindings returns all bindings that match the given tool and session.
