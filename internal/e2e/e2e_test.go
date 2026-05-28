@@ -69,6 +69,19 @@ func TestE2E_CheckRequest_PolicyEvaluation_AuditWrite(t *testing.T) {
 		t.Errorf("unexpected action: %v", resp.Decision.Action)
 	}
 
+	// 5b. Enqueue an audit record the same way the daemon handler does after Evaluate().
+	// The engine layer does not call WriteRecord (that is the daemon handler's job).
+	// This step exercises the writer → SQLite persistence path end-to-end.
+	writer.WriteRecord(audit.AuditRecord{
+		Timestamp:      time.Now().UnixNano(),
+		SessionID:      req.SessionID,
+		Tool:           req.Tool,
+		Args:           req.Args,
+		Decision:       resp.Decision,
+		LatencyNs:      resp.LatencyNs,
+		EnforcingLayer: resp.EnforcingLayer,
+	})
+
 	// 6. Cancel context, wait for audit flush, then close the DB.
 	cancel()
 	select {
