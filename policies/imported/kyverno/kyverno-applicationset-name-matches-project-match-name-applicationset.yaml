@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-applicationset-name-matches-project-match-name-applicationset
+    annotations:
+        aegis.io/imported-from: aegis-import-2432388674.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Argo
+spec:
+    description: This policy ensures that the name of the ApplicationSet is the same value provided in the project.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: The name must match the project.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

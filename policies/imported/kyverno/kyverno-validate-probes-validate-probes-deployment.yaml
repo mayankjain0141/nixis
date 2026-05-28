@@ -1,0 +1,20 @@
+# IMPORT_TODO: JMESPath conditions in validate-probes/validate-probes could not be translated — kubectl pattern match generated as base condition only
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-validate-probes-validate-probes-deployment
+    annotations:
+        aegis.io/imported-from: aegis-import-1460891479.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Sample
+spec:
+    description: Liveness and readiness probes accomplish different goals, and setting both to the same is an anti-pattern and often results in app problems in the future. This policy checks that liveness and readiness probes are not equal. Keep in mind that if both the  probes are not set, they are considered to be equal and hence fails the check.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+deployment|scale|rollout)")
+          message: Liveness and readiness probes cannot be the same.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

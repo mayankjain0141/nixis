@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-require-run-as-non-root-user-run-as-non-root-user-pod
+    annotations:
+        aegis.io/imported-from: aegis-import-4213763769.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Pod Security Standards (Restricted)
+spec:
+    description: Containers must be required to run as non-root users. This policy ensures `runAsUser` is either unset or set to a number greater than zero.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+          message: Running as root is not allowed. The fields spec.securityContext.runAsUser, spec.containers[*].securityContext.runAsUser, spec.initContainers[*].securityContext.runAsUser, and spec.ephemeralContainers[*].securityContext.runAsUser must be unset or set to a number greater than zero.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

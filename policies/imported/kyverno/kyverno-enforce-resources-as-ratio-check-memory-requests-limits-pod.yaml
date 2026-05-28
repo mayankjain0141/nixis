@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-enforce-resources-as-ratio-check-memory-requests-limits-pod
+    annotations:
+        aegis.io/imported-from: aegis-import-380769399.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Other
+spec:
+    description: Resource requests often need to be tailored to the type of workload in the container/Pod. With many different types of applications in a cluster, enforcing hard limits on requests or limits may not work and a ratio may be better suited instead. This policy checks every container in a Pod and ensures that memory limits are no more than 2.5x its requests.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+          message: Limits may not exceed 2.5x the requests.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

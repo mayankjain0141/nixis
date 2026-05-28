@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-podsecurity-subrule-baseline-baseline-pod
+    annotations:
+        aegis.io/imported-from: aegis-import-3696940126.yaml
+        aegis.io/severity: high
+        kyverno.io/category: Pod Security, EKS Best Practices
+spec:
+    description: The baseline profile of the Pod Security Standards is a collection of the most basic and important steps that can be taken to secure Pods. Beginning with Kyverno 1.8, an entire profile may be assigned to the cluster through a single rule. This policy configures the baseline profile through the latest version of the Pod Security Standards cluster wide.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+          message: The baseline profile of the Pod Security Standards is a collection of the most basic and important steps that can be taken to secure Pods. Beginning with Kyverno 1.8, an entire profile may be assigned to the cluster through a single rule. This policy configures the baseline profile through the latest version of the Pod Security Standards cluster wide.
+          action: DENY
+    defaultAction: ALLOW

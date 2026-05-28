@@ -1,0 +1,19 @@
+# IMPORT_TODO: generate rule — Aegis does not generate resources
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-get-debug-data-policy-get-debug-data-policy-rule
+    annotations:
+        aegis.io/imported-from: aegis-import-1844134539.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Other
+spec:
+    description: 'This policy generates a job which gathers troubleshooting data (including logs, kubectl describe output and events from the namespace) from pods that are in CrashLoopBackOff and have 3 restarts. This data can further be used to automatically create a Jira issue using some kind of automation or another Kyverno policy. For more information on the image used in this policy in addition to the necessary RBAC resources required in order for this policy to operate, see the documentation at https://github.com/nirmata/SRE-Operational-Usecases/tree/main/get-troubleshooting-data/get-debug-data. '
+    matchConstraints:
+        tools: []
+    validations:
+        - expression: "false"
+          message: 'IMPORT_TODO: generate rule — Aegis does not generate resources — manual review required'
+          action: AUDIT
+    defaultAction: ALLOW

@@ -1,0 +1,20 @@
+# IMPORT_TODO: JMESPath conditions in check-hpa-exists/validate-hpa could not be translated — kubectl pattern match generated as base condition only
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-check-hpa-exists-validate-hpa-replicaset
+    annotations:
+        aegis.io/imported-from: aegis-import-1811644971.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Other
+spec:
+    description: This policy ensures that Deployments, ReplicaSets, StatefulSets, and DaemonSets are only allowed if they have a corresponding Horizontal Pod Autoscaler (HPA) configured in the same namespace. The policy checks for the presence of an HPA that targets the resource and denies the creation or update of the resource if no such HPA exists. This policy helps enforce scaling practices and ensures that resources are managed efficiently.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: Deployment is not allowed without a corresponding HPA.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

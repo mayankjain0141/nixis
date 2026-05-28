@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-restrict-ingress-wildcard-block-ingress-wildcard-ingress
+    annotations:
+        aegis.io/imported-from: aegis-import-1064305699.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Other
+spec:
+    description: Ingress hosts optionally accept a wildcard as an alternative to precise matching. In some cases, this may be too permissive as it would direct unintended traffic to the given Ingress resource. This policy enforces that any Ingress host does not contain a wildcard character.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: Wildcards are not permitted as hosts.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

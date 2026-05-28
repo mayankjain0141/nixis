@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-check-deprecated-apis-validate-v1-25-removals-policy---poddisruptionbudget
+    annotations:
+        aegis.io/imported-from: aegis-import-3273228979.yaml
+        aegis.io/severity: low
+        kyverno.io/category: Best Practices
+spec:
+    description: Kubernetes APIs are sometimes deprecated and removed after a few releases. As a best practice, older API versions should be replaced with newer versions. This policy validates for APIs that are deprecated or scheduled for removal. Note that checking for some of these resources may require modifying the Kyverno ConfigMap to remove filters. In the validate-v1-22-removals rule, the Lease kind has been commented out due to a check for this kind having a performance penalty on Kubernetes clusters with many leases. Its enabling should be attended carefully and is not recommended on large clusters. PodSecurityPolicy is removed in v1.25 so therefore the validate-v1-25-removals rule may not completely work on 1.25+. This policy requires Kyverno v1.7.4+ to function properly.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: '{{ request.object.apiVersion }}/{{ request.object.kind }} is deprecated and will be removed in v1.25. See: https://kubernetes.io/docs/reference/using-api/deprecation-guide/'
+          action: AUDIT
+    defaultAction: ALLOW

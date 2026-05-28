@@ -801,342 +801,394 @@ func TestImport_ParseGitHubURL(t *testing.T) {
 	}
 }
 
-// ---- Sigma format tests ----
+// ---- Kyverno tests ----
 
-func TestImport_DetectsSigmaFormat(t *testing.T) {
-	input := `title: Suspicious Rm Command
-id: abc123
-status: stable
-description: Detects suspicious rm usage
-logsource:
-    category: process_creation
-    product: linux
-detection:
-    selection:
-        CommandLine|contains:
-            - 'rm -rf /'
-            - 'rm -rf ~'
-    condition: selection
-level: high
-`
-	format := detectFormat([]byte(input))
-	if format != formatSigma {
-		t.Errorf("expected formatSigma, got %v", format)
+func TestImport_DetectsKyvernoFormat(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  importFormat
+	}{
+		{
+			name: "ClusterPolicy",
+			input: `apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-pod-deletion
+spec:
+  validationFailureAction: Enforce
+  rules: []
+`,
+			want: formatKyverno,
+		},
+		{
+			name: "Policy",
+			input: `apiVersion: kyverno.io/v1
+kind: Policy
+metadata:
+  name: restrict-secrets
+spec:
+  validationFailureAction: Audit
+  rules: []
+`,
+			want: formatKyverno,
+		},
+		{
+			name: "v2beta1 ClusterPolicy",
+			input: `apiVersion: kyverno.io/v2beta1
+kind: ClusterPolicy
+metadata:
+  name: some-policy
+spec:
+  rules: []
+`,
+			want: formatKyverno,
+		},
+		{
+			name: "non-kyverno",
+			input: `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+`,
+			want: formatUnknown,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := detectFormat([]byte(tt.input))
+			if got != tt.want {
+				t.Errorf("detectFormat = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 
-func TestImport_TranslatesSigmaContains(t *testing.T) {
-	input := `title: Test Contains
-id: test-contains-001
-logsource:
-    category: process_creation
-    product: linux
-detection:
-    selection:
-        CommandLine|contains:
-            - 'rm -rf'
-            - 'dangerous'
-    condition: selection
-level: high
+func TestImport_TranslatesKyvernoDelete(t *testing.T) {
+	input := `apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-pod-deletion
+  annotations:
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/description: "Prevents pod deletion without approval"
+spec:
+  validationFailureAction: Enforce
+  rules:
+    - name: check-deletion
+      match:
+        any:
+        - resources:
+            kinds: [Pod]
+            operations: [DELETE]
+      validate:
+        message: "Deleting pods requires approval"
+        deny:
+          conditions:
+            any: []
 `
-	manifests, _, err := convertSigma([]byte(input), "test.yaml")
+
+	manifests, _, err := convertKyverno([]byte(input), "restrict-pod-deletion.yaml")
 	if err != nil {
-		t.Fatalf("convertSigma failed: %v", err)
+		t.Fatalf("convertKyverno failed: %v", err)
 	}
 
 	if len(manifests) != 1 {
 		t.Fatalf("expected 1 manifest, got %d", len(manifests))
 	}
 
-	expr := manifests[0].Spec.Validations[0].Expression
-	if !strings.Contains(expr, `.contains("rm -rf")`) {
-		t.Errorf("expected .contains() CEL, got: %s", expr)
+	m := manifests[0]
+	expr := m.Spec.Validations[0].Expression
+	if !strings.Contains(expr, `tool == "Bash"`) {
+		t.Errorf("CEL should target Bash tool, got: %s", expr)
 	}
-	if !strings.Contains(expr, ` || `) {
-		t.Errorf("expected OR for multiple values, got: %s", expr)
+	if !strings.Contains(strings.ToLower(expr), "kubectl") {
+		t.Errorf("CEL should reference kubectl, got: %s", expr)
+	}
+	if !strings.Contains(strings.ToLower(expr), "delete") {
+		t.Errorf("CEL should match delete operation, got: %s", expr)
 	}
 }
 
-func TestImport_TranslatesSigmaRegex(t *testing.T) {
-	input := `title: Test Regex
-id: test-regex-001
-logsource:
-    category: process_creation
-    product: linux
-detection:
-    selection:
-        CommandLine|re: '.*curl.*\\|.*sh.*'
-    condition: selection
-level: medium
+func TestImport_TranslatesKyvernoEnforce(t *testing.T) {
+	enforce := `apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: enforce-policy
+spec:
+  validationFailureAction: Enforce
+  rules:
+    - name: block-ns-deletion
+      match:
+        any:
+        - resources:
+            kinds: [Namespace]
+            operations: [DELETE]
+      validate:
+        message: "Namespace deletion blocked"
+        deny:
+          conditions:
+            any: []
 `
-	manifests, _, err := convertSigma([]byte(input), "test.yaml")
-	if err != nil {
-		t.Fatalf("convertSigma failed: %v", err)
-	}
 
-	expr := manifests[0].Spec.Validations[0].Expression
-	if !strings.Contains(expr, `.matches(`) {
-		t.Errorf("expected .matches() CEL for regex, got: %s", expr)
-	}
-}
-
-func TestImport_TranslatesSigmaConditionFilter(t *testing.T) {
-	input := `title: Test Filter
-id: test-filter-001
-logsource:
-    category: process_creation
-    product: linux
-detection:
-    selection:
-        CommandLine|contains: 'rm -rf'
-    filter:
-        CommandLine|contains: '--dry-run'
-    condition: selection and not filter
-level: high
+	audit := `apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: audit-policy
+spec:
+  validationFailureAction: Audit
+  rules:
+    - name: audit-ns-creation
+      match:
+        any:
+        - resources:
+            kinds: [Namespace]
+            operations: [CREATE]
+      validate:
+        message: "Namespace creation audited"
+        deny:
+          conditions:
+            any: []
 `
-	manifests, _, err := convertSigma([]byte(input), "test.yaml")
+
+	enforceManifests, _, err := convertKyverno([]byte(enforce), "enforce.yaml")
 	if err != nil {
-		t.Fatalf("convertSigma failed: %v", err)
+		t.Fatalf("convertKyverno (Enforce) failed: %v", err)
+	}
+	if len(enforceManifests) != 1 {
+		t.Fatalf("expected 1 manifest, got %d", len(enforceManifests))
+	}
+	if enforceManifests[0].Spec.Validations[0].Action != "DENY" {
+		t.Errorf("Enforce should produce DENY, got %s", enforceManifests[0].Spec.Validations[0].Action)
 	}
 
-	expr := manifests[0].Spec.Validations[0].Expression
-	if !strings.Contains(expr, "&&") {
-		t.Errorf("expected AND in condition, got: %s", expr)
+	auditManifests, _, err := convertKyverno([]byte(audit), "audit.yaml")
+	if err != nil {
+		t.Fatalf("convertKyverno (Audit) failed: %v", err)
 	}
-	if !strings.Contains(expr, "!(") {
-		t.Errorf("expected negation for filter, got: %s", expr)
+	if len(auditManifests) != 1 {
+		t.Fatalf("expected 1 manifest, got %d", len(auditManifests))
+	}
+	if auditManifests[0].Spec.Validations[0].Action != "AUDIT" {
+		t.Errorf("Audit should produce AUDIT, got %s", auditManifests[0].Spec.Validations[0].Action)
 	}
 }
 
-func TestImport_TranslatesSigmaLevel(t *testing.T) {
+func TestImport_TranslatesKyvernoSeverity(t *testing.T) {
 	tests := []struct {
-		level      string
+		severity   string
+		vfa        string
 		wantAction string
 	}{
-		{"critical", "DENY"},
-		{"high", "DENY"},
-		{"medium", "REQUIRE_APPROVAL"},
-		{"low", "AUDIT"},
-		{"informational", "AUDIT"},
+		{severity: "critical", vfa: "Audit", wantAction: "DENY"},
+		{severity: "high", vfa: "Audit", wantAction: "DENY"},
+		{severity: "medium", vfa: "Audit", wantAction: "REQUIRE_APPROVAL"},
+		{severity: "medium", vfa: "Enforce", wantAction: "DENY"},
+		{severity: "low", vfa: "Enforce", wantAction: "AUDIT"},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.level, func(t *testing.T) {
-			input := fmt.Sprintf(`title: Test Level
-id: test-level-%s
-logsource:
-    category: process_creation
-    product: linux
-detection:
-    selection:
-        CommandLine|contains: 'test'
-    condition: selection
-level: %s
-`, tt.level, tt.level)
+		t.Run(tt.severity+"/"+tt.vfa, func(t *testing.T) {
+			input := fmt.Sprintf(`apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: severity-test
+  annotations:
+    policies.kyverno.io/severity: %s
+spec:
+  validationFailureAction: %s
+  rules:
+    - name: check-pod
+      match:
+        any:
+        - resources:
+            kinds: [Pod]
+            operations: [DELETE]
+      validate:
+        message: "test"
+        deny:
+          conditions:
+            any: []
+`, tt.severity, tt.vfa)
 
-			manifests, _, err := convertSigma([]byte(input), "test.yaml")
+			manifests, _, err := convertKyverno([]byte(input), "test.yaml")
 			if err != nil {
-				t.Fatalf("convertSigma failed: %v", err)
+				t.Fatalf("convertKyverno failed: %v", err)
 			}
-
+			if len(manifests) == 0 {
+				t.Fatal("expected at least 1 manifest")
+			}
 			got := manifests[0].Spec.Validations[0].Action
 			if got != tt.wantAction {
-				t.Errorf("level %q: got action %q, want %q", tt.level, got, tt.wantAction)
+				t.Errorf("severity=%s vfa=%s: got action %s, want %s", tt.severity, tt.vfa, got, tt.wantAction)
 			}
 		})
 	}
 }
 
-func TestImport_TranslatesSigmaLogsource(t *testing.T) {
-	tests := []struct {
-		category  string
-		wantTools []string
-	}{
-		{"process_creation", []string{"Bash"}},
-		{"file_event", []string{"Read", "Write", "Edit"}},
-		{"network_connection", []string{"Bash"}},
-		{"other", []string{}},
+func TestImport_SkipsMutateRules(t *testing.T) {
+	input := `apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: mutate-policy
+spec:
+  validationFailureAction: Enforce
+  rules:
+    - name: add-labels
+      match:
+        any:
+        - resources:
+            kinds: [Pod]
+      mutate:
+        patchStrategicMerge:
+          metadata:
+            labels:
+              env: production
+`
+
+	manifests, comments, err := convertKyverno([]byte(input), "mutate.yaml")
+	if err != nil {
+		t.Fatalf("convertKyverno failed: %v", err)
+	}
+	if len(manifests) != 1 {
+		t.Fatalf("expected 1 IMPORT_TODO manifest for mutate rule, got %d", len(manifests))
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.category, func(t *testing.T) {
-			input := fmt.Sprintf(`title: Test Logsource
-id: test-logsource-%s
-logsource:
-    category: %s
-    product: linux
-detection:
-    selection:
-        CommandLine|contains: 'test'
-    condition: selection
-level: low
-`, tt.category, tt.category)
-
-			manifests, _, err := convertSigma([]byte(input), "test.yaml")
-			if err != nil {
-				t.Fatalf("convertSigma failed: %v", err)
-			}
-
-			got := manifests[0].Spec.MatchConstraints.Tools
-			if len(got) != len(tt.wantTools) {
-				t.Errorf("category %q: got %d tools, want %d", tt.category, len(got), len(tt.wantTools))
-				return
-			}
-			for i, tool := range tt.wantTools {
-				if got[i] != tool {
-					t.Errorf("category %q: tool[%d] = %q, want %q", tt.category, i, got[i], tool)
-				}
-			}
-		})
+	// Expression must be "false" for IMPORT_TODO
+	if manifests[0].Spec.Validations[0].Expression != "false" {
+		t.Errorf("mutate rule should produce 'false' expression, got %s", manifests[0].Spec.Validations[0].Expression)
+	}
+	if !strings.Contains(comments[0], "IMPORT_TODO") {
+		t.Errorf("mutate rule should have IMPORT_TODO comment, got %q", comments[0])
+	}
+	if !strings.Contains(comments[0], "mutate") {
+		t.Errorf("IMPORT_TODO comment should mention mutate, got %q", comments[0])
 	}
 }
 
-func TestImport_TranslatesSigmaStartsWith(t *testing.T) {
-	input := `title: Test StartsWith
-id: test-startswith-001
-logsource:
-    category: process_creation
-    product: linux
-detection:
-    selection:
-        CommandLine|startswith: '/bin/bash'
-    condition: selection
-level: low
+func TestImport_KyvernoJMESPathConditions(t *testing.T) {
+	input := `apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-prod-deletion
+  annotations:
+    policies.kyverno.io/severity: high
+spec:
+  validationFailureAction: Enforce
+  rules:
+    - name: check-namespace
+      match:
+        any:
+        - resources:
+            kinds: [Pod]
+            operations: [DELETE]
+      validate:
+        message: "Deleting pods in production requires approval"
+        deny:
+          conditions:
+            any:
+            - key: "{{ request.namespace }}"
+              operator: Equals
+              value: production
 `
-	manifests, _, err := convertSigma([]byte(input), "test.yaml")
+
+	manifests, comments, err := convertKyverno([]byte(input), "restrict-prod.yaml")
 	if err != nil {
-		t.Fatalf("convertSigma failed: %v", err)
+		t.Fatalf("convertKyverno failed: %v", err)
+	}
+	if len(manifests) == 0 {
+		t.Fatal("expected at least 1 manifest even with JMESPath conditions")
 	}
 
+	// Should still generate a kubectl pattern match
 	expr := manifests[0].Spec.Validations[0].Expression
-	if !strings.Contains(expr, `.startsWith("/bin/bash")`) {
-		t.Errorf("expected .startsWith() CEL, got: %s", expr)
+	if !strings.Contains(expr, `tool == "Bash"`) {
+		t.Errorf("should generate Bash tool match even with JMESPath conditions, got: %s", expr)
+	}
+	// Should have IMPORT_TODO comment about JMESPath
+	if !strings.Contains(comments[0], "IMPORT_TODO") {
+		t.Errorf("JMESPath conditions should produce IMPORT_TODO comment, got %q", comments[0])
 	}
 }
 
-func TestImport_TranslatesSigmaEndsWith(t *testing.T) {
-	input := `title: Test EndsWith
-id: test-endswith-001
-logsource:
-    category: process_creation
-    product: linux
-detection:
-    selection:
-        CommandLine|endswith: '.sh'
-    condition: selection
-level: low
+func TestImport_KyvernoMultipleKinds(t *testing.T) {
+	input := `apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-deletions
+spec:
+  validationFailureAction: Enforce
+  rules:
+    - name: block-deletes
+      match:
+        any:
+        - resources:
+            kinds: [Pod, Deployment, Service]
+            operations: [DELETE]
+      validate:
+        message: "Deletion requires approval"
+        deny:
+          conditions:
+            any: []
 `
-	manifests, _, err := convertSigma([]byte(input), "test.yaml")
-	if err != nil {
-		t.Fatalf("convertSigma failed: %v", err)
-	}
 
-	expr := manifests[0].Spec.Validations[0].Expression
-	if !strings.Contains(expr, `.endsWith(".sh")`) {
-		t.Errorf("expected .endsWith() CEL, got: %s", expr)
+	manifests, _, err := convertKyverno([]byte(input), "multi-kind.yaml")
+	if err != nil {
+		t.Fatalf("convertKyverno failed: %v", err)
+	}
+	// Should produce one manifest per kind
+	if len(manifests) != 3 {
+		t.Fatalf("expected 3 manifests (one per kind), got %d", len(manifests))
 	}
 }
 
-func TestImport_TranslatesSigmaContainsAll(t *testing.T) {
-	input := `title: Test ContainsAll
-id: test-containsall-001
-logsource:
-    category: process_creation
-    product: linux
-detection:
-    selection:
-        CommandLine|contains|all:
-            - 'curl'
-            - 'http'
-    condition: selection
-level: high
+func TestImport_KyvernoMetadataPreserved(t *testing.T) {
+	input := `apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: my-policy
+  annotations:
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/description: "Test description"
+spec:
+  validationFailureAction: Enforce
+  rules:
+    - name: check-pod
+      match:
+        any:
+        - resources:
+            kinds: [Pod]
+            operations: [DELETE]
+      validate:
+        message: "Custom message"
+        deny:
+          conditions:
+            any: []
 `
-	manifests, _, err := convertSigma([]byte(input), "test.yaml")
+
+	manifests, _, err := convertKyverno([]byte(input), "meta-test.yaml")
 	if err != nil {
-		t.Fatalf("convertSigma failed: %v", err)
+		t.Fatalf("convertKyverno failed: %v", err)
+	}
+	if len(manifests) == 0 {
+		t.Fatal("expected at least 1 manifest")
 	}
 
-	expr := manifests[0].Spec.Validations[0].Expression
-	if !strings.Contains(expr, ` && `) {
-		t.Errorf("expected AND for |all modifier, got: %s", expr)
+	m := manifests[0]
+	if m.Spec.Description != "Test description" {
+		t.Errorf("description should be from annotation, got %q", m.Spec.Description)
 	}
-	if !strings.Contains(expr, `.contains("curl")`) {
-		t.Errorf("expected curl check, got: %s", expr)
+	if m.Metadata.Annotations["aegis.io/severity"] != "high" {
+		t.Errorf("severity annotation: got %q, want high", m.Metadata.Annotations["aegis.io/severity"])
 	}
-	if !strings.Contains(expr, `.contains("http")`) {
-		t.Errorf("expected http check, got: %s", expr)
+	if m.Metadata.Annotations["kyverno.io/category"] != "Pod Security" {
+		t.Errorf("category annotation: got %q, want 'Pod Security'", m.Metadata.Annotations["kyverno.io/category"])
 	}
-}
-
-func TestImport_TranslatesSigma1OfThem(t *testing.T) {
-	input := `title: Test 1 of them
-id: test-1ofthem-001
-logsource:
-    category: process_creation
-    product: linux
-detection:
-    selection1:
-        CommandLine|contains: 'curl'
-    selection2:
-        CommandLine|contains: 'wget'
-    condition: 1 of them
-level: medium
-`
-	manifests, _, err := convertSigma([]byte(input), "test.yaml")
-	if err != nil {
-		t.Fatalf("convertSigma failed: %v", err)
-	}
-
-	expr := manifests[0].Spec.Validations[0].Expression
-	if !strings.Contains(expr, ` || `) {
-		t.Errorf("expected OR for '1 of them', got: %s", expr)
-	}
-}
-
-func TestImport_TranslatesSigmaAllOfThem(t *testing.T) {
-	input := `title: Test all of them
-id: test-allofthem-001
-logsource:
-    category: process_creation
-    product: linux
-detection:
-    selection1:
-        CommandLine|contains: 'sudo'
-    selection2:
-        CommandLine|contains: 'rm'
-    condition: all of them
-level: high
-`
-	manifests, _, err := convertSigma([]byte(input), "test.yaml")
-	if err != nil {
-		t.Fatalf("convertSigma failed: %v", err)
-	}
-
-	expr := manifests[0].Spec.Validations[0].Expression
-	if !strings.Contains(expr, ` && `) {
-		t.Errorf("expected AND for 'all of them', got: %s", expr)
-	}
-}
-
-func TestImport_SigmaUnmappableFieldAddsComment(t *testing.T) {
-	input := `title: Test Unmappable Field
-id: test-unmappable-001
-logsource:
-    category: process_creation
-    product: windows
-detection:
-    selection:
-        Image|endswith: '\cmd.exe'
-    condition: selection
-level: high
-`
-	_, comments, err := convertSigma([]byte(input), "test.yaml")
-	if err != nil {
-		t.Fatalf("convertSigma failed: %v", err)
-	}
-
-	if len(comments) == 0 || !strings.Contains(comments[0], "IMPORT_TODO") {
-		t.Errorf("expected IMPORT_TODO comment for unmappable field, got: %v", comments)
+	if m.Spec.Validations[0].Message != "Custom message" {
+		t.Errorf("message should come from validate.message, got %q", m.Spec.Validations[0].Message)
 	}
 }
 

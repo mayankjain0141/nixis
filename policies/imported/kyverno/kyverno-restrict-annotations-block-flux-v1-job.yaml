@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-restrict-annotations-block-flux-v1-job
+    annotations:
+        aegis.io/imported-from: aegis-import-4280221868.yaml
+        aegis.io/severity: low
+        kyverno.io/category: Sample
+spec:
+    description: Some annotations control functionality driven by other cluster-wide tools and are not normally set by some class of users. This policy prevents the use of an annotation beginning with `fluxcd.io/`. This can be useful to ensure users either don't set reserved annotations or to force them to use a newer version of an annotation.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: Cannot use Flux v1 annotation.
+          action: AUDIT
+    defaultAction: ALLOW

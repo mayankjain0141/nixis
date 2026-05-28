@@ -1,0 +1,19 @@
+# IMPORT_TODO: mutate rule — Aegis does not mutate requests
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-change-dns-config-policy-dns-policy
+    annotations:
+        aegis.io/imported-from: aegis-import-3819965416.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Other
+spec:
+    description: The Default DNS policy in Kubernetes gives the flexibility of service  access; however, it costs some latency on a high scale, and it needs to  be optimized. This policy helps us to optimize the performance of DNS  queries by setting DNS Options, nodelocalDNS IP, and search Domains. This policy can be applied for the clusters provisioned by kubeadm.
+    matchConstraints:
+        tools: []
+    validations:
+        - expression: "false"
+          message: 'IMPORT_TODO: mutate rule — Aegis does not mutate requests — manual review required'
+          action: AUDIT
+    defaultAction: ALLOW

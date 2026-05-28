@@ -1,0 +1,25 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-kasten-validate-ns-by-preset-label-kasten-validate-ns-by-preset-label-namespace
+    annotations:
+        aegis.io/imported-from: aegis-import-139255533.yaml
+        aegis.io/severity: low
+        kyverno.io/category: Veeam Kasten
+spec:
+    description: Kubernetes applications are typically deployed into a single, logical namespace.  Veeam Kasten policies will discover and protect all resources within the selected namespace(s).  This policy ensures all new namespaces include a label referencing a valid Kasten SLA  (Policy Preset) for data protection.This policy can be used in combination with /Users/the `kasten-generate-policy-by-preset-label` ClusterPolicy to automatically create a Kasten policy based on the specified SLA.  The combination ensures that new applications are not inadvertently left unprotected.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+namespace|create\s+namespace)")
+          message: |-
+            Namespaces must specify a "dataprotection" label with a value corresponding to a Kasten Policy Preset:
+
+              "gold" - <Insert human readable settings of each preset option>
+              "silver" - <For example, hourly backups, exported to immutable S3 storage>
+              "bronze" - <Or, daily local snapshots, NOT exported to external storage>
+              "none" - No local snapshots or backups
+          action: AUDIT
+    defaultAction: ALLOW

@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-disallow-self-provisioner-binding-check-self-provisioner-binding-no-subject-clusterrolebinding
+    annotations:
+        aegis.io/imported-from: aegis-import-3533479467.yaml
+        aegis.io/severity: high
+        kyverno.io/category: OpenShift
+spec:
+    description: This policy prevents binding to the self-provisioners role for strict control of OpenShift project creation.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: Modifying the self-provisioners ClusterRoleBinding is not allowed.
+          action: DENY
+    defaultAction: ALLOW

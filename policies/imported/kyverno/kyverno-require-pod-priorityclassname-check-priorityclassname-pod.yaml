@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-require-pod-priorityclassname-check-priorityclassname-pod
+    annotations:
+        aegis.io/imported-from: aegis-import-4109487234.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Multi-Tenancy, EKS Best Practices
+spec:
+    description: A Pod may optionally specify a priorityClassName which indicates the scheduling priority relative to others. This requires creation of a PriorityClass object in advance. With this created, a Pod may set this field to that value. In a multi-tenant environment, it is often desired to require this priorityClassName be set to make certain tenant scheduling guarantees. This policy requires that a Pod defines the priorityClassName field with some value.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+          message: Pods must define the priorityClassName field.
+          action: DENY
+    defaultAction: ALLOW

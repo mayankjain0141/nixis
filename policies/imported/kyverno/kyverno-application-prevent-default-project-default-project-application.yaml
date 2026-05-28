@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-application-prevent-default-project-default-project-application
+    annotations:
+        aegis.io/imported-from: aegis-import-760635698.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Argo
+spec:
+    description: This policy prevents the use of the default project in an Application.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: The default project may not be used in an Application.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

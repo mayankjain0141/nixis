@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-application-field-validation-destination-server-name-application
+    annotations:
+        aegis.io/imported-from: aegis-import-669985809.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Argo
+spec:
+    description: This policy performs some best practices validation on Application fields. Path or chart must be specified but never both. And destination.name or destination.server must be specified but never both.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: '`spec.destination.server` OR `spec.destination.name` should be specified but never both.'
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

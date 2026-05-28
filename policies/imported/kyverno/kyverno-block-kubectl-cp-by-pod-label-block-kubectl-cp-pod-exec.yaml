@@ -1,0 +1,20 @@
+# IMPORT_TODO: JMESPath conditions in block-kubectl-cp-by-pod-label/block-kubectl-cp could not be translated — kubectl pattern match generated as base condition only
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-block-kubectl-cp-by-pod-label-block-kubectl-cp-pod-exec
+    annotations:
+        aegis.io/imported-from: aegis-import-850984278.yaml
+        aegis.io/severity: low
+        kyverno.io/category: Sample
+spec:
+    description: The kubectl cp command is used to copy files between a local machine and a Pod's container.  While this functionality is useful for transferring data, it may introduce security risks,  such as unauthorized data exfiltration or modification. This policy blocks the use of the  kubectl cp command on all Pods with label `block-kubectl-cp=true`, ensuring that sensitive  workloads are protected from unintended file transfers. Other kubectl operations are unaffected,  allowing for normal Pod management while preventing potential misuse of file copy capabilities.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: Cannot use `kubectl cp` on pods
+          action: DENY
+    defaultAction: ALLOW

@@ -1,0 +1,20 @@
+# IMPORT_TODO: JMESPath conditions in unique-external-dns/ensure-valid-externaldns-annotation could not be translated — kubectl pattern match generated as base condition only
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-unique-external-dns-ensure-valid-externaldns-annotation-service
+    annotations:
+        aegis.io/imported-from: aegis-import-2146294532.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Other
+spec:
+    description: ExternalDNS, part of Kubernetes SIGs, triggers the creation of external DNS records in supported providers when the annotation`external-dns.alpha.kubernetes.io/hostname` is present. Like with internal DNS, duplicates must be avoided. This policy requires every such Service have a cluster-unique hostname present in the value of the annotation.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+service|expose)")
+          message: External DNS entry "{{request.object.metadata.annotations."external-dns.alpha.kubernetes.io/hostname"}}" is already taken by another service in the cluster.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

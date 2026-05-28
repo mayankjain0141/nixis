@@ -1,0 +1,18 @@
+# IMPORT_TODO: mutate rule — Aegis does not mutate requests
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-label-nodes-all-label-node-foo
+    annotations:
+        aegis.io/imported-from: aegis-import-1917280135.yaml
+        aegis.io/severity: low
+spec:
+    description: label-nodes-all
+    matchConstraints:
+        tools: []
+    validations:
+        - expression: "false"
+          message: 'IMPORT_TODO: mutate rule — Aegis does not mutate requests — manual review required'
+          action: AUDIT
+    defaultAction: ALLOW

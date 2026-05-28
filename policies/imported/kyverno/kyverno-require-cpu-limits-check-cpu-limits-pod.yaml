@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-require-cpu-limits-check-cpu-limits-pod
+    annotations:
+        aegis.io/imported-from: aegis-import-838475422.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Other
+spec:
+    description: Setting CPU limits on containers ensures fair distribution of resources, preventing any single container from monopolizing CPU and impacting the performance of other containers. This practice enhances stability, predictability, and cost control, while also mitigating the noisy neighbor problem and facilitating efficient scaling in Kubernetes clusters. This policy ensures that cpu limits are set on every container.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+          message: CPU limits are required for all containers.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

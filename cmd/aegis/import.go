@@ -60,7 +60,7 @@ const (
 	formatSettingsJSON              // {"permissions":{"deny":[...]}}
 	formatAgentWall                 // version: "2" + tools[].action
 	formatMCPVisor                  // deny_path / deny_command_pattern / etc.
-	formatSigma                     // logsource + detection with condition (SigmaHQ format)
+	formatKyverno                   // apiVersion: kyverno.io/* + kind: ClusterPolicy/Policy
 )
 
 // ---- format-specific input structs ----
@@ -128,28 +128,64 @@ type mcpVisorFile struct {
 	MaxRows            int64    `yaml:"max_rows"`
 }
 
-// Sigma rule format (SigmaHQ/sigma)
-type sigmaRule struct {
-	Title          string         `yaml:"title"`
-	ID             string         `yaml:"id"`
-	Status         string         `yaml:"status"`
-	Description    string         `yaml:"description"`
-	Level          string         `yaml:"level"`
-	Tags           []string       `yaml:"tags"`
-	Logsource      sigmaLogsource `yaml:"logsource"`
-	Detection      sigmaDetection `yaml:"detection"`
-	Falsepositives []string       `yaml:"falsepositives"`
+type kyvernoPolicy struct {
+	APIVersion string            `yaml:"apiVersion"`
+	Kind       string            `yaml:"kind"`
+	Metadata   kyvernoMetadata   `yaml:"metadata"`
+	Spec       kyvernoPolicySpec `yaml:"spec"`
 }
 
-type sigmaLogsource struct {
-	Category string `yaml:"category"`
-	Product  string `yaml:"product"`
-	Service  string `yaml:"service"`
+type kyvernoMetadata struct {
+	Name        string            `yaml:"name"`
+	Annotations map[string]string `yaml:"annotations"`
 }
 
-type sigmaDetection struct {
-	Condition string `yaml:"condition"`
-	// Remaining fields are selection groups parsed dynamically
+type kyvernoPolicySpec struct {
+	ValidationFailureAction string        `yaml:"validationFailureAction"`
+	Rules                   []kyvernoRule `yaml:"rules"`
+}
+
+type kyvernoRule struct {
+	Name     string                 `yaml:"name"`
+	Match    kyvernoMatch           `yaml:"match"`
+	Validate kyvernoValidate        `yaml:"validate"`
+	Mutate   map[string]interface{} `yaml:"mutate"`
+	Generate map[string]interface{} `yaml:"generate"`
+}
+
+type kyvernoMatch struct {
+	Any []kyvernoMatchResource `yaml:"any"`
+	All []kyvernoMatchResource `yaml:"all"`
+}
+
+type kyvernoMatchResource struct {
+	Resources kyvernoResources `yaml:"resources"`
+}
+
+type kyvernoResources struct {
+	Kinds      []string `yaml:"kinds"`
+	Operations []string `yaml:"operations"`
+	Namespaces []string `yaml:"namespaces"`
+}
+
+type kyvernoValidate struct {
+	Message string      `yaml:"message"`
+	Deny    kyvernoDeny `yaml:"deny"`
+}
+
+type kyvernoDeny struct {
+	Conditions kyvernoConditionSet `yaml:"conditions"`
+}
+
+type kyvernoConditionSet struct {
+	Any []kyvernoCondition `yaml:"any"`
+	All []kyvernoCondition `yaml:"all"`
+}
+
+type kyvernoCondition struct {
+	Key      string `yaml:"key"`
+	Operator string `yaml:"operator"`
+	Value    string `yaml:"value"`
 }
 
 // ---- output structs ----
@@ -248,7 +284,7 @@ func fetchGitHub(ctx context.Context, source string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("fetch GitHub archive: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("GitHub returned HTTP %d for %s", resp.StatusCode, zipURL)
@@ -290,7 +326,7 @@ func extractPolicyFiles(zipData []byte) ([]string, error) {
 			continue
 		}
 		data, err := io.ReadAll(rc)
-		rc.Close()
+		_ = rc.Close()
 		if err != nil {
 			continue
 		}
@@ -300,10 +336,10 @@ func extractPolicyFiles(zipData []byte) ([]string, error) {
 			continue
 		}
 		if _, err := tmp.Write(data); err != nil {
-			tmp.Close()
+			_ = tmp.Close()
 			continue
 		}
-		tmp.Close()
+		_ = tmp.Close()
 		paths = append(paths, tmp.Name())
 	}
 
@@ -333,9 +369,11 @@ func detectFormatWithName(filename string, data []byte) importFormat {
 
 	// Probe YAML for all other formats
 	var probe struct {
-		LayerName string `yaml:"layerName"`
-		Version   string `yaml:"version"`
-		Policies  []struct {
+		APIVersion string `yaml:"apiVersion"`
+		Kind       string `yaml:"kind"`
+		LayerName  string `yaml:"layerName"`
+		Version    string `yaml:"version"`
+		Policies   []struct {
 			Rule       string `yaml:"rule"`
 			Expression string `yaml:"expression"`
 			Action     string `yaml:"action"`
@@ -347,23 +385,16 @@ func detectFormatWithName(filename string, data []byte) importFormat {
 		DenyCommandPattern []string `yaml:"deny_command_pattern"`
 		DenyQueryPattern   []string `yaml:"deny_query_pattern"`
 		AllowPath          []string `yaml:"allow_path"`
-		// Sigma-specific fields
-		Logsource struct {
-			Category string `yaml:"category"`
-			Product  string `yaml:"product"`
-		} `yaml:"logsource"`
-		Detection map[string]interface{} `yaml:"detection"`
 	}
 
 	if err := yaml.Unmarshal(data, &probe); err != nil {
 		return formatUnknown
 	}
 
-	// Sigma: has logsource AND detection with condition
-	if (probe.Logsource.Category != "" || probe.Logsource.Product != "") && len(probe.Detection) > 0 {
-		if _, hasCondition := probe.Detection["condition"]; hasCondition {
-			return formatSigma
-		}
+	// Kyverno: apiVersion contains kyverno.io AND kind is ClusterPolicy or Policy
+	if strings.Contains(probe.APIVersion, "kyverno.io") &&
+		(probe.Kind == "ClusterPolicy" || probe.Kind == "Policy") {
+		return formatKyverno
 	}
 
 	// AgentWall v2: version "2" + tools with action field
@@ -499,8 +530,8 @@ func convertFile(data []byte, sourcePath string) ([]aegisManifest, []string, err
 		return convertAgentWall(data, sourcePath)
 	case formatMCPVisor:
 		return convertMCPVisor(data, sourcePath)
-	case formatSigma:
-		return convertSigma(data, sourcePath)
+	case formatKyverno:
+		return convertKyverno(data, sourcePath)
 	case formatUnknown:
 		fallthrough
 	default:
@@ -981,424 +1012,254 @@ func newMCPVisorManifest(id, desc, cel, action, severity, source string) aegisMa
 	}
 }
 
-func appendSkipComment(comments []string, msg string) []string {
-	if len(comments) > 0 {
-		comments[len(comments)-1] = msg
+// ---- Kyverno converter ----
+
+// kyvernoKindToKubectlPattern maps a Kubernetes resource kind to the kubectl
+// command regex pattern that would trigger admission for that resource.
+func kyvernoKindToKubectlPattern(kind string, operations []string) string {
+	kindMap := map[string]string{
+		"Pod":              `kubectl.*(delete\s+pod|exec|run)`,
+		"Deployment":       `kubectl.*(delete\s+deployment|scale|rollout)`,
+		"Service":          `kubectl.*(delete\s+service|expose)`,
+		"ConfigMap":        `kubectl.*(delete\s+configmap|create\s+configmap)`,
+		"Secret":           `kubectl.*(get\s+secret|create\s+secret)`,
+		"Namespace":        `kubectl.*(delete\s+namespace|create\s+namespace)`,
+		"ClusterRole":      `kubectl.*(create\s+clusterrole|delete\s+clusterrole)`,
+		"Node":             `kubectl.*(drain|cordon|delete\s+node)`,
+		"PersistentVolume": `kubectl.*delete\s+pv`,
 	}
-	return comments
+
+	opPatterns := map[string]string{
+		"DELETE": `kubectl.*delete.*`,
+		"CREATE": `kubectl.*(create|run|apply).*`,
+		"UPDATE": `kubectl.*(patch|edit|set).*`,
+	}
+
+	// If operations are specified, derive pattern from operations
+	if len(operations) > 0 {
+		var parts []string
+		seen := map[string]bool{}
+		for _, op := range operations {
+			if p, ok := opPatterns[strings.ToUpper(op)]; ok && !seen[p] {
+				parts = append(parts, p)
+				seen[p] = true
+			}
+		}
+		if len(parts) == 1 {
+			return parts[0]
+		}
+		if len(parts) > 1 {
+			return strings.Join(parts, "|")
+		}
+	}
+
+	// Fall back to kind-based pattern
+	if p, ok := kindMap[kind]; ok {
+		return p
+	}
+	return `kubectl.*`
 }
 
-// ---- Sigma converter (SigmaHQ/sigma format) ----
-
-func convertSigma(data []byte, sourcePath string) ([]aegisManifest, []string, error) {
-	var rule sigmaRule
-	if err := yaml.Unmarshal(data, &rule); err != nil {
-		return nil, nil, fmt.Errorf("parse Sigma YAML: %w", err)
-	}
-
-	// Parse detection as raw map to get selection groups
-	var detectionRaw map[string]interface{}
-	var rawRule struct {
-		Detection map[string]interface{} `yaml:"detection"`
-	}
-	if err := yaml.Unmarshal(data, &rawRule); err != nil {
-		return nil, nil, fmt.Errorf("parse Sigma detection: %w", err)
-	}
-	detectionRaw = rawRule.Detection
-
-	condition, _ := detectionRaw["condition"].(string)
-	if condition == "" {
-		return nil, nil, fmt.Errorf("sigma rule missing detection.condition")
-	}
-
-	cel, comment := translateSigmaDetection(detectionRaw, condition)
-	action := sigmaLevelToAction(rule.Level)
-	tools := sigmaLogsourceToTools(rule.Logsource)
-
-	id := sanitizeID(rule.ID)
-	if id == "" {
-		id = sanitizeID(rule.Title)
-	}
-	if id == "" {
-		id = "sigma-" + sanitizeID(filepath.Base(sourcePath))
-	}
-
-	desc := rule.Description
-	if desc == "" {
-		desc = rule.Title
-	}
-
-	severity := sigmaLevelToSeverity(rule.Level)
-
-	annotations := map[string]string{
-		"aegis.io/imported-from": filepath.Base(sourcePath),
-		"aegis.io/severity":      severity,
-		"aegis.io/source-format": "sigma",
-	}
-	if rule.ID != "" {
-		annotations["aegis.io/sigma-id"] = rule.ID
-	}
-	if len(rule.Tags) > 0 {
-		annotations["aegis.io/sigma-tags"] = strings.Join(rule.Tags, ",")
-	}
-
-	m := aegisManifest{
-		APIVersion: "aegis.io/v1",
-		Kind:       "PolicyTemplate",
-		Metadata: aegisMetadata{
-			Name:        id,
-			Annotations: annotations,
-		},
-		Spec: aegisPolicySpec{
-			Description: desc,
-			MatchConstraints: aegisMatchConstraints{
-				Tools: tools,
-			},
-			Validations: []aegisValidation{
-				{
-					Expression: cel,
-					Message:    fmt.Sprintf("Sigma: %s", rule.Title),
-					Action:     action,
-				},
-			},
-			DefaultAction: "ALLOW",
-		},
-	}
-
-	return []aegisManifest{m}, []string{comment}, nil
-}
-
-func sigmaLevelToAction(level string) string {
-	switch strings.ToLower(level) {
+// kyvernoSeverityToAction maps Kyverno annotation severity to Aegis action,
+// potentially overriding the validationFailureAction-derived action.
+func kyvernoSeverityToAction(severity, baseAction string) string {
+	switch strings.ToLower(severity) {
 	case "critical", "high":
 		return "DENY"
 	case "medium":
+		if baseAction == "DENY" {
+			return "DENY"
+		}
 		return "REQUIRE_APPROVAL"
+	case "low":
+		return "AUDIT"
+	default:
+		return baseAction
+	}
+}
+
+// kyvernoValidationFailureActionToAction maps Kyverno's validationFailureAction to Aegis action.
+func kyvernoValidationFailureActionToAction(vfa string) string {
+	switch strings.ToLower(vfa) {
+	case "enforce":
+		return "DENY"
 	default:
 		return "AUDIT"
 	}
 }
 
-func sigmaLevelToSeverity(level string) string {
-	switch strings.ToLower(level) {
-	case "critical":
-		return "critical"
-	case "high":
-		return "high"
-	case "medium":
-		return "medium"
-	case "low", "informational", "":
-		return "low"
-	default:
-		return "low"
-	}
+// kyvernoHasJMESPath returns true if the condition key contains a JMESPath template expression.
+func kyvernoHasJMESPath(key string) bool {
+	return strings.Contains(key, "{{") && strings.Contains(key, "}}")
 }
 
-func sigmaLogsourceToTools(ls sigmaLogsource) []string {
-	switch strings.ToLower(ls.Category) {
-	case "process_creation":
-		return []string{"Bash"}
-	case "file_event", "file_access", "file_delete", "file_rename", "file_change":
-		return []string{"Read", "Write", "Edit"}
-	case "network_connection", "dns_query", "firewall":
-		return []string{"Bash"}
-	default:
-		return []string{}
+// convertKyverno translates a Kyverno ClusterPolicy or Policy into Aegis manifests.
+func convertKyverno(data []byte, sourcePath string) ([]aegisManifest, []string, error) {
+	var pol kyvernoPolicy
+	if err := yaml.Unmarshal(data, &pol); err != nil {
+		return nil, nil, fmt.Errorf("parse Kyverno YAML: %w", err)
 	}
-}
 
-func translateSigmaDetection(detection map[string]interface{}, condition string) (cel string, comment string) {
-	selections := make(map[string]string)
-	var comments []string
+	annotations := pol.Metadata.Annotations
+	severity := normalizeSeverity(annotations["policies.kyverno.io/severity"])
+	category := annotations["policies.kyverno.io/category"]
+	description := annotations["policies.kyverno.io/description"]
+	if description == "" {
+		description = pol.Metadata.Name
+	}
 
-	for key, val := range detection {
-		if key == "condition" || key == "timeframe" {
+	baseAction := kyvernoValidationFailureActionToAction(pol.Spec.ValidationFailureAction)
+
+	manifests := make([]aegisManifest, 0)
+	comments := make([]string, 0)
+
+	for _, rule := range pol.Spec.Rules {
+		// Skip non-validate rule types
+		if len(rule.Mutate) > 0 {
+			id := fmt.Sprintf("kyverno-%s-%s", sanitizeID(pol.Metadata.Name), sanitizeID(rule.Name))
+			m, comment := kyvernoImportTODO(id, "mutate rule — Aegis does not mutate requests",
+				description, severity, category, filepath.Base(sourcePath))
+			manifests = append(manifests, m)
+			comments = append(comments, comment)
 			continue
 		}
-		selCEL, selComment := translateSigmaSelection(key, val)
-		selections[key] = selCEL
-		if selComment != "" {
-			comments = append(comments, selComment)
+		if len(rule.Generate) > 0 {
+			id := fmt.Sprintf("kyverno-%s-%s", sanitizeID(pol.Metadata.Name), sanitizeID(rule.Name))
+			m, comment := kyvernoImportTODO(id, "generate rule — Aegis does not generate resources",
+				description, severity, category, filepath.Base(sourcePath))
+			manifests = append(manifests, m)
+			comments = append(comments, comment)
+			continue
 		}
-	}
 
-	resultCEL, condComment := translateSigmaCondition(condition, selections)
-	if condComment != "" {
-		comments = append(comments, condComment)
-	}
-
-	if len(comments) > 0 {
-		comment = strings.Join(comments, "; ")
-	}
-
-	return resultCEL, comment
-}
-
-func translateSigmaSelection(name string, val interface{}) (cel string, comment string) {
-	valMap, isMap := val.(map[string]interface{})
-	if !isMap {
-		return "true", fmt.Sprintf("IMPORT_TODO: selection %q has unsupported format", name)
-	}
-
-	var conditions []string
-	var comments []string
-
-	for fieldModifier, fieldVal := range valMap {
-		fieldCEL, fieldComment := translateSigmaField(fieldModifier, fieldVal)
-		if fieldCEL != "" {
-			conditions = append(conditions, fieldCEL)
+		// Collect all matched resources across any/all
+		allResources := append(rule.Match.Any, rule.Match.All...)
+		if len(allResources) == 0 {
+			id := fmt.Sprintf("kyverno-%s-%s", sanitizeID(pol.Metadata.Name), sanitizeID(rule.Name))
+			m, comment := kyvernoImportTODO(id, "no match.any or match.all resources found",
+				description, severity, category, filepath.Base(sourcePath))
+			manifests = append(manifests, m)
+			comments = append(comments, comment)
+			continue
 		}
-		if fieldComment != "" {
-			comments = append(comments, fieldComment)
-		}
-	}
 
-	if len(conditions) == 0 {
-		return "true", strings.Join(comments, "; ")
-	}
-
-	cel = strings.Join(conditions, " && ")
-	if len(comments) > 0 {
-		comment = strings.Join(comments, "; ")
-	}
-	return cel, comment
-}
-
-func translateSigmaField(fieldModifier string, val interface{}) (cel string, comment string) {
-	parts := strings.Split(fieldModifier, "|")
-	fieldName := parts[0]
-	modifiers := parts[1:]
-
-	celField := sigmaToCELField(fieldName)
-	if celField == "" {
-		return "", fmt.Sprintf("IMPORT_TODO: field %q cannot be mapped to Aegis context", fieldName)
-	}
-
-	values := extractSigmaValues(val)
-	if len(values) == 0 {
-		return "", fmt.Sprintf("IMPORT_TODO: field %q has no values", fieldName)
-	}
-
-	matchAll := false
-	matchType := "contains"
-
-	for _, mod := range modifiers {
-		switch strings.ToLower(mod) {
-		case "contains":
-			matchType = "contains"
-		case "startswith":
-			matchType = "startswith"
-		case "endswith":
-			matchType = "endswith"
-		case "re":
-			matchType = "regex"
-		case "all":
-			matchAll = true
-		case "base64offset", "windash", "wide", "base64", "cidr":
-			return "", fmt.Sprintf("IMPORT_TODO: modifier |%s not supported", mod)
-		}
-	}
-
-	var exprs []string
-	for _, v := range values {
-		expr := buildSigmaFieldExpr(celField, v, matchType)
-		exprs = append(exprs, expr)
-	}
-
-	if len(exprs) == 0 {
-		return "true", ""
-	}
-
-	if matchAll || len(exprs) == 1 {
-		return strings.Join(exprs, " && "), ""
-	}
-
-	return "(" + strings.Join(exprs, " || ") + ")", ""
-}
-
-func sigmaToCELField(field string) string {
-	field = strings.ToLower(field)
-	switch field {
-	case "commandline", "command_line", "cmd":
-		return "request.args.command"
-	case "image", "parentimage", "originalfilename", "currentdirectory":
-		return ""
-	case "user", "username", "accountname":
-		return ""
-	case "targetfilename", "filepath", "filename", "path":
-		return "request.args.file_path"
-	case "destinationip", "destinationhostname", "destinationport":
-		return ""
-	case "sourceip", "sourcehostname", "sourceport":
-		return ""
-	case "hashes", "md5", "sha1", "sha256", "imphash":
-		return ""
-	case "processid", "parentprocessid", "pid", "ppid":
-		return ""
-	case "queryname", "query":
-		return "request.args.query"
-	default:
-		return ""
-	}
-}
-
-func extractSigmaValues(val interface{}) []string {
-	switch v := val.(type) {
-	case string:
-		return []string{v}
-	case []interface{}:
-		var result []string
-		for _, item := range v {
-			if s, ok := item.(string); ok {
-				result = append(result, s)
+		// Check if all deny conditions involve JMESPath — if so, still generate
+		// a kubectl pattern match as the base but mark with IMPORT_TODO for conditions.
+		allConditions := append(rule.Validate.Deny.Conditions.Any, rule.Validate.Deny.Conditions.All...)
+		hasJMESPath := false
+		for _, c := range allConditions {
+			if kyvernoHasJMESPath(c.Key) {
+				hasJMESPath = true
+				break
 			}
 		}
-		return result
-	default:
-		return nil
-	}
-}
 
-func buildSigmaFieldExpr(field, value, matchType string) string {
-	escaped := escapeStringForCEL(value)
-	switch matchType {
-	case "contains":
-		return fmt.Sprintf(`%s.contains(%q)`, field, escaped)
-	case "startswith":
-		return fmt.Sprintf(`%s.startsWith(%q)`, field, escaped)
-	case "endswith":
-		return fmt.Sprintf(`%s.endsWith(%q)`, field, escaped)
-	case "regex":
-		return fmt.Sprintf(`%s.matches(%q)`, field, escaped)
-	default:
-		return fmt.Sprintf(`%s.contains(%q)`, field, escaped)
-	}
-}
-
-func escapeStringForCEL(s string) string {
-	return strings.ReplaceAll(s, `\`, `\\`)
-}
-
-func translateSigmaCondition(condition string, selections map[string]string) (cel string, comment string) {
-	condition = strings.TrimSpace(condition)
-
-	if sel, ok := selections[condition]; ok {
-		return sel, ""
-	}
-
-	if strings.HasPrefix(condition, "1 of ") {
-		pattern := strings.TrimPrefix(condition, "1 of ")
-		return buildSigmaOneOf(pattern, selections)
-	}
-
-	if strings.HasPrefix(condition, "all of ") {
-		pattern := strings.TrimPrefix(condition, "all of ")
-		return buildSigmaAllOf(pattern, selections)
-	}
-
-	if strings.Contains(condition, " and not ") {
-		parts := strings.SplitN(condition, " and not ", 2)
-		if len(parts) == 2 {
-			selCEL, selExists := selections[strings.TrimSpace(parts[0])]
-			filterCEL, filterExists := selections[strings.TrimSpace(parts[1])]
-			if selExists && filterExists {
-				return fmt.Sprintf("(%s) && !(%s)", selCEL, filterCEL), ""
-			}
-		}
-	}
-
-	if strings.Contains(condition, " and ") {
-		parts := strings.Split(condition, " and ")
-		var cels []string
-		for _, p := range parts {
-			p = strings.TrimSpace(p)
-			if strings.HasPrefix(p, "not ") {
-				inner := strings.TrimPrefix(p, "not ")
-				if sel, ok := selections[inner]; ok {
-					cels = append(cels, fmt.Sprintf("!(%s)", sel))
+		for _, matchRes := range allResources {
+			for _, kind := range matchRes.Resources.Kinds {
+				if kind == "" {
+					continue
 				}
-			} else if sel, ok := selections[p]; ok {
-				cels = append(cels, sel)
+
+				ops := matchRes.Resources.Operations
+				kubectlPattern := kyvernoKindToKubectlPattern(kind, ops)
+				cel := fmt.Sprintf(`tool == "Bash" && request.args.command.matches("(?i)%s")`, kubectlPattern)
+
+				action := kyvernoSeverityToAction(annotations["policies.kyverno.io/severity"], baseAction)
+
+				msg := rule.Validate.Message
+				if msg == "" {
+					msg = description
+				}
+
+				id := fmt.Sprintf("kyverno-%s-%s-%s",
+					sanitizeID(pol.Metadata.Name),
+					sanitizeID(rule.Name),
+					sanitizeID(kind))
+
+				annots := map[string]string{
+					"aegis.io/imported-from": filepath.Base(sourcePath),
+					"aegis.io/severity":      severity,
+				}
+				if category != "" {
+					annots["kyverno.io/category"] = category
+				}
+
+				m := aegisManifest{
+					APIVersion: "aegis.io/v1",
+					Kind:       "PolicyTemplate",
+					Metadata: aegisMetadata{
+						Name:        id,
+						Annotations: annots,
+					},
+					Spec: aegisPolicySpec{
+						Description: description,
+						MatchConstraints: aegisMatchConstraints{
+							Tools: []string{"Bash"},
+						},
+						Validations: []aegisValidation{
+							{
+								Expression: cel,
+								Message:    msg,
+								Action:     action,
+							},
+						},
+						DefaultAction: "ALLOW",
+					},
+				}
+
+				comment := ""
+				if hasJMESPath {
+					comment = fmt.Sprintf("IMPORT_TODO: JMESPath conditions in %s/%s could not be translated — kubectl pattern match generated as base condition only", pol.Metadata.Name, rule.Name)
+				}
+
+				manifests = append(manifests, m)
+				comments = append(comments, comment)
 			}
-		}
-		if len(cels) > 0 {
-			return strings.Join(cels, " && "), ""
 		}
 	}
 
-	if strings.Contains(condition, " or ") {
-		parts := strings.Split(condition, " or ")
-		var cels []string
-		for _, p := range parts {
-			p = strings.TrimSpace(p)
-			if sel, ok := selections[p]; ok {
-				cels = append(cels, sel)
-			}
-		}
-		if len(cels) > 0 {
-			return "(" + strings.Join(cels, " || ") + ")", ""
-		}
-	}
-
-	return "true", fmt.Sprintf("IMPORT_TODO: complex condition %q requires manual translation", condition)
+	return manifests, comments, nil
 }
 
-func buildSigmaOneOf(pattern string, selections map[string]string) (string, string) {
-	pattern = strings.TrimSpace(pattern)
-
-	if pattern == "them" || pattern == "*" {
-		var cels []string
-		for _, cel := range selections {
-			if cel != "" && cel != "true" {
-				cels = append(cels, cel)
-			}
-		}
-		if len(cels) == 0 {
-			return "true", "IMPORT_TODO: no valid selections for '1 of them'"
-		}
-		return "(" + strings.Join(cels, " || ") + ")", ""
+// kyvernoImportTODO creates a placeholder manifest for rules that cannot be translated.
+func kyvernoImportTODO(id, reason, description, severity, category, source string) (aegisManifest, string) {
+	annots := map[string]string{
+		"aegis.io/imported-from": source,
+		"aegis.io/severity":      severity,
 	}
-
-	prefix := strings.TrimSuffix(pattern, "*")
-	var cels []string
-	for name, cel := range selections {
-		if strings.HasPrefix(name, prefix) && cel != "" && cel != "true" {
-			cels = append(cels, cel)
-		}
+	if category != "" {
+		annots["kyverno.io/category"] = category
 	}
-	if len(cels) == 0 {
-		return "true", fmt.Sprintf("IMPORT_TODO: no selections match pattern %q", pattern)
+	m := aegisManifest{
+		APIVersion: "aegis.io/v1",
+		Kind:       "PolicyTemplate",
+		Metadata: aegisMetadata{
+			Name:        id,
+			Annotations: annots,
+		},
+		Spec: aegisPolicySpec{
+			Description: description,
+			MatchConstraints: aegisMatchConstraints{
+				Tools: []string{},
+			},
+			Validations: []aegisValidation{
+				{
+					Expression: "false",
+					Message:    fmt.Sprintf("IMPORT_TODO: %s — manual review required", reason),
+					Action:     "AUDIT",
+				},
+			},
+			DefaultAction: "ALLOW",
+		},
 	}
-	return "(" + strings.Join(cels, " || ") + ")", ""
+	return m, fmt.Sprintf("IMPORT_TODO: %s", reason)
 }
 
-func buildSigmaAllOf(pattern string, selections map[string]string) (string, string) {
-	pattern = strings.TrimSpace(pattern)
-
-	if pattern == "them" || pattern == "*" {
-		var cels []string
-		for _, cel := range selections {
-			if cel != "" && cel != "true" {
-				cels = append(cels, cel)
-			}
-		}
-		if len(cels) == 0 {
-			return "true", "IMPORT_TODO: no valid selections for 'all of them'"
-		}
-		return strings.Join(cels, " && "), ""
+func appendSkipComment(comments []string, msg string) []string {
+	if len(comments) > 0 {
+		comments[len(comments)-1] = msg
 	}
-
-	prefix := strings.TrimSuffix(pattern, "*")
-	var cels []string
-	for name, cel := range selections {
-		if strings.HasPrefix(name, prefix) && cel != "" && cel != "true" {
-			cels = append(cels, cel)
-		}
-	}
-	if len(cels) == 0 {
-		return "true", fmt.Sprintf("IMPORT_TODO: no selections match pattern %q", pattern)
-	}
-	return strings.Join(cels, " && "), ""
+	return comments
 }
 
 // ---- rule translation helpers ----

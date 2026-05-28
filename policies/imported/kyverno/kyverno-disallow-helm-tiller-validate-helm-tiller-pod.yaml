@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-disallow-helm-tiller-validate-helm-tiller-pod
+    annotations:
+        aegis.io/imported-from: aegis-import-9629892.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Sample
+spec:
+    description: Tiller, found in Helm v2, has known security challenges. It requires administrative privileges and acts as a shared resource accessible to any authenticated user. Tiller can lead to privilege escalation as restricted users can impact other users. It is recommended to use Helm v3+ which does not contain Tiller for these reasons. This policy validates that there is not an image containing the name `tiller`.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+          message: Helm Tiller is not allowed
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

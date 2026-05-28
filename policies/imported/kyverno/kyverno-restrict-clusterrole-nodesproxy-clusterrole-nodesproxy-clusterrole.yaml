@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-restrict-clusterrole-nodesproxy-clusterrole-nodesproxy-clusterrole
+    annotations:
+        aegis.io/imported-from: aegis-import-2008313739.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Sample
+spec:
+    description: 'A ClusterRole with nodes/proxy resource access allows a user to perform anything the kubelet API allows. It also allows users to bypass the API server and talk directly to the kubelet potentially circumventing audits and admission controllers. See https://blog.aquasec.com/privilege-escalation-kubernetes-rbac for more info. This policy prevents the creation of a ClusterRole if it contains the nodes/proxy resource. '
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(create\s+clusterrole|delete\s+clusterrole)")
+          message: A ClusterRole containing the nodes/proxy resource is not allowed.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

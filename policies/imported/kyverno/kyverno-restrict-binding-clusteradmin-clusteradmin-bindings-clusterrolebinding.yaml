@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-restrict-binding-clusteradmin-clusteradmin-bindings-clusterrolebinding
+    annotations:
+        aegis.io/imported-from: aegis-import-1291463457.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Security
+spec:
+    description: The cluster-admin ClusterRole allows any action to be performed on any resource in the cluster and its granting should be heavily restricted. This policy prevents binding to the cluster-admin ClusterRole in RoleBinding or ClusterRoleBinding resources.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: Binding to cluster-admin is not allowed.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

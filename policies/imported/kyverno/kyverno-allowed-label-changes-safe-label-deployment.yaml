@@ -1,0 +1,20 @@
+# IMPORT_TODO: JMESPath conditions in allowed-label-changes/safe-label could not be translated — kubectl pattern match generated as base condition only
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-allowed-label-changes-safe-label-deployment
+    annotations:
+        aegis.io/imported-from: aegis-import-659068830.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Other
+spec:
+    description: In some cases, operations teams need a type of limited access to change resources during troubleshooting or outage mitigation. This policy demonstrates how to prevent modification to labels except one with the key `breakglass`. Changing, adding, or deleting any other labels is denied.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+deployment|scale|rollout)")
+          message: The only label that may be removed or changed is `breakglass`.
+          action: DENY
+    defaultAction: ALLOW

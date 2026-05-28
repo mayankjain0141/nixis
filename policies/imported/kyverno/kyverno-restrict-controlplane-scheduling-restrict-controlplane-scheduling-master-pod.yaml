@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-restrict-controlplane-scheduling-restrict-controlplane-scheduling-master-pod
+    annotations:
+        aegis.io/imported-from: aegis-import-2053220407.yaml
+        aegis.io/severity: low
+        kyverno.io/category: Sample
+spec:
+    description: Scheduling non-system Pods to control plane nodes (which run kubelet) is often undesirable because it takes away resources from the control plane components and can represent a possible security threat vector. This policy prevents users from setting a toleration in a Pod spec which allows running on control plane nodes with the taint key `node-role.kubernetes.io/master`.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+          message: Pods may not use tolerations which schedule on control plane nodes.
+          action: AUDIT
+    defaultAction: ALLOW

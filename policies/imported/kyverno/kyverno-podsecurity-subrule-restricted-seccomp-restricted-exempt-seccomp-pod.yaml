@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-podsecurity-subrule-restricted-seccomp-restricted-exempt-seccomp-pod
+    annotations:
+        aegis.io/imported-from: aegis-import-1965618479.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Pod Security
+spec:
+    description: The restricted profile of the Pod Security Standards, which is inclusive of the baseline profile, is a collection of all the most common configurations that can be taken to secure Pods. Beginning with Kyverno 1.8, an entire profile may be assigned to the cluster through a single rule. In some cases, specific exemptions must be made on a per-control basis. This policy configures the restricted profile through the latest version of the Pod Security Standards cluster wide while completely exempting Seccomp control check.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+          message: The restricted profile of the Pod Security Standards, which is inclusive of the baseline profile, is a collection of all the most common configurations that can be taken to secure Pods. Beginning with Kyverno 1.8, an entire profile may be assigned to the cluster through a single rule. In some cases, specific exemptions must be made on a per-control basis. This policy configures the restricted profile through the latest version of the Pod Security Standards cluster wide while completely exempting Seccomp control check.
+          action: DENY
+    defaultAction: ALLOW

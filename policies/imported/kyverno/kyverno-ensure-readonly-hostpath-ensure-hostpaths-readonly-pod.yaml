@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-ensure-readonly-hostpath-ensure-hostpaths-readonly-pod
+    annotations:
+        aegis.io/imported-from: aegis-import-2566544100.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Other
+spec:
+    description: Pods which are allowed to mount hostPath volumes in read/write mode pose a security risk even if confined to a "safe" file system on the host and may escape those confines (see https://blog.aquasec.com/kubernetes-security-pod-escape-log-mounts). The only true way to ensure safety is to enforce that all Pods mounting hostPath volumes do so in read only mode. This policy checks all containers for any hostPath volumes and ensures they are explicitly mounted in readOnly mode.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+          message: All hostPath volumes must be mounted as readOnly.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

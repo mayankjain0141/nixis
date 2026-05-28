@@ -1,0 +1,20 @@
+# IMPORT_TODO: JMESPath conditions in namespace-inventory-check/resourcequotas could not be translated — kubectl pattern match generated as base condition only
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-namespace-inventory-check-resourcequotas-namespace
+    annotations:
+        aegis.io/imported-from: aegis-import-4040209039.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Other
+spec:
+    description: In cases such as multi-tenancy where new Namespaces must be fully provisioned before they can be used, it may not be easy to declare and understand if/when the Namespace is ready. Having a policy which defines all the resources which are required for each Namespace can assist in determining compliance. This policy, expected to be run in background mode only, performs a Namespace inventory check to ensure that all Namespaces have a ResourceQuota and NetworkPolicy. Additional rules may be written to extend the check for your needs. By default, background scans occur every one hour which may be changed with an additional container flag. Please see the installation documentation for details.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+namespace|create\s+namespace)")
+          message: Every Namespace must have at least one ResourceQuota.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

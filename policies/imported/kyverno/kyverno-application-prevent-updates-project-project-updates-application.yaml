@@ -1,0 +1,20 @@
+# IMPORT_TODO: JMESPath conditions in application-prevent-updates-project/project-updates could not be translated — kubectl pattern match generated as base condition only
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-application-prevent-updates-project-project-updates-application
+    annotations:
+        aegis.io/imported-from: aegis-import-698878228.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Argo
+spec:
+    description: This policy prevents updates to the project field after an Application is created.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: The spec.project cannot be changed once the Application is created.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

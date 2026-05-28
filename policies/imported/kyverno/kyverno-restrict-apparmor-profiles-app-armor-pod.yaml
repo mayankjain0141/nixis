@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-restrict-apparmor-profiles-app-armor-pod
+    annotations:
+        aegis.io/imported-from: aegis-import-2988374769.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Pod Security Standards (Baseline)
+spec:
+    description: On supported hosts, the 'runtime/default' AppArmor profile is applied by default. The default policy should prevent overriding or disabling the policy, or restrict overrides to an allowed set of profiles. This policy ensures Pods do not specify any other AppArmor profiles than `runtime/default` or `localhost/*`.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+          message: Specifying other AppArmor profiles is disallowed. The annotation `container.apparmor.security.beta.kubernetes.io` if defined must not be set to anything other than `runtime/default` or `localhost/*`.
+          action: DENY
+    defaultAction: ALLOW

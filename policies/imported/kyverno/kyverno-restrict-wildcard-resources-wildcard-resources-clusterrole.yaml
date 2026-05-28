@@ -1,0 +1,20 @@
+# IMPORT_TODO: JMESPath conditions in restrict-wildcard-resources/wildcard-resources could not be translated — kubectl pattern match generated as base condition only
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-restrict-wildcard-resources-wildcard-resources-clusterrole
+    annotations:
+        aegis.io/imported-from: aegis-import-4142925154.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Security, EKS Best Practices
+spec:
+    description: Wildcards ('*') in resources grants access to all of the resources referenced by the given API group and does not follow the principal of least privilege. As much as possible, avoid such open resources unless scoped to perhaps a custom API group. This policy blocks any Role or ClusterRole that contains a wildcard entry in the resources list found in any rule.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(create\s+clusterrole|delete\s+clusterrole)")
+          message: Use of a wildcard ('*') in any resources is forbidden.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

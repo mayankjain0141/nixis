@@ -1,0 +1,20 @@
+# IMPORT_TODO: JMESPath conditions in record-creation-details/prevent-updates-deletes-userinfo-annotations could not be translated — kubectl pattern match generated as base condition only
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-record-creation-details-prevent-updates-deletes-userinfo-annotations--
+    annotations:
+        aegis.io/imported-from: aegis-import-1653688682.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Other
+spec:
+    description: Kubernetes by default does not make a record of who or what created a resource in that resource itself. It must be retrieved from an audit log, if enabled, which can make it difficult for cluster operators to know who was responsible for an object's creation. This policy writes an annotation with the key `kyverno.io/created-by` having all the userInfo fields present in the AdmissionReview request for any object being created. It then protects this annotation from tampering or removal making it immutable. Although this policy matches on all kinds ("*") it is highly recommend to more narrowly scope it to only the resources which should be labeled.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: The annotation kyverno.io/created-by is protected and may not be altered or removed.
+          action: DENY
+    defaultAction: ALLOW

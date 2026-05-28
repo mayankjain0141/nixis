@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-check-nvidia-gpus-check-nvidia-gpus-pod
+    annotations:
+        aegis.io/imported-from: aegis-import-1759069009.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Other
+spec:
+    description: Containers which request use of an NVIDIA GPU often need to be authored to consume them via a CUDA environment variable called NVIDIA_VISIBLE_DEVICES. This policy checks the containers which request a GPU to ensure they have been authored with this environment variable.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+          message: Images which reserve NVIDIA GPUs must be built to use them.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

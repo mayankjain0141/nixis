@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-restrict-jobs-restrict-job-from-cronjob-job
+    annotations:
+        aegis.io/imported-from: aegis-import-562739037.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Other
+spec:
+    description: Jobs can be created directly and indirectly via a CronJob controller. In some cases, users may want to only allow Jobs if they are created via a CronJob. This policy restricts Jobs so they may only be created by a CronJob.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: Jobs are only allowed if spawned from CronJobs.
+          action: DENY
+    defaultAction: ALLOW

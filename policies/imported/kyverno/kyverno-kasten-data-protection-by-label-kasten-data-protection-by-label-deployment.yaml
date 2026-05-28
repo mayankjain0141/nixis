@@ -1,0 +1,21 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-kasten-data-protection-by-label-kasten-data-protection-by-label-deployment
+    annotations:
+        aegis.io/imported-from: aegis-import-807667021.yaml
+        aegis.io/severity: low
+        kyverno.io/category: Veeam Kasten
+spec:
+    description: Check the 'dataprotection' label for production Deployments and StatefulSet workloads. Use in combination with 'kasten-generate-example-backup-policy' policy to generate a Kasten policy for the workload namespace, if it doesn't already exist.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+deployment|scale|rollout)")
+          message: |-
+            "Deployments and StatefulSets with 'purpose=production' label must specify a valid 'dataprotection' label:
+            "dataprotection=kasten-example" - <Insert human readable settings for each option> "dataprotection=none" - No local snapshots or backups
+          action: AUDIT
+    defaultAction: ALLOW

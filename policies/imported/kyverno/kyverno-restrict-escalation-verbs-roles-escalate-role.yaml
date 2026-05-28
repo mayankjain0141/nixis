@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-restrict-escalation-verbs-roles-escalate-role
+    annotations:
+        aegis.io/imported-from: aegis-import-3462711417.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Security
+spec:
+    description: The verbs `impersonate`, `bind`, and `escalate` may all potentially lead to privilege escalation and should be tightly controlled. This policy prevents use of these verbs in Role or ClusterRole resources.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+          message: Use of verbs `escalate`, `bind`, and `impersonate` are forbidden.
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

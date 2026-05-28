@@ -1,0 +1,20 @@
+# IMPORT_TODO: JMESPath conditions in require-unique-uid-per-workload/require-unique-uid could not be translated — kubectl pattern match generated as base condition only
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-require-unique-uid-per-workload-require-unique-uid-pod
+    annotations:
+        aegis.io/imported-from: aegis-import-857619627.yaml
+        aegis.io/severity: low
+        kyverno.io/category: Other
+spec:
+    description: Two distinct workloads should not share a UID so that in a multitenant environment, applications  from different projects never run as the same user ID. When using persistent storage,  any files created by applications will also have different ownership in the file system. Running processes for applications as different user IDs means that if a security  vulnerability were ever discovered in the underlying container runtime, and an application  were able to break out of the container to the host, they would not be able to interact  with processes owned by other users, or from other applications, in other projects.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+          message: Only cluster-unique UIDs are allowed
+          action: AUDIT
+    defaultAction: ALLOW
