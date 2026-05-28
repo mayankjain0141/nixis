@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
@@ -13,6 +15,7 @@ import (
 	"time"
 
 	"github.com/mayjain/aegis/internal/audit"
+	"github.com/mayjain/aegis/internal/ifc"
 	"github.com/mayjain/aegis/pkg/aegis"
 )
 
@@ -98,7 +101,7 @@ func startDaemon(t *testing.T, engine aegis.Engine) (*Daemon, <-chan struct{}) {
 
 	cfg := Config{SocketPath: socketPath}
 	w, auditCancel, auditDone := newTestAuditWriter(t)
-	d := New(cfg, engine, w)
+	d := New(cfg, engine, w, nil, nil)
 	d.SetAuditContext(auditCancel, auditDone)
 
 	ready := make(chan struct{})
@@ -267,7 +270,7 @@ func TestDaemon_GracefulShutdown(t *testing.T) {
 
 	cfg := Config{SocketPath: socketPath}
 	w, auditCancel, auditDone := newTestAuditWriter(t)
-	d := New(cfg, slowEngine{delay: slowDelay}, w)
+	d := New(cfg, slowEngine{delay: slowDelay}, w, nil, nil)
 	d.SetAuditContext(auditCancel, auditDone)
 
 	ready := make(chan struct{})
@@ -311,4 +314,115 @@ func TestDaemon_GracefulShutdown(t *testing.T) {
 	}
 
 	requestCompleted.Wait()
+}
+
+// mockStreamTap records the events it receives via Emit.
+type mockStreamTap struct {
+	mu     sync.Mutex
+	events []aegis.StreamEvent
+}
+
+func (m *mockStreamTap) Emit(_ context.Context, evt aegis.StreamEvent) {
+	m.mu.Lock()
+	m.events = append(m.events, evt)
+	m.mu.Unlock()
+}
+
+func (m *mockStreamTap) count() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return len(m.events)
+}
+
+// startDaemonWithTap creates a Daemon wired with the given StreamTap (can be nil).
+func startDaemonWithTap(t *testing.T, engine aegis.Engine, tap aegis.StreamTap, sessions *ifc.SessionLabels) (*Daemon, <-chan struct{}) {
+	t.Helper()
+	socketPath := testSocketPath()
+	t.Cleanup(func() { _ = os.Remove(socketPath) })
+
+	cfg := Config{SocketPath: socketPath}
+	w, auditCancel, auditDone := newTestAuditWriter(t)
+
+	d := &Daemon{
+		cfg:         cfg,
+		engine:      engine,
+		auditWriter: w,
+		streamSrv:   tap,
+		sessions:    sessions,
+		sem:         make(chan struct{}, maxConcurrentConnections),
+	}
+	cfg.applyDefaults()
+	d.SetAuditContext(auditCancel, auditDone)
+
+	ready := make(chan struct{})
+	d.setReadyCh(ready)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	runDone := make(chan error, 1)
+	go func() { runDone <- d.Run(ctx) }()
+
+	t.Cleanup(func() {
+		cancel()
+		select {
+		case <-runDone:
+		case <-time.After(5 * time.Second):
+		}
+	})
+
+	return d, ready
+}
+
+func TestDaemon_StreamEmit(t *testing.T) {
+	tap := &mockStreamTap{}
+	d, ready := startDaemonWithTap(t, allowEngine{}, tap, nil)
+	waitReady(t, ready)
+
+	_ = sendRequest(t, d.cfg.SocketPath, aegis.CheckRequest{
+		Tool:      "ReadFile",
+		SessionID: "sess-stream-test",
+	})
+
+	// Allow time for the async emit path.
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		if tap.count() > 0 {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	if tap.count() == 0 {
+		t.Error("expected at least one StreamEvent after Evaluate, got 0")
+	}
+}
+
+func TestDaemon_HealthzEndpoint(t *testing.T) {
+	d, ready := startDaemonWithTap(t, allowEngine{}, nil, nil)
+	waitReady(t, ready)
+
+	// Poll until /healthz responds or timeout.
+	var resp *http.Response
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		var err error
+		resp, err = http.Get("http://127.0.0.1:9091/healthz")
+		if err == nil {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if resp == nil {
+		t.Fatal("healthz endpoint never became available")
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected 200 OK from /healthz, got %d", resp.StatusCode)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	if string(body) != "ok" {
+		t.Errorf("expected body %q, got %q", "ok", string(body))
+	}
+
+	_ = d // referenced to avoid unused var
 }

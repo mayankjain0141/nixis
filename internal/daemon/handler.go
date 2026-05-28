@@ -9,6 +9,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/mayjain/aegis/internal/audit"
 	"github.com/mayjain/aegis/pkg/aegis"
 )
 
@@ -122,6 +123,19 @@ func (d *Daemon) handleConnection(conn net.Conn) {
 
 	resp := d.engine.Evaluate(ctx, req)
 
+	// Persist session label change when the decision is not a deny.
+	if d.sessions != nil && resp.Decision.Action != aegis.ActionDeny {
+		d.sessions.Elevate(req.SessionID, req.SecurityLabel)
+		newLabel := d.sessions.Current(req.SessionID)
+		newState := d.sessions.LabelState(req.SessionID)
+		d.auditWriter.WriteSessionLabel(audit.SessionLabelRecord{
+			SessionID:  req.SessionID,
+			LabelState: string(newState),
+			Label:      newLabel,
+			ChangedAt:  time.Now().UnixNano(),
+		})
+	}
+
 	respBytes, err := json.Marshal(resp)
 	if err != nil {
 		d.writeErrorResponse(conn, deadline, "failed to marshal response")
@@ -131,6 +145,20 @@ func (d *Daemon) handleConnection(conn net.Conn) {
 	_ = WriteMessage(conn, respBytes, deadline)
 
 	d.auditWriter.WriteRecord(buildAuditRecord(req, resp))
+
+	// Emit to streaming server (non-blocking, nil-safe).
+	if d.streamSrv != nil {
+		d.streamSrv.Emit(ctx, aegis.StreamEvent{
+			Type:          aegis.EventTypeDecision,
+			AegisSequence: 0, // assigned in fan-out goroutine
+			SessionID:     req.SessionID,
+			Tool:          req.Tool,
+			Action:        resp.Decision.Action,
+			Reason:        resp.Decision.Reason,
+			Label:         resp.Decision.Labels,
+			Timestamp:     time.Now().UnixNano(),
+		})
+	}
 }
 
 // writeErrorResponse writes a Deny CheckResponse to conn.

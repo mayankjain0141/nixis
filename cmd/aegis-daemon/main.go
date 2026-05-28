@@ -20,6 +20,7 @@ import (
 	"github.com/mayjain/aegis/internal/daemon"
 	"github.com/mayjain/aegis/internal/ifc"
 	"github.com/mayjain/aegis/internal/policy"
+	"github.com/mayjain/aegis/internal/stream"
 	"github.com/mayjain/aegis/pkg/aegis"
 )
 
@@ -82,7 +83,20 @@ func main() {
 		auditWriter.Start(ctx)
 	}()
 
-	d := daemon.New(cfg, engine, auditWriter)
+	streamSrv := stream.NewStreamServer(nil, nil)
+	streamCtx, streamCancel := context.WithCancel(ctx)
+	go func() {
+		addr := os.Getenv("AEGIS_DASHBOARD_ADDR")
+		if addr == "" {
+			addr = ":9090"
+		}
+		if err := streamSrv.Start(streamCtx, addr); err != nil && streamCtx.Err() == nil {
+			fmt.Fprintf(os.Stderr, "aegis-daemon: stream server error: %v\n", err)
+		}
+	}()
+	defer streamCancel()
+
+	d := daemon.New(cfg, engine, auditWriter, streamSrv, sessions)
 	d.SetAuditContext(cancel, auditDone)
 
 	if err := d.Run(ctx); err != nil {

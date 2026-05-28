@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -14,6 +15,8 @@ import (
 	"time"
 
 	"github.com/mayjain/aegis/internal/audit"
+	"github.com/mayjain/aegis/internal/ifc"
+	"github.com/mayjain/aegis/internal/stream"
 	"github.com/mayjain/aegis/pkg/aegis"
 )
 
@@ -27,6 +30,8 @@ type Daemon struct {
 	engine      aegis.Engine
 	auditWriter *audit.Writer
 	listener    net.Listener
+	streamSrv   aegis.StreamTap    // nil disables streaming
+	sessions    *ifc.SessionLabels // nil disables session label persistence
 
 	// inFlight tracks the number of in-progress connection goroutines.
 	// Graceful shutdown waits for this WaitGroup before closing the audit channel.
@@ -44,16 +49,23 @@ type Daemon struct {
 	readyCh chan struct{}
 }
 
-// New constructs a Daemon from the provided config, engine, and audit writer.
-// The stream parameter is reserved for future streaming server integration (Phase 2).
-func New(cfg Config, engine aegis.Engine, aw *audit.Writer) *Daemon {
+// New constructs a Daemon from the provided config, engine, audit writer, and optional
+// stream server. Pass nil for streamSrv to disable streaming. Pass nil for sessions to
+// disable session label persistence.
+func New(cfg Config, engine aegis.Engine, aw *audit.Writer, streamSrv *stream.StreamServer, sessions *ifc.SessionLabels) *Daemon {
 	cfg.applyDefaults()
-	return &Daemon{
+	d := &Daemon{
 		cfg:         cfg,
 		engine:      engine,
 		auditWriter: aw,
+		sessions:    sessions,
 		sem:         make(chan struct{}, maxConcurrentConnections),
 	}
+	// Avoid storing a non-nil interface wrapping a nil *StreamServer.
+	if streamSrv != nil {
+		d.streamSrv = streamSrv
+	}
+	return d
 }
 
 // readyCh is closed by Run() once the listener is bound and accepting connections.
@@ -85,6 +97,9 @@ func (d *Daemon) Run(ctx context.Context) error {
 	if d.readyCh != nil {
 		close(d.readyCh)
 	}
+
+	// Start the /healthz endpoint.
+	go d.serveHealthz(ctx)
 
 	// Accept loop in a background goroutine — returns when listener is closed.
 	acceptDone := make(chan struct{})
@@ -169,6 +184,9 @@ func (d *Daemon) shutdown() {
 	// Wait for all in-flight request goroutines to complete.
 	d.inFlight.Wait()
 
+	// Stream server context is cancelled by the deferred streamCancel in main.go.
+	// No explicit stop needed here — the context cancellation drives shutdown.
+
 	// The audit writer's Start() goroutine watches auditCtx for cancellation.
 	// We trigger shutdown by cancelling the context that was passed to Start().
 	// The caller (cmd/aegis-daemon/main.go) owns auditCtx and cancels it here.
@@ -194,6 +212,27 @@ func (d *Daemon) shutdown() {
 func (d *Daemon) SetAuditContext(cancel context.CancelFunc, done <-chan struct{}) {
 	d.auditCancel = cancel
 	d.auditDone = done
+}
+
+// serveHealthz starts a minimal HTTP server on :9091 that serves /healthz.
+// The server shuts down when ctx is cancelled.
+func (d *Daemon) serveHealthz(ctx context.Context) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
+	srv := &http.Server{
+		Addr:    ":9091",
+		Handler: mux,
+	}
+	go func() {
+		<-ctx.Done()
+		shutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = srv.Shutdown(shutCtx)
+	}()
+	_ = srv.ListenAndServe()
 }
 
 // reconcileFailOpenLog reads the fail-open log from the last daemon run and
