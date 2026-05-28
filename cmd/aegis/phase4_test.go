@@ -441,3 +441,56 @@ func TestCLI_BundleRollback_EmptyStore(t *testing.T) {
 		t.Errorf("expected 'no previous bundle' in error, got: %v", err)
 	}
 }
+
+// TestCLI_BundleRollback_ActivatesBundle verifies that rollback selects the second-most-recent
+// bundle and calls activateBundle with that bundle's store path.
+func TestCLI_BundleRollback_ActivatesBundle(t *testing.T) {
+	storeDir := t.TempDir()
+
+	olderHash := "aabbccdd11223344"
+	newerHash := "eeff99887766554433221100aabbccdd"
+
+	writeBundleToStore(t, storeDir, bundle.BundleManifest{
+		Hash:     olderHash,
+		Version:  1,
+		StoredAt: time.Now().Add(-2 * time.Hour),
+	})
+	writeBundleToStore(t, storeDir, bundle.BundleManifest{
+		Hash:     newerHash,
+		Version:  2,
+		StoredAt: time.Now().Add(-time.Hour),
+	})
+
+	// Point bundleSocket at a non-existent socket so activateBundle fails at connect,
+	// not at parse (the bundle dirs contain no YAML files so 0 templates are parsed).
+	bundleSocket = "/tmp/aegis-nonexistent-rollback-test.sock"
+
+	outBuf := &bytes.Buffer{}
+	errBuf := &bytes.Buffer{}
+	bundleRollbackCmd.ResetFlags()
+	bundleRollbackCmd.SetOut(outBuf)
+	bundleRollbackCmd.SetErr(errBuf)
+	bundleRollbackStoreDir = storeDir
+	err := bundleRollbackCmd.RunE(bundleRollbackCmd, nil)
+
+	stdout := outBuf.String()
+
+	// Must print the rollback announcement with the correct (older) bundle hash.
+	if !strings.Contains(stdout, olderHash[:8]) {
+		t.Errorf("expected output to contain rollback target hash %q, got: %q", olderHash[:8], stdout)
+	}
+
+	// Must attempt activation: the bundle dir exists so activateBundle reaches the socket
+	// connect step and fails with "cannot connect", proving activateBundle was called.
+	if err == nil {
+		t.Fatal("expected activation error (daemon not running), got nil")
+	}
+	if !strings.Contains(err.Error(), "cannot connect") {
+		t.Errorf("expected 'cannot connect' error from activateBundle, got: %v", err)
+	}
+
+	// Must NOT report "cannot connect" for the newer bundle — rollback must pick the older one.
+	if strings.Contains(stdout, newerHash[:8]) {
+		t.Errorf("output must not reference newer bundle %q as rollback target, got: %q", newerHash[:8], stdout)
+	}
+}

@@ -71,8 +71,11 @@ type bundleReloadMsg struct {
 }
 
 func runBundleActivate(cmd *cobra.Command, args []string) error {
-	bundlePath := args[0]
+	return activateBundle(cmd, args[0])
+}
 
+// activateBundle parses the bundle at bundlePath, connects to the daemon, and sends a reload trigger.
+func activateBundle(cmd *cobra.Command, bundlePath string) error {
 	// Step 1: parse and validate the bundle.
 	if _, err := os.Stat(bundlePath); err != nil {
 		return fmt.Errorf("bundle path: %w", err)
@@ -237,5 +240,7 @@ func runBundleRollback(cmd *cobra.Command, _ []string) error {
 	prev := manifests[len(manifests)-2]
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "rolling back to bundle hash=%s version=%d stored_at=%s\n",
 		prev.Hash, prev.Version, prev.StoredAt.Format(time.RFC3339))
-	return nil
+
+	bundlePath := filepath.Join(storeDir, prev.Hash)
+	return activateBundle(cmd, bundlePath)
 }
