@@ -91,7 +91,7 @@ export default function App() {
       wsRef.current = ws;
 
       const timeout = setTimeout(() => {
-        if (ws && ws.readyState !== WebSocket.OPEN) {
+        if (ws && ws.readyState !== WebSocket.OPEN && !useMock) {
           ws.close();
           setConnectionState('DISCONNECTED');
           startMock();
