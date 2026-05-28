@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { MetricsBar } from './components/governance/MetricsBar';
 import { EventStream } from './components/governance/EventStream';
+import { LatticeView } from './components/governance/LatticeView';
 import { CommandPalette } from './components/shell/CommandPalette';
 import { Inspector } from './components/shell/Inspector';
 import { ThreatPanel } from './components/governance/ThreatPanel';
@@ -388,6 +389,10 @@ export default function App() {
         <aside style={styles.sidebar} aria-label="Connection and policy summary">
           <ConnectionStatus state={connectionState} />
           <PolicyList policies={policies} bundleStatus={bundleStatus} />
+          <div style={sidebarStyles.section}>
+            <div style={sidebarStyles.sectionTitle}>IFC Sessions</div>
+            <LatticeView />
+          </div>
         </aside>
 
         <main style={styles.center} aria-label="Live event stream">
