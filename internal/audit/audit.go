@@ -5,6 +5,7 @@ package audit
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/json"
 	"strings"
@@ -80,6 +81,10 @@ func NewWriter(dbPath string) (*Writer, error) {
 // Start runs the writer goroutine. It blocks until ctx is cancelled, then drains.
 // Call this in a goroutine: go w.Start(ctx).
 func (w *Writer) Start(ctx context.Context) {
+	// Load the last stored chain_hash from the DB so the chain is continuous
+	// across Writer restarts. Zero hash is used for the very first record.
+	prevHash := loadLastChainHash(w.db)
+
 	batch := make([]writeItem, 0, batchSize)
 	timer := time.NewTimer(batchTimeout)
 	defer timer.Stop()
@@ -88,7 +93,7 @@ func (w *Writer) Start(ctx context.Context) {
 		if len(batch) == 0 {
 			return
 		}
-		w.writeBatch(batch)
+		prevHash = w.writeBatch(batch, prevHash)
 		batch = batch[:0]
 	}
 
@@ -154,37 +159,88 @@ func (w *Writer) Close() error {
 }
 
 // writeBatch writes a slice of items inside a single transaction.
-// If any INSERT fails, the transaction is rolled back and the batch is not persisted.
-// This is the documented fail-secure behaviour: a SQLite write failure must not silently
-// produce a partial audit trail.
-func (w *Writer) writeBatch(batch []writeItem) {
+// Returns the updated prevHash after all record inserts in this batch.
+// If any INSERT fails, the transaction is rolled back and prevHash is unchanged.
+// Fail-secure: a SQLite write failure must not silently produce a partial audit trail.
+func (w *Writer) writeBatch(batch []writeItem, prevHash [32]byte) [32]byte {
 	tx, err := w.db.Begin()
 	if err != nil {
-		return
+		return prevHash
 	}
 
+	current := prevHash
 	for _, item := range batch {
 		if item.record != nil {
-			if err := w.insertRecord(tx, item.record); err != nil {
+			next, err := w.insertRecord(tx, item.record, current)
+			if err != nil {
 				_ = tx.Rollback()
-				return
+				return prevHash
 			}
+			current = next
 		} else if item.labelRecord != nil {
 			if err := w.insertSessionLabel(tx, item.labelRecord); err != nil {
 				_ = tx.Rollback()
-				return
+				return prevHash
 			}
 		}
 	}
 
-	// Commit failure: rollback is implicit when the tx is garbage-collected, but we
-	// call it explicitly so the connection is returned to the pool immediately.
 	if err := tx.Commit(); err != nil {
 		_ = tx.Rollback()
+		return prevHash
 	}
+	return current
 }
 
-func (w *Writer) insertRecord(tx *sql.Tx, r *AuditRecord) error {
+// chainHash computes sha256(prevHash || recordBytes) for a given record.
+// recordBytes is a canonical serialisation of the audit row's mutable fields.
+func chainHash(prev [32]byte, r *AuditRecord) [32]byte {
+	var action string
+	switch r.Decision.Action {
+	case aegis.ActionDeny:
+		action = "deny"
+	case aegis.ActionAllow:
+		action = "allow"
+	case aegis.ActionRequireApproval:
+		action = "require_approval"
+	case aegis.ActionAudit:
+		action = "audit"
+	default:
+		action = "deny"
+	}
+
+	h := sha256.New()
+	h.Write(prev[:])
+	// Canonical record representation: all fields separated by NUL bytes.
+	// Changing any field changes the hash and breaks the chain (tamper detection).
+	writeChainField(h, appendInt64LE(nil, r.Timestamp))
+	writeChainField(h, []byte(r.SessionID))
+	writeChainField(h, []byte(r.Tool))
+	writeChainField(h, []byte(r.Args))
+	writeChainField(h, []byte(action))
+	writeChainField(h, []byte(r.Decision.Reason))
+	writeChainField(h, []byte(r.Decision.PolicyID))
+	writeChainField(h, []byte(string(r.EnforcingLayer)))
+	writeChainField(h, appendInt64LE(nil, r.LatencyNs))
+
+	var result [32]byte
+	copy(result[:], h.Sum(nil))
+	return result
+}
+
+func writeChainField(h interface{ Write([]byte) (int, error) }, data []byte) {
+	_, _ = h.Write(data)
+	_, _ = h.Write([]byte{0}) // NUL separator
+}
+
+func appendInt64LE(buf []byte, n int64) []byte {
+	return append(buf,
+		byte(n), byte(n>>8), byte(n>>16), byte(n>>24),
+		byte(n>>32), byte(n>>40), byte(n>>48), byte(n>>56),
+	)
+}
+
+func (w *Writer) insertRecord(tx *sql.Tx, r *AuditRecord, prev [32]byte) ([32]byte, error) {
 	var action string
 	switch r.Decision.Action {
 	case aegis.ActionDeny:
@@ -204,14 +260,16 @@ func (w *Writer) insertRecord(tx *sql.Tx, r *AuditRecord) error {
 		argsStr = string(r.Args)
 	}
 
+	next := chainHash(prev, r)
+
 	_, err := tx.Exec(
 		`INSERT INTO audit_log (
 			timestamp, session_id, tool, args, action, reason, policy_id,
 			enforcing_layer,
 			label_before_c, label_before_i, label_before_k,
 			label_after_c,  label_after_i,  label_after_k,
-			latency_ns
-		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			latency_ns, chain_hash
+		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		r.Timestamp,
 		r.SessionID,
 		r.Tool,
@@ -227,8 +285,12 @@ func (w *Writer) insertRecord(tx *sql.Tx, r *AuditRecord) error {
 		r.LabelAfter.Integrity,
 		r.LabelAfter.Category,
 		r.LatencyNs,
+		next[:],
 	)
-	return err
+	if err != nil {
+		return prev, err
+	}
+	return next, nil
 }
 
 func (w *Writer) insertSessionLabel(tx *sql.Tx, r *SessionLabelRecord) error {
@@ -245,7 +307,25 @@ func (w *Writer) insertSessionLabel(tx *sql.Tx, r *SessionLabelRecord) error {
 	return err
 }
 
-// applySchema creates the required tables if they don't exist.
+// loadLastChainHash reads the chain_hash of the last row in audit_log.
+// Returns a zero hash if the table is empty or the column is NULL (legacy rows).
+func loadLastChainHash(db *sql.DB) [32]byte {
+	var zero [32]byte
+	var blob []byte
+	row := db.QueryRow(`SELECT chain_hash FROM audit_log ORDER BY id DESC LIMIT 1`)
+	if err := row.Scan(&blob); err != nil {
+		return zero
+	}
+	if len(blob) != 32 {
+		return zero
+	}
+	var h [32]byte
+	copy(h[:], blob)
+	return h
+}
+
+// applySchema creates the required tables if they don't exist, and migrates
+// existing databases to add the chain_hash column if absent.
 // Append-only: no UPDATE or DELETE statements appear anywhere in this package.
 func applySchema(db *sql.DB) error {
 	_, err := db.Exec(`
@@ -265,7 +345,8 @@ CREATE TABLE IF NOT EXISTS audit_log (
     label_after_c  INTEGER,
     label_after_i  INTEGER,
     label_after_k  INTEGER,
-    latency_ns     INTEGER
+    latency_ns     INTEGER,
+    chain_hash     BLOB
 );
 
 CREATE TABLE IF NOT EXISTS session_labels (
@@ -278,7 +359,14 @@ CREATE TABLE IF NOT EXISTS session_labels (
     PRIMARY KEY (session_id, changed_at)
 );
 `)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Migrate existing databases that predate the chain_hash column.
+	// SQLite returns an error if the column already exists; ignore it.
+	_, _ = db.Exec(`ALTER TABLE audit_log ADD COLUMN chain_hash BLOB`)
+	return nil
 }
 
 // SanitizeArgs removes secret values from JSON args before audit logging.
