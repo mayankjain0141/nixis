@@ -1,6 +1,7 @@
 package main
 
 import (
+	"archive/zip"
 	"bytes"
 	"os"
 	"path/filepath"
@@ -387,5 +388,456 @@ func TestImport_NormalizeSeverity(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("normalizeSeverity(%q) = %q, want %q", tt.input, got, tt.want)
 		}
+	}
+}
+
+// ---- settings.json tests ----
+
+func TestImport_DetectsSettingsJSON(t *testing.T) {
+	input := `{
+	  "permissions": {
+	    "allow": ["Bash(npm run test *)"],
+	    "deny": ["Bash(curl *)", "Read(./.env)", "WebFetch"]
+	  }
+	}`
+
+	format := detectFormatWithName("settings.json", []byte(input))
+	if format != formatSettingsJSON {
+		t.Errorf("expected formatSettingsJSON, got %v", format)
+	}
+}
+
+func TestImport_DetectsSettingsJSONByContent(t *testing.T) {
+	// Even without settings.json filename, JSON with permissions.deny should detect
+	input := `{"permissions":{"deny":["Bash(rm -rf *)"],"allow":[]}}`
+
+	format := detectFormatWithName("project-config.json", []byte(input))
+	if format != formatSettingsJSON {
+		t.Errorf("expected formatSettingsJSON by content, got %v", format)
+	}
+}
+
+func TestImport_TranslatesSettingsJSONDeny(t *testing.T) {
+	tests := []struct {
+		rule    string
+		wantCEL string
+	}{
+		{
+			rule:    "Bash(curl *)",
+			wantCEL: `tool == "Bash" && request.args.command.matches("curl .*")`,
+		},
+		{
+			rule:    "Read(./.env)",
+			wantCEL: `tool == "Read" && request.args.path.matches("\\./\\.env")`,
+		},
+		{
+			rule:    "WebFetch",
+			wantCEL: `tool == "WebFetch"`,
+		},
+		{
+			rule:    "Write(/tmp/**)",
+			wantCEL: `tool == "Write" && request.args.path.matches("/tmp/.*")`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.rule, func(t *testing.T) {
+			cel, _ := translateSettingsRule(tt.rule)
+			if cel != tt.wantCEL {
+				t.Errorf("CEL mismatch:\ngot:  %s\nwant: %s", cel, tt.wantCEL)
+			}
+		})
+	}
+}
+
+func TestImport_ConvertsSettingsJSON(t *testing.T) {
+	input := `{
+	  "permissions": {
+	    "allow": ["Bash(npm run test *)"],
+	    "deny": ["Bash(curl *)", "WebFetch"]
+	  }
+	}`
+
+	manifests, comments, err := convertSettingsJSON([]byte(input), "settings.json")
+	if err != nil {
+		t.Fatalf("convertSettingsJSON failed: %v", err)
+	}
+
+	if len(manifests) != 2 {
+		t.Fatalf("expected 2 manifests (one per deny rule), got %d", len(manifests))
+	}
+
+	// First deny: Bash(curl *)
+	m0 := manifests[0]
+	if m0.Spec.Validations[0].Action != "DENY" {
+		t.Errorf("expected DENY action, got %s", m0.Spec.Validations[0].Action)
+	}
+	if !strings.Contains(m0.Spec.Validations[0].Expression, `tool == "Bash"`) {
+		t.Errorf("expected Bash tool check, got %s", m0.Spec.Validations[0].Expression)
+	}
+
+	// allow rules must NOT produce manifests
+	_ = comments
+}
+
+func TestImport_GlobToRegex(t *testing.T) {
+	tests := []struct {
+		glob  string
+		regex string
+	}{
+		{"curl *", "curl .*"},
+		{"./.env", "\\./\\.env"},
+		{"/tmp/**", "/tmp/.*"},
+		{"*.yaml", ".*\\.yaml"},
+		{"file?.txt", "file.\\.txt"},
+	}
+
+	for _, tt := range tests {
+		got := globToRegex(tt.glob)
+		if got != tt.regex {
+			t.Errorf("globToRegex(%q) = %q, want %q", tt.glob, got, tt.regex)
+		}
+	}
+}
+
+// ---- AgentWall v2 tests ----
+
+func TestImport_DetectsAgentWall(t *testing.T) {
+	input := `version: "2"
+default_action: deny
+tools:
+  - name: query_database
+    action: allow
+    risk: high
+`
+
+	format := detectFormat([]byte(input))
+	if format != formatAgentWall {
+		t.Errorf("expected formatAgentWall, got %v", format)
+	}
+}
+
+func TestImport_TranslatesAgentWallDeny(t *testing.T) {
+	input := `version: "2"
+default_action: deny
+tools:
+  - name: dangerous_tool
+    action: deny
+    risk: critical
+`
+
+	manifests, _, err := convertAgentWall([]byte(input), "agentwall.yaml")
+	if err != nil {
+		t.Fatalf("convertAgentWall failed: %v", err)
+	}
+
+	if len(manifests) != 1 {
+		t.Fatalf("expected 1 manifest for deny tool, got %d", len(manifests))
+	}
+
+	m := manifests[0]
+	if m.Spec.Validations[0].Action != "DENY" {
+		t.Errorf("expected DENY, got %s", m.Spec.Validations[0].Action)
+	}
+	if !strings.Contains(m.Spec.Validations[0].Expression, `tool == "dangerous_tool"`) {
+		t.Errorf("expected tool match expression, got %s", m.Spec.Validations[0].Expression)
+	}
+	if m.Metadata.Annotations["aegis.io/severity"] != "critical" {
+		t.Errorf("expected critical severity, got %s", m.Metadata.Annotations["aegis.io/severity"])
+	}
+}
+
+func TestImport_TranslatesAgentWallSchemaConstraints(t *testing.T) {
+	input := `version: "2"
+tools:
+  - name: query_database
+    action: allow
+    risk: high
+    parameters:
+      - name: options
+        type: object
+        schema:
+          type: object
+          properties:
+            query:
+              type: string
+              pattern: "^SELECT.*"
+            limit:
+              type: integer
+              maximum: 100
+`
+
+	manifests, _, err := convertAgentWall([]byte(input), "agentwall.yaml")
+	if err != nil {
+		t.Fatalf("convertAgentWall failed: %v", err)
+	}
+
+	// Expect at least 2 manifests: one for query pattern, one for limit maximum
+	if len(manifests) < 2 {
+		t.Fatalf("expected at least 2 manifests for schema constraints, got %d", len(manifests))
+	}
+
+	// Verify at least one has a matches() call for the query pattern
+	hasPattern := false
+	hasLimit := false
+	for _, m := range manifests {
+		expr := m.Spec.Validations[0].Expression
+		if strings.Contains(expr, "matches") && strings.Contains(expr, "SELECT") {
+			hasPattern = true
+		}
+		if strings.Contains(expr, "> 100") || strings.Contains(expr, ">100") {
+			hasLimit = true
+		}
+	}
+
+	if !hasPattern {
+		t.Error("expected a manifest with query pattern constraint")
+	}
+	if !hasLimit {
+		t.Error("expected a manifest with limit maximum constraint")
+	}
+}
+
+// ---- mcp-visor tests ----
+
+func TestImport_DetectsMCPVisor(t *testing.T) {
+	input := `deny_path:
+  - "/etc/passwd"
+  - "/etc/shadow"
+deny_command_pattern:
+  - ".*rm\\s+-rf.*"
+`
+
+	format := detectFormat([]byte(input))
+	if format != formatMCPVisor {
+		t.Errorf("expected formatMCPVisor, got %v", format)
+	}
+}
+
+func TestImport_DetectsMCPVisorByAllowPath(t *testing.T) {
+	input := `allow_path:
+  - "/tmp/*"
+  - "/home/user/project/*"
+`
+
+	format := detectFormat([]byte(input))
+	if format != formatMCPVisor {
+		t.Errorf("expected formatMCPVisor for allow_path-only file, got %v", format)
+	}
+}
+
+func TestImport_TranslatesMCPVisorDenyPath(t *testing.T) {
+	input := `deny_path:
+  - "/etc/passwd"
+  - "/etc/shadow"
+  - "~/.ssh/*"
+`
+
+	manifests, _, err := convertMCPVisor([]byte(input), "visor.yaml")
+	if err != nil {
+		t.Fatalf("convertMCPVisor failed: %v", err)
+	}
+
+	if len(manifests) != 3 {
+		t.Fatalf("expected 3 manifests for 3 deny_path entries, got %d", len(manifests))
+	}
+
+	for _, m := range manifests {
+		expr := m.Spec.Validations[0].Expression
+		if !strings.Contains(expr, `tool.matches("Read|Write|Edit")`) {
+			t.Errorf("deny_path CEL should restrict to file tools, got: %s", expr)
+		}
+		if !strings.Contains(expr, "request.args.path.matches") {
+			t.Errorf("deny_path CEL should match on path, got: %s", expr)
+		}
+		if m.Spec.Validations[0].Action != "DENY" {
+			t.Errorf("deny_path should produce DENY action, got %s", m.Spec.Validations[0].Action)
+		}
+	}
+}
+
+func TestImport_TranslatesMCPVisorDenyCommand(t *testing.T) {
+	input := `deny_command_pattern:
+  - ".*rm\\s+-rf.*"
+  - ".*curl.*\\|.*sh.*"
+`
+
+	manifests, _, err := convertMCPVisor([]byte(input), "visor.yaml")
+	if err != nil {
+		t.Fatalf("convertMCPVisor failed: %v", err)
+	}
+
+	if len(manifests) != 2 {
+		t.Fatalf("expected 2 manifests, got %d", len(manifests))
+	}
+
+	for _, m := range manifests {
+		expr := m.Spec.Validations[0].Expression
+		if !strings.Contains(expr, `tool == "Bash"`) {
+			t.Errorf("deny_command_pattern should restrict to Bash, got: %s", expr)
+		}
+		if !strings.Contains(expr, "request.args.command.matches") {
+			t.Errorf("deny_command_pattern should match on command, got: %s", expr)
+		}
+	}
+}
+
+func TestImport_TranslatesMCPVisorAllowPath(t *testing.T) {
+	input := `allow_path:
+  - "/tmp/*"
+`
+
+	manifests, _, err := convertMCPVisor([]byte(input), "visor.yaml")
+	if err != nil {
+		t.Fatalf("convertMCPVisor failed: %v", err)
+	}
+
+	if len(manifests) != 1 {
+		t.Fatalf("expected 1 manifest, got %d", len(manifests))
+	}
+
+	m := manifests[0]
+	if m.Spec.Validations[0].Action != "REQUIRE_APPROVAL" {
+		t.Errorf("allow_path should produce REQUIRE_APPROVAL, got %s", m.Spec.Validations[0].Action)
+	}
+	if !strings.Contains(m.Spec.Validations[0].Expression, "!request.args.path.matches") {
+		t.Errorf("allow_path CEL should negate the path match, got: %s", m.Spec.Validations[0].Expression)
+	}
+}
+
+func TestImport_TranslatesMCPVisorQueryPattern(t *testing.T) {
+	input := `deny_query_pattern:
+  - ".*DROP\\s+TABLE.*"
+`
+
+	manifests, _, err := convertMCPVisor([]byte(input), "visor.yaml")
+	if err != nil {
+		t.Fatalf("convertMCPVisor failed: %v", err)
+	}
+
+	if len(manifests) != 1 {
+		t.Fatalf("expected 1 manifest, got %d", len(manifests))
+	}
+
+	expr := manifests[0].Spec.Validations[0].Expression
+	if !strings.Contains(expr, "request.args.query.matches") {
+		t.Errorf("deny_query_pattern should match query, got: %s", expr)
+	}
+}
+
+// ---- GitHub URL parsing tests (no HTTP) ----
+
+func TestImport_GitHubURLDetection(t *testing.T) {
+	tests := []struct {
+		source string
+		want   bool
+	}{
+		{"https://github.com/owner/repo", true},
+		{"github.com/owner/repo", true},
+		{"http://github.com/owner/repo", true},
+		{"/local/path/policies.yaml", false},
+		{"policies.yaml", false},
+		{"https://example.com/policy.yaml", false},
+	}
+
+	for _, tt := range tests {
+		got := isGitHubURL(tt.source)
+		if got != tt.want {
+			t.Errorf("isGitHubURL(%q) = %v, want %v", tt.source, got, tt.want)
+		}
+	}
+}
+
+func TestImport_ParseGitHubURL(t *testing.T) {
+	tests := []struct {
+		source    string
+		wantOwner string
+		wantRepo  string
+		wantRef   string
+	}{
+		{
+			source:    "https://github.com/owner/repo",
+			wantOwner: "owner",
+			wantRepo:  "repo",
+			wantRef:   "HEAD",
+		},
+		{
+			source:    "github.com/owner/repo",
+			wantOwner: "owner",
+			wantRepo:  "repo",
+			wantRef:   "HEAD",
+		},
+		{
+			source:    "https://github.com/owner/repo/tree/main",
+			wantOwner: "owner",
+			wantRepo:  "repo",
+			wantRef:   "main",
+		},
+		{
+			source:    "https://github.com/owner/repo/tree/feature/my-branch",
+			wantOwner: "owner",
+			wantRepo:  "repo",
+			wantRef:   "feature/my-branch",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.source, func(t *testing.T) {
+			ref, err := parseGitHubURL(tt.source)
+			if err != nil {
+				t.Fatalf("parseGitHubURL(%q) returned error: %v", tt.source, err)
+			}
+			if ref.owner != tt.wantOwner {
+				t.Errorf("owner: got %q, want %q", ref.owner, tt.wantOwner)
+			}
+			if ref.repo != tt.wantRepo {
+				t.Errorf("repo: got %q, want %q", ref.repo, tt.wantRepo)
+			}
+			if ref.ref != tt.wantRef {
+				t.Errorf("ref: got %q, want %q", ref.ref, tt.wantRef)
+			}
+		})
+	}
+}
+
+func TestImport_ExtractPolicyFiles(t *testing.T) {
+	// Build an in-memory zip with known files
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+
+	addZipFile := func(name, content string) {
+		w, err := zw.Create(name)
+		if err != nil {
+			t.Fatalf("create zip entry %s: %v", name, err)
+		}
+		_, _ = w.Write([]byte(content))
+	}
+
+	addZipFile("repo-main/policies.yaml", `layerName: test
+policies:
+  - id: p1
+    rule: tool_definition_changed
+    action: deny
+`)
+	addZipFile("repo-main/README.md", "# README") // should be skipped
+	addZipFile("repo-main/settings.json", `{"permissions":{"deny":["WebFetch"],"allow":[]}}`)
+	addZipFile("repo-main/logo.png", "\x89PNG") // should be skipped
+
+	if err := zw.Close(); err != nil {
+		t.Fatalf("close zip: %v", err)
+	}
+
+	paths, err := extractPolicyFiles(buf.Bytes())
+	if err != nil {
+		t.Fatalf("extractPolicyFiles failed: %v", err)
+	}
+	defer func() {
+		for _, p := range paths {
+			_ = os.Remove(p)
+		}
+	}()
+
+	if len(paths) != 2 {
+		t.Fatalf("expected 2 extracted files (.yaml and .json), got %d", len(paths))
 	}
 }
