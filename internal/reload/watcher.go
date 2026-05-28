@@ -4,12 +4,25 @@ import (
 	"context"
 	"log/slog"
 	"path/filepath"
+	"sync/atomic"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
 )
 
 const debounceDuration = 100 * time.Millisecond
+
+// Package-level reload counters. Prometheus integration comes in a later phase.
+var (
+	reloadSuccessTotal atomic.Int64
+	reloadErrorTotal   atomic.Int64
+)
+
+// ReloadSuccessTotal returns the count of successful policy reloads.
+func ReloadSuccessTotal() int64 { return reloadSuccessTotal.Load() }
+
+// ReloadErrorTotal returns the count of failed policy reloads.
+func ReloadErrorTotal() int64 { return reloadErrorTotal.Load() }
 
 // PolicyReloader is the interface for the policy engine's Reload method.
 // Defined here to avoid importing internal/policy (circular dep).
@@ -23,12 +36,17 @@ type ReloadWatcher struct {
 	engine    PolicyReloader
 }
 
-// New creates a new ReloadWatcher.
-func New(policyDir string, engine PolicyReloader) (*ReloadWatcher, error) {
+// NewReloadWatcher creates a new ReloadWatcher.
+func NewReloadWatcher(policyDir string, engine PolicyReloader) (*ReloadWatcher, error) {
 	return &ReloadWatcher{
 		policyDir: policyDir,
 		engine:    engine,
 	}, nil
+}
+
+// New is an alias for NewReloadWatcher.
+func New(policyDir string, engine PolicyReloader) (*ReloadWatcher, error) {
+	return NewReloadWatcher(policyDir, engine)
 }
 
 // Start begins watching and blocks until ctx is cancelled.
@@ -73,8 +91,10 @@ func (r *ReloadWatcher) Start(ctx context.Context) error {
 			}
 			debounceTimer = time.AfterFunc(debounceDuration, func() {
 				if err := r.engine.Reload(); err != nil {
+					reloadErrorTotal.Add(1)
 					slog.Error("policy reload failed; retaining last-known-good snapshot", "err", err)
 				} else {
+					reloadSuccessTotal.Add(1)
 					slog.Info("policy reload succeeded")
 				}
 			})

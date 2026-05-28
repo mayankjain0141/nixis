@@ -35,9 +35,9 @@ func startWatcher(t *testing.T, dir string, engine reload.PolicyReloader) (conte
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
-	w, err := reload.New(dir, engine)
+	w, err := reload.NewReloadWatcher(dir, engine)
 	if err != nil {
-		t.Fatalf("reload.New: %v", err)
+		t.Fatalf("reload.NewReloadWatcher: %v", err)
 	}
 	go func() {
 		done <- w.Start(ctx)
@@ -53,7 +53,7 @@ func TestReload_Debounce(t *testing.T) {
 	// Allow watcher to initialise
 	time.Sleep(20 * time.Millisecond)
 
-	// Write 10 YAML files within 50ms
+	// Write 10 YAML files within 50ms — all must coalesce to one reload
 	for i := range 10 {
 		name := filepath.Join(dir, "policy"+string(rune('a'+i))+".yaml")
 		if err := os.WriteFile(name, []byte("key: value"), 0o644); err != nil {
@@ -80,7 +80,7 @@ func TestReload_FailureKeepsOldSnapshot(t *testing.T) {
 	cancel, done := startWatcher(t, dir, mock)
 	time.Sleep(20 * time.Millisecond)
 
-	// First file change → reload returns error
+	// First file change → reload returns error; watcher must continue
 	if err := os.WriteFile(filepath.Join(dir, "pol.yaml"), []byte("x: 1"), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
@@ -90,7 +90,7 @@ func TestReload_FailureKeepsOldSnapshot(t *testing.T) {
 		t.Errorf("expected 1 reload attempt on error; got %d", mock.reloadCount())
 	}
 
-	// Clear error; second file change → reload should succeed
+	// Clear error; next file change must trigger another attempt
 	mock.mu.Lock()
 	mock.failErr = nil
 	mock.mu.Unlock()
@@ -115,9 +115,10 @@ func TestReload_ConcurrentEvalCorrectness(t *testing.T) {
 	cancel, done := startWatcher(t, dir, mock)
 	time.Sleep(20 * time.Millisecond)
 
-	// Spawn concurrent goroutines calling reloadCount while the watcher fires reloads.
+	// 100 goroutines read the counter concurrently while the watcher fires a reload.
+	// go test -race catches any unsynchronised access.
 	var wg sync.WaitGroup
-	for range 20 {
+	for range 100 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -125,7 +126,6 @@ func TestReload_ConcurrentEvalCorrectness(t *testing.T) {
 		}()
 	}
 
-	// Trigger a reload at the same time
 	if err := os.WriteFile(filepath.Join(dir, "concurrent.yaml"), []byte("c: 1"), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
@@ -134,7 +134,6 @@ func TestReload_ConcurrentEvalCorrectness(t *testing.T) {
 
 	cancel()
 	<-done
-	// go test -race will catch any races
 }
 
 func TestReload_ContextCancel_Exits(t *testing.T) {
@@ -158,7 +157,7 @@ func TestReload_NonYAMLIgnored(t *testing.T) {
 	cancel, done := startWatcher(t, dir, mock)
 	time.Sleep(20 * time.Millisecond)
 
-	// Write a .go file — must not trigger reload
+	// .go file must not trigger any reload
 	if err := os.WriteFile(filepath.Join(dir, "main.go"), []byte("package main"), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
@@ -169,5 +168,45 @@ func TestReload_NonYAMLIgnored(t *testing.T) {
 
 	if count := mock.reloadCount(); count != 0 {
 		t.Errorf("expected 0 reloads for non-YAML file; got %d", count)
+	}
+}
+
+func TestReload_MetricsIncrement(t *testing.T) {
+	// Snapshot counters before this test to isolate from other tests.
+	successBefore := reload.ReloadSuccessTotal()
+	errorBefore := reload.ReloadErrorTotal()
+
+	dir := t.TempDir()
+
+	// --- error path ---
+	failMock := &mockReloader{failErr: errReloadFailed}
+	cancel, done := startWatcher(t, dir, failMock)
+	time.Sleep(20 * time.Millisecond)
+
+	if err := os.WriteFile(filepath.Join(dir, "err.yaml"), []byte("x: 1"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	time.Sleep(300 * time.Millisecond)
+	cancel()
+	<-done
+
+	if got := reload.ReloadErrorTotal() - errorBefore; got != 1 {
+		t.Errorf("ReloadErrorTotal: expected delta 1; got %d", got)
+	}
+
+	// --- success path ---
+	successMock := &mockReloader{}
+	cancel2, done2 := startWatcher(t, dir, successMock)
+	time.Sleep(20 * time.Millisecond)
+
+	if err := os.WriteFile(filepath.Join(dir, "ok.yaml"), []byte("x: 2"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	time.Sleep(300 * time.Millisecond)
+	cancel2()
+	<-done2
+
+	if got := reload.ReloadSuccessTotal() - successBefore; got != 1 {
+		t.Errorf("ReloadSuccessTotal: expected delta 1; got %d", got)
 	}
 }
