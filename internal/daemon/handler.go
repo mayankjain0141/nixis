@@ -122,6 +122,7 @@ func (d *Daemon) handleConnection(conn net.Conn) {
 	defer cancel()
 
 	resp := d.engine.Evaluate(ctx, req)
+	d.evaluations.Add(1)
 
 	// Persist session label change when the decision is not a deny.
 	if d.sessions != nil && resp.Decision.Action != aegis.ActionDeny {

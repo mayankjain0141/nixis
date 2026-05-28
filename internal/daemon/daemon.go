@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -34,6 +35,15 @@ type Daemon struct {
 	streamSrv   aegis.StreamTap    // nil disables streaming
 	sessions    *ifc.SessionLabels // nil disables session label persistence
 	delegAPI    *DelegationAPI     // nil disables delegation HTTP endpoints
+
+	// mode tracks the current operational mode (normal, degraded, deny_all, read_only).
+	mode modeState
+
+	// evaluations counts the total number of CheckRequests handled.
+	evaluations atomic.Int64
+
+	// startTime records when the daemon started, used for uptime calculation.
+	startTime time.Time
 
 	// inFlight tracks the number of in-progress connection goroutines.
 	// Graceful shutdown waits for this WaitGroup before closing the audit channel.
@@ -76,6 +86,26 @@ func (d *Daemon) setReadyCh(ch chan struct{}) {
 	d.readyCh = ch
 }
 
+// Mode returns the current operational mode of the daemon.
+func (d *Daemon) Mode() DaemonMode {
+	return d.mode.Mode()
+}
+
+// SetMode updates the daemon's operational mode with a reason string.
+func (d *Daemon) SetMode(m DaemonMode, reason string) {
+	d.mode.Set(m, reason)
+}
+
+// ModeWithReason returns both the current mode and the reason it was set.
+func (d *Daemon) ModeWithReason() (DaemonMode, string) {
+	return d.mode.Get()
+}
+
+// Evaluations returns the total number of CheckRequests handled since startup.
+func (d *Daemon) Evaluations() int64 {
+	return d.evaluations.Load()
+}
+
 // Run starts the daemon and blocks until the context is cancelled or a signal is received.
 //
 // Shutdown order (per WS-07 spec §2.8):
@@ -86,6 +116,8 @@ func (d *Daemon) setReadyCh(ch chan struct{}) {
 //  5. Close SQLite.
 //  6. Remove socket file.
 func (d *Daemon) Run(ctx context.Context) error {
+	d.startTime = time.Now()
+
 	if err := d.reconcileFailOpenLog(); err != nil {
 		// Non-fatal: log but continue.
 		fmt.Fprintf(os.Stderr, "aegis-daemon: fail-open log reconciliation error: %v\n", err)
@@ -222,20 +254,35 @@ func (d *Daemon) SetDelegationEngine(engine *delegation.Engine) {
 	d.delegAPI = NewDelegationAPI(engine)
 }
 
+// HealthResponse is the structured JSON response for /healthz.
+type HealthResponse struct {
+	Status      string  `json:"status"`                // "healthy", "degraded", "unhealthy"
+	Mode        string  `json:"mode"`                  // DaemonMode.String()
+	ModeReason  string  `json:"mode_reason,omitempty"` // reason for current mode
+	UptimeMs    int64   `json:"uptime_ms"`             // milliseconds since daemon start
+	Evaluations int64   `json:"evaluations"`           // total evaluations served
+	Version     string  `json:"version"`               // daemon version
+	Checks      []Check `json:"checks"`                // component health checks
+}
+
+// Check represents a single component health check result.
+type Check struct {
+	Name   string `json:"name"`            // component name
+	Status string `json:"status"`          // "ok" or "error"
+	Error  string `json:"error,omitempty"` // error message if status is "error"
+}
+
 // serveHealthz starts a minimal HTTP server on :9091 that serves /healthz and,
 // when a delegation engine is wired, the /api/v1/delegation/* endpoints.
 // The server shuts down when ctx is cancelled.
 func (d *Daemon) serveHealthz(ctx context.Context) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("ok"))
-	})
+	mux.HandleFunc("/healthz", d.handleHealthz)
 	if d.delegAPI != nil {
 		d.delegAPI.RegisterRoutes(mux)
 	}
 	srv := &http.Server{
-		Addr:    ":9091",
+		Addr:    d.cfg.HealthzAddr,
 		Handler: mux,
 	}
 	go func() {
@@ -245,6 +292,56 @@ func (d *Daemon) serveHealthz(ctx context.Context) {
 		_ = srv.Shutdown(shutCtx)
 	}()
 	_ = srv.ListenAndServe()
+}
+
+// handleHealthz returns a structured JSON health response.
+func (d *Daemon) handleHealthz(w http.ResponseWriter, _ *http.Request) {
+	mode, reason := d.mode.Get()
+
+	resp := HealthResponse{
+		Status:      mode.HealthStatus(),
+		Mode:        mode.String(),
+		ModeReason:  reason,
+		UptimeMs:    time.Since(d.startTime).Milliseconds(),
+		Evaluations: d.evaluations.Load(),
+		Version:     "v4",
+		Checks:      d.runHealthChecks(),
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	switch mode {
+	case ModeNormal, ModeDegraded:
+		w.WriteHeader(http.StatusOK)
+	case ModeDenyAll, ModeReadOnly:
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}
+
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	_ = enc.Encode(resp)
+}
+
+// runHealthChecks performs basic component health checks.
+func (d *Daemon) runHealthChecks() []Check {
+	checks := []Check{
+		{Name: "listener", Status: "ok"},
+		{Name: "engine", Status: "ok"},
+	}
+
+	if d.listener == nil {
+		checks[0] = Check{Name: "listener", Status: "error", Error: "not bound"}
+	}
+
+	if d.engine == nil {
+		checks[1] = Check{Name: "engine", Status: "error", Error: "not initialized"}
+	}
+
+	if d.auditWriter != nil {
+		checks = append(checks, Check{Name: "audit", Status: "ok"})
+	}
+
+	return checks
 }
 
 // reconcileFailOpenLog reads the fail-open log from the last daemon run and

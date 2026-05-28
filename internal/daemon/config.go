@@ -37,6 +37,8 @@ type Config struct {
 	// FailOpenLog is the path to the fail-open append log reconciled on startup.
 	// Defaults to ~/.aegis/failopen.log (or $AEGIS_FAILOPEN_LOG).
 	FailOpenLog string
+	// HealthzAddr is the address for the /healthz HTTP endpoint. Defaults to ":9091".
+	HealthzAddr string
 }
 
 // defaultSocketPath returns the canonical Unix socket path.
@@ -70,5 +72,8 @@ func (c *Config) applyDefaults() {
 	}
 	if c.FailOpenLog == "" {
 		c.FailOpenLog = defaultFailOpenLog()
+	}
+	if c.HealthzAddr == "" {
+		c.HealthzAddr = ":9091"
 	}
 }
