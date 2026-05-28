@@ -7,6 +7,8 @@ import (
 	"io"
 	"net"
 	"os"
+	"path/filepath"
+	"sort"
 	"time"
 
 	"github.com/mayjain/aegis/internal/bundle"
@@ -29,9 +31,37 @@ var bundleActivateCmd = &cobra.Command{
 	RunE:  runBundleActivate,
 }
 
+var bundleListStoreDir string
+
+var bundleListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List stored bundles",
+	RunE:  runBundleList,
+}
+
+var bundleRollbackStoreDir string
+
+var bundleRollbackCmd = &cobra.Command{
+	Use:   "rollback",
+	Short: "Rollback to the previous stored bundle",
+	RunE:  runBundleRollback,
+}
+
+func defaultBundleStoreDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "/tmp/aegis/bundles"
+	}
+	return filepath.Join(home, ".aegis", "bundles")
+}
+
 func init() {
 	bundleActivateCmd.Flags().StringVar(&bundleSocket, "socket", "", "Daemon socket path (default: $AEGIS_SOCKET_PATH or /tmp/aegis.sock)")
+	bundleListCmd.Flags().StringVar(&bundleListStoreDir, "store-dir", "", "Bundle store directory (default: ~/.aegis/bundles/)")
+	bundleRollbackCmd.Flags().StringVar(&bundleRollbackStoreDir, "store-dir", "", "Bundle store directory (default: ~/.aegis/bundles/)")
 	bundleCmd.AddCommand(bundleActivateCmd)
+	bundleCmd.AddCommand(bundleListCmd)
+	bundleCmd.AddCommand(bundleRollbackCmd)
 }
 
 // bundleReloadMsg is sent to the daemon to trigger a policy reload.
@@ -121,5 +151,91 @@ func runBundleActivate(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "daemon response: %s\n", string(respBytes))
+	return nil
+}
+
+func loadBundleManifests(storeDir string) ([]bundle.BundleManifest, error) {
+	entries, err := os.ReadDir(storeDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("read store dir: %w", err)
+	}
+
+	var manifests []bundle.BundleManifest
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		manifestPath := filepath.Join(storeDir, e.Name(), "manifest.json")
+		data, err := os.ReadFile(manifestPath)
+		if err != nil {
+			continue
+		}
+		var m bundle.BundleManifest
+		if err := json.Unmarshal(data, &m); err != nil {
+			continue
+		}
+		manifests = append(manifests, m)
+	}
+	return manifests, nil
+}
+
+func runBundleList(cmd *cobra.Command, _ []string) error {
+	storeDir := bundleListStoreDir
+	if storeDir == "" {
+		storeDir = defaultBundleStoreDir()
+	}
+
+	manifests, err := loadBundleManifests(storeDir)
+	if err != nil {
+		return err
+	}
+
+	if len(manifests) == 0 {
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "no bundles")
+		return nil
+	}
+
+	sort.Slice(manifests, func(i, j int) bool {
+		return manifests[i].StoredAt.Before(manifests[j].StoredAt)
+	})
+
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%-12s  %-8s  %s\n", "version", "hash", "stored_at")
+	for _, m := range manifests {
+		shortHash := m.Hash
+		if len(shortHash) > 8 {
+			shortHash = shortHash[:8]
+		}
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%-12d  %-8s  %s\n",
+			m.Version, shortHash, m.StoredAt.Format(time.RFC3339))
+	}
+	return nil
+}
+
+func runBundleRollback(cmd *cobra.Command, _ []string) error {
+	storeDir := bundleRollbackStoreDir
+	if storeDir == "" {
+		storeDir = defaultBundleStoreDir()
+	}
+
+	manifests, err := loadBundleManifests(storeDir)
+	if err != nil {
+		return err
+	}
+
+	if len(manifests) < 2 {
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "no previous bundle to roll back to")
+		return fmt.Errorf("rollback failed: no previous bundle to roll back to")
+	}
+
+	sort.Slice(manifests, func(i, j int) bool {
+		return manifests[i].StoredAt.Before(manifests[j].StoredAt)
+	})
+
+	prev := manifests[len(manifests)-2]
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "rolling back to bundle hash=%s version=%d stored_at=%s\n",
+		prev.Hash, prev.Version, prev.StoredAt.Format(time.RFC3339))
 	return nil
 }

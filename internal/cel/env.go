@@ -37,6 +37,12 @@ type CELEnvironment struct {
 	env *cel.Env
 }
 
+// RawEnv returns the underlying *cel.Env for callers that need direct access
+// (e.g., CLI cost estimation). The returned value is immutable after construction.
+func RawEnv(e *CELEnvironment) *cel.Env {
+	return e.env
+}
+
 // NewCELEnvironment constructs an immutable CEL environment with Aegis-specific type
 // declarations and all custom functions registered.
 //
