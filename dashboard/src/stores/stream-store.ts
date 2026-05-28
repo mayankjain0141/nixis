@@ -31,6 +31,7 @@ interface StreamState {
   coalescedCount: number;
   // Last N invariant violations for operator debugging (bounded, never written to console).
   invariantViolations: InvariantViolation[];
+  requestMockMode: boolean;
 
   setConnectionState(state: ConnectionState): void;
   updateLastSequence(seq: number): void;
@@ -41,6 +42,7 @@ interface StreamState {
   recordCoalesced(n: number): void;
   recordInvariantViolations(violations: InvariantViolation[]): void;
   reset(): void;
+  setRequestMockMode(v: boolean): void;
 }
 
 export const useStreamStore = create<StreamState>()(
@@ -59,6 +61,7 @@ export const useStreamStore = create<StreamState>()(
     parseErrorCount: 0,
     coalescedCount: 0,
     invariantViolations: [],
+    requestMockMode: false,
 
     setConnectionState(state) {
       set((draft) => {
@@ -134,6 +137,12 @@ export const useStreamStore = create<StreamState>()(
         draft.parseErrorCount = 0;
         draft.coalescedCount = 0;
         draft.invariantViolations = [];
+      });
+    },
+
+    setRequestMockMode(v) {
+      set((draft) => {
+        draft.requestMockMode = v;
       });
     },
   })),

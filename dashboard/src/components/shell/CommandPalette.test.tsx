@@ -3,6 +3,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { CommandPalette } from './CommandPalette';
 import { useUIStore } from '../../stores/ui-store';
 import { useGovernanceStore } from '../../stores/governance-store';
+import { useStreamStore } from '../../stores/stream-store';
+import type { GovernanceEvent } from '../../stores/governance-store';
 
 function openPalette() {
   act(() => {
@@ -20,6 +22,8 @@ beforeEach(() => {
   closePalette();
   act(() => {
     useGovernanceStore.getState().setFilterVerdict(null);
+    useGovernanceStore.getState().clear();
+    useStreamStore.getState().setRequestMockMode(false);
   });
 });
 
@@ -201,5 +205,86 @@ describe('CommandPalette', () => {
     await waitFor(() => {
       expect(useGovernanceStore.getState().filterVerdict).toBe('deny');
     });
+  });
+
+  // TestCommandPalette_MockStart_SetsStoreFlag
+  it('TestCommandPalette_MockStart_SetsStoreFlag: mock-start sets requestMockMode true', async () => {
+    render(<CommandPalette />);
+    openPalette();
+
+    const input = screen.getByRole('textbox', { name: 'Search commands' });
+    fireEvent.change(input, { target: { value: 'mock start' } });
+
+    const item = await screen.findByText('Demo: Start mock event stream');
+    await act(async () => {
+      fireEvent.click(item);
+    });
+
+    await waitFor(() => {
+      expect(useStreamStore.getState().requestMockMode).toBe(true);
+    });
+  });
+
+  // TestCommandPalette_EventSearch_SetsInspectorTarget
+  it('TestCommandPalette_EventSearch_SetsInspectorTarget: clicking event result opens inspector', async () => {
+    const fixture: GovernanceEvent = {
+      id: 'test-evt-001',
+      sessionId: 'sess-abc',
+      tool: 'uniquetoolxyz',
+      verdict: 'deny',
+      reason: 'policy blocked',
+      policyId: 'pol-1',
+      enforcingLayer: 'kernel',
+      label: { confidentiality: 1, integrity: 1, categories: 0 },
+      labelState: 'fresh',
+      latencyNs: 1000,
+      aegisSequence: 1,
+      timestamp: Date.now(),
+    };
+
+    act(() => {
+      useGovernanceStore.getState().appendEvent(fixture);
+    });
+
+    render(<CommandPalette />);
+    openPalette();
+
+    const input = screen.getByRole('textbox', { name: 'Search commands' });
+    // query > 2 chars to trigger dynamic event search
+    fireEvent.change(input, { target: { value: 'uniquetoolxyz' } });
+
+    const item = await screen.findByText('uniquetoolxyz — deny');
+    await act(async () => {
+      fireEvent.click(item);
+    });
+
+    await waitFor(() => {
+      expect(useUIStore.getState().inspectorTarget).toBe('test-evt-001');
+    });
+  });
+
+  // TestCommandPalette_TimeTravelCommandsExist
+  it('TestCommandPalette_TimeTravelCommandsExist: at least 2 time-travel commands exist', () => {
+    render(<CommandPalette />);
+    openPalette();
+
+    // Show all commands
+    const groups = screen.getAllByRole('group');
+    const ttGroup = groups.find((g) => g.getAttribute('aria-label') === 'time-travel');
+    expect(ttGroup).toBeDefined();
+
+    const ttItems = ttGroup ? ttGroup.querySelectorAll('[role="option"]') : [];
+    expect(ttItems.length).toBeGreaterThanOrEqual(2);
+  });
+
+  // TestCommandPalette_AllVerdictsFilterable
+  it('TestCommandPalette_AllVerdictsFilterable: filter commands exist for deny, allow, require_approval, audit', () => {
+    render(<CommandPalette />);
+    openPalette();
+
+    const requiredIds = ['filter-deny', 'filter-allow', 'filter-require_approval', 'filter-audit'];
+    for (const id of requiredIds) {
+      expect(document.getElementById(`cmd-${id}`), `missing command id: cmd-${id}`).not.toBeNull();
+    }
   });
 });
