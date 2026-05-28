@@ -3,12 +3,14 @@ export const VERDICTS = ['deny', 'allow', 'require_approval', 'audit'] as const;
 export type Verdict = typeof VERDICTS[number];
 
 // Connection states for the WebSocket manager.
+// MOCK: daemon unreachable within 2s; demo data is being displayed.
 export type ConnectionState =
   | 'IDLE'
   | 'CONNECTING'
   | 'CONNECTED'
   | 'DISCONNECTED'
-  | 'RECONNECTING';
+  | 'RECONNECTING'
+  | 'MOCK';
 
 // Pressure levels for the backpressure controller (WS-19).
 export type PressureLevel = 'NORMAL' | 'ELEVATED' | 'HIGH' | 'CRITICAL';

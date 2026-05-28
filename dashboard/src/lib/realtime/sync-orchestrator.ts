@@ -75,7 +75,7 @@ export function createSyncOrchestrator(options?: {
   const frameQueue: StoreUpdate[] = [];
   const deferredQueue: StoreUpdate[] = [];
   let rafId: ReturnType<typeof requestAnimationFrame> | null = null;
-  let idleId: number | null = null;
+  let idleId: ReturnType<typeof setTimeout> | null = null;
 
   const counts: OrchestratorStats = { immediate: 0, frame: 0, deferred: 0, dropped: 0 };
 
@@ -109,7 +109,7 @@ export function createSyncOrchestrator(options?: {
     if (typeof requestIdleCallback !== 'undefined') {
       idleId = requestIdleCallback(flushDeferred);
     } else {
-      idleId = setTimeout(flushDeferred, 0) as unknown as number;
+      idleId = setTimeout(flushDeferred, 0) as ReturnType<typeof setTimeout>;
     }
   }
 
