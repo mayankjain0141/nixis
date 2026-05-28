@@ -52,11 +52,12 @@ func makeSignedBundle(t *testing.T, priv ed25519.PrivateKey, policyYAML string) 
 	return content, sig
 }
 
-// mockEngine is a PolicyReloader that records calls and can inject errors.
+// mockEngine is a PolicyReloader that records calls and can inject errors or callbacks.
 type mockEngine struct {
 	reloadCalls int
 	reloadErr   error
 	lastBundle  *aegis.CompiledBundle
+	reloadFn    func(*aegis.CompiledBundle) // optional callback invoked on each Reload
 }
 
 func (m *mockEngine) Reload(_ context.Context, b *aegis.CompiledBundle) error {
@@ -65,6 +66,9 @@ func (m *mockEngine) Reload(_ context.Context, b *aegis.CompiledBundle) error {
 	}
 	m.reloadCalls++
 	m.lastBundle = b
+	if m.reloadFn != nil {
+		m.reloadFn(b)
+	}
 	return nil
 }
 
@@ -494,6 +498,226 @@ func TestBundle_FileSource_MtimeDetection(t *testing.T) {
 	bundle.RunOnce(bl, ctx)
 	if eng.reloadCalls != 2 {
 		t.Fatalf("expected 2 reloads after file mtime change, got %d", eng.reloadCalls)
+	}
+}
+
+// makeSignedMultiBundle creates a tar.gz containing multiple named YAML files,
+// signs SHA-256(content) with priv, and returns (content, sig).
+func makeSignedMultiBundle(t *testing.T, priv ed25519.PrivateKey, files map[string]string) (content []byte, sig []byte) {
+	t.Helper()
+
+	var buf bytes.Buffer
+	gw := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gw)
+
+	for name, yaml := range files {
+		data := []byte(yaml)
+		hdr := &tar.Header{
+			Name:     name,
+			Mode:     0600,
+			Size:     int64(len(data)),
+			Typeflag: tar.TypeReg,
+		}
+		if err := tw.WriteHeader(hdr); err != nil {
+			t.Fatalf("tar WriteHeader %s: %v", name, err)
+		}
+		if _, err := tw.Write(data); err != nil {
+			t.Fatalf("tar Write %s: %v", name, err)
+		}
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatalf("tar Close: %v", err)
+	}
+	if err := gw.Close(); err != nil {
+		t.Fatalf("gzip Close: %v", err)
+	}
+
+	content = buf.Bytes()
+	digest := sha256.Sum256(content)
+	sig = ed25519.Sign(priv, digest[:])
+	return content, sig
+}
+
+// TestBundle_Parse_LayerField verifies that spec.layer in policy YAML is mapped
+// to PolicyBinding.Layer when parsing.
+func TestBundle_Parse_LayerField(t *testing.T) {
+	ceilingYAML := `apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: ceiling-policy
+spec:
+  layer: ceiling
+  description: "Ceiling layer policy"
+  matchConstraints:
+    tools: ["Bash"]
+  validations:
+    - expression: 'false'
+      action: DENY
+`
+	dir := t.TempDir()
+	path := filepath.Join(dir, "ceiling.yaml")
+	if err := os.WriteFile(path, []byte(ceilingYAML), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, binding, err := bundle.ParsePolicyFile(path)
+	if err != nil {
+		t.Fatalf("ParsePolicyFile: %v", err)
+	}
+	if binding == nil {
+		t.Fatal("expected non-nil binding")
+	}
+	if binding.Layer != bundle.LayerCeiling {
+		t.Fatalf("expected Layer=%q, got %q", bundle.LayerCeiling, binding.Layer)
+	}
+
+	// Unknown layer falls back to "cel".
+	unknownYAML := `apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: unknown-layer-policy
+spec:
+  layer: bogus
+  description: "Unknown layer"
+  matchConstraints:
+    tools: ["Bash"]
+  validations:
+    - expression: 'false'
+      action: DENY
+`
+	path2 := filepath.Join(dir, "unknown.yaml")
+	if err := os.WriteFile(path2, []byte(unknownYAML), 0600); err != nil {
+		t.Fatal(err)
+	}
+	_, binding2, err := bundle.ParsePolicyFile(path2)
+	if err != nil {
+		t.Fatalf("ParsePolicyFile: %v", err)
+	}
+	if binding2 == nil {
+		t.Fatal("expected non-nil binding for unknown layer")
+	}
+	if binding2.Layer != bundle.LayerCEL {
+		t.Fatalf("expected unknown layer to fall back to %q, got %q", bundle.LayerCEL, binding2.Layer)
+	}
+}
+
+// TestBundle_LayerPriorityOrder verifies that after compilation the bindings in
+// a CompiledBundle are sorted ceiling → team → project → cel.
+func TestBundle_LayerPriorityOrder(t *testing.T) {
+	_, priv := mustGenKey(t)
+	pub := priv.Public().(ed25519.PublicKey)
+
+	// Build a bundle with policies in deliberately wrong order: cel, project, team, ceiling.
+	celYAML := `apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: cel-policy
+spec:
+  description: "CEL layer"
+  matchConstraints:
+    tools: ["Bash"]
+  validations:
+    - expression: 'false'
+      action: DENY
+`
+	projectYAML := `apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: project-policy
+spec:
+  layer: project
+  description: "Project layer"
+  matchConstraints:
+    tools: ["Bash"]
+  validations:
+    - expression: 'false'
+      action: DENY
+`
+	teamYAML := `apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: team-policy
+spec:
+  layer: team
+  description: "Team layer"
+  matchConstraints:
+    tools: ["Bash"]
+  validations:
+    - expression: 'false'
+      action: DENY
+`
+	ceilingYAML := `apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: ceiling-policy
+spec:
+  layer: ceiling
+  description: "Ceiling layer"
+  matchConstraints:
+    tools: ["Bash"]
+  validations:
+    - expression: 'false'
+      action: DENY
+`
+
+	content, sig := makeSignedMultiBundle(t, priv, map[string]string{
+		"cel.yaml":     celYAML,
+		"project.yaml": projectYAML,
+		"team.yaml":    teamYAML,
+		"ceiling.yaml": ceilingYAML,
+	})
+
+	dir := t.TempDir()
+	bundlePath := filepath.Join(dir, "bundle.tar.gz")
+	sigPath := bundlePath + ".sig"
+	if err := os.WriteFile(bundlePath, content, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(sigPath, sig, 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	var capturedBundle *aegis.CompiledBundle
+	eng := &mockEngine{
+		reloadFn: func(b *aegis.CompiledBundle) {
+			capturedBundle = b
+		},
+	}
+
+	storageDir := t.TempDir()
+	cfg := bundle.BundleConfig{
+		SourceURL:    "file://" + bundlePath,
+		PollInterval: time.Minute,
+		TrustedKeys:  []ed25519.PublicKey{pub},
+		StorageDir:   storageDir,
+		KeepCount:    3,
+	}
+	bl, err := bundle.NewBundleLoader(cfg, eng)
+	if err != nil {
+		t.Fatalf("NewBundleLoader: %v", err)
+	}
+
+	ctx := context.Background()
+	bundle.RunOnce(bl, ctx)
+
+	if capturedBundle == nil {
+		t.Fatal("engine.Reload was not called — activation failed")
+	}
+	if len(capturedBundle.Bindings) != 4 {
+		t.Fatalf("expected 4 bindings, got %d", len(capturedBundle.Bindings))
+	}
+
+	// Verify ordering: ceiling → team → project → cel
+	want := []string{
+		bundle.LayerCeiling,
+		bundle.LayerTeam,
+		bundle.LayerProject,
+		bundle.LayerCEL,
+	}
+	for i, b := range capturedBundle.Bindings {
+		if b.Layer != want[i] {
+			t.Errorf("binding[%d]: expected layer %q, got %q", i, want[i], b.Layer)
+		}
 	}
 }
 

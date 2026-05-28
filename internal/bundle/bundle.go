@@ -122,3 +122,21 @@ type BundleLoaderIface interface {
 	// before returning the raw bytes. Verification happens BEFORE parsing (INV-009).
 	Load(ctx context.Context, sourceURL string, keys *KeySource) (*RawBundle, error)
 }
+
+// Policy layer constants. Lower LayerPriority value = higher precedence (evaluated first).
+// ceiling overrides team overrides project overrides cel (the default).
+const (
+	LayerCeiling = "ceiling"
+	LayerTeam    = "team"
+	LayerProject = "project"
+	LayerCEL     = "cel"
+)
+
+// LayerPriority maps each layer name to its evaluation order.
+// Lower number = higher priority. ceiling fires before team, team before project, project before cel.
+var LayerPriority = map[string]int{
+	LayerCeiling: 0,
+	LayerTeam:    1,
+	LayerProject: 2,
+	LayerCEL:     3,
+}

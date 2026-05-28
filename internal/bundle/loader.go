@@ -14,6 +14,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -368,6 +369,21 @@ func (b *BundleLoader) compile(dir string, digest [32]byte) (*aegis.CompiledBund
 	if err != nil {
 		return nil, 0, fmt.Errorf("bundle parse: %w", err)
 	}
+
+	// Sort bindings by layer priority: ceiling(0) → team(1) → project(2) → cel(3).
+	// This ensures ceiling-layer DENY decisions fire before lower layers can allow,
+	// implementing the hierarchical policy merge without engine changes.
+	sort.SliceStable(bindings, func(i, j int) bool {
+		pi, ok := LayerPriority[bindings[i].Layer]
+		if !ok {
+			pi = LayerPriority[LayerCEL]
+		}
+		pj, ok := LayerPriority[bindings[j].Layer]
+		if !ok {
+			pj = LayerPriority[LayerCEL]
+		}
+		return pi < pj
+	})
 
 	prev := b.prevBundle.Load()
 	version := uint64(1)
