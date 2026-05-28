@@ -15,10 +15,12 @@ import (
 	"os"
 
 	"github.com/mayjain/aegis/internal/audit"
+	"github.com/mayjain/aegis/internal/bundle"
 	"github.com/mayjain/aegis/internal/cel"
 	"github.com/mayjain/aegis/internal/daemon"
 	"github.com/mayjain/aegis/internal/ifc"
 	"github.com/mayjain/aegis/internal/policy"
+	"github.com/mayjain/aegis/pkg/aegis"
 )
 
 func main() {
@@ -57,6 +59,23 @@ func main() {
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())
+
+	templates, bindings, err := bundle.ParsePolicyDir(cfg.PolicyDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "aegis-daemon: failed to parse policies from %q: %v\n", cfg.PolicyDir, err)
+		fmt.Fprintf(os.Stderr, "aegis-daemon: starting with no policies (all requests will be denied)\n")
+	} else {
+		compiled := &aegis.CompiledBundle{
+			Version:   1,
+			Templates: templates,
+			Bindings:  bindings,
+		}
+		if err := engine.Reload(ctx, compiled); err != nil {
+			fmt.Fprintf(os.Stderr, "aegis-daemon: failed to load initial policies: %v\n", err)
+		} else {
+			fmt.Fprintf(os.Stderr, "aegis-daemon: loaded %d policies from %s\n", len(templates), cfg.PolicyDir)
+		}
+	}
 	auditDone := make(chan struct{})
 	go func() {
 		defer close(auditDone)
