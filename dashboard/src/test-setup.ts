@@ -5,7 +5,7 @@ import { enableMapSet } from 'immer';
 enableMapSet();
 
 // jsdom does not implement ResizeObserver; polyfill for @xyflow/react and Canvas components.
-global.ResizeObserver = class ResizeObserver {
+globalThis.ResizeObserver = class ResizeObserver {
   observe() {}
   unobserve() {}
   disconnect() {}
