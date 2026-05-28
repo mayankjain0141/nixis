@@ -120,7 +120,7 @@ func TestMCP_ToolDrift_RequireApproval(t *testing.T) {
 		callResult: json.RawMessage(`{"exit":0}`),
 		tools:      []mcp.ToolDefinition{tool1},
 	}
-	proxy := mcp.New(upstream, allowPipeline(), nil, "sess-drift")
+	proxy := mcp.NewInMemory(upstream, allowPipeline(), nil, "sess-drift")
 
 	// First tools/list — sets baseline for "bash".
 	id1, _ := json.Marshal(1)
@@ -154,7 +154,7 @@ func TestMCP_ToolDrift_RequireApproval(t *testing.T) {
 
 func TestMCP_RequestDeny_NoForward(t *testing.T) {
 	upstream := &mockUpstream{callResult: json.RawMessage(`"ok"`)}
-	proxy := mcp.New(upstream, denyPipeline("not allowed"), nil, "sess-1")
+	proxy := mcp.NewInMemory(upstream, denyPipeline("not allowed"), nil, "sess-1")
 
 	resp := proxy.HandleRequest(context.Background(), toolCallRequest("bash"))
 	proxy.Wait()
@@ -170,7 +170,7 @@ func TestMCP_RequestDeny_NoForward(t *testing.T) {
 func TestMCP_ResponseScan_TaintsLabel(t *testing.T) {
 	upstream := &mockUpstream{callResult: json.RawMessage(`"AKIAIOSFODNN7EXAMPLE"`)}
 	scanner := &mockScanner{detected: true}
-	proxy := mcp.New(upstream, allowPipeline(), scanner, "sess-secret")
+	proxy := mcp.NewInMemory(upstream, allowPipeline(), scanner, "sess-secret")
 
 	resp := proxy.HandleRequest(context.Background(), toolCallRequest("read_file"))
 	proxy.Wait()
@@ -229,7 +229,7 @@ func TestMCP_Fingerprint_Deterministic(t *testing.T) {
 func TestMCP_PassThrough_NonToolCall(t *testing.T) {
 	expected := json.RawMessage(`{"name":"aegis-mcp","version":"0.1"}`)
 	upstream := &mockUpstream{callResult: expected}
-	proxy := mcp.New(upstream, denyPipeline("should not reach pipeline"), nil, "sess-2")
+	proxy := mcp.NewInMemory(upstream, denyPipeline("should not reach pipeline"), nil, "sess-2")
 
 	id, _ := json.Marshal(42)
 	req := mcp.JSONRPCRequest{
@@ -256,7 +256,7 @@ func TestMCP_PassThrough_NonToolCall(t *testing.T) {
 func TestMCP_GovernancePipeline_Allow_Forwards(t *testing.T) {
 	expected := json.RawMessage(`{"exit":0}`)
 	upstream := &mockUpstream{callResult: expected}
-	proxy := mcp.New(upstream, allowPipeline(), nil, "sess-3")
+	proxy := mcp.NewInMemory(upstream, allowPipeline(), nil, "sess-3")
 
 	resp := proxy.HandleRequest(context.Background(), toolCallRequest("bash"))
 	proxy.Wait()
@@ -271,7 +271,7 @@ func TestMCP_GovernancePipeline_Allow_Forwards(t *testing.T) {
 
 func TestMCP_RequireApproval_ReturnsError(t *testing.T) {
 	upstream := &mockUpstream{callResult: json.RawMessage(`"ok"`)}
-	proxy := mcp.New(upstream, requireApprovalPipeline(), nil, "sess-4")
+	proxy := mcp.NewInMemory(upstream, requireApprovalPipeline(), nil, "sess-4")
 
 	resp := proxy.HandleRequest(context.Background(), toolCallRequest("deploy"))
 	proxy.Wait()
