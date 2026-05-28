@@ -22,6 +22,7 @@ type PolicyBinding struct {
 type PolicyScope struct {
 	Tools    []string // empty = all tools
 	Sessions []string // empty = all sessions
+	Effects  []string // empty = all effects; if specified, binding only applies when tool has ALL listed effects
 }
 
 // PolicySet is the full set of active policies.

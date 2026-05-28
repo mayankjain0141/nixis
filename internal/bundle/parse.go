@@ -21,7 +21,8 @@ type policyManifest struct {
 		Description      string `yaml:"description"`
 		Layer            string `yaml:"layer"` // ceiling | team | project | cel (default)
 		MatchConstraints struct {
-			Tools []string `yaml:"tools"`
+			Tools   []string `yaml:"tools"`
+			Effects []string `yaml:"effects"`
 		} `yaml:"matchConstraints"`
 		Variables []struct {
 			Name       string `yaml:"name"`
@@ -80,7 +81,8 @@ func ParsePolicyFile(path string) (*policy_types.PolicyTemplate, *policy_types.P
 	binding := &policy_types.PolicyBinding{
 		TemplateID: manifest.Metadata.Name,
 		Scope: policy_types.PolicyScope{
-			Tools: manifest.Spec.MatchConstraints.Tools,
+			Tools:   manifest.Spec.MatchConstraints.Tools,
+			Effects: manifest.Spec.MatchConstraints.Effects,
 		},
 		Priority: 0,
 		Layer:    layer,
@@ -91,6 +93,11 @@ func ParsePolicyFile(path string) (*policy_types.PolicyTemplate, *policy_types.P
 
 // buildCombinedExpression builds a single CEL expression from policy validations.
 // Variables defined in spec.variables are inlined by substitution before compilation.
+//
+// Key behaviors:
+//   - Variables are inlined using multiple passes to handle nested references (e.g., isProtected → branchName).
+//   - All DENY validations are combined with OR: !(expr1 || expr2 || ...).
+//   - If no DENY validations exist, falls back to the first non-empty validation.
 func buildCombinedExpression(m *policyManifest) string {
 	// Build variable substitution map: name → normalized expression.
 	vars := make(map[string]string, len(m.Spec.Variables))
@@ -98,26 +105,103 @@ func buildCombinedExpression(m *policyManifest) string {
 		vars[v.Name] = normalizeExpression(v.Expression)
 	}
 
+	// inline substitutes all variables, using multiple passes to handle nested references.
+	// Go map iteration order is random, so if isProtected references branchName, a single pass
+	// may substitute isProtected before branchName, leaving branchName un-substituted.
+	// Multiple passes (up to len(vars)+1) guarantee all transitive references are resolved.
 	inline := func(expr string) string {
 		expr = normalizeExpression(expr)
-		// Substitute each variable name with its expression (simple token replace).
-		for name, val := range vars {
-			expr = strings.ReplaceAll(expr, name, "("+val+")")
+		for i := 0; i < len(vars)+1; i++ {
+			prev := expr
+			for name, val := range vars {
+				expr = replaceIdentifier(expr, name, "("+val+")")
+			}
+			if expr == prev {
+				break // no more substitutions possible
+			}
 		}
 		return expr
 	}
 
+	// Collect all DENY validations and combine with OR.
+	var denyExprs []string
 	for _, v := range m.Spec.Validations {
 		if v.Action == "DENY" && v.Expression != "" {
-			return "!(" + inline(v.Expression) + ")"
+			denyExprs = append(denyExprs, inline(v.Expression))
 		}
 	}
+
+	if len(denyExprs) > 0 {
+		// Combined expression: deny if ANY of the deny conditions is true.
+		// The expression evaluates to true (allow) when none of the conditions match.
+		// !(cond1 || cond2 || cond3) == allow when all conditions are false.
+		return "!(" + strings.Join(denyExprs, " || ") + ")"
+	}
+
+	// Fallback: use first non-empty validation (for REQUIRE_APPROVAL, etc.)
 	for _, v := range m.Spec.Validations {
 		if v.Expression != "" {
 			return "!(" + inline(v.Expression) + ")"
 		}
 	}
 	return ""
+}
+
+// replaceIdentifier replaces a CEL identifier (variable name) with a replacement value,
+// but only when it appears as a standalone identifier — not as part of a larger identifier
+// or function name.
+//
+// For example, replacing "targetPort" with "(bash.targetPort(...))" should not match
+// the "targetPort" inside "bash.targetPort" because it's preceded by a dot.
+func replaceIdentifier(expr, name, replacement string) string {
+	var result strings.Builder
+	result.Grow(len(expr) + len(replacement))
+
+	i := 0
+	for i < len(expr) {
+		// Find next occurrence of name
+		idx := strings.Index(expr[i:], name)
+		if idx == -1 {
+			result.WriteString(expr[i:])
+			break
+		}
+		absIdx := i + idx
+
+		// Check if this is a standalone identifier (not part of a larger word)
+		// Preceding char must not be alphanumeric, underscore, or dot
+		// Following char must not be alphanumeric or underscore
+		validBefore := absIdx == 0 || !isIdentChar(expr[absIdx-1])
+		validAfter := absIdx+len(name) >= len(expr) || !isIdentContinue(expr[absIdx+len(name)])
+
+		result.WriteString(expr[i:absIdx])
+		if validBefore && validAfter {
+			result.WriteString(replacement)
+		} else {
+			result.WriteString(name)
+		}
+		i = absIdx + len(name)
+	}
+
+	return result.String()
+}
+
+// isIdentChar returns true if c can be part of or adjacent to a CEL identifier.
+// Includes dot because function calls like "bash.targetPort" should not have
+// "targetPort" substituted.
+func isIdentChar(c byte) bool {
+	return (c >= 'a' && c <= 'z') ||
+		(c >= 'A' && c <= 'Z') ||
+		(c >= '0' && c <= '9') ||
+		c == '_' || c == '.'
+}
+
+// isIdentContinue returns true if c can continue a CEL identifier.
+// Does not include dot — "targetPort." should allow substitution of "targetPort".
+func isIdentContinue(c byte) bool {
+	return (c >= 'a' && c <= 'z') ||
+		(c >= 'A' && c <= 'Z') ||
+		(c >= '0' && c <= '9') ||
+		c == '_'
 }
 
 // normalizeExpression transforms policy YAML expression syntax to CEL activation syntax.

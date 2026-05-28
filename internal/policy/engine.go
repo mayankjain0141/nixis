@@ -253,6 +253,11 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 
 	matchedBindings := snap.matchBindings(req.Tool, req.SessionID)
 	for _, cb := range matchedBindings {
+		// Check effects constraint: if binding specifies effects, all must be present.
+		if len(cb.binding.Scope.Effects) > 0 && !hasAllEffects(verdict.Effects, cb.binding.Scope.Effects) {
+			continue
+		}
+
 		prog, ok := snap.programs.Get(cb.binding.TemplateID)
 		if !ok {
 			continue
@@ -536,6 +541,27 @@ type noopDelegationValidator struct{}
 
 func (n *noopDelegationValidator) Validate(_ []aegis.DelegationRef, _ time.Time) error {
 	return nil
+}
+
+// hasAllEffects returns true if actual contains all required effects.
+// Called during binding match to enforce effects constraints.
+func hasAllEffects(actual, required []string) bool {
+	if len(required) == 0 {
+		return true
+	}
+	for _, r := range required {
+		found := false
+		for _, a := range actual {
+			if a == r {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }
 
 // compile-time interface assertion
