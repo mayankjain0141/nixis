@@ -3,6 +3,7 @@ package policy
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -51,6 +52,7 @@ func TestPolicyEngine_Reload_SingleWriter(t *testing.T) {
 
 	var wg sync.WaitGroup
 	var reloadCount atomic.Int32
+	var lastVersion atomic.Uint64
 	const numGoroutines = 10
 
 	wg.Add(numGoroutines)
@@ -65,6 +67,10 @@ func TestPolicyEngine_Reload_SingleWriter(t *testing.T) {
 				t.Errorf("reload failed: %v", err)
 			}
 			reloadCount.Add(1)
+			snap := engine.snapshot.Load()
+			if snap != nil {
+				lastVersion.Store(snap.public.Version)
+			}
 		}(i)
 	}
 
@@ -77,6 +83,11 @@ func TestPolicyEngine_Reload_SingleWriter(t *testing.T) {
 	snap := engine.snapshot.Load()
 	if snap == nil {
 		t.Fatal("expected snapshot to be non-nil after reload")
+	}
+
+	if snap.public.Version != uint64(numGoroutines) {
+		t.Errorf("expected final version %d (serialized reloads increment from 1), got %d",
+			numGoroutines, snap.public.Version)
 	}
 }
 
@@ -265,7 +276,7 @@ func TestPolicyEngine_Evaluate_Pipeline_CELLayer(t *testing.T) {
 	}
 }
 
-func TestPolicyEngine_Evaluate_FailSecure(t *testing.T) {
+func TestPolicyEngine_Evaluate_NoPolicies_ReturnsAllow(t *testing.T) {
 	sessions := &ifc.SessionLabels{}
 	celEnv, err := cel.NewCELEnvironment()
 	if err != nil {
@@ -304,6 +315,51 @@ func TestPolicyEngine_Evaluate_FailSecure(t *testing.T) {
 
 	if resp.Decision.Action != aegis.ActionAllow {
 		t.Errorf("expected ActionAllow when no policies match, got %v", resp.Decision.Action)
+	}
+}
+
+// panicClassifier is a test classifier that panics on Classify().
+type panicClassifier struct{}
+
+func (p *panicClassifier) Classify(_ string) (classify.VerdictEntry, bool) {
+	panic("intentional panic for fail-secure test")
+}
+
+func (p *panicClassifier) ClassifyBash(_, _ string) classify.VerdictEntry {
+	panic("intentional panic for fail-secure test")
+}
+
+func TestPolicyEngine_Evaluate_FailSecure(t *testing.T) {
+	sessions := &ifc.SessionLabels{}
+	celEnv, err := cel.NewCELEnvironment()
+	if err != nil {
+		t.Fatalf("failed to create CEL environment: %v", err)
+	}
+
+	engine := NewPolicyEngine(sessions, celEnv)
+
+	snap := &engineSnapshot{
+		public: aegis.EngineSnapshot{
+			Version: 1,
+		},
+		classifierIntf: &panicClassifier{},
+		programs:       &cel.ProgramCache{},
+		bindingIdx:     bindingIndex{},
+	}
+	engine.applySnapshot(snap)
+
+	req := aegis.CheckRequest{
+		Tool:      "AnyTool",
+		SessionID: "test-session",
+	}
+
+	resp := engine.Evaluate(context.Background(), req)
+
+	if resp.Decision.Action != aegis.ActionDeny {
+		t.Errorf("expected ActionDeny on panic (fail-secure), got %v", resp.Decision.Action)
+	}
+	if resp.Decision.Reason != "internal evaluation panic" {
+		t.Errorf("expected reason 'internal evaluation panic', got %v", resp.Decision.Reason)
 	}
 }
 
@@ -372,20 +428,27 @@ func TestPolicyEngine_Reload_FailedReloadKeepsOld(t *testing.T) {
 	}
 	version1 := snap1.public.Version
 
+	buildErr := errors.New("intentional build failure for test")
+	engine.buildSnapshotFunc = func(_ context.Context, _ *aegis.CompiledBundle, _ uint64) (*engineSnapshot, error) {
+		return nil, buildErr
+	}
+
 	secondBundle := &aegis.CompiledBundle{
 		Version: 2,
 	}
 	err = engine.Reload(context.Background(), secondBundle)
-	if err != nil {
-		t.Logf("second reload failed as expected: %v", err)
+	if err == nil {
+		t.Fatal("expected second reload to fail")
+	}
+	if err != buildErr {
+		t.Errorf("expected build error, got %v", err)
 	}
 
 	snap2 := engine.snapshot.Load()
 	if snap2 == nil {
-		t.Fatal("expected snapshot to still exist after reload attempt")
+		t.Fatal("expected snapshot to still exist after failed reload")
 	}
-
-	if err != nil && snap2.public.Version != version1 {
+	if snap2.public.Version != version1 {
 		t.Errorf("expected version to remain %d on failed reload, got %d", version1, snap2.public.Version)
 	}
 }

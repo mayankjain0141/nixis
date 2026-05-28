@@ -64,6 +64,12 @@ type DelegationValidator interface {
 	Validate(chain []aegis.DelegationRef, now time.Time) error
 }
 
+// classifierInterface abstracts the Classifier for testing (panic injection).
+type classifierInterface interface {
+	Classify(toolName string) (classify.VerdictEntry, bool)
+	ClassifyBash(toolName, commandText string) classify.VerdictEntry
+}
+
 // engineSnapshot extends the public aegis.EngineSnapshot with internal evaluation state.
 // internal/policy/ owns this type entirely.
 type engineSnapshot struct {
@@ -71,9 +77,11 @@ type engineSnapshot struct {
 	bindings   []compiledBinding
 	programs   *cel.ProgramCache
 	classifier *classify.Classifier
-	bindingIdx bindingIndex
-	compiledAt int64
-	sourceHash [32]byte
+	// classifierIntf is used when classifier is nil (test injection).
+	classifierIntf classifierInterface
+	bindingIdx     bindingIndex
+	compiledAt     int64
+	sourceHash     [32]byte
 }
 
 // compiledBinding pairs a policy binding with its pre-resolved scope key.
@@ -94,6 +102,9 @@ type bindingIndex struct {
 	all    []*compiledBinding
 }
 
+// snapshotBuilder is the signature for buildSnapshot (injectable for testing).
+type snapshotBuilder func(ctx context.Context, bundle *aegis.CompiledBundle, version uint64) (*engineSnapshot, error)
+
 // PolicyEngine is the top-level governance evaluator implementing aegis.Engine.
 type PolicyEngine struct {
 	snapshot            atomic.Pointer[engineSnapshot]
@@ -104,6 +115,9 @@ type PolicyEngine struct {
 	secretScanner       SecretScanner
 	delegationValidator DelegationValidator
 	activationBuilder   *cel.ActivationBuilder
+	// buildSnapshotFunc is injected for testing failed reload scenarios.
+	// If nil, the default buildSnapshot is used.
+	buildSnapshotFunc snapshotBuilder
 }
 
 // Option configures a PolicyEngine.
@@ -194,6 +208,12 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 		verdict = snap.classifier.ClassifyBash(req.Tool, commandText)
 	} else if snap.classifier != nil {
 		verdict, _ = snap.classifier.Classify(req.Tool)
+	} else if snap.classifierIntf != nil {
+		if commandText != "" {
+			verdict = snap.classifierIntf.ClassifyBash(req.Tool, commandText)
+		} else {
+			verdict, _ = snap.classifierIntf.Classify(req.Tool)
+		}
 	} else {
 		verdict = classify.VerdictEntry{
 			Classification: "unknown",
@@ -330,7 +350,12 @@ func (e *PolicyEngine) Reload(ctx context.Context, bundle *aegis.CompiledBundle)
 		nextVersion = prev.public.Version + 1
 	}
 
-	newSnap, err := e.buildSnapshot(ctx, bundle, nextVersion)
+	builder := e.buildSnapshot
+	if e.buildSnapshotFunc != nil {
+		builder = e.buildSnapshotFunc
+	}
+
+	newSnap, err := builder(ctx, bundle, nextVersion)
 	if err != nil {
 		return err
 	}
