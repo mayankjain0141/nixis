@@ -9,6 +9,7 @@ const CONNECTION_LABELS: Record<ConnectionState, string> = {
   CONNECTED: 'Connected',
   DISCONNECTED: 'Disconnected',
   RECONNECTING: 'Reconnecting',
+  MOCK: 'Mock',
 };
 
 const CONNECTION_COLORS: Record<ConnectionState, string> = {
@@ -17,6 +18,7 @@ const CONNECTION_COLORS: Record<ConnectionState, string> = {
   CONNECTED: '#2da44e',
   DISCONNECTED: '#cf222e',
   RECONNECTING: '#d29922',
+  MOCK: '#8b5cf6',
 };
 
 function nsToMs(ns: number): number {

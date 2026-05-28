@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { MetricsBar } from './MetricsBar';
 import { useGovernanceStore } from '../../stores/governance-store';
+import { useStreamStore } from '../../stores/stream-store';
 import type { GovernanceEvent } from '../../stores/governance-store';
 
 function makeEvent(verdict: GovernanceEvent['verdict'], n: number): GovernanceEvent {
@@ -23,6 +24,7 @@ function makeEvent(verdict: GovernanceEvent['verdict'], n: number): GovernanceEv
 
 beforeEach(() => {
   useGovernanceStore.getState().clear();
+  useStreamStore.getState().reset();
 });
 
 describe('MetricsBar', () => {
@@ -55,5 +57,11 @@ describe('MetricsBar', () => {
     render(<MetricsBar />);
     const denySpan = screen.getByText('10%');
     expect(denySpan).toHaveAttribute('data-high-deny', 'false');
+  });
+
+  it('shows Mock indicator when connectionState is MOCK', () => {
+    useStreamStore.getState().setConnectionState('MOCK');
+    render(<MetricsBar />);
+    expect(screen.getByText('Mock')).toBeInTheDocument();
   });
 });

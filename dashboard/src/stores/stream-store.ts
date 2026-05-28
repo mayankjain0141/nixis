@@ -13,6 +13,12 @@ export interface ConnectionMetrics {
 }
 
 const MAX_BUFFERED = 500;
+const MAX_INVARIANT_VIOLATIONS = 10;
+
+export interface InvariantViolation {
+  id: string;
+  evidence: unknown;
+}
 
 interface StreamState {
   connectionState: ConnectionState;
@@ -21,6 +27,10 @@ interface StreamState {
   // Messages buffered while the tab is backgrounded.
   backgroundBuffer: string[];
   parseErrorCount: number;
+  // Count of coalesced events dropped under backpressure (operator visibility).
+  coalescedCount: number;
+  // Last N invariant violations for operator debugging (bounded, never written to console).
+  invariantViolations: InvariantViolation[];
 
   setConnectionState(state: ConnectionState): void;
   updateLastSequence(seq: number): void;
@@ -28,6 +38,8 @@ interface StreamState {
   bufferMessage(raw: string): void;
   flushBuffer(): string[];
   recordParseError(): void;
+  recordCoalesced(n: number): void;
+  recordInvariantViolations(violations: InvariantViolation[]): void;
   reset(): void;
 }
 
@@ -45,6 +57,8 @@ export const useStreamStore = create<StreamState>()(
     },
     backgroundBuffer: [],
     parseErrorCount: 0,
+    coalescedCount: 0,
+    invariantViolations: [],
 
     setConnectionState(state) {
       set((draft) => {
@@ -97,12 +111,29 @@ export const useStreamStore = create<StreamState>()(
       });
     },
 
+    recordCoalesced(n) {
+      set((draft) => {
+        draft.coalescedCount += n;
+      });
+    },
+
+    recordInvariantViolations(violations) {
+      set((draft) => {
+        draft.invariantViolations.push(...violations);
+        if (draft.invariantViolations.length > MAX_INVARIANT_VIOLATIONS) {
+          draft.invariantViolations.splice(0, draft.invariantViolations.length - MAX_INVARIANT_VIOLATIONS);
+        }
+      });
+    },
+
     reset() {
       set((draft) => {
         draft.connectionState = 'IDLE';
         draft.lastSequenceId = 0;
         draft.backgroundBuffer = [];
         draft.parseErrorCount = 0;
+        draft.coalescedCount = 0;
+        draft.invariantViolations = [];
       });
     },
   })),

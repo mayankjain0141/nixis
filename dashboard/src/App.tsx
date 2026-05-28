@@ -8,6 +8,7 @@ import { ThreatPanel } from './components/governance/ThreatPanel';
 import { useGovernanceStore } from './stores/governance-store';
 import { useMetricsStore } from './stores/metrics-store';
 import { useStreamStore } from './stores/stream-store';
+import type { InvariantViolation } from './stores/stream-store';
 import { usePolicyStore } from './stores/policy-store';
 import { useUIStore } from './stores/ui-store';
 import { useLatticeStore } from './stores/lattice-store';
@@ -284,13 +285,15 @@ export default function App() {
         return out;
       },
       getPolicyBundleVersion: () => usePolicyStore.getState().bundleStatus?.version ?? null,
-      getStreamBundleVersion: () => null,
+      getStreamBundleVersion: () => usePolicyStore.getState().bundleStatus?.version ?? null,
     });
 
     const interval = setInterval(() => {
       const violations = checker.runAll().filter(r => !r.passed);
       if (violations.length > 0) {
-        console.warn('[aegis] invariant violations:', violations);
+        useStreamStore.getState().recordInvariantViolations(
+          violations.map((v): InvariantViolation => ({ id: v.id, evidence: { severity: v.severity, message: v.message } })),
+        );
       }
     }, 5000);
 
@@ -311,6 +314,14 @@ export default function App() {
     // Backpressure output → sync-orchestrator (calls stream-processor internally) → stores.
     const unsubBp = bpController.onOutput((batch) => {
       orchestrator.dispatch(batch);
+      // Under backpressure, ALLOW evaluations are coalesced into summary counts.
+      // Individual GovernanceEvents are intentionally not stored for coalesced batches
+      // to preserve memory bounds. Only immediateEvents (CRITICAL + HIGH priority) are
+      // stored verbatim. coalescedCount is tracked in stream-store for operator visibility.
+      const coalescedTotal = (batch.coalescedSummary ?? []).reduce((s, c) => s + c.count, 0);
+      if (coalescedTotal > 0) {
+        useStreamStore.getState().recordCoalesced(coalescedTotal);
+      }
       routeEvents(
         batch.immediateEvents,
         orchestrator,
@@ -346,7 +357,7 @@ export default function App() {
     function startMock() {
       if (useMock) return;
       useMock = true;
-      setConnectionState('DISCONNECTED');
+      setConnectionState('MOCK');
       const gen = createMockStreamGenerator(50);
       mockGenRef.current = gen;
       gen.onEvent((e: StreamEvent) => {
@@ -423,6 +434,7 @@ function ConnectionStatus({ state }: { state: string }) {
     CONNECTED: '#2da44e',
     DISCONNECTED: '#cf222e',
     RECONNECTING: '#d29922',
+    MOCK: '#8b5cf6',
   };
   const color = colors[state] ?? '#57606a';
 
