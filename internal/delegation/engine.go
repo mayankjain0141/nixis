@@ -184,6 +184,30 @@ func (e *Engine) removeExpired(now time.Time) {
 	}
 }
 
+// ActiveChainInfo describes a chain currently tracked by the Engine.
+type ActiveChainInfo struct {
+	ChainID   string    `json:"chain_id"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+// ListActive returns metadata for all chains currently in the active map.
+func (e *Engine) ListActive() []ActiveChainInfo {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	if len(e.activeChains) == 0 {
+		return []ActiveChainInfo{}
+	}
+	out := make([]ActiveChainInfo, 0, len(e.activeChains))
+	for id, chain := range e.activeChains {
+		ceil := chain.Ceiling()
+		out = append(out, ActiveChainInfo{
+			ChainID:   id,
+			ExpiresAt: ceil.ExpiresAt,
+		})
+	}
+	return out
+}
+
 // isChainExpired returns true if any token in the chain has expired.
 func isChainExpired(chain *Chain, now time.Time) bool {
 	for _, tok := range chain.tokens {

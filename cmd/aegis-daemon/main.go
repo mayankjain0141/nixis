@@ -10,6 +10,7 @@ package main
 
 import (
 	"context"
+	"crypto/ed25519"
 	"flag"
 	"fmt"
 	"os"
@@ -18,6 +19,7 @@ import (
 	"github.com/mayjain/aegis/internal/bundle"
 	"github.com/mayjain/aegis/internal/cel"
 	"github.com/mayjain/aegis/internal/daemon"
+	"github.com/mayjain/aegis/internal/delegation"
 	"github.com/mayjain/aegis/internal/ifc"
 	"github.com/mayjain/aegis/internal/policy"
 	"github.com/mayjain/aegis/internal/reload"
@@ -115,7 +117,23 @@ func main() {
 	}()
 	defer streamCancel()
 
+	// Create a delegation engine with an ephemeral key so the HTTP API is
+	// available from startup. Chains are registered by the policy engine at
+	// runtime; the ephemeral key is only needed to satisfy the constructor
+	// (it is never used to sign or verify tokens in this context).
+	delegPub, _, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "aegis-daemon: failed to generate ephemeral delegation key: %v\n", err)
+		os.Exit(1)
+	}
+	delegEngine, err := delegation.New(delegPub)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "aegis-daemon: failed to create delegation engine: %v\n", err)
+		os.Exit(1)
+	}
+
 	d := daemon.New(cfg, engine, auditWriter, streamSrv, sessions)
+	d.SetDelegationEngine(delegEngine)
 	d.SetAuditContext(cancel, auditDone)
 
 	if err := d.Run(ctx); err != nil {
