@@ -91,9 +91,10 @@ var errMessageTooLarge = errors.New("framed message exceeds MaxMessageSize")
 //
 // Protocol:
 //  1. Read one framed CheckRequest (with 50ms deadline).
-//  2. Evaluate against the policy engine (within same deadline).
-//  3. Write one framed CheckResponse.
-//  4. Close the connection.
+//  2. Check daemon mode — deny immediately if ModeDenyAll or ModeReadOnly.
+//  3. Evaluate against the policy engine (within same deadline).
+//  4. Write one framed CheckResponse.
+//  5. Close the connection.
 //
 // All error paths produce a Deny response and then close; the daemon never
 // returns a raw error or a non-JSON frame to the hook (IFC-001).
@@ -115,6 +116,13 @@ func (d *Daemon) handleConnection(conn net.Conn) {
 	var req aegis.CheckRequest
 	if err := json.Unmarshal(raw, &req); err != nil {
 		d.writeErrorResponse(conn, deadline, "malformed JSON request")
+		return
+	}
+
+	// Enforce daemon mode after reading request but before evaluation.
+	// ModeDenyAll and ModeReadOnly deny all requests without evaluating.
+	if mode := d.Mode(); mode == ModeDenyAll || mode == ModeReadOnly {
+		d.writeModeResponse(conn, deadline, mode)
 		return
 	}
 
@@ -170,6 +178,24 @@ func (d *Daemon) writeErrorResponse(conn net.Conn, deadline time.Time, reason st
 		Decision: aegis.Decision{
 			Action: aegis.ActionDeny,
 			Reason: reason,
+		},
+		EnforcingLayer: aegis.EnforcingLayerAdapter,
+	}
+	b, err := json.Marshal(resp)
+	if err != nil {
+		return
+	}
+	_ = WriteMessage(conn, b, deadline)
+}
+
+// writeModeResponse writes a Deny CheckResponse for daemon mode enforcement.
+// Called when the daemon is in ModeDenyAll or ModeReadOnly and must reject
+// all incoming requests without evaluation.
+func (d *Daemon) writeModeResponse(conn net.Conn, deadline time.Time, mode DaemonMode) {
+	resp := aegis.CheckResponse{
+		Decision: aegis.Decision{
+			Action: aegis.ActionDeny,
+			Reason: "daemon in " + mode.String() + " mode",
 		},
 		EnforcingLayer: aegis.EnforcingLayerAdapter,
 	}

@@ -1,6 +1,14 @@
 package main
 
-import "testing"
+import (
+	"testing"
+
+	"go.uber.org/goleak"
+)
+
+func TestMain(m *testing.M) {
+	goleak.VerifyTestMain(m)
+}
 
 func TestDaemon_ExitCodes_Defined(t *testing.T) {
 	tests := []struct {

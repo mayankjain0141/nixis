@@ -19,13 +19,33 @@ run_bench() {
         echo "  [SKIP] $label — benchmark not found"
         return
     fi
-    # Extract numeric portion (handles both "123" and "123ns/op")
-    ns="${result%ns/op}"
-    ns="${ns%ns}"
-    if ! [[ "$ns" =~ ^[0-9.]+$ ]]; then
+
+    # Parse result which may be in ns/op, µs/op, or ms/op format
+    # Convert everything to nanoseconds for comparison
+    local ns=""
+    if [[ "$result" =~ ^([0-9.]+)ns/op$ ]] || [[ "$result" =~ ^([0-9.]+)ns$ ]]; then
+        ns="${BASH_REMATCH[1]}"
+    elif [[ "$result" =~ ^([0-9.]+)(µs/op|μs/op)$ ]] || [[ "$result" =~ ^([0-9.]+)(µs|μs)$ ]]; then
+        # Microseconds — multiply by 1000
+        local us="${BASH_REMATCH[1]}"
+        ns=$(echo "$us * 1000" | bc -l)
+    elif [[ "$result" =~ ^([0-9.]+)ms/op$ ]] || [[ "$result" =~ ^([0-9.]+)ms$ ]]; then
+        # Milliseconds — multiply by 1000000
+        local ms="${BASH_REMATCH[1]}"
+        ns=$(echo "$ms * 1000000" | bc -l)
+    elif [[ "$result" =~ ^([0-9.]+)$ ]]; then
+        # Plain number, assume ns
+        ns="$result"
+    else
         echo "  [SKIP] $label — could not parse result: $result"
         return
     fi
+
+    if ! [[ "$ns" =~ ^[0-9.]+$ ]]; then
+        echo "  [SKIP] $label — invalid numeric value: $ns"
+        return
+    fi
+
     if (( $(echo "$ns > $target_ns" | bc -l) )); then
         echo "  [FAIL] $label: ${ns}ns > ${target_ns}ns target"
         FAILURES=$((FAILURES + 1))

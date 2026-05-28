@@ -584,3 +584,50 @@ func TestDaemon_EvalCounter_Increments(t *testing.T) {
 		t.Errorf("evaluations = %d, want %d", finalCount, initialCount+2)
 	}
 }
+
+func TestDaemon_ModeDenyAll_DeniesRequests(t *testing.T) {
+	d, ready := startDaemon(t, allowEngine{})
+	waitReady(t, ready)
+
+	// First verify normal mode allows requests
+	resp := sendRequest(t, d.cfg.SocketPath, aegis.CheckRequest{
+		Tool:      "ReadFile",
+		SessionID: "sess-mode-test-1",
+	})
+	if resp.Decision.Action != aegis.ActionAllow {
+		t.Fatalf("expected Allow in normal mode, got %v", resp.Decision.Action)
+	}
+
+	// Set to ModeDenyAll
+	d.SetMode(ModeDenyAll, "test deny all")
+
+	// Now requests should be denied
+	resp = sendRequest(t, d.cfg.SocketPath, aegis.CheckRequest{
+		Tool:      "ReadFile",
+		SessionID: "sess-mode-test-2",
+	})
+	if resp.Decision.Action != aegis.ActionDeny {
+		t.Errorf("expected Deny in ModeDenyAll, got %v", resp.Decision.Action)
+	}
+	if resp.Decision.Reason != "daemon in deny_all mode" {
+		t.Errorf("unexpected reason: %q", resp.Decision.Reason)
+	}
+}
+
+func TestDaemon_ModeReadOnly_DeniesRequests(t *testing.T) {
+	d, ready := startDaemon(t, allowEngine{})
+	waitReady(t, ready)
+
+	d.SetMode(ModeReadOnly, "sqlite write failure")
+
+	resp := sendRequest(t, d.cfg.SocketPath, aegis.CheckRequest{
+		Tool:      "WriteFile",
+		SessionID: "sess-readonly-test",
+	})
+	if resp.Decision.Action != aegis.ActionDeny {
+		t.Errorf("expected Deny in ModeReadOnly, got %v", resp.Decision.Action)
+	}
+	if resp.Decision.Reason != "daemon in read_only mode" {
+		t.Errorf("unexpected reason: %q", resp.Decision.Reason)
+	}
+}
