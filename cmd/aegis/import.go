@@ -31,6 +31,7 @@ Supported formats:
   - settings.json deny list (Claude Code native permissions format)
   - AgentWall YAML v2 (version: "2" + tools[].action)
   - mcp-visor YAML (deny_path, deny_command_pattern, etc.)
+  - Falco YAML (YAML array with rule/macro/list items)
 
 Sources:
   - Local file path
@@ -60,6 +61,7 @@ const (
 	formatSettingsJSON              // {"permissions":{"deny":[...]}}
 	formatAgentWall                 // version: "2" + tools[].action
 	formatMCPVisor                  // deny_path / deny_command_pattern / etc.
+	formatFalco                     // YAML array with rule/macro/list items
 )
 
 // ---- format-specific input structs ----
@@ -106,16 +108,51 @@ type agentWallFile struct {
 }
 
 type agentWallTool struct {
-	Name       string            `yaml:"name"`
-	Action     string            `yaml:"action"`
-	Risk       string            `yaml:"risk"`
-	Parameters []agentWallParam  `yaml:"parameters"`
+	Name       string           `yaml:"name"`
+	Action     string           `yaml:"action"`
+	Risk       string           `yaml:"risk"`
+	Parameters []agentWallParam `yaml:"parameters"`
 }
 
 type agentWallParam struct {
 	Name   string                 `yaml:"name"`
 	Type   string                 `yaml:"type"`
 	Schema map[string]interface{} `yaml:"schema"`
+}
+
+// ---- Falco input structs ----
+
+type falcoFile struct {
+	Rules  []falcoRule
+	Macros []falcoMacro
+	Lists  []falcoList
+}
+
+type falcoRule struct {
+	Rule      string   `yaml:"rule"`
+	Desc      string   `yaml:"desc"`
+	Condition string   `yaml:"condition"`
+	Output    string   `yaml:"output"`
+	Priority  string   `yaml:"priority"`
+	Tags      []string `yaml:"tags"`
+	Enabled   *bool    `yaml:"enabled"`
+}
+
+type falcoMacro struct {
+	Macro     string `yaml:"macro"`
+	Condition string `yaml:"condition"`
+}
+
+type falcoList struct {
+	List  string   `yaml:"list"`
+	Items []string `yaml:"items"`
+}
+
+// falcoItem is used only for detecting which key each document item carries.
+type falcoItem struct {
+	Rule  string `yaml:"rule"`
+	Macro string `yaml:"macro"`
+	List  string `yaml:"list"`
 }
 
 type mcpVisorFile struct {
@@ -223,7 +260,7 @@ func fetchGitHub(ctx context.Context, source string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("fetch GitHub archive: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("GitHub returned HTTP %d for %s", resp.StatusCode, zipURL)
@@ -265,7 +302,7 @@ func extractPolicyFiles(zipData []byte) ([]string, error) {
 			continue
 		}
 		data, err := io.ReadAll(rc)
-		rc.Close()
+		_ = rc.Close()
 		if err != nil {
 			continue
 		}
@@ -275,10 +312,10 @@ func extractPolicyFiles(zipData []byte) ([]string, error) {
 			continue
 		}
 		if _, err := tmp.Write(data); err != nil {
-			tmp.Close()
+			_ = tmp.Close()
 			continue
 		}
-		tmp.Close()
+		_ = tmp.Close()
 		paths = append(paths, tmp.Name())
 	}
 
@@ -304,6 +341,16 @@ func detectFormatWithName(filename string, data []byte) importFormat {
 	var s settingsJSON
 	if json.Unmarshal(data, &s) == nil && len(s.Permissions.Deny) > 0 {
 		return formatSettingsJSON
+	}
+
+	// Falco: YAML array where items have rule/macro/list keys
+	var falcoItems []falcoItem
+	if yaml.Unmarshal(data, &falcoItems) == nil && len(falcoItems) > 0 {
+		for _, item := range falcoItems {
+			if item.Rule != "" || item.Macro != "" || item.List != "" {
+				return formatFalco
+			}
+		}
 	}
 
 	// Probe YAML for all other formats
@@ -461,9 +508,12 @@ func convertFile(data []byte, sourcePath string) ([]aegisManifest, []string, err
 		return convertAgentWall(data, sourcePath)
 	case formatMCPVisor:
 		return convertMCPVisor(data, sourcePath)
-	default:
+	case formatFalco:
+		return convertFalco(data, sourcePath)
+	case formatUnknown:
 		return nil, nil, fmt.Errorf("unknown policy format in %s: file must contain a recognized policy structure", filepath.Base(sourcePath))
 	}
+	return nil, nil, fmt.Errorf("unknown policy format in %s", filepath.Base(sourcePath))
 }
 
 // ---- PolicyLayer converter ----
@@ -906,6 +956,283 @@ func convertMCPVisor(data []byte, sourcePath string) ([]aegisManifest, []string,
 	}
 	if file.MaxRows > 0 {
 		comments = appendSkipComment(comments, "IMPORT_TODO: max_rows constraint skipped — no row count CEL function currently available")
+	}
+
+	return manifests, comments, nil
+}
+
+// ---- Falco converter ----
+
+// parseFalcoFile separates a raw YAML array into typed rule/macro/list buckets.
+func parseFalcoFile(data []byte) (falcoFile, error) {
+	// Parse as raw sequence so we can route each item by key.
+	var raw []map[string]interface{}
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return falcoFile{}, fmt.Errorf("parse Falco YAML: %w", err)
+	}
+
+	var ff falcoFile
+	for _, item := range raw {
+		if ruleName, ok := item["rule"].(string); ok && ruleName != "" {
+			r := falcoRule{Rule: ruleName}
+			if v, ok := item["desc"].(string); ok {
+				r.Desc = v
+			}
+			if v, ok := item["condition"].(string); ok {
+				r.Condition = v
+			}
+			if v, ok := item["output"].(string); ok {
+				r.Output = v
+			}
+			if v, ok := item["priority"].(string); ok {
+				r.Priority = v
+			}
+			if tags, ok := item["tags"].([]interface{}); ok {
+				for _, t := range tags {
+					if ts, ok := t.(string); ok {
+						r.Tags = append(r.Tags, ts)
+					}
+				}
+			}
+			if enabled, ok := item["enabled"].(bool); ok {
+				r.Enabled = &enabled
+			}
+			ff.Rules = append(ff.Rules, r)
+			continue
+		}
+		if macroName, ok := item["macro"].(string); ok && macroName != "" {
+			m := falcoMacro{Macro: macroName}
+			if v, ok := item["condition"].(string); ok {
+				m.Condition = v
+			}
+			ff.Macros = append(ff.Macros, m)
+			continue
+		}
+		if listName, ok := item["list"].(string); ok && listName != "" {
+			l := falcoList{List: listName}
+			if items, ok := item["items"].([]interface{}); ok {
+				for _, it := range items {
+					if s, ok := it.(string); ok {
+						l.Items = append(l.Items, s)
+					}
+				}
+			}
+			ff.Lists = append(ff.Lists, l)
+		}
+	}
+	return ff, nil
+}
+
+// falcoLookupTables builds macro and list lookup maps for condition resolution.
+func falcoLookupTables(ff falcoFile) (macros map[string]string, lists map[string][]string) {
+	macros = make(map[string]string, len(ff.Macros))
+	for _, m := range ff.Macros {
+		macros[m.Macro] = m.Condition
+	}
+	lists = make(map[string][]string, len(ff.Lists))
+	for _, l := range ff.Lists {
+		lists[l.List] = l.Items
+	}
+	return macros, lists
+}
+
+// falcoPriorityToAction maps Falco priority levels to Aegis actions.
+func falcoPriorityToAction(priority string) string {
+	switch strings.ToUpper(priority) {
+	case "EMERGENCY", "ALERT", "CRITICAL", "ERROR":
+		return "DENY"
+	case "WARNING", "NOTICE":
+		return "REQUIRE_APPROVAL"
+	default:
+		return "AUDIT"
+	}
+}
+
+// falcoPriorityToSeverity maps Falco priority to Aegis severity annotation.
+func falcoPriorityToSeverity(priority string) string {
+	switch strings.ToUpper(priority) {
+	case "EMERGENCY", "ALERT", "CRITICAL":
+		return "critical"
+	case "ERROR":
+		return "high"
+	case "WARNING":
+		return "medium"
+	default:
+		return "low"
+	}
+}
+
+// falcoTagsToTools infers Aegis tool constraints from Falco tags.
+func falcoTagsToTools(tags []string) []string {
+	for _, tag := range tags {
+		switch {
+		case strings.Contains(tag, "filesystem"):
+			return []string{"Read", "Write", "Edit"}
+		case strings.Contains(tag, "network"):
+			return []string{"Bash"}
+		case strings.Contains(tag, "process"):
+			return []string{"Bash"}
+		}
+	}
+	return []string{}
+}
+
+// falcoTranslateCondition attempts to convert a Falco condition string to CEL.
+// Returns (cel, comment) — comment is non-empty when translation is partial or impossible.
+func falcoTranslateCondition(condition string, macros map[string]string, lists map[string][]string) (string, string) {
+	condition = strings.TrimSpace(condition)
+
+	// Resolve list references: proc.name in (shell_binaries) where shell_binaries is a list
+	// Also handle inline lists: proc.name in (bash, sh, zsh)
+	condition = falcoResolveListRefs(condition, lists)
+
+	// Pattern: proc.cmdline contains "something" → request.args.command.contains("something")
+	if m := falcoCmdlineContains.FindStringSubmatch(condition); m != nil {
+		return fmt.Sprintf(`tool == "Bash" && request.args.command.contains(%q)`, m[1]), ""
+	}
+
+	// Pattern: proc.cmdline startswith "something"
+	if m := falcoCmdlineStartswith.FindStringSubmatch(condition); m != nil {
+		return fmt.Sprintf(`tool == "Bash" && request.args.command.startsWith(%q)`, m[1]), ""
+	}
+
+	// Pattern: proc.name in (nc, ncat, netcat) — resolved to alternation
+	if m := falcoProcNameIn.FindStringSubmatch(condition); m != nil {
+		items := splitFalcoList(m[1])
+		if len(items) > 0 {
+			pattern := `(?i)\b(` + strings.Join(items, "|") + `)\b`
+			return fmt.Sprintf(`tool == "Bash" && request.args.command.matches(%q)`, pattern), ""
+		}
+	}
+
+	// Pattern: fd.name startswith "/path" — file read/write path check
+	if m := falcoFdNameStartswith.FindStringSubmatch(condition); m != nil {
+		return fmt.Sprintf(`tool.matches("Read|Write|Edit") && request.args.path.startsWith(%q)`, m[1]), ""
+	}
+
+	// Pattern: fd.name contains "/path"
+	if m := falcoFdNameContains.FindStringSubmatch(condition); m != nil {
+		return fmt.Sprintf(`tool.matches("Read|Write|Edit") && request.args.path.contains(%q)`, m[1]), ""
+	}
+
+	// Pattern: evt.type = execve — all Bash tool calls
+	if falcoEvtTypeExecve.MatchString(condition) {
+		return `tool == "Bash"`, ""
+	}
+
+	// Condition references macros or kernel-only fields → IMPORT_TODO
+	comment := fmt.Sprintf("IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: %s", truncate(condition, 120))
+	return "false", comment
+}
+
+// falcoResolveListRefs replaces list-name references with their inline items.
+// e.g. "proc.name in (shell_binaries)" where shell_binaries = [bash, sh] →
+//
+//	"proc.name in (bash, sh)"
+func falcoResolveListRefs(condition string, lists map[string][]string) string {
+	for listName, items := range lists {
+		if len(items) == 0 {
+			continue
+		}
+		// Replace bare list name inside parentheses: "in (shell_binaries)" → "in (bash, sh)"
+		condition = strings.ReplaceAll(condition, "("+listName+")", "("+strings.Join(items, ", ")+")")
+		// Also handle "in (other, shell_binaries, more)" — replace as token
+		re := regexp.MustCompile(`\b` + regexp.QuoteMeta(listName) + `\b`)
+		condition = re.ReplaceAllString(condition, strings.Join(items, ", "))
+	}
+	return condition
+}
+
+// splitFalcoList splits a comma-separated list string into trimmed items.
+func splitFalcoList(s string) []string {
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "..."
+}
+
+// Falco condition patterns for extractable cases.
+var (
+	falcoCmdlineContains   = regexp.MustCompile(`(?i)\bproc\.cmdline\s+contains\s+"([^"]+)"`)
+	falcoCmdlineStartswith = regexp.MustCompile(`(?i)\bproc\.cmdline\s+startswith\s+"([^"]+)"`)
+	falcoProcNameIn        = regexp.MustCompile(`(?i)\bproc\.name\s+in\s+\(([^)]+)\)`)
+	falcoFdNameStartswith  = regexp.MustCompile(`(?i)\bfd\.name\s+startswith\s+"([^"]+)"`)
+	falcoFdNameContains    = regexp.MustCompile(`(?i)\bfd\.name\s+contains\s+"([^"]+)"`)
+	falcoEvtTypeExecve     = regexp.MustCompile(`(?i)\bevt\.type\s*=\s*execve\b`)
+)
+
+func convertFalco(data []byte, sourcePath string) ([]aegisManifest, []string, error) {
+	ff, err := parseFalcoFile(data)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	macros, lists := falcoLookupTables(ff)
+
+	manifests := make([]aegisManifest, 0, len(ff.Rules))
+	comments := make([]string, 0, len(ff.Rules))
+
+	for _, rule := range ff.Rules {
+		if rule.Enabled != nil && !*rule.Enabled {
+			continue
+		}
+
+		cel, comment := falcoTranslateCondition(rule.Condition, macros, lists)
+		action := falcoPriorityToAction(rule.Priority)
+		severity := falcoPriorityToSeverity(rule.Priority)
+		tools := falcoTagsToTools(rule.Tags)
+
+		desc := rule.Desc
+		if desc == "" {
+			desc = rule.Rule
+		}
+
+		id := "falco-" + sanitizeID(rule.Rule)
+		m := aegisManifest{
+			APIVersion: "aegis.io/v1",
+			Kind:       "PolicyTemplate",
+			Metadata: aegisMetadata{
+				Name: id,
+				Annotations: map[string]string{
+					"aegis.io/imported-from": filepath.Base(sourcePath),
+					"aegis.io/severity":      severity,
+					"aegis.io/source-rule":   rule.Rule,
+				},
+			},
+			Spec: aegisPolicySpec{
+				Description: desc,
+				MatchConstraints: aegisMatchConstraints{
+					Tools: tools,
+				},
+				Validations: []aegisValidation{
+					{
+						Expression: cel,
+						Message:    fmt.Sprintf("Falco rule violated: %s", rule.Rule),
+						Action:     action,
+					},
+				},
+				DefaultAction: "ALLOW",
+			},
+		}
+
+		if len(rule.Tags) > 0 {
+			m.Metadata.Annotations["aegis.io/falco-tags"] = strings.Join(rule.Tags, ",")
+		}
+
+		manifests = append(manifests, m)
+		comments = append(comments, comment)
 	}
 
 	return manifests, comments, nil

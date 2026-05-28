@@ -1,0 +1,26 @@
+# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: (open_read or open_write) and container and (fd.name startswith /host/ or
+     fd.name startswith /rootfs/ or
+     fd.na...
+# imported from: main via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: falco-container-access-to-host-sensitive-paths
+    annotations:
+        aegis.io/falco-tags: maturity_sandbox,container,filesystem,mitre_privilege_escalation,T1611
+        aegis.io/imported-from: aegis-import-3595951451.yaml
+        aegis.io/severity: medium
+        aegis.io/source-rule: Container Access to Host Sensitive Paths
+spec:
+    description: |
+        Detects container processes accessing paths that typically only exist when the host filesystem is mounted into the container (like /host, /rootfs, /hostfs). This may indicate a container escape attempt or a misconfigured volume mount that exposes the host filesystem. Legitimate monitoring or backup containers may access these paths, so tune accordingly using the user_known_host_path_access macro.
+    matchConstraints:
+        tools:
+            - Read
+            - Write
+            - Edit
+    validations:
+        - expression: "false"
+          message: 'Falco rule violated: Container Access to Host Sensitive Paths'
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

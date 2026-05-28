@@ -1,0 +1,23 @@
+# imported from: main via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: falco-create-files-below-dev
+    annotations:
+        aegis.io/falco-tags: maturity_incubating,host,filesystem,mitre_persistence,T1543
+        aegis.io/imported-from: aegis-import-487448035.yaml
+        aegis.io/severity: high
+        aegis.io/source-rule: Create files below dev
+spec:
+    description: |
+        Detect the creation of files under /dev except for authorized device management programs. This can reveal rootkits hiding files in /dev. Additionally, consider the "Execution from /dev/shm" rule. The upstream rule already covers some tuning scenarios that you can further expand upon.
+    matchConstraints:
+        tools:
+            - Read
+            - Write
+            - Edit
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)\\b(blkid|rename_device|update_engine|sgdisk)\\b")
+          message: 'Falco rule violated: Create files below dev'
+          action: DENY
+    defaultAction: ALLOW

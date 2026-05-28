@@ -1,0 +1,23 @@
+# imported from: main via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: falco-modify-shell-configuration-file
+    annotations:
+        aegis.io/falco-tags: maturity_incubating,host,container,filesystem,mitre_persistence,T1546.004
+        aegis.io/imported-from: aegis-import-487448035.yaml
+        aegis.io/severity: medium
+        aegis.io/source-rule: Modify Shell Configuration File
+spec:
+    description: |
+        Detect attempts to modify shell configuration files, primarily aimed at establishing persistence by automatically inserting commands into scripts executed by shells. The upstream rule excludes shell processes because they often create unnecessary noise. However, this might lead to missed detections. To customize the rule for your situation, you can fine-tune it using enhanced profiling. For example, you might want to only consider interactive shell processes (where proc.tty != 0).
+    matchConstraints:
+        tools:
+            - Read
+            - Write
+            - Edit
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)\\b(ash|bash|csh|ksh|sh|tcsh|zsh|dash)\\b")
+          message: 'Falco rule violated: Modify Shell Configuration File'
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

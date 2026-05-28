@@ -800,6 +800,286 @@ func TestImport_ParseGitHubURL(t *testing.T) {
 	}
 }
 
+// ---- Falco tests ----
+
+func TestImport_DetectsFalcoFormat(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  importFormat
+	}{
+		{
+			name: "rule item",
+			input: `- rule: Terminal shell in container
+  condition: spawned_process and container
+  priority: WARNING
+`,
+			want: formatFalco,
+		},
+		{
+			name: "macro item",
+			input: `- macro: shell_procs
+  condition: proc.name in (bash, sh)
+`,
+			want: formatFalco,
+		},
+		{
+			name: "list item",
+			input: `- list: shell_binaries
+  items: [bash, sh, zsh]
+`,
+			want: formatFalco,
+		},
+		{
+			name: "mixed items",
+			input: `- list: shell_binaries
+  items: [bash, sh]
+- macro: shell_procs
+  condition: proc.name in (shell_binaries)
+- rule: Shell in container
+  condition: shell_procs and container
+  priority: ERROR
+`,
+			want: formatFalco,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := detectFormat([]byte(tt.input))
+			if got != tt.want {
+				t.Errorf("detectFormat: got %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestImport_TranslatesFalcoCmdlineContains(t *testing.T) {
+	input := `- rule: Dangerous rm command
+  desc: Detects rm -rf execution
+  condition: proc.cmdline contains "rm -rf"
+  priority: CRITICAL
+  tags: [process]
+`
+	manifests, comments, err := convertFalco([]byte(input), "falco.yaml")
+	if err != nil {
+		t.Fatalf("convertFalco failed: %v", err)
+	}
+	if len(manifests) != 1 {
+		t.Fatalf("expected 1 manifest, got %d", len(manifests))
+	}
+
+	expr := manifests[0].Spec.Validations[0].Expression
+	if !strings.Contains(expr, `tool == "Bash"`) {
+		t.Errorf("expected Bash tool check, got: %s", expr)
+	}
+	if !strings.Contains(expr, `request.args.command.contains("rm -rf")`) {
+		t.Errorf("expected command contains check, got: %s", expr)
+	}
+	if comments[0] != "" {
+		t.Errorf("expected no comment for translatable condition, got: %q", comments[0])
+	}
+}
+
+func TestImport_TranslatesFalcoCmdlineStartswith(t *testing.T) {
+	input := `- rule: Curl exfiltration
+  condition: proc.cmdline startswith "curl"
+  priority: WARNING
+`
+	manifests, _, err := convertFalco([]byte(input), "falco.yaml")
+	if err != nil {
+		t.Fatalf("convertFalco failed: %v", err)
+	}
+	if len(manifests) != 1 {
+		t.Fatalf("expected 1 manifest, got %d", len(manifests))
+	}
+
+	expr := manifests[0].Spec.Validations[0].Expression
+	if !strings.Contains(expr, `request.args.command.startsWith("curl")`) {
+		t.Errorf("expected startsWith check, got: %s", expr)
+	}
+}
+
+func TestImport_TranslatesFalcoProcName(t *testing.T) {
+	input := `- rule: Netcat Remote Code Execution
+  desc: Detects netcat with -e flag
+  condition: proc.name in (nc, ncat, netcat, socat)
+  priority: CRITICAL
+`
+	manifests, comments, err := convertFalco([]byte(input), "falco.yaml")
+	if err != nil {
+		t.Fatalf("convertFalco failed: %v", err)
+	}
+	if len(manifests) != 1 {
+		t.Fatalf("expected 1 manifest, got %d", len(manifests))
+	}
+
+	expr := manifests[0].Spec.Validations[0].Expression
+	if !strings.Contains(expr, `tool == "Bash"`) {
+		t.Errorf("expected Bash tool check, got: %s", expr)
+	}
+	if !strings.Contains(expr, "nc|ncat|netcat|socat") {
+		t.Errorf("expected alternation pattern with nc/ncat/netcat/socat, got: %s", expr)
+	}
+	if !strings.Contains(expr, "matches") {
+		t.Errorf("expected matches() call, got: %s", expr)
+	}
+	if comments[0] != "" {
+		t.Errorf("expected no comment for translatable proc.name in, got: %q", comments[0])
+	}
+}
+
+func TestImport_TranslatesFalcoPriority(t *testing.T) {
+	tests := []struct {
+		priority   string
+		wantAction string
+	}{
+		{"EMERGENCY", "DENY"},
+		{"ALERT", "DENY"},
+		{"CRITICAL", "DENY"},
+		{"ERROR", "DENY"},
+		{"WARNING", "REQUIRE_APPROVAL"},
+		{"NOTICE", "REQUIRE_APPROVAL"},
+		{"INFO", "AUDIT"},
+		{"DEBUG", "AUDIT"},
+		{"", "AUDIT"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.priority, func(t *testing.T) {
+			got := falcoPriorityToAction(tt.priority)
+			if got != tt.wantAction {
+				t.Errorf("falcoPriorityToAction(%q) = %q, want %q", tt.priority, got, tt.wantAction)
+			}
+		})
+	}
+}
+
+func TestImport_ResolvesFalcoList(t *testing.T) {
+	input := `- list: netcat_bins
+  items: [nc, ncat, netcat]
+- rule: Netcat detected
+  condition: proc.name in (netcat_bins)
+  priority: CRITICAL
+`
+	manifests, comments, err := convertFalco([]byte(input), "falco.yaml")
+	if err != nil {
+		t.Fatalf("convertFalco failed: %v", err)
+	}
+	if len(manifests) != 1 {
+		t.Fatalf("expected 1 manifest (no manifest for list items), got %d", len(manifests))
+	}
+
+	expr := manifests[0].Spec.Validations[0].Expression
+	// After resolving the list, the condition becomes proc.name in (nc, ncat, netcat)
+	// which should translate to a matches() call.
+	if !strings.Contains(expr, "nc|ncat|netcat") {
+		t.Errorf("expected list items resolved into pattern, got: %s", expr)
+	}
+	if comments[0] != "" {
+		t.Errorf("expected no comment after list resolution, got: %q", comments[0])
+	}
+}
+
+func TestImport_FalcoKernelOnlyConditionIsImportTODO(t *testing.T) {
+	input := `- rule: Container escape via proc
+  condition: container.id != "" and proc.pid != 1
+  priority: CRITICAL
+`
+	manifests, comments, err := convertFalco([]byte(input), "falco.yaml")
+	if err != nil {
+		t.Fatalf("convertFalco failed: %v", err)
+	}
+	if len(manifests) != 1 {
+		t.Fatalf("expected 1 manifest, got %d", len(manifests))
+	}
+
+	expr := manifests[0].Spec.Validations[0].Expression
+	if expr != "false" {
+		t.Errorf("kernel-only condition should produce 'false', got: %s", expr)
+	}
+	if !strings.Contains(comments[0], "IMPORT_TODO") {
+		t.Errorf("kernel-only condition should have IMPORT_TODO comment, got: %q", comments[0])
+	}
+}
+
+func TestImport_FalcoFdNameStartswith(t *testing.T) {
+	input := `- rule: Read sensitive file
+  condition: fd.name startswith "/etc/shadow"
+  priority: ERROR
+  tags: [filesystem]
+`
+	manifests, comments, err := convertFalco([]byte(input), "falco.yaml")
+	if err != nil {
+		t.Fatalf("convertFalco failed: %v", err)
+	}
+	if len(manifests) != 1 {
+		t.Fatalf("expected 1 manifest, got %d", len(manifests))
+	}
+
+	expr := manifests[0].Spec.Validations[0].Expression
+	if !strings.Contains(expr, `request.args.path.startsWith("/etc/shadow")`) {
+		t.Errorf("expected path startsWith check, got: %s", expr)
+	}
+	if comments[0] != "" {
+		t.Errorf("expected no comment, got: %q", comments[0])
+	}
+
+	// filesystem tag → Read/Write/Edit tools
+	tools := manifests[0].Spec.MatchConstraints.Tools
+	if len(tools) != 3 || tools[0] != "Read" || tools[1] != "Write" || tools[2] != "Edit" {
+		t.Errorf("filesystem tag should produce [Read Write Edit] tools, got: %v", tools)
+	}
+}
+
+func TestImport_FalcoSkipsDisabledRules(t *testing.T) {
+	disabled := false
+	_ = disabled
+	input := `- rule: Disabled rule
+  condition: proc.cmdline contains "disabled"
+  priority: WARNING
+  enabled: false
+- rule: Enabled rule
+  condition: proc.cmdline contains "enabled"
+  priority: CRITICAL
+`
+	manifests, _, err := convertFalco([]byte(input), "falco.yaml")
+	if err != nil {
+		t.Fatalf("convertFalco failed: %v", err)
+	}
+	if len(manifests) != 1 {
+		t.Fatalf("expected 1 manifest (disabled rule skipped), got %d", len(manifests))
+	}
+	if !strings.Contains(manifests[0].Metadata.Annotations["aegis.io/source-rule"], "Enabled rule") {
+		t.Errorf("expected only enabled rule in output, got source-rule: %s", manifests[0].Metadata.Annotations["aegis.io/source-rule"])
+	}
+}
+
+func TestImport_FalcoTagsToTools(t *testing.T) {
+	tests := []struct {
+		tags  []string
+		tools []string
+	}{
+		{[]string{"container", "filesystem"}, []string{"Read", "Write", "Edit"}},
+		{[]string{"network", "mitre_exfiltration"}, []string{"Bash"}},
+		{[]string{"process", "T1059"}, []string{"Bash"}},
+		{[]string{"container", "mitre_execution"}, []string{}},
+	}
+
+	for _, tt := range tests {
+		got := falcoTagsToTools(tt.tags)
+		if len(got) != len(tt.tools) {
+			t.Errorf("falcoTagsToTools(%v) = %v, want %v", tt.tags, got, tt.tools)
+			continue
+		}
+		for i := range got {
+			if got[i] != tt.tools[i] {
+				t.Errorf("falcoTagsToTools(%v)[%d] = %q, want %q", tt.tags, i, got[i], tt.tools[i])
+			}
+		}
+	}
+}
+
 func TestImport_ExtractPolicyFiles(t *testing.T) {
 	// Build an in-memory zip with known files
 	var buf bytes.Buffer

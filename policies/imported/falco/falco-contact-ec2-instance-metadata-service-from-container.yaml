@@ -1,0 +1,22 @@
+# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: outbound and container and fd.sip="169.254.169.254" and not ec2_metadata_containers
+# imported from: main via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: falco-contact-ec2-instance-metadata-service-from-container
+    annotations:
+        aegis.io/falco-tags: maturity_incubating,network,aws,container,mitre_credential_access,T1552.005
+        aegis.io/imported-from: aegis-import-487448035.yaml
+        aegis.io/severity: low
+        aegis.io/source-rule: Contact EC2 Instance Metadata Service From Container
+spec:
+    description: |
+        Detects attempts to communicate with the EC2 Instance Metadata Service from a container. This detection is narrowly focused and might not apply to your environment. In addition, it could generate noise and require fine-tuning.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: "false"
+          message: 'Falco rule violated: Contact EC2 Instance Metadata Service From Container'
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

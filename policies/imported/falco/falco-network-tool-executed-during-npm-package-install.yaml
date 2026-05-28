@@ -1,0 +1,22 @@
+# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: spawned_process and container and network_tool_procs and npm_package_install_ancestor and not user_known_network_tool_in...
+# imported from: main via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: falco-network-tool-executed-during-npm-package-install
+    annotations:
+        aegis.io/falco-tags: maturity_sandbox,container,network,process,mitre_execution,T1195.002
+        aegis.io/imported-from: aegis-import-3595951451.yaml
+        aegis.io/severity: medium
+        aegis.io/source-rule: Network Tool Executed During NPM Package Install
+spec:
+    description: |
+        Detect network tools being launched when an NPM package is installed. Malicious NPM packages may invoke  preinstall or postinstall commands, which can involve network tools to download malicious payloads or exfiltrate  sensitive information. Network tools spawned by npm, node, yarn, pnpm, bun, or related processes during  package installation should be investigated. This rule complements the more generic "Launch Suspicious Network  Tool in Container" rule with a specific focus on the supply chain attack vector via NPM packages.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: "false"
+          message: 'Falco rule violated: Network Tool Executed During NPM Package Install'
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

@@ -1,0 +1,22 @@
+# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: spawned_process and container and remote_file_copy_procs and not user_known_remote_file_copy_activities
+# imported from: main via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: falco-launch-remote-file-copy-tools-in-container
+    annotations:
+        aegis.io/falco-tags: maturity_incubating,container,network,process,mitre_exfiltration,T1020
+        aegis.io/imported-from: aegis-import-487448035.yaml
+        aegis.io/severity: low
+        aegis.io/source-rule: Launch Remote File Copy Tools in Container
+spec:
+    description: |
+        Detect remote file copy tools (like rsync, scp, sftp, dcp) launched within a container, potentially indicating data exfiltration. Suggest refining this rule to accommodate legitimate use cases.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: "false"
+          message: 'Falco rule violated: Launch Remote File Copy Tools in Container'
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

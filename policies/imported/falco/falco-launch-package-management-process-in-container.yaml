@@ -1,0 +1,22 @@
+# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: spawned_process and container and user.name != "_apt" and package_mgmt_procs and not package_mgmt_ancestor_procs and not...
+# imported from: main via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: falco-launch-package-management-process-in-container
+    annotations:
+        aegis.io/falco-tags: maturity_incubating,container,process,software_mgmt,mitre_persistence,T1505
+        aegis.io/imported-from: aegis-import-487448035.yaml
+        aegis.io/severity: high
+        aegis.io/source-rule: Launch Package Management Process in Container
+spec:
+    description: |
+        Detect package management processes executed within containers. An excellent auditing rule to monitor general drifts in containers. Particularly useful for newer rules like "Drop and execute new binary in container" during incident response investigations. This helps identify common anti-patterns of ad-hoc debugging. Simultaneously, to maintain optimal hygiene, it's recommended to prevent container drifts and instead opt for redeploying new containers.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: "false"
+          message: 'Falco rule violated: Launch Package Management Process in Container'
+          action: DENY
+    defaultAction: ALLOW

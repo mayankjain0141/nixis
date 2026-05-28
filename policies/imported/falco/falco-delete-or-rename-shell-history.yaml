@@ -1,0 +1,21 @@
+# imported from: main via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: falco-delete-or-rename-shell-history
+    annotations:
+        aegis.io/falco-tags: maturity_incubating,host,container,process,filesystem,mitre_defense_evasion,T1070
+        aegis.io/imported-from: aegis-import-487448035.yaml
+        aegis.io/severity: medium
+        aegis.io/source-rule: Delete or rename shell history
+spec:
+    description: |
+        Detect shell history deletion, frequently used by unsophisticated adversaries to eliminate evidence. Note that it can also trigger when exiting a Terminal shell, such as with `kubectl exec`, which may introduce some noise.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)\\b(docker|dockerd|containerd-shim|runc:[1:CHILD]|pause|exe|docker-compose|docker-entrypoi|docker-runc-cur|docker-current|dockerd-current)\\b")
+          message: 'Falco rule violated: Delete or rename shell history'
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

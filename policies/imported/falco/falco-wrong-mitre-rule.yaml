@@ -1,0 +1,21 @@
+# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: container_started and container and not allowed_containers
+# imported from: main via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: falco-wrong-mitre-rule
+    annotations:
+        aegis.io/falco-tags: container,mitre_lateral_movement,T1610
+        aegis.io/imported-from: aegis-import-1890421629.yaml
+        aegis.io/severity: medium
+        aegis.io/source-rule: wrong mitre rule
+spec:
+    description: |
+        Detect the initial process started by a container that is not in a list of allowed containers.
+    matchConstraints:
+        tools: []
+    validations:
+        - expression: "false"
+          message: 'Falco rule violated: wrong mitre rule'
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

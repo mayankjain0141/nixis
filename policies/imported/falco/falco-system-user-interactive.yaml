@@ -1,0 +1,21 @@
+# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: spawned_process and system_users and interactive and not user_known_system_user_login
+# imported from: main via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: falco-system-user-interactive
+    annotations:
+        aegis.io/falco-tags: maturity_stable,host,container,users,mitre_execution,T1059,NIST_800-53_AC-2
+        aegis.io/imported-from: aegis-import-2766262408.yaml
+        aegis.io/severity: low
+        aegis.io/source-rule: System user interactive
+spec:
+    description: |
+        System (e.g. non-login) users spawning new processes. Can add custom service users (e.g. apache or mysqld). 'Interactive' is defined as new processes as descendants of an ssh session or login process. Consider further tuning by only looking at processes in a terminal / tty (proc.tty != 0). A newer field proc.is_vpgid_leader could be of help to distinguish if the process was "directly" executed, for instance, in a tty, or executed as a descendant process in the same process group, which, for example, is the case when subprocesses are spawned from a script. Consider this rule as a great template rule to monitor interactive accesses to your systems more broadly. However, such a custom rule would be unique to your environment. The rule "Terminal shell in container" that fires when using "kubectl exec" is more Kubernetes relevant, whereas this one could be more interesting for the underlying host.
+    matchConstraints:
+        tools: []
+    validations:
+        - expression: "false"
+          message: 'Falco rule violated: System user interactive'
+          action: AUDIT
+    defaultAction: ALLOW

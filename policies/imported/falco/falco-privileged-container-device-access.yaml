@@ -1,0 +1,26 @@
+# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: (open_read or open_write) and container and (fd.name startswith /dev/sd or
+     fd.name startswith /dev/nvme or
+     fd....
+# imported from: main via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: falco-privileged-container-device-access
+    annotations:
+        aegis.io/falco-tags: maturity_sandbox,container,filesystem,mitre_privilege_escalation,T1611
+        aegis.io/imported-from: aegis-import-3595951451.yaml
+        aegis.io/severity: critical
+        aegis.io/source-rule: Privileged Container Device Access
+spec:
+    description: |
+        Detects container processes accessing raw block devices, which could be used to escape container isolation by directly reading or writing to host storage. This technique allows attackers to access the host filesystem, modify system files, or extract sensitive data even without traditional container escape. Requires the container to have privileged access or specific device permissions. Override user_known_privileged_device_access for legitimate storage operations.
+    matchConstraints:
+        tools:
+            - Read
+            - Write
+            - Edit
+    validations:
+        - expression: "false"
+          message: 'Falco rule violated: Privileged Container Device Access'
+          action: DENY
+    defaultAction: ALLOW

@@ -1,0 +1,24 @@
+# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: open_read and container and proc.name=tar and container_entrypoint and proc.tty=0 and not system_level_side_effect_artif...
+# imported from: main via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: falco-exfiltrating-artifacts-via-kubernetes-control-plane
+    annotations:
+        aegis.io/falco-tags: maturity_incubating,container,filesystem,mitre_exfiltration,TA0010
+        aegis.io/imported-from: aegis-import-487448035.yaml
+        aegis.io/severity: low
+        aegis.io/source-rule: Exfiltrating Artifacts via Kubernetes Control Plane
+spec:
+    description: |
+        Detect the copying of artifacts from a container's file system using the Kubernetes control plane (kubectl cp). This rule can identify potential exfiltration of application secrets from containers' file systems, potentially revealing the outcomes of unauthorized access and control plane misuse via stolen identities (such as stolen credentials like Kubernetes serviceaccount tokens). Can be customized by the adopter to only monitor specific artifact paths, containers, or namespaces as needed.
+    matchConstraints:
+        tools:
+            - Read
+            - Write
+            - Edit
+    validations:
+        - expression: "false"
+          message: 'Falco rule violated: Exfiltrating Artifacts via Kubernetes Control Plane'
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

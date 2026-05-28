@@ -1,0 +1,22 @@
+# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: spawned_process and proc.is_exe_from_memfd=true and not known_memfd_execution_processes
+# imported from: main via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: falco-fileless-execution-via-memfd-create
+    annotations:
+        aegis.io/falco-tags: maturity_stable,host,container,process,mitre_defense_evasion,T1620
+        aegis.io/imported-from: aegis-import-2766262408.yaml
+        aegis.io/severity: critical
+        aegis.io/source-rule: Fileless execution via memfd_create
+spec:
+    description: |
+        Detect if a binary is executed from memory using the memfd_create technique. This is a well-known defense evasion technique for executing malware on a victim machine without storing the payload on disk and to avoid leaving traces about what has been executed. Adopters can whitelist processes that may use fileless execution for benign purposes by adding items to the list known_memfd_execution_processes.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: "false"
+          message: 'Falco rule violated: Fileless execution via memfd_create'
+          action: DENY
+    defaultAction: ALLOW
