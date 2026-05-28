@@ -2,6 +2,7 @@ package e2e_test
 
 import (
 	"context"
+	"database/sql"
 	"os"
 	"testing"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/mayjain/aegis/internal/policy"
 	"github.com/mayjain/aegis/pkg/aegis"
 	"go.uber.org/goleak"
+	_ "modernc.org/sqlite"
 )
 
 func TestMain(m *testing.M) {
@@ -77,6 +79,28 @@ func TestE2E_CheckRequest_PolicyEvaluation_AuditWrite(t *testing.T) {
 	}
 	if err := writer.Close(); err != nil {
 		t.Errorf("audit writer Close: %v", err)
+	}
+
+	// Verify the audit record was actually written to SQLite.
+	db, err := sql.Open("sqlite", tmpDB)
+	if err != nil {
+		t.Fatalf("open audit DB for verification: %v", err)
+	}
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close verification DB: %v", err)
+		}
+	}()
+
+	var count int
+	if err := db.QueryRowContext(context.Background(),
+		"SELECT COUNT(*) FROM audit_log WHERE session_id = ?",
+		req.SessionID,
+	).Scan(&count); err != nil {
+		t.Fatalf("query audit records: %v", err)
+	}
+	if count == 0 {
+		t.Error("expected at least one audit record for session, got 0")
 	}
 }
 

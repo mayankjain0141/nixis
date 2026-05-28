@@ -194,6 +194,20 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 		if r := recover(); r != nil {
 			resp = denyResponse("internal evaluation panic", aegis.EnforcingLayerAdapter, startNs)
 		}
+		if e.auditWriter != nil {
+			e.auditWriter.WriteRecord(audit.AuditRecord{
+				Timestamp:      time.Now().UnixNano(),
+				SessionID:      req.SessionID,
+				Tool:           req.Tool,
+				Args:           req.Args,
+				Decision:       resp.Decision,
+				LatencyNs:      resp.LatencyNs,
+				PolicyID:       resp.Decision.PolicyID,
+				EnforcingLayer: resp.EnforcingLayer,
+				LabelBefore:    e.sessions.Current(req.SessionID),
+				LabelAfter:     resp.Decision.Labels,
+			})
+		}
 	}()
 
 	var commandText string
