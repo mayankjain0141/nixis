@@ -168,15 +168,23 @@ func (d *Daemon) handleConnection(conn net.Conn) {
 
 	// Emit to streaming server (non-blocking, nil-safe).
 	if d.streamSrv != nil {
+		eventType := aegis.EventTypeDecision
+		if resp.Decision.Action == aegis.ActionDeny {
+			eventType = "policy.denied"
+		}
 		d.streamSrv.Emit(ctx, aegis.StreamEvent{
-			Type:          aegis.EventTypeDecision,
-			AegisSequence: 0, // assigned in fan-out goroutine
-			SessionID:     req.SessionID,
-			Tool:          req.Tool,
-			Action:        resp.Decision.Action,
-			Reason:        resp.Decision.Reason,
-			Label:         resp.Decision.Labels,
-			Timestamp:     time.Now().UnixNano(),
+			Type:           eventType,
+			AegisSequence:  0, // assigned in fan-out goroutine
+			SessionID:      req.SessionID,
+			Tool:           req.Tool,
+			Action:         resp.Decision.Action,
+			Reason:         resp.Decision.Reason,
+			Label:          resp.Decision.Labels,
+			Timestamp:      time.Now().UnixNano(),
+			PolicyID:       resp.Decision.PolicyID,
+			EnforcingLayer: string(resp.EnforcingLayer),
+			LabelState:     "fresh",
+			LatencyNs:      resp.LatencyNs,
 		})
 	}
 }

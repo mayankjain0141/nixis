@@ -448,6 +448,97 @@ func TestEventRoutes_MatchGoldenFile(t *testing.T) {
 	}
 }
 
+// TestStream_PolicyEvent_MatchesDashboardSchema verifies that policy.evaluated events
+// emitted via Emit() produce JSON with the nested structure required by the dashboard
+// Zod schema: decision.action, decision.policy_id, decision.enforcing_layer,
+// decision.labels (confidentiality/integrity/categories), label_state, latency_ns.
+func TestStream_PolicyEvent_MatchesDashboardSchema(t *testing.T) {
+	s, baseURL := newTestServer(t)
+	conn := dialWS(t, baseURL)
+	_ = readMsg(t, conn) // consume state.snapshot
+
+	for {
+		count := 0
+		s.clients.Range(func(_, _ any) bool { count++; return true })
+		if count == 1 {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	s.Emit(context.Background(), aegis.StreamEvent{
+		Type:           "policy.evaluated",
+		SessionID:      "sess-schema-test",
+		Tool:           "Bash",
+		Action:         aegis.ActionDeny,
+		Reason:         "git branch -D main is not permitted",
+		PolicyID:       "git-branch-protection",
+		EnforcingLayer: "cel",
+		LabelState:     "fresh",
+		LatencyNs:      140000,
+		Label:          aegis.SecurityLabel{Confidentiality: 1, Integrity: 2, Category: 3},
+	})
+
+	msg := readMsg(t, conn)
+
+	// Top-level envelope fields.
+	if got := msg["type"]; got != "policy.evaluated" {
+		t.Fatalf("type = %v, want policy.evaluated", got)
+	}
+
+	data, ok := msg["data"].(map[string]any)
+	if !ok {
+		t.Fatalf("data field missing or wrong type: %v", msg["data"])
+	}
+
+	// Top-level data fields required by PolicyEvaluatedDataSchema.
+	if got := data["tool"]; got != "Bash" {
+		t.Errorf("data.tool = %v, want Bash", got)
+	}
+	if got := data["session_id"]; got != "sess-schema-test" {
+		t.Errorf("data.session_id = %v, want sess-schema-test", got)
+	}
+	if got := data["label_state"]; got != "fresh" {
+		t.Errorf("data.label_state = %v, want fresh", got)
+	}
+	if got, ok := data["latency_ns"].(float64); !ok || int64(got) != 140000 {
+		t.Errorf("data.latency_ns = %v, want 140000", data["latency_ns"])
+	}
+
+	// Nested decision object required by DecisionSchema.
+	decision, ok := data["decision"].(map[string]any)
+	if !ok {
+		t.Fatalf("data.decision missing or wrong type: %v", data["decision"])
+	}
+	if got := decision["action"]; got != "deny" {
+		t.Errorf("decision.action = %v, want deny", got)
+	}
+	if got := decision["reason"]; got != "git branch -D main is not permitted" {
+		t.Errorf("decision.reason = %v, want reason string", got)
+	}
+	if got := decision["policy_id"]; got != "git-branch-protection" {
+		t.Errorf("decision.policy_id = %v, want git-branch-protection", got)
+	}
+	if got := decision["enforcing_layer"]; got != "cel" {
+		t.Errorf("decision.enforcing_layer = %v, want cel", got)
+	}
+
+	// Nested labels required by SecurityLabelSchema (lowercase field names).
+	labels, ok := decision["labels"].(map[string]any)
+	if !ok {
+		t.Fatalf("decision.labels missing or wrong type: %v", decision["labels"])
+	}
+	if got, ok := labels["confidentiality"].(float64); !ok || uint16(got) != 1 {
+		t.Errorf("labels.confidentiality = %v, want 1", labels["confidentiality"])
+	}
+	if got, ok := labels["integrity"].(float64); !ok || uint16(got) != 2 {
+		t.Errorf("labels.integrity = %v, want 2", labels["integrity"])
+	}
+	if got, ok := labels["categories"].(float64); !ok || uint32(got) != 3 {
+		t.Errorf("labels.categories = %v, want 3", labels["categories"])
+	}
+}
+
 // getFirstClient returns the first client in the registry (for test assertions).
 func getFirstClient(s *StreamServer) *client {
 	var found *client
