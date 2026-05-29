@@ -17,5 +17,5 @@ spec:
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.matches(".*labels:.*")'
           message: The only label that may be removed or changed is `breakglass`.
-          action: REQUIRE_APPROVAL
+          action: DENY
     defaultAction: ALLOW
