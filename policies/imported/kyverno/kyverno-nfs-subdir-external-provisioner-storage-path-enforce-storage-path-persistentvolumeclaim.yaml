@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-nfs-subdir-external-provisioner-storage-path-enforce-storage-path-persistentvolumeclaim
     annotations:
-        aegis.io/imported-from: aegis-import-3376586409.yaml
+        aegis.io/imported-from: aegis-import-2481825795.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

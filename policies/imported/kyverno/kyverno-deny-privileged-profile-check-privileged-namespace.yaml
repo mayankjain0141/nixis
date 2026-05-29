@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-deny-privileged-profile-check-privileged-namespace
     annotations:
-        aegis.io/imported-from: aegis-import-3053703388.yaml
+        aegis.io/imported-from: aegis-import-2355058609.yaml
         aegis.io/severity: medium
         kyverno.io/category: Pod Security Admission
 spec:

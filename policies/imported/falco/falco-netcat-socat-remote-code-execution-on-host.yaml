@@ -5,7 +5,7 @@ metadata:
     name: falco-netcat-socat-remote-code-execution-on-host
     annotations:
         aegis.io/falco-tags: maturity_sandbox,host,network,process,mitre_execution,T1059
-        aegis.io/imported-from: aegis-import-3210576666.yaml
+        aegis.io/imported-from: aegis-import-1470842712.yaml
         aegis.io/severity: medium
         aegis.io/source-rule: Netcat/Socat Remote Code Execution on Host
 spec:

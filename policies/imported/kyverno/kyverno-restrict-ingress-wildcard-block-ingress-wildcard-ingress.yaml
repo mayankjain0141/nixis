@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-ingress-wildcard-block-ingress-wildcard-ingress
     annotations:
-        aegis.io/imported-from: aegis-import-2187315175.yaml
+        aegis.io/imported-from: aegis-import-2618886480.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

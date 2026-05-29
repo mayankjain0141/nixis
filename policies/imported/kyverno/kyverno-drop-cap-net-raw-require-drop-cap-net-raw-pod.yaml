@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-drop-cap-net-raw-require-drop-cap-net-raw-pod
     annotations:
-        aegis.io/imported-from: aegis-import-2032386604.yaml
+        aegis.io/imported-from: aegis-import-310810296.yaml
         aegis.io/severity: medium
         kyverno.io/category: Best Practices
 spec:

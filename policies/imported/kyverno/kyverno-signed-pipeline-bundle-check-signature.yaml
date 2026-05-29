@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-signed-pipeline-bundle-check-signature
     annotations:
-        aegis.io/imported-from: aegis-import-1968043678.yaml
+        aegis.io/imported-from: aegis-import-2560525858.yaml
         aegis.io/severity: medium
         kyverno.io/category: Tekton
 spec:

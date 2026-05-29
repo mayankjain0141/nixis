@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-replace-image-registry-replace-image-registry-pod-containers
     annotations:
-        aegis.io/imported-from: aegis-import-4177475608.yaml
+        aegis.io/imported-from: aegis-import-247483270.yaml
         aegis.io/severity: medium
         kyverno.io/category: Sample
 spec:

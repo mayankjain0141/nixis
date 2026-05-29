@@ -8,7 +8,7 @@ kind: PolicyTemplate
 metadata:
     name: gatekeeper-k8spoddisruptionbudget
     annotations:
-        aegis.io/imported-from: aegis-import-1044688692.yaml
+        aegis.io/imported-from: aegis-import-4119844513.yaml
         aegis.io/original-kind: K8sPodDisruptionBudget
         aegis.io/severity: high
         aegis.io/source: open-policy-agent/gatekeeper-library

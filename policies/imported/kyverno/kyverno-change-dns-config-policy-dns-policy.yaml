@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-change-dns-config-policy-dns-policy
     annotations:
-        aegis.io/imported-from: aegis-import-1676882991.yaml
+        aegis.io/imported-from: aegis-import-315803061.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

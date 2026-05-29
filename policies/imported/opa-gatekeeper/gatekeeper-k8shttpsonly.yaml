@@ -8,7 +8,7 @@ kind: PolicyTemplate
 metadata:
     name: gatekeeper-k8shttpsonly
     annotations:
-        aegis.io/imported-from: aegis-import-435716757.yaml
+        aegis.io/imported-from: aegis-import-2054395890.yaml
         aegis.io/original-kind: K8sHttpsOnly
         aegis.io/severity: high
         aegis.io/source: open-policy-agent/gatekeeper-library

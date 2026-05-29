@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-add-psa-labels-add-baseline-enforce-restricted-warn
     annotations:
-        aegis.io/imported-from: aegis-import-1271299316.yaml
+        aegis.io/imported-from: aegis-import-3788378898.yaml
         aegis.io/severity: medium
         kyverno.io/category: Pod Security Admission, EKS Best Practices
 spec:

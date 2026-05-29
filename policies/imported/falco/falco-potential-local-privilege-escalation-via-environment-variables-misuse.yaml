@@ -6,7 +6,7 @@ metadata:
     name: falco-potential-local-privilege-escalation-via-environment-variables-misuse
     annotations:
         aegis.io/falco-tags: maturity_incubating,host,container,users,mitre_privilege_escalation,TA0004
-        aegis.io/imported-from: aegis-import-3831796007.yaml
+        aegis.io/imported-from: aegis-import-2621062960.yaml
         aegis.io/severity: low
         aegis.io/source-rule: Potential Local Privilege Escalation via Environment Variables Misuse
 spec:

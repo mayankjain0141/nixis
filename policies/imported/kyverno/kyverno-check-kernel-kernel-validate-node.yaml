@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-check-kernel-kernel-validate-node
     annotations:
-        aegis.io/imported-from: aegis-import-1951458166.yaml
+        aegis.io/imported-from: aegis-import-2171671635.yaml
         aegis.io/severity: high
         kyverno.io/category: Other
 spec:

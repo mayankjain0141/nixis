@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-replace-ingress-hosts-replace-old-with-new
     annotations:
-        aegis.io/imported-from: aegis-import-356901898.yaml
+        aegis.io/imported-from: aegis-import-504191393.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

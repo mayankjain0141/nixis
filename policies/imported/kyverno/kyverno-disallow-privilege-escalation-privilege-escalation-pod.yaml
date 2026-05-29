@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-disallow-privilege-escalation-privilege-escalation-pod
     annotations:
-        aegis.io/imported-from: aegis-import-1771368308.yaml
+        aegis.io/imported-from: aegis-import-744188386.yaml
         aegis.io/severity: medium
         kyverno.io/category: Pod Security Standards (Restricted)
 spec:

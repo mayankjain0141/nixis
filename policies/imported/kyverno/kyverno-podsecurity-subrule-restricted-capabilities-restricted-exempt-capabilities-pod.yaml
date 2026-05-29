@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-podsecurity-subrule-restricted-capabilities-restricted-exempt-capabilities-pod
     annotations:
-        aegis.io/imported-from: aegis-import-3756059081.yaml
+        aegis.io/imported-from: aegis-import-1594199302.yaml
         aegis.io/severity: medium
         kyverno.io/category: Pod Security
 spec:

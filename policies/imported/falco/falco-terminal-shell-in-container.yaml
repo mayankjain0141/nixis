@@ -6,7 +6,7 @@ metadata:
     name: falco-terminal-shell-in-container
     annotations:
         aegis.io/falco-tags: maturity_stable,container,shell,mitre_execution,T1059
-        aegis.io/imported-from: aegis-import-4101892790.yaml
+        aegis.io/imported-from: aegis-import-999705196.yaml
         aegis.io/severity: low
         aegis.io/source-rule: Terminal shell in container
 spec:

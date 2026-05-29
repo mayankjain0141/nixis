@@ -6,7 +6,7 @@ metadata:
     name: falco-network-connection-outside-local-subnet
     annotations:
         aegis.io/falco-tags: maturity_incubating,container,network,mitre_discovery,T1046,PCI_DSS_6.4.2
-        aegis.io/imported-from: aegis-import-3831796007.yaml
+        aegis.io/imported-from: aegis-import-2621062960.yaml
         aegis.io/severity: medium
         aegis.io/source-rule: Network Connection outside Local Subnet
 spec:

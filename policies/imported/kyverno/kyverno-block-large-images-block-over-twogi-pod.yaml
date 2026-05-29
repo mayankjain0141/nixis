@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-block-large-images-block-over-twogi-pod
     annotations:
-        aegis.io/imported-from: aegis-import-2569045470.yaml
+        aegis.io/imported-from: aegis-import-892211731.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

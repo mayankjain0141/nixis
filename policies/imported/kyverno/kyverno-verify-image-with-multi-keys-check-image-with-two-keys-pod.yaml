@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-verify-image-with-multi-keys-check-image-with-two-keys-pod
     annotations:
-        aegis.io/imported-from: aegis-import-1135357669.yaml
+        aegis.io/imported-from: aegis-import-557846200.yaml
         aegis.io/severity: medium
         kyverno.io/category: Software Supply Chain Security
 spec:

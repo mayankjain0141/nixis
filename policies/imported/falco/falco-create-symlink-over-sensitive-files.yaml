@@ -6,7 +6,7 @@ metadata:
     name: falco-create-symlink-over-sensitive-files
     annotations:
         aegis.io/falco-tags: maturity_stable,host,container,filesystem,mitre_credential_access,T1555
-        aegis.io/imported-from: aegis-import-4101892790.yaml
+        aegis.io/imported-from: aegis-import-999705196.yaml
         aegis.io/severity: medium
         aegis.io/source-rule: Create Symlink Over Sensitive Files
 spec:

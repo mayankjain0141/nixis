@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-service-port-range-restrict-port-range-service
     annotations:
-        aegis.io/imported-from: aegis-import-4144617026.yaml
+        aegis.io/imported-from: aegis-import-2278148088.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

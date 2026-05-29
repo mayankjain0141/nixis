@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-requests-limits-validate-resources-pod
     annotations:
-        aegis.io/imported-from: aegis-import-2404686730.yaml
+        aegis.io/imported-from: aegis-import-2873770419.yaml
         aegis.io/severity: medium
         kyverno.io/category: Best Practices, EKS Best Practices
 spec:

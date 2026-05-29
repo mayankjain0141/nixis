@@ -6,7 +6,7 @@ metadata:
     name: falco-launch-package-management-process-in-container
     annotations:
         aegis.io/falco-tags: maturity_incubating,container,process,software_mgmt,mitre_persistence,T1505
-        aegis.io/imported-from: aegis-import-3831796007.yaml
+        aegis.io/imported-from: aegis-import-2621062960.yaml
         aegis.io/severity: high
         aegis.io/source-rule: Launch Package Management Process in Container
 spec:

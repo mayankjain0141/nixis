@@ -7,7 +7,7 @@ kind: PolicyTemplate
 metadata:
     name: gatekeeper-k8sreplicalimits
     annotations:
-        aegis.io/imported-from: aegis-import-3601817367.yaml
+        aegis.io/imported-from: aegis-import-3229458806.yaml
         aegis.io/original-kind: K8sReplicaLimits
         aegis.io/severity: high
         aegis.io/source: open-policy-agent/gatekeeper-library

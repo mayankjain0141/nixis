@@ -8,7 +8,7 @@ kind: PolicyTemplate
 metadata:
     name: gatekeeper-k8spspallowprivilegeescalationcontainer
     annotations:
-        aegis.io/imported-from: aegis-import-3334447894.yaml
+        aegis.io/imported-from: aegis-import-2904223250.yaml
         aegis.io/original-kind: K8sPSPAllowPrivilegeEscalationContainer
         aegis.io/severity: high
         aegis.io/source: open-policy-agent/gatekeeper-library

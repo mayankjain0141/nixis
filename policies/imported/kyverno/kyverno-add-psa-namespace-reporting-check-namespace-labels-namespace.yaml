@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-add-psa-namespace-reporting-check-namespace-labels-namespace
     annotations:
-        aegis.io/imported-from: aegis-import-206552944.yaml
+        aegis.io/imported-from: aegis-import-1364534613.yaml
         aegis.io/severity: medium
         kyverno.io/category: Pod Security Admission, EKS Best Practices
 spec:

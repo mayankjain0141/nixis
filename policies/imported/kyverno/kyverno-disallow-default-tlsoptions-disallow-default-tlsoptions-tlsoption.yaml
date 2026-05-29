@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-disallow-default-tlsoptions-disallow-default-tlsoptions-tlsoption
     annotations:
-        aegis.io/imported-from: aegis-import-2580804203.yaml
+        aegis.io/imported-from: aegis-import-321666114.yaml
         aegis.io/severity: medium
         kyverno.io/category: Traefik
 spec:

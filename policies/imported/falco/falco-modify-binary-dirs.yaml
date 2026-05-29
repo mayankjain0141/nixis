@@ -6,7 +6,7 @@ metadata:
     name: falco-modify-binary-dirs
     annotations:
         aegis.io/falco-tags: maturity_sandbox,host,container,filesystem,mitre_defense_evasion,T1222.002
-        aegis.io/imported-from: aegis-import-3210576666.yaml
+        aegis.io/imported-from: aegis-import-1470842712.yaml
         aegis.io/severity: high
         aegis.io/source-rule: Modify binary dirs
 spec:

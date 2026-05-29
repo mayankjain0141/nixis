@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-prepend-registry-prepend-registry-initcontainers
     annotations:
-        aegis.io/imported-from: aegis-import-2168349519.yaml
+        aegis.io/imported-from: aegis-import-1202623500.yaml
         aegis.io/severity: low
         kyverno.io/category: Other
 spec:

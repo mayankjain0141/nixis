@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-check-sa-check-sa-pod
     annotations:
-        aegis.io/imported-from: aegis-import-2225162135.yaml
+        aegis.io/imported-from: aegis-import-148468191.yaml
         aegis.io/severity: low
         kyverno.io/category: Sample
 spec:

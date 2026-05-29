@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-protect-node-label-foo-prevent-label-key-removal-node
     annotations:
-        aegis.io/imported-from: aegis-import-2615706060.yaml
+        aegis.io/imported-from: aegis-import-3654250224.yaml
         aegis.io/severity: low
         kyverno.io/category: Sample
 spec:

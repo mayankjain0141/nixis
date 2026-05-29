@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: agentwall-query-database-options-required-limit
     annotations:
-        aegis.io/imported-from: aegis-import-410216087.yaml
+        aegis.io/imported-from: aegis-import-1966544447.yaml
         aegis.io/severity: low
 spec:
     description: 'AgentWall required field: query_database.options.limit'

@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-kasten-minimum-retention-kasten-minimum-retention
     annotations:
-        aegis.io/imported-from: aegis-import-1934226845.yaml
+        aegis.io/imported-from: aegis-import-2482814985.yaml
         aegis.io/severity: low
         kyverno.io/category: Veeam Kasten
 spec:

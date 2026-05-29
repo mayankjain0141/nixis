@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-linkerd-server-check-service-has-server-service
     annotations:
-        aegis.io/imported-from: aegis-import-3492175443.yaml
+        aegis.io/imported-from: aegis-import-687857025.yaml
         aegis.io/severity: medium
         kyverno.io/category: Linkerd
 spec:

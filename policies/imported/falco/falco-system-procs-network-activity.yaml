@@ -5,7 +5,7 @@ metadata:
     name: falco-system-procs-network-activity
     annotations:
         aegis.io/falco-tags: maturity_incubating,host,network,process,mitre_execution,T1059
-        aegis.io/imported-from: aegis-import-3831796007.yaml
+        aegis.io/imported-from: aegis-import-2621062960.yaml
         aegis.io/severity: low
         aegis.io/source-rule: System procs network activity
 spec:

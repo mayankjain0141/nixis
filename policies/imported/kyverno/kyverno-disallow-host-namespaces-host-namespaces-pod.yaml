@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-disallow-host-namespaces-host-namespaces-pod
     annotations:
-        aegis.io/imported-from: aegis-import-233193205.yaml
+        aegis.io/imported-from: aegis-import-2593455078.yaml
         aegis.io/severity: medium
         kyverno.io/category: Pod Security Standards (Baseline)
 spec:

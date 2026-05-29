@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-image-checksum-require-image-checksum-pod
     annotations:
-        aegis.io/imported-from: aegis-import-2663082090.yaml
+        aegis.io/imported-from: aegis-import-1479768143.yaml
         aegis.io/severity: medium
         kyverno.io/category: Sample
 spec:

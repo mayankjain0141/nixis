@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-verify-manifest-integrity-verify-deployment-allow-replicas-deployment
     annotations:
-        aegis.io/imported-from: aegis-import-3997268854.yaml
+        aegis.io/imported-from: aegis-import-4193444184.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

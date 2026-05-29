@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-validate-probes-validate-probes-statefulset
     annotations:
-        aegis.io/imported-from: aegis-import-2405971351.yaml
+        aegis.io/imported-from: aegis-import-3494881599.yaml
         aegis.io/severity: medium
         kyverno.io/category: Sample
 spec:

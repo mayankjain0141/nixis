@@ -6,7 +6,7 @@ metadata:
     name: falco-debugfs-launched-in-privileged-container
     annotations:
         aegis.io/falco-tags: maturity_stable,container,cis,process,mitre_privilege_escalation,T1611
-        aegis.io/imported-from: aegis-import-4101892790.yaml
+        aegis.io/imported-from: aegis-import-999705196.yaml
         aegis.io/severity: medium
         aegis.io/source-rule: Debugfs Launched in Privileged Container
 spec:

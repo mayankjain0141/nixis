@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-image-registries-validate-registries-pod
     annotations:
-        aegis.io/imported-from: aegis-import-3663903023.yaml
+        aegis.io/imported-from: aegis-import-3005730126.yaml
         aegis.io/severity: medium
         kyverno.io/category: Best Practices, EKS Best Practices
 spec:

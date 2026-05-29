@@ -5,7 +5,7 @@ metadata:
     name: falco-too-many-tactics-tags-with-multiple-techniques
     annotations:
         aegis.io/falco-tags: host,container,filesystem,mitre_discovery,mitre_exfiltration,mitre_credential_access,mitre_execution,T1555,T1212,T1020,T1552,T1083
-        aegis.io/imported-from: aegis-import-4137115693.yaml
+        aegis.io/imported-from: aegis-import-1844418014.yaml
         aegis.io/severity: medium
         aegis.io/source-rule: too many tactics tags with multiple techniques
 spec:

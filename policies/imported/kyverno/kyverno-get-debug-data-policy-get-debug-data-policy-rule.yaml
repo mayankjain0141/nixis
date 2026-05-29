@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-get-debug-data-policy-get-debug-data-policy-rule
     annotations:
-        aegis.io/imported-from: aegis-import-4105573337.yaml
+        aegis.io/imported-from: aegis-import-1880194895.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

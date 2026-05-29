@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-ingress-defaultbackend-restrict-ingress-defaultbackend-ingress
     annotations:
-        aegis.io/imported-from: aegis-import-1649157171.yaml
+        aegis.io/imported-from: aegis-import-1679558952.yaml
         aegis.io/severity: high
         kyverno.io/category: Best Practices
 spec:

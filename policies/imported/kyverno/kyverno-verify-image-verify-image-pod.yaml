@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-verify-image-verify-image-pod
     annotations:
-        aegis.io/imported-from: aegis-import-3468410750.yaml
+        aegis.io/imported-from: aegis-import-2574906827.yaml
         aegis.io/severity: medium
         kyverno.io/category: Software Supply Chain Security, EKS Best Practices
 spec:

@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-applicationset-name-matches-project-match-name-applicationset
     annotations:
-        aegis.io/imported-from: aegis-import-189533367.yaml
+        aegis.io/imported-from: aegis-import-138642649.yaml
         aegis.io/severity: medium
         kyverno.io/category: Argo
 spec:

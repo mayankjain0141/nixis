@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-verify-git-repositories-github-repositories-only-gitrepository
     annotations:
-        aegis.io/imported-from: aegis-import-451160243.yaml
+        aegis.io/imported-from: aegis-import-1976590291.yaml
         aegis.io/severity: medium
         kyverno.io/category: Flux
 spec:

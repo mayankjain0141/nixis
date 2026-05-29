@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-deployment-replicas-higher-than-pdb-deployment-replicas-greater-minavailable-poddisruptionbudget
     annotations:
-        aegis.io/imported-from: aegis-import-2283567498.yaml
+        aegis.io/imported-from: aegis-import-2199851802.yaml
         aegis.io/severity: low
         kyverno.io/category: Other
 spec:

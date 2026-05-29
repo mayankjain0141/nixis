@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-allowed-annotations-allowed-fluxcd-annotations-pod
     annotations:
-        aegis.io/imported-from: aegis-import-348915795.yaml
+        aegis.io/imported-from: aegis-import-3392744354.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other in CEL
 spec:

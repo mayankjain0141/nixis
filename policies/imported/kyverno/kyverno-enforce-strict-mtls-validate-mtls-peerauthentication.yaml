@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-enforce-strict-mtls-validate-mtls-peerauthentication
     annotations:
-        aegis.io/imported-from: aegis-import-3948429263.yaml
+        aegis.io/imported-from: aegis-import-1130454479.yaml
         aegis.io/severity: medium
         kyverno.io/category: Istio
 spec:

@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-record-creation-details-prevent-updates-deletes-userinfo-annotations--
     annotations:
-        aegis.io/imported-from: aegis-import-724510366.yaml
+        aegis.io/imported-from: aegis-import-74090786.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

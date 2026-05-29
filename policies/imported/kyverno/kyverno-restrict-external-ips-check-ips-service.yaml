@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-external-ips-check-ips-service
     annotations:
-        aegis.io/imported-from: aegis-import-3230174185.yaml
+        aegis.io/imported-from: aegis-import-265043470.yaml
         aegis.io/severity: medium
         kyverno.io/category: Best Practices
 spec:

@@ -6,7 +6,7 @@ metadata:
     name: falco-contact-k8s-api-server-from-container
     annotations:
         aegis.io/falco-tags: maturity_stable,container,network,k8s,mitre_discovery,T1565
-        aegis.io/imported-from: aegis-import-4101892790.yaml
+        aegis.io/imported-from: aegis-import-999705196.yaml
         aegis.io/severity: low
         aegis.io/source-rule: Contact K8S API Server From Container
 spec:

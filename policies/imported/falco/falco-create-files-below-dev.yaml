@@ -5,7 +5,7 @@ metadata:
     name: falco-create-files-below-dev
     annotations:
         aegis.io/falco-tags: maturity_incubating,host,filesystem,mitre_persistence,T1543
-        aegis.io/imported-from: aegis-import-3831796007.yaml
+        aegis.io/imported-from: aegis-import-2621062960.yaml
         aegis.io/severity: high
         aegis.io/source-rule: Create files below dev
 spec:

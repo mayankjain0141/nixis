@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-prevent-linkerd-port-skipping-pod-prevent-port-skipping-pod
     annotations:
-        aegis.io/imported-from: aegis-import-2944007338.yaml
+        aegis.io/imported-from: aegis-import-3969856699.yaml
         aegis.io/severity: medium
         kyverno.io/category: Linkerd
 spec:

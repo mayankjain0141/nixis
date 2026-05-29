@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-kasten-generate-policy-by-preset-label-kasten-generate-policy-by-preset-label
     annotations:
-        aegis.io/imported-from: aegis-import-3362453361.yaml
+        aegis.io/imported-from: aegis-import-3807547480.yaml
         aegis.io/severity: low
         kyverno.io/category: Veeam Kasten
 spec:

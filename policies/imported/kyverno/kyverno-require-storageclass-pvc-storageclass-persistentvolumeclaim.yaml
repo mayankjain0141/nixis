@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-storageclass-pvc-storageclass-persistentvolumeclaim
     annotations:
-        aegis.io/imported-from: aegis-import-1178593614.yaml
+        aegis.io/imported-from: aegis-import-3635595563.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other, Multi-Tenancy
 spec:

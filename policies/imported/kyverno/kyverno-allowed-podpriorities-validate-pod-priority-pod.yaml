@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-allowed-podpriorities-validate-pod-priority-pod
     annotations:
-        aegis.io/imported-from: aegis-import-1383015913.yaml
+        aegis.io/imported-from: aegis-import-3512182261.yaml
         aegis.io/severity: low
         kyverno.io/category: Sample
 spec:

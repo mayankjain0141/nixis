@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-encryption-aws-loadbalancers-aws-loadbalancer-has-ssl-cert-service
     annotations:
-        aegis.io/imported-from: aegis-import-2900304682.yaml
+        aegis.io/imported-from: aegis-import-840195559.yaml
         aegis.io/severity: medium
         kyverno.io/category: AWS, EKS Best Practices
 spec:
