@@ -15,7 +15,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)\\b(docker|dockerd|containerd-shim|runc:[1:CHILD]|pause|exe|docker-compose|docker-entrypoi|docker-runc-cur|docker-current|dockerd-current)\\b")
+        - expression: 'tool == "Bash" && (request.args.command.matches(".*rm\\s+.*\\.(bash_history|zsh_history|sh_history).*") || request.args.command.matches(".*history\\s+-[cw].*") || request.args.command.contains("HISTFILE=/dev/null") || request.args.command.matches(".*ln\\s+.*\\.bash_history.*"))'
           message: 'Falco rule violated: Delete or rename shell history'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
