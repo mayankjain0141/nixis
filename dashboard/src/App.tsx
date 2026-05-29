@@ -1,15 +1,15 @@
-import { useEffect, useRef } from 'react';
-import { AnimatePresence } from 'framer-motion';
-import { MetricsBar } from './components/governance/MetricsBar';
-import { EventStreamCanvas } from './components/governance/EventStreamCanvas';
-import { LatticeHasseDiagram } from './components/governance/LatticeHasseDiagram';
-import { ThreatTimeline } from './components/governance/ThreatTimeline';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppShell, AppHeader, AppMetricsBar } from './components/shell/AppShell';
+import { EventStreamList } from './components/governance/EventStreamList';
+import { PolicySidebar } from './components/shell/PolicySidebar';
 import { GovernanceDAG } from './components/governance/dag/GovernanceDAG';
 import { DelegationTree } from './components/governance/DelegationTree';
 import { AuditHashChain } from './components/governance/AuditHashChain';
-import { DenyColorGuard } from './services/DenyColorGuard';
 import { CommandPalette } from './components/shell/CommandPalette';
 import { Inspector } from './components/shell/Inspector';
+import { SessionCards } from './components/shell/SessionCards';
+import { PolicyPlayground } from './components/shell/PolicyPlayground';
+import { DenyColorGuard } from './services/DenyColorGuard';
 import { useGovernanceStore } from './stores/governance-store';
 import { useMetricsStore } from './stores/metrics-store';
 import { useStreamStore } from './stores/stream-store';
@@ -41,7 +41,6 @@ const DAEMON_WS_URL = (() => {
   }
 })();
 
-// Convert mock StreamEvent to a CloudEvent JSON string for pipeline ingestion.
 function mockEventToCloudEvent(e: StreamEvent, seq: number): string {
   const eventType = (e.action === 'deny' || e.action === 'require_approval')
     ? 'policy.denied'
@@ -70,8 +69,6 @@ function mockEventToCloudEvent(e: StreamEvent, seq: number): string {
   });
 }
 
-// Build an atomic cross-store update for a policy event.
-// governance-store and metrics-store updated in the same apply() — WS-21 atomic cross-store invariant.
 function buildPolicyUpdate(
   event: ValidatedEvent & { type: 'policy.evaluated' | 'policy.denied' },
   appendEvent: (ev: GovernanceEvent) => void,
@@ -119,8 +116,6 @@ function buildPolicyUpdate(
   );
 }
 
-// Route validated events to stores via the sync-orchestrator.
-// All 12 ADR-012 event types are routed; CRITICAL events use IMMEDIATE priority.
 function routeEvents(
   events: ValidatedEvent[],
   orchestrator: ReturnType<typeof createSyncOrchestrator>,
@@ -155,8 +150,6 @@ function routeEvents(
             adapterCount: b.adapterCount ?? 0,
             activatedAt: Date.now(),
           });
-          // Use named policies from the event when available (demo scenario and daemon both send them).
-          // Fall back to synthetic entries only when the bundle carries no policy list.
           const rawBundle = b as { policyCount: number; policies?: { id: string; enabled: boolean; layer: string; cel_expression?: string }[] };
           const namedPolicies: import('./stores/policy-store').PolicySummary[] =
             Array.isArray(rawBundle.policies) && rawBundle.policies!.length > 0
@@ -228,18 +221,79 @@ function routeEvents(
         break;
 
       case 'stream.heartbeat':
-        // ws-manager handles clock offset; sequence update still needed.
         updateLastSequence(event.envelope.aegissequence);
         break;
 
       default:
-        // delegation.created/revoked/expired, audit.checkpoint —
-        // flow through stream-processor for windowed aggregations.
         updateLastSequence(event.envelope.aegissequence);
         break;
     }
   }
 }
+
+// ── Sub-components ──────────────────────────────────────────────────────────
+
+type MainTab = 'dag' | 'playground' | 'audit' | 'delegation';
+
+function MainContent() {
+  const [activeTab, setActiveTab] = useState<MainTab>('dag');
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      {/* Event stream: takes 50% of height */}
+      <div style={{ flex: '0 0 50%', overflow: 'hidden', borderBottom: '1px solid var(--border)' }}>
+        <EventStreamList />
+      </div>
+
+      {/* Tab bar */}
+      <div style={{
+        display: 'flex', alignItems: 'center',
+        borderBottom: '1px solid var(--border)',
+        background: 'var(--bg-surface)',
+        padding: '0 12px', height: 36, flexShrink: 0,
+      }}>
+        {(['dag', 'playground', 'audit', 'delegation'] as const).map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            style={{
+              padding: '0 14px', height: '100%', border: 'none', cursor: 'pointer',
+              background: 'transparent', fontSize: 12, fontWeight: 500,
+              color: activeTab === tab ? 'var(--text-primary)' : 'var(--text-secondary)',
+              borderBottom: activeTab === tab ? '2px solid var(--info-blue)' : '2px solid transparent',
+              textTransform: 'uppercase' as const, letterSpacing: '0.06em',
+            }}
+          >
+            {tab === 'dag' ? 'DAG' : tab === 'playground' ? 'Playground' : tab === 'audit' ? 'Audit Chain' : 'Delegation'}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      <div style={{ flex: 1, overflow: 'auto', padding: 12 }}>
+        {activeTab === 'dag'        && <GovernanceDAG />}
+        {activeTab === 'playground' && <PolicyPlayground />}
+        {activeTab === 'audit'      && <AuditHashChain />}
+        {activeTab === 'delegation' && <DelegationTree />}
+      </div>
+    </div>
+  );
+}
+
+function RightPanel() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      <div style={{ flex: '0 0 55%', overflow: 'auto', borderBottom: '1px solid var(--border)' }}>
+        <Inspector />
+      </div>
+      <div style={{ flex: 1, overflow: 'auto' }}>
+        <SessionCards />
+      </div>
+    </div>
+  );
+}
+
+// ── App root ─────────────────────────────────────────────────────────────────
 
 export default function App() {
   const appendEvent = useGovernanceStore((s) => s.appendEvent);
@@ -249,17 +303,15 @@ export default function App() {
   const setConnectionState = useStreamStore((s) => s.setConnectionState);
   const updateLastSequence = useStreamStore((s) => s.updateLastSequence);
   const connectionState = useStreamStore((s) => s.connectionState);
-  const policies = usePolicyStore((s) => s.policies);
-  const bundleStatus = usePolicyStore((s) => s.bundleStatus);
+  const coalescedCount = useStreamStore((s) => s.coalescedCount);
   const setBundleStatus = usePolicyStore((s) => s.setBundleStatus);
   const setPolicies = usePolicyStore((s) => s.setPolicies);
   const setCommandPaletteOpen = useUIStore((s) => s.setCommandPaletteOpen);
-  const inspectorOpen = useUIStore((s) => s.inspectorOpen);
 
   const mockGenRef = useRef<ReturnType<typeof createMockStreamGenerator> | null>(null);
   const mockSeqRef = useRef(0);
 
-  // Keyboard shortcut for command palette.
+  // Keyboard shortcut for command palette
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
@@ -271,7 +323,7 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [setCommandPaletteOpen]);
 
-  // Handle aegis:navigate events dispatched by CommandPalette navigation commands.
+  // Handle aegis:navigate events dispatched by CommandPalette
   useEffect(() => {
     function handleNavigate(e: Event) {
       const panel = (e as CustomEvent<{ panel: string }>).detail?.panel;
@@ -285,14 +337,13 @@ export default function App() {
     return () => window.removeEventListener('aegis:navigate', handleNavigate);
   }, []);
 
-  // Watch for command palette mock requests and activate/deactivate mock mode.
+  // Watch for command palette mock requests and activate/deactivate mock mode
   useEffect(() => {
     const unsubMock = useStreamStore.subscribe((state, prevState) => {
       if (state.requestMockMode === prevState.requestMockMode) return;
       if (state.requestMockMode) {
         useStreamStore.getState().setConnectionState('MOCK');
         if (mockGenRef.current === null) {
-          // Run scripted demo scenario via custom event (pipeline not available here).
           const cancelDemo = runDemoScenario(
             (json) => {
               window.dispatchEvent(new CustomEvent('aegis:mock-event', { detail: json }));
@@ -319,7 +370,7 @@ export default function App() {
     return () => unsubMock();
   }, []);
 
-  // Governance invariant checker on 5s interval.
+  // Governance invariant checker on 5s interval
   useEffect(() => {
     const checker = new GovernanceInvariantChecker({
       getGovernanceEvents: () => useGovernanceStore.getState().events.map(e => ({
@@ -351,24 +402,15 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Main realtime wiring:
-  // ws-manager → ingestion-pipeline → event-bus → backpressure → sync-orchestrator → stores
-  //                                                                    ↓ (internally)
-  //                                                             stream-processor (WS-20)
+  // Main realtime wiring
   useEffect(() => {
     const bus = createEventBus();
     const bpController = createBackpressureController();
     const streamProcessor = createStreamProcessor();
-    // WS-21 consumes WS-20: orchestrator.dispatch(batch) calls streamProcessor.process(batch).
     const orchestrator = createSyncOrchestrator({ streamProcessor });
 
-    // Backpressure output → sync-orchestrator (calls stream-processor internally) → stores.
     const unsubBp = bpController.onOutput((batch) => {
       orchestrator.dispatch(batch);
-      // Under backpressure, ALLOW evaluations are coalesced into summary counts.
-      // Individual GovernanceEvents are intentionally not stored for coalesced batches
-      // to preserve memory bounds. Only immediateEvents (CRITICAL + HIGH priority) are
-      // stored verbatim. coalescedCount is tracked in stream-store for operator visibility.
       const coalescedTotal = (batch.coalescedSummary ?? []).reduce((s, c) => s + c.count, 0);
       if (coalescedTotal > 0) {
         useStreamStore.getState().recordCoalesced(coalescedTotal);
@@ -381,7 +423,6 @@ export default function App() {
       );
     });
 
-    // Event bus feeds backpressure.
     const unsubBus = bus.subscribe(
       () => true,
       (events) => bpController.submit(events),
@@ -391,13 +432,8 @@ export default function App() {
     const wsManager = createWebSocketManager(DAEMON_WS_URL);
     const pipeline = createEventIngestionPipeline(wsManager);
 
-    // Validated events go to the event bus.
     const unsubPipeline = pipeline.onValidated((event) => bus.emit(event));
 
-    // CRITICAL: Register message handler BEFORE calling connect() to avoid race condition.
-    // The daemon sends state.snapshot + bundle.activated immediately on connect.
-    // If we register the handler after connect(), those messages arrive before
-    // the handler is registered and are silently dropped, causing "No policies loaded".
     const unsubMsg = wsManager.onMessage((raw, meta) => {
       pipeline.ingest(raw, meta);
     });
@@ -409,13 +445,11 @@ export default function App() {
       if (useMock) return;
       useMock = true;
       setConnectionState('MOCK');
-      // Play the scripted demo scenario first, then fall back to random events.
       const cancelDemo = runDemoScenario(
         (json) => {
           pipeline.ingest(json, { receivedAt: performance.now() });
         },
         () => {
-          // Demo finished — start random background events at a slow rate.
           const gen = createMockStreamGenerator(8);
           mockGenRef.current = gen;
           gen.onEvent((e: StreamEvent) => {
@@ -426,11 +460,9 @@ export default function App() {
           gen.start();
         },
       );
-      // Store cancel in mockGenRef via a shim so cleanup works.
       mockGenRef.current = { stop: cancelDemo } as ReturnType<typeof createMockStreamGenerator>;
     }
 
-    // Forward mock events dispatched by the requestMockMode subscriber into the live pipeline.
     function handleMockEvent(e: Event) {
       const raw = (e as CustomEvent<string>).detail;
       pipeline.ingest(raw, { receivedAt: performance.now() });
@@ -466,239 +498,48 @@ export default function App() {
     };
   }, [appendEvent, updateLabel, recordLatency, recordEvent, setConnectionState, updateLastSequence, setBundleStatus, setPolicies]);
 
+  const handleStartDemo = useCallback(() => {
+    useGovernanceStore.getState().clear?.();
+    useStreamStore.getState().setConnectionState('MOCK');
+    useStreamStore.getState().setRequestMockMode(false);
+    setTimeout(() => useStreamStore.getState().setRequestMockMode(true), 100);
+  }, []);
+
+  // Read metrics on render (computed on demand, not stored as reactive state)
+  const metricsStore = useMetricsStore.getState();
+  const bucket = metricsStore.getLatencyBucket();
+  const eventsPerSec = metricsStore.getEventsPerSecond();
+  const totalEvents = useGovernanceStore((s) => s.totalDenials + s.totalAllows);
+  const totalDenials = useGovernanceStore((s) => s.totalDenials);
+  const denyRate = totalEvents > 0 ? (totalDenials / totalEvents) * 100 : 0;
+  const p99LatencyMs = bucket.p99 / 1_000_000;
+  const bufferPct = Math.min(100, (coalescedCount / 500) * 100);
+
   return (
-    <div style={styles.shell}>
+    <>
       <DenyColorGuard />
       <CommandPalette />
-      <MetricsBar />
-      <div style={styles.body}>
-        <aside style={styles.sidebar} aria-label="Connection and policy summary">
-          <ConnectionStatus state={connectionState} />
-          <PolicyList policies={policies} bundleStatus={bundleStatus} />
-          <div style={sidebarStyles.section}>
-            <div style={sidebarStyles.sectionTitle}>IFC Sessions</div>
-            <LatticeHasseDiagram />
-          </div>
-          <details style={{ marginTop: 8 }}>
-            <summary style={{ cursor: 'pointer', color: '#8b949e', fontSize: 12, padding: '4px 12px' }}>Delegation Tree</summary>
-            <DelegationTree />
-          </details>
-          <details style={{ marginTop: 8 }}>
-            <summary style={{ cursor: 'pointer', color: '#8b949e', fontSize: 12, padding: '4px 12px' }}>Audit Hash Chain</summary>
-            <AuditHashChain />
-          </details>
-        </aside>
-
-        <main style={styles.center} aria-label="Live event stream">
-          <EventStreamCanvas />
-          <details style={{ marginTop: 8 }}>
-            <summary style={{ cursor: 'pointer', color: '#8b949e', fontSize: 12 }}>Governance DAG</summary>
-            <GovernanceDAG />
-          </details>
-        </main>
-
-        <aside style={styles.inspector} aria-label="Inspector panel">
-          <div style={styles.inspectorInner}>
-            <div style={styles.inspectorTop}>
-              <AnimatePresence>
-                {inspectorOpen && <Inspector key="inspector" />}
-              </AnimatePresence>
-            </div>
-            <ThreatTimeline />
-          </div>
-        </aside>
-      </div>
-    </div>
+      <AppShell
+        header={
+          <AppHeader
+            connectionState={connectionState}
+            onStartDemo={handleStartDemo}
+            onOpenPalette={() => useUIStore.getState().setCommandPaletteOpen(true)}
+          />
+        }
+        metricsBar={
+          <AppMetricsBar
+            eventsPerSec={eventsPerSec}
+            denyRate={denyRate}
+            p99LatencyMs={p99LatencyMs}
+            bufferPct={bufferPct}
+            coalescedCount={coalescedCount}
+          />
+        }
+        sidebar={<PolicySidebar />}
+        main={<MainContent />}
+        inspector={<RightPanel />}
+      />
+    </>
   );
 }
-
-function ConnectionStatus({ state }: { state: string }) {
-  const colors: Record<string, string> = {
-    IDLE: '#57606a',
-    CONNECTING: '#d29922',
-    CONNECTED: '#2da44e',
-    DISCONNECTED: '#cf222e',
-    RECONNECTING: '#d29922',
-    MOCK: '#8b5cf6',
-  };
-  const color = colors[state] ?? '#57606a';
-
-  return (
-    <div style={sidebarStyles.section}>
-      <div style={sidebarStyles.sectionTitle}>Daemon</div>
-      <div style={sidebarStyles.statusRow}>
-        <span style={{ ...sidebarStyles.dot, backgroundColor: color }} aria-hidden="true" />
-        <span style={{ ...sidebarStyles.statusText, color }}>{state}</span>
-      </div>
-    </div>
-  );
-}
-
-interface PolicyListProps {
-  policies: Array<{ id: string; name: string; layer: string; enabled: boolean }>;
-  bundleStatus: { version: number; policyCount: number; signatureVerified: boolean } | null;
-}
-
-function PolicyList({ policies, bundleStatus }: PolicyListProps) {
-  return (
-    <div style={sidebarStyles.section}>
-      <div style={sidebarStyles.sectionTitle}>
-        Policies
-        {bundleStatus && (
-          <span style={sidebarStyles.bundleVersion}>v{bundleStatus.version}</span>
-        )}
-      </div>
-      {policies.length === 0 ? (
-        <div style={sidebarStyles.empty}>No policies loaded</div>
-      ) : (
-        <ul style={sidebarStyles.list} aria-label="Active policies">
-          {policies.map((p) => (
-            <li key={p.id} style={sidebarStyles.policyItem}>
-              <span
-                style={{
-                  ...sidebarStyles.enabledDot,
-                  backgroundColor: p.enabled ? '#2da44e' : '#57606a',
-                }}
-                aria-hidden="true"
-              />
-              <span style={sidebarStyles.policyName} title={p.name}>{p.name}</span>
-              <span style={sidebarStyles.layerBadge}>{p.layer}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-const styles = {
-  shell: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    height: '100vh',
-    width: '100vw',
-    background: '#0d1117',
-    color: '#e6edf3',
-    fontFamily: 'ui-sans-serif, system-ui, sans-serif',
-    overflow: 'hidden',
-  },
-  body: {
-    display: 'flex',
-    flex: 1,
-    overflow: 'hidden',
-    gap: '1px',
-    background: '#21262d',
-  },
-  sidebar: {
-    width: '220px',
-    flexShrink: 0,
-    background: '#0d1117',
-    overflowY: 'auto' as const,
-    borderRight: '1px solid #21262d',
-  },
-  center: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column' as const,
-    background: '#0d1117',
-    overflow: 'hidden',
-    padding: '12px',
-  },
-  inspector: {
-    width: '280px',
-    flexShrink: 0,
-    background: '#0d1117',
-    borderLeft: '1px solid #21262d',
-    display: 'flex',
-    flexDirection: 'column' as const,
-    overflow: 'hidden',
-  },
-  inspectorInner: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    flex: 1,
-    overflow: 'hidden',
-  },
-  inspectorTop: {
-    flex: 1,
-    overflow: 'hidden',
-    display: 'flex',
-    flexDirection: 'column' as const,
-  },
-} as const;
-
-const sidebarStyles = {
-  section: {
-    padding: '12px',
-    borderBottom: '1px solid #21262d',
-  },
-  sectionTitle: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    color: '#57606a',
-    fontSize: '11px',
-    fontWeight: 600,
-    textTransform: 'uppercase' as const,
-    letterSpacing: '0.08em',
-    marginBottom: '8px',
-  },
-  bundleVersion: {
-    color: '#30363d',
-    fontSize: '10px',
-    fontFamily: 'ui-monospace, Consolas, monospace',
-  },
-  statusRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-  },
-  dot: {
-    width: '8px',
-    height: '8px',
-    borderRadius: '50%',
-    flexShrink: 0,
-  },
-  statusText: {
-    fontSize: '12px',
-    fontFamily: 'ui-monospace, Consolas, monospace',
-  },
-  empty: {
-    color: '#30363d',
-    fontSize: '11px',
-    fontStyle: 'italic' as const,
-  },
-  list: {
-    listStyle: 'none',
-    margin: 0,
-    padding: 0,
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '4px',
-  },
-  policyItem: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-  },
-  enabledDot: {
-    width: '6px',
-    height: '6px',
-    borderRadius: '50%',
-    flexShrink: 0,
-  },
-  policyName: {
-    color: '#8b949e',
-    fontSize: '11px',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap' as const,
-    flex: 1,
-  },
-  layerBadge: {
-    color: '#30363d',
-    fontSize: '9px',
-    fontFamily: 'ui-monospace, Consolas, monospace',
-    flexShrink: 0,
-  },
-} as const;
