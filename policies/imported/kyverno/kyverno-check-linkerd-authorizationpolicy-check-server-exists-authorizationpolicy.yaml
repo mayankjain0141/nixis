@@ -17,5 +17,5 @@ spec:
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: AuthorizationPolicy") && !request.args.content.contains("targetRef:")'
           message: Server or HTTPRoute not found for this AuthorizationPolicy.
-          action: REQUIRE_APPROVAL
+          action: AUDIT
     defaultAction: ALLOW

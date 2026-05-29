@@ -14,7 +14,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+exec.*-n\\s+(pci|production|secure).*")'
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+exec.*") && (request.args.command.contains(" -n pci") || request.args.command.contains(" --namespace pci") || request.args.command.contains(" -n=pci") || request.args.command.contains("--namespace=pci"))'
           message: Pods in this namespace may not be exec'd into.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
