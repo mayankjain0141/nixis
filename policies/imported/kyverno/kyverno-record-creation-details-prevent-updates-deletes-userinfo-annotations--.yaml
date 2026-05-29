@@ -1,4 +1,7 @@
-# IMPORT_TODO: JMESPath conditions in record-creation-details/prevent-updates-deletes-userinfo-annotations could not be translated — content check for annotation key generated as base condition only
+# CEL_LIMITATION: this policy protects the kyverno.io/created-by annotation from removal on updates/deletes.
+# The companion mutate policy (add-userinfo) is also translated to false+AUDIT — without annotation injection,
+# no existing resource will have the annotation. Enforcing annotation presence would DENY all new manifests.
+# Translated to false + AUDIT to match the companion policy's audit-only status.
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -15,7 +18,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && !request.args.content.contains("kyverno.io/created-by")'
-          message: 'Resources must include the kyverno.io/created-by userInfo annotation before updates or deletes'
-          action: DENY
+        - expression: 'false'
+          message: 'CEL limitation: companion mutate policy (add-userinfo) is audit-only — enforcing annotation presence here would DENY all manifests that were not processed by the Kyverno injector'
+          action: AUDIT
     defaultAction: ALLOW
