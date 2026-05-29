@@ -140,9 +140,10 @@ func buildCombinedExpression(m *policyManifest) string {
 		return "!(" + strings.Join(denyExprs, " || ") + ")"
 	}
 
-	// Fallback: use first non-empty validation (for REQUIRE_APPROVAL, etc.)
+	// Fallback: use first blocking validation (REQUIRE_APPROVAL blocks; AUDIT does not).
+	// AUDIT policies generate log entries but must never block execution.
 	for _, v := range m.Spec.Validations {
-		if v.Expression != "" {
+		if v.Expression != "" && v.Action != "AUDIT" {
 			return "!(" + inline(v.Expression) + ")"
 		}
 	}

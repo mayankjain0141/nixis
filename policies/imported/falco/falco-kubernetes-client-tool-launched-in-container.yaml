@@ -15,7 +15,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*\\b(docker|kubectl|crictl|helm|k9s)\\b.*") && request.args.command.matches(".*(exec|run|apply|delete|scale|port-forward).*")'
+        - expression: 'tool == "Bash" && (request.args.command.matches(".*\\b(docker|kubectl)\\s+exec.*(-it|-i|-t).*") || request.args.command.matches(".*\\b(crictl|nerdctl)\\s+exec.*"))'
           message: 'Falco rule violated: Kubernetes Client Tool Launched in Container'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
