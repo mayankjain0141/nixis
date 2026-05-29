@@ -1,5 +1,5 @@
-# IMPORT_TODO: JMESPath conditions in check-subjectaccessreview/check-sar could not be translated — kubectl pattern match generated as base condition only
 # imported from: policies via aegis policy import
+# IMPORT_REVIEW: cross-resource check — SubjectAccessReview requires a live API server call to evaluate user permissions; CEL cannot perform network requests at request-time
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:
@@ -11,11 +11,9 @@ metadata:
 spec:
     description: In some cases a validation check for one type of resource may need to take into consideration the requesting user's permissions on a different type of resource. Rather than parsing through all Roles and/or ClusterRoles to check if these permissions are held, Kyverno can perform a SubjectAccessReview request to the Kubernetes API server and have it figure out those permissions. This policy illustrates how to perform a POST request to the API server to subject a SubjectAccessReview for a user creating/updating a ConfigMap. It is intended to be used as a component in a more functional rule.
     matchConstraints:
-        tools:
-            - Write
-            - Edit
+        tools: []
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: ConfigMap")'
-          message: User is not authorized.
+        - expression: 'false'
+          message: 'Cannot be enforced at request-time: SubjectAccessReview requires a live Kubernetes API server call to evaluate user permissions on ConfigMap resources, which is unavailable in single-request CEL evaluation.'
           action: AUDIT
     defaultAction: ALLOW
