@@ -21,8 +21,243 @@ const COUNT_BADGE: React.CSSProperties = {
   fontSize: '11px',
 };
 
-function stripPrefix(name: string): string {
-  return name.startsWith('aegis/') ? name.slice(6) : name;
+type PolicySource = 'falco' | 'kyverno' | 'catalog' | 'aegis' | 'other';
+
+function getPolicySource(id: string): PolicySource {
+  if (id.startsWith('aegis/')) return 'aegis';
+  if (id.startsWith('falco-')) return 'falco';
+  if (id.startsWith('kyverno-')) return 'kyverno';
+  if (id.startsWith('catalog-')) return 'catalog';
+  return 'other';
+}
+
+function deduplicateSegments(text: string): string {
+  const words = text.split(' ');
+  const half = Math.floor(words.length / 2);
+  if (half > 0) {
+    const firstHalf = words.slice(0, half).join(' ');
+    const secondHalf = words.slice(half).join(' ');
+    if (firstHalf === secondHalf) return firstHalf;
+  }
+  return text;
+}
+
+function formatPolicyName(id: string): string {
+  const source = getPolicySource(id);
+  if (source === 'aegis') {
+    return id.slice('aegis/'.length);
+  }
+  if (source === 'falco') {
+    const stripped = id.slice('falco-'.length);
+    return stripped.replace(/-/g, ' ').trim();
+  }
+  if (source === 'catalog') {
+    const stripped = id.slice('catalog-auto-'.length);
+    // `---` in the id represents ` --` (space + double-dash CLI flag)
+    const withFlags = stripped.replace(/---/g, ' --');
+    return withFlags.replace(/-/g, ' ').trim();
+  }
+  if (source === 'kyverno') {
+    const stripped = id.slice('kyverno-'.length);
+    const expanded = stripped.replace(/-/g, ' ').trim();
+    return deduplicateSegments(expanded);
+  }
+  return id.replace(/[-/]/g, ' ').trim();
+}
+
+const SOURCE_BADGE_STYLES: Record<PolicySource, { bg: string; color: string; label: string }> = {
+  falco:   { bg: '#0969da', color: '#cae8ff', label: 'F' },
+  kyverno: { bg: '#953800', color: '#ffddb0', label: 'K' },
+  catalog: { bg: '#1b6633', color: '#aff5b4', label: 'C' },
+  aegis:   { bg: '#5a3e9c', color: '#e2ccff', label: 'A' },
+  other:   { bg: '#30363d', color: '#8b949e', label: '?' },
+};
+
+function SourceBadge({ source }: { source: PolicySource }): React.ReactElement {
+  const { bg, color, label } = SOURCE_BADGE_STYLES[source];
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 14,
+        height: 14,
+        borderRadius: 3,
+        background: bg,
+        color,
+        fontSize: 9,
+        fontWeight: 700,
+        flexShrink: 0,
+        lineHeight: 1,
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
+const SOURCE_ORDER: PolicySource[] = ['aegis', 'falco', 'kyverno', 'catalog', 'other'];
+
+const SOURCE_DISPLAY_NAME: Record<PolicySource, string> = {
+  aegis:   'Aegis',
+  falco:   'Falco',
+  kyverno: 'Kyverno',
+  catalog: 'Catalog',
+  other:   'Other',
+};
+
+interface PolicyItem {
+  id: string;
+  name: string;
+  enabled: boolean;
+  celExpression?: string | null;
+  layer?: string;
+}
+
+function GroupDivider({ label, count }: { label: string; count: number }): React.ReactElement {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        padding: '8px 12px 4px',
+        gap: 6,
+      }}
+    >
+      <span style={{ flex: 1, height: 1, background: '#21262d' }} />
+      <span
+        style={{
+          fontSize: 10,
+          color: '#484f58',
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {label} ({count})
+      </span>
+      <span style={{ flex: 1, height: 1, background: '#21262d' }} />
+    </div>
+  );
+}
+
+function PolicyRow({
+  policy,
+  isSelected,
+  selectedPolicy,
+  onSelect,
+}: {
+  policy: PolicyItem;
+  isSelected: boolean;
+  selectedPolicy: PolicyItem | null;
+  onSelect: () => void;
+}): React.ReactElement {
+  const source = getPolicySource(policy.id);
+  const displayName = formatPolicyName(policy.id);
+
+  return (
+    <div key={policy.id}>
+      <div
+        onClick={onSelect}
+        style={{
+          padding: '7px 12px',
+          cursor: 'pointer',
+          fontSize: '13px',
+          color: '#e6edf3',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          background: isSelected ? '#1f2937' : 'transparent',
+          borderLeft: isSelected ? '2px solid #58a6ff' : '2px solid transparent',
+        }}
+      >
+        <SourceBadge source={source} />
+        <span
+          style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: policy.enabled ? '#2da44e' : '#484f58',
+            flexShrink: 0,
+          }}
+        />
+        <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {displayName}
+        </span>
+      </div>
+
+      {isSelected && selectedPolicy && (
+        <div
+          style={{
+            margin: '0 12px 8px',
+            border: '1px solid #30363d',
+            borderRadius: '4px',
+            padding: '8px',
+            fontSize: '12px',
+            color: '#e6edf3',
+          }}
+        >
+          {selectedPolicy.celExpression != null ? (
+            <>
+              <div style={{ marginBottom: '6px', color: '#8b949e', fontSize: '11px' }}>
+                CEL Expression
+              </div>
+              <div
+                style={{
+                  background: '#0d1117',
+                  border: '1px solid #30363d',
+                  borderRadius: '4px',
+                  padding: '8px',
+                  fontFamily: 'monospace',
+                  fontSize: '11px',
+                  color: '#79c0ff',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-all',
+                  maxHeight: '80px',
+                  overflowY: 'auto',
+                }}
+              >
+                {selectedPolicy.celExpression}
+              </div>
+            </>
+          ) : (
+            <div style={{ color: '#8b949e', fontSize: '11px' }}>
+              No CEL expression for this layer.
+            </div>
+          )}
+          <div
+            style={{
+              marginTop: '8px',
+              fontSize: '11px',
+              color: '#8b949e',
+              display: 'flex',
+              gap: '12px',
+            }}
+          >
+            <span>
+              Layer: <span style={{ color: '#e6edf3' }}>{selectedPolicy.layer}</span>
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              Status:
+              <span
+                style={{
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  background: selectedPolicy.enabled ? '#2da44e' : '#484f58',
+                  display: 'inline-block',
+                }}
+              />
+              <span style={{ color: '#e6edf3' }}>
+                {selectedPolicy.enabled ? 'active' : 'disabled'}
+              </span>
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function PolicySidebar(): React.ReactElement {
@@ -48,6 +283,18 @@ export function PolicySidebar(): React.ReactElement {
     );
   }, [policies, filter]);
 
+  const groupedPolicies = useMemo(() => {
+    const groups: Partial<Record<PolicySource, PolicyItem[]>> = {};
+    for (const policy of visiblePolicies) {
+      const src = getPolicySource(policy.id);
+      if (!groups[src]) groups[src] = [];
+      groups[src]!.push(policy);
+    }
+    return groups;
+  }, [visiblePolicies]);
+
+  const isFiltering = filter.trim().length > 0;
+
   return (
     <div style={{ background: '#0d1117', overflowY: 'auto', height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* POLICIES section */}
@@ -71,125 +318,62 @@ export function PolicySidebar(): React.ReactElement {
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        {visiblePolicies.map((policy) => {
-          const isSelected = policy.id === selectedPolicyId;
-          return (
-            <div key={policy.id}>
-              <div
-                onClick={() => selectPolicy(isSelected ? null : policy.id)}
-                style={{
-                  padding: '7px 12px',
-                  cursor: 'pointer',
-                  fontSize: '13px',
-                  color: '#e6edf3',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  background: isSelected ? '#1f2937' : 'transparent',
-                  borderLeft: isSelected ? '2px solid #58a6ff' : '2px solid transparent',
-                }}
-              >
-                <span
-                  style={{
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    background: policy.enabled ? '#2da44e' : '#484f58',
-                    flexShrink: 0,
-                  }}
+        {isFiltering ? (
+          // Flat results with badges when filtering
+          <>
+            {visiblePolicies.map((policy) => {
+              const isSelected = policy.id === selectedPolicyId;
+              return (
+                <PolicyRow
+                  key={policy.id}
+                  policy={policy}
+                  isSelected={isSelected}
+                  selectedPolicy={selectedPolicy}
+                  onSelect={() => selectPolicy(isSelected ? null : policy.id)}
                 />
-                <span>{stripPrefix(policy.name)}</span>
+              );
+            })}
+            {visiblePolicies.length === 0 && policies.length > 0 && (
+              <div style={{ padding: '7px 12px', fontSize: '12px', color: '#484f58' }}>
+                No policies match.
               </div>
-
-              {isSelected && selectedPolicy && (
-                <div
-                  style={{
-                    margin: '0 12px 8px',
-                    border: '1px solid #30363d',
-                    borderRadius: '4px',
-                    padding: '8px',
-                    fontSize: '12px',
-                    color: '#e6edf3',
-                  }}
-                >
-                  {selectedPolicy.celExpression != null ? (
-                    <>
-                      <div style={{ marginBottom: '6px', color: '#8b949e', fontSize: '11px' }}>
-                        CEL Expression
-                      </div>
-                      <div
-                        style={{
-                          background: '#0d1117',
-                          border: '1px solid #30363d',
-                          borderRadius: '4px',
-                          padding: '8px',
-                          fontFamily: 'monospace',
-                          fontSize: '11px',
-                          color: '#79c0ff',
-                          whiteSpace: 'pre-wrap',
-                          wordBreak: 'break-all',
-                          maxHeight: '80px',
-                          overflowY: 'auto',
-                        }}
-                      >
-                        {selectedPolicy.celExpression}
-                      </div>
-                    </>
-                  ) : (
-                    <div style={{ color: '#8b949e', fontSize: '11px' }}>
-                      No CEL expression for this layer.
-                    </div>
-                  )}
-                  <div
-                    style={{
-                      marginTop: '8px',
-                      fontSize: '11px',
-                      color: '#8b949e',
-                      display: 'flex',
-                      gap: '12px',
-                    }}
-                  >
-                    <span>
-                      Layer: <span style={{ color: '#e6edf3' }}>{selectedPolicy.layer}</span>
-                    </span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      Status:
-                      <span
-                        style={{
-                          width: '6px',
-                          height: '6px',
-                          borderRadius: '50%',
-                          background: selectedPolicy.enabled ? '#2da44e' : '#484f58',
-                          display: 'inline-block',
-                        }}
+            )}
+          </>
+        ) : (
+          // Grouped results when not filtering
+          <>
+            {SOURCE_ORDER.map((src) => {
+              const group = groupedPolicies[src];
+              if (!group || group.length === 0) return null;
+              return (
+                <React.Fragment key={src}>
+                  <GroupDivider label={SOURCE_DISPLAY_NAME[src]} count={group.length} />
+                  {group.map((policy) => {
+                    const isSelected = policy.id === selectedPolicyId;
+                    return (
+                      <PolicyRow
+                        key={policy.id}
+                        policy={policy}
+                        isSelected={isSelected}
+                        selectedPolicy={selectedPolicy}
+                        onSelect={() => selectPolicy(isSelected ? null : policy.id)}
                       />
-                      <span style={{ color: '#e6edf3' }}>
-                        {selectedPolicy.enabled ? 'active' : 'disabled'}
-                      </span>
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        {policies.length === 0 && (
-          <div style={{ padding: '7px 12px', fontSize: '12px', color: '#484f58' }}>
-            No policies loaded.
-          </div>
-        )}
-
-        {filter && visiblePolicies.length === 0 && policies.length > 0 && (
-          <div style={{ padding: '7px 12px', fontSize: '12px', color: '#484f58' }}>
-            No policies match.
-          </div>
-        )}
-
-        {selectedPolicyId === null && policies.length > 0 && !filter && (
-          <div style={{ padding: '6px 12px 4px', fontSize: '11px', color: '#484f58' }}>
-            Select a policy to view details
-          </div>
+                    );
+                  })}
+                </React.Fragment>
+              );
+            })}
+            {policies.length === 0 && (
+              <div style={{ padding: '7px 12px', fontSize: '12px', color: '#484f58' }}>
+                No policies loaded.
+              </div>
+            )}
+            {selectedPolicyId === null && policies.length > 0 && (
+              <div style={{ padding: '6px 12px 4px', fontSize: '11px', color: '#484f58' }}>
+                Select a policy to view details
+              </div>
+            )}
+          </>
         )}
       </div>
 
