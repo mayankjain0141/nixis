@@ -154,8 +154,8 @@ func fixImportsFile(ctx context.Context, t *LLMTranslator, path string, dryRun b
 
 // policyInfo holds the context extracted from an IMPORT_TODO policy file.
 type policyInfo struct {
-	name       string
-	importTODO string // the original condition text after "# IMPORT_TODO:"
+	name        string
+	importTODO  string // the original condition text after "# IMPORT_TODO:"
 	description string
 	message     string
 	sourceRule  string
