@@ -1,3 +1,4 @@
+# IMPORT_TODO: Cross-resource check (replica count vs existing PDB minAvailable) cannot be translated — kubectl pattern match generated as base condition only
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
