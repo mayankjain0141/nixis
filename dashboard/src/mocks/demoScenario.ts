@@ -102,7 +102,7 @@ export function buildDemoScenario(): DemoStep[] {
         version: 1,
         policy_count: 6,
         activated_at: Date.now(),
-        policies: POLICIES.map(p => ({ id: p.id, enabled: true, layer: 'cel' })),
+        policies: POLICIES.map(p => ({ id: p.id, enabled: true, layer: 'cel', cel_expression: p.cel })),
       }),
     },
 
@@ -441,7 +441,7 @@ export function buildDemoScenario(): DemoStep[] {
         activated_at: Date.now(),
         policies: [
           ...POLICIES.map(p => ({ id: p.id, enabled: true, layer: 'cel' })),
-          { id: 'aegis/rate-limit-writes', enabled: true, layer: 'cel' },
+          { id: 'aegis/rate-limit-writes', enabled: true, layer: 'cel', cel_expression: 'write_rate_per_minute < 60' },
         ],
       }),
     },
