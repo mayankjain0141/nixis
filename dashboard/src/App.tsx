@@ -187,6 +187,40 @@ function routeEvents(
         }
         break;
 
+      case 'delegation.created': {
+        const d = event.data as { session_id?: string; delegator_id?: string; delegatee_id?: string; granted_label?: unknown; ceiling_label?: unknown; expires_at?: number };
+        if (d.session_id && d.delegator_id) {
+          orchestrator.dispatchUpdate(atomicUpdate('FRAME', event.type, () => {
+            useGovernanceStore.getState().updateDelegationChain(d.session_id!, [{
+              hopIndex: 0,
+              delegatorId: d.delegator_id!,
+              delegateeId: d.session_id!,
+              grantedLabel: (d.granted_label as { confidentiality: number; integrity: number; categories: number }) ?? { confidentiality: 0, integrity: 0, categories: 0 },
+              ceilingLabel: (d.ceiling_label as { confidentiality: number; integrity: number; categories: number }) ?? { confidentiality: 0, integrity: 0, categories: 0 },
+              expiresAt: d.expires_at,
+            }]);
+            updateLastSequence(event.envelope.aegissequence);
+          }));
+        } else {
+          updateLastSequence(event.envelope.aegissequence);
+        }
+        break;
+      }
+
+      case 'delegation.revoked':
+      case 'delegation.expired': {
+        const d = event.data as { session_id?: string };
+        if (d.session_id) {
+          orchestrator.dispatchUpdate(atomicUpdate('FRAME', event.type, () => {
+            useGovernanceStore.getState().updateDelegationChain(d.session_id!, []);
+            updateLastSequence(event.envelope.aegissequence);
+          }));
+        } else {
+          updateLastSequence(event.envelope.aegissequence);
+        }
+        break;
+      }
+
       case 'stream.heartbeat':
         updateLastSequence(event.envelope.aegissequence);
         break;
