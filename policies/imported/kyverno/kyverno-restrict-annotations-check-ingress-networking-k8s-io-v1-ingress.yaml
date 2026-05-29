@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
-          message: 'Policy validation required — review manifest before applying'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("nginx.ingress.kubernetes.io/")'
+          message: 'CVE-2021-25746: NGINX Ingress annotations must use safe values — review annotation values against the NGINX Ingress blocklist before applying'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

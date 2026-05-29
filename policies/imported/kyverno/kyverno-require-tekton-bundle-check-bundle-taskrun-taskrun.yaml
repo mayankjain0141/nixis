@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
-          message: 'Policy validation required — review manifest before applying'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: TaskRun") && !request.args.content.contains("bundle:")'
+          message: 'TaskRun resources must reference a Tekton bundle'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

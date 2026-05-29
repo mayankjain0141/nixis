@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
-          message: 'Policy validation required — review manifest before applying'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("flux.weave.works/")'
+          message: 'Flux v1 annotations (flux.weave.works/) are not permitted on cluster resources'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
