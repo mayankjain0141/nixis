@@ -15,7 +15,7 @@ spec:
         This rule generically detects updates to package repositories and can be seen as an auditing measure. Recommend evaluating its relevance for your specific environment.
     matchConstraints:
         tools:
-            - Read
+            - Bash
             - Write
             - Edit
     validations:

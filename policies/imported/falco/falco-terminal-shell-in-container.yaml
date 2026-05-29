@@ -17,7 +17,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*docker\\s+exec.*(-it|-i|-t).*") && request.args.command.matches(".*(bash|sh|ash|zsh).*")'
+        - expression: 'tool == "Bash" && request.args.command.matches(".*docker\\s+exec.*(-it|-i|-t).*") && request.args.command.matches(".*\\b(bash|sh|ash|zsh)\\b.*")'
           message: 'Falco rule violated: Terminal shell in container'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
