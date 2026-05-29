@@ -15,6 +15,8 @@
  *   delegation.expired      → Tree updates
  */
 
+import { getAllImportedPolicies as getAllImportedPoliciesSync } from './allPolicies';
+
 export interface DemoStep {
   delayMs: number;   // ms to wait after the previous event before emitting this one
   json: string;      // CloudEvent JSON string
@@ -58,18 +60,25 @@ const IMPORTED_POLICIES = [
 ];
 
 // ── Direct policy export — bypasses ingestion pipeline Zod validation ────────
-// Called from App.tsx when demo mode starts to pre-populate the policy store.
-// This guarantees all 16 policies with CEL expressions are visible immediately.
+// Returns ALL imported policies (700+) plus the 6 core aegis policies.
+// Called from App.tsx when demo mode starts so CEL expressions are immediately visible.
 export function getDemoPolicies(bundleVersion: number = 1): import('../stores/policy-store').PolicySummary[] {
-  const allPolicies = [...POLICIES, ...IMPORTED_POLICIES];
-  return allPolicies.map(p => ({
+  const imported = getAllImportedPoliciesSync(bundleVersion);
+
+  // Prepend the 6 core demo policies (they may also exist in imported but these have richer demo CEL)
+  const core: import('../stores/policy-store').PolicySummary[] = POLICIES.map(p => ({
     id: p.id,
-    name: p.id.replace(/^(aegis|gatekeeper|falco|kyverno|agentwall|sigma|catalog)\//, ''),
+    name: p.id.replace(/^aegis\//, ''),
     layer: 'cel' as const,
     enabled: true,
     bundleVersion,
     celExpression: p.cel,
+    description: 'Core Aegis policy',
   }));
+
+  // Merge: core policies first (by id), then imported (deduped)
+  const coreIds = new Set(core.map(p => p.id));
+  return [...core, ...imported.filter(p => !coreIds.has(p.id))];
 }
 
 // ── Helper builders ───────────────────────────────────────────────────────────
