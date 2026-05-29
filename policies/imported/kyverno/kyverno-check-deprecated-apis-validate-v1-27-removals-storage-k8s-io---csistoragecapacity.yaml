@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.matches(".*apiVersion:\\s*(storage\\.k8s\\.io/v1beta1).*")'
-          message: '{{ request.object.apiVersion }}/{{ request.object.kind }} is deprecated and will be removed in v1.27. See: https://kubernetes.io/docs/reference/using-api/deprecation-guide/'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("apiVersion: storage.k8s.io/v1beta1") && request.args.content.contains("kind: CSIStorageCapacity")'
+          message: 'storage.k8s.io/v1beta1 CSIStorageCapacity is deprecated and will be removed in v1.27. Use storage.k8s.io/v1 instead. See: https://kubernetes.io/docs/reference/using-api/deprecation-guide/'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

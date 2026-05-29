@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.matches(".*apiVersion:\\s*(batch/v1beta1|discovery\\.k8s\\.io/v1beta1|events\\.k8s\\.io/v1beta1|node\\.k8s\\.io/v1beta1|policy/v1beta1).*")'
-          message: '{{ request.object.apiVersion }}/{{ request.object.kind }} is deprecated and will be removed in v1.25. See: https://kubernetes.io/docs/reference/using-api/deprecation-guide/'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("apiVersion: policy/v1beta1") && request.args.content.contains("kind: PodSecurityPolicy")'
+          message: 'policy/v1beta1 PodSecurityPolicy is removed in v1.25. See: https://kubernetes.io/docs/reference/using-api/deprecation-guide/'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

@@ -1,4 +1,4 @@
-# IMPORT_TODO: JMESPath conditions in check-hpa-exists/validate-hpa could not be translated — kubectl pattern match generated as base condition only
+# AUDIT_ONLY: CEL cannot perform cross-resource existence checks — cannot verify HPA exists for this StatefulSet in the cluster.
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -12,9 +12,10 @@ spec:
     description: This policy ensures that Deployments, ReplicaSets, StatefulSets, and DaemonSets are only allowed if they have a corresponding Horizontal Pod Autoscaler (HPA) configured in the same namespace. The policy checks for the presence of an HPA that targets the resource and denies the creation or update of the resource if no such HPA exists. This policy helps enforce scaling practices and ensures that resources are managed efficiently.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+(apply|create).*")'
-          message: Deployment is not allowed without a corresponding HPA.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: StatefulSet")'
+          message: 'AUDIT: StatefulSet detected — verify a corresponding HPA exists in the same namespace. Cross-resource HPA existence cannot be enforced automatically.'
           action: AUDIT
     defaultAction: ALLOW
