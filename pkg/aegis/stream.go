@@ -5,21 +5,35 @@ import "context"
 // StreamEvent is a governance event published by internal/stream/.
 // The event type field uses one of the 12 canonical event type constants.
 type StreamEvent struct {
-	Type           string // one of the 12 canonical event types
-	AegisSequence  uint64 // assigned in fan-out goroutine at Emit() time
-	SessionID      string
-	Tool           string
-	Action         Action
-	Reason         string
-	Label          SecurityLabel
-	Timestamp      int64
-	PolicyID       string
-	EnforcingLayer string
-	LabelState     string
-	LatencyNs      int64
+	Type           string        // one of the 12 canonical event types (see constants below)
+	AegisSequence  uint64        // monotonic sequence number assigned in the fan-out goroutine at Emit() time
+	SessionID      string        // session that produced this event; empty for system events
+	Tool           string        // tool involved in the event; empty for non-decision events
+	Action         Action        // authorization action for decision events; zero (Deny) for non-decision events
+	Reason         string        // human-readable explanation accompanying the event
+	Label          SecurityLabel // label state at event time; zero for events that do not carry label context
+	Timestamp      int64         // Unix nanoseconds at event creation
+	PolicyID       string        // policy that triggered the event; empty if not policy-driven
+	EnforcingLayer string        // evaluation layer that raised the event (e.g. "cel", "ifc")
+	LabelState     string        // serialized label transition description for label.* events
+	LatencyNs      int64         // evaluation duration in nanoseconds for decision events; 0 otherwise
 }
 
 // Canonical stream event type constants (12 total — fixed per ADR-011).
+//
+// Event types:
+//   - decision: tool call evaluated; carries Action, Tool, PolicyID, LatencyNs
+//   - label.escalated: session label raised to a higher confidentiality or integrity level
+//   - label.tainted: session label degraded due to a policy violation
+//   - secret.found: secret scanner detected a credential or token in tool args
+//   - bundle.activated: new policy bundle successfully loaded and active
+//   - bundle.rolledback: policy bundle rolled back to last-known-good after a failed reload
+//   - reload.started: policy reload triggered (fsnotify or API)
+//   - reload.completed: policy reload succeeded
+//   - reload.failed: policy reload failed; previous bundle remains active
+//   - session.start: new governance session registered
+//   - session.end: governance session ended or expired
+//   - system.error: daemon-level error not attributable to a single session
 const (
 	EventTypeDecision         = "decision"
 	EventTypeLabelEscalated   = "label.escalated"

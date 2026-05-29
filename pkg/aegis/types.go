@@ -49,9 +49,9 @@ func (a *Action) UnmarshalJSON(data []byte) error {
 
 // SecurityLabel is the lattice label. Zero value = minimum privilege (INV-002).
 type SecurityLabel struct {
-	Confidentiality uint16
-	Integrity       uint16
-	Category        uint32 // uint32 per ADR-016
+	Confidentiality uint16 // Bell-LaPadula confidentiality level; 0 = public
+	Integrity       uint16 // Biba integrity level; 0 = untrusted
+	Category        uint32 // compartment bitmask (ADR-016); 0 = no compartment
 }
 
 // EnforcingLayer identifies which evaluation layer produced the decision.
@@ -80,37 +80,37 @@ type DelegationRef struct {
 
 // CheckRequest is the evaluation input.
 type CheckRequest struct {
-	Tool           string
-	Args           json.RawMessage
-	SessionID      string
-	SecurityLabel  SecurityLabel
-	AuthorityChain []DelegationRef
-	Nonce          [16]byte
-	Timestamp      int64
+	Tool           string          // exact tool name as declared by the hook (e.g. "Bash", "Write")
+	Args           json.RawMessage // tool arguments; only sha256:<hex> is stored in audit (INV-012)
+	SessionID      string          // stable session identifier propagated from the hook
+	SecurityLabel  SecurityLabel   // caller's current lattice label at request time
+	AuthorityChain []DelegationRef // delegation chain from session root to caller; may be empty
+	Nonce          [16]byte        // replay-prevention nonce; must be unique per request
+	Timestamp      int64           // Unix nanoseconds at hook call site
 }
 
 // Decision is the authorization verdict.
 type Decision struct {
-	Action   Action
-	Reason   string
-	PolicyID string
-	Labels   SecurityLabel // scalar per IFC-001 / ADR-013
+	Action   Action        // enforcement action; zero value is Deny (INV-001)
+	Reason   string        // human-readable explanation for the action
+	PolicyID string        // policy that produced this verdict; empty if no policy matched
+	Labels   SecurityLabel // resultant label after evaluation (scalar per IFC-001 / ADR-013)
 }
 
 // Annotation is supplemental information attached to a CheckResponse.
 type Annotation struct {
-	Key   string
-	Value string
+	Key   string // annotation identifier (e.g. "policy.match", "secret.type")
+	Value string // annotation payload; format is annotation-type specific
 }
 
 // CheckResponse is the evaluation output.
 type CheckResponse struct {
-	Decision             Decision
-	Annotations          []Annotation
-	LatencyNs            int64
-	EnforcingLayer       EnforcingLayer
-	PolicySourceLocation string
-	ThreatSeverity       string
+	Decision             Decision       // authorization verdict including action and labels
+	Annotations          []Annotation   // supplemental metadata attached by the evaluating layer
+	LatencyNs            int64          // wall-clock evaluation duration in nanoseconds
+	EnforcingLayer       EnforcingLayer // layer that produced the decision (cel, ifc, delegation, …)
+	PolicySourceLocation string         // source file and line of the matched policy rule; empty if no match
+	ThreatSeverity       string         // threat severity hint ("low", "medium", "high", "critical"); empty if not applicable
 }
 
 // MaxMessageSize is enforced at the framing layer (WS-07).
