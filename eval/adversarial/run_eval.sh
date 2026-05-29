@@ -146,8 +146,10 @@ def run_case(sock_path, case, timeout_ms):
             'expected_layer': expected_layer,
         }
 
-    actual = response.get('decision', {}).get('action', 'unknown')
-    actual_layer = response.get('enforcing_layer')
+    # Daemon returns PascalCase keys (Go JSON default)
+    decision_obj = response.get('Decision', response.get('decision', {}))
+    actual = decision_obj.get('Action', decision_obj.get('action', 'unknown')).lower()
+    actual_layer = (response.get('EnforcingLayer') or response.get('enforcing_layer') or '').lower() or None
     latency_ms = latency_or_error
 
     passed = (actual == expected)
