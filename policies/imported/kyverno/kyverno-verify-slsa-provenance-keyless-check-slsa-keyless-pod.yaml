@@ -1,3 +1,4 @@
+# IMPORT_REVIEW: translated by Claude — verify semantics
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -6,15 +7,14 @@ metadata:
     annotations:
         aegis.io/imported-from: aegis-import-2848090198.yaml
         aegis.io/severity: medium
+        aegis.io/llm-confidence: low
         kyverno.io/category: Software Supply Chain Security
 spec:
     description: Provenance is used to identify how an artifact was produced and from where it originated. SLSA provenance is an industry-standard method of representing that provenance. This policy verifies that an image has SLSA provenance and was signed by the expected subject and issuer when produced through GitHub Actions. It requires configuration based upon your own values.
     matchConstraints:
-        tools:
-            - Write
-            - Edit
+        tools: []
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("image:") && !request.args.content.contains("cosign.sigstore.dev/imageDigest")'
-          message: 'Container images must be signed with a valid cosign signature'
-          action: REQUIRE_APPROVAL
+        - expression: 'false'
+          message: 'IMPORT_REVIEW: SLSA provenance verification via keyless cosign signing — requires OCI registry attestation lookup with subject/issuer verification; cannot verify SLSA provenance from manifest content alone'
+          action: AUDIT
     defaultAction: ALLOW
