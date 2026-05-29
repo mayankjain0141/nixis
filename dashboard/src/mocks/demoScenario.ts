@@ -858,7 +858,7 @@ export function buildDemoScenario(): DemoStep[] {
       }),
     },
 
-    // ── 30.2s: EXFILTRATION — chmod +x /tmp/payload DENY ────────────────────
+    // ── 30.2s: EXFILTRATION — chmod +x /tmp/.update DENY ───────────────────
     {
       delayMs: 800,
       json: policyEval({
@@ -871,7 +871,7 @@ export function buildDemoScenario(): DemoStep[] {
         label: L_RESTRICTED,
         labelState: 'tainted_by_secret',
         latencyNs: 244_000,
-        requestArgs: 'chmod +x /tmp/payload && /tmp/payload',
+        requestArgs: 'chmod +x /tmp/.update && /tmp/.update',
       }),
     },
 
