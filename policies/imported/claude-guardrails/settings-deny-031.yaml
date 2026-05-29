@@ -10,9 +10,9 @@ metadata:
 spec:
     description: 'Deny rule imported from settings.json: Edit ~/.zprofile'
     matchConstraints:
-        tools: []
+        tools: [Edit, Write]
     validations:
-        - expression: tool == "Edit ~/.zprofile"
+        - expression: (tool == "Edit" || tool == "Write") && request.args.path.matches(".*/\\.zprofile$")
           message: 'Blocked by imported settings.json rule: Edit ~/.zprofile'
           action: DENY
     defaultAction: ALLOW
