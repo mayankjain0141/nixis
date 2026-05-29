@@ -5,7 +5,7 @@ metadata:
     name: falco-unprivileged-delegation-of-page-faults-handling-to-a-userspace-process
     annotations:
         aegis.io/falco-tags: maturity_sandbox,host,container,process,mitre_defense_evasion,TA0005
-        aegis.io/imported-from: aegis-import-3210576666.yaml
+        aegis.io/imported-from: aegis-import-1470842712.yaml
         aegis.io/severity: critical
         aegis.io/source-rule: Unprivileged Delegation of Page Faults Handling to a Userspace Process
 spec:

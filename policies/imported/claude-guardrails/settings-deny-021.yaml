@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: settings-deny-021
     annotations:
-        aegis.io/imported-from: aegis-import-1014963984.json
+        aegis.io/imported-from: aegis-import-3634843882.json
         aegis.io/severity: medium
         aegis.io/source-rule: Bash(rm -rf *)
 spec:

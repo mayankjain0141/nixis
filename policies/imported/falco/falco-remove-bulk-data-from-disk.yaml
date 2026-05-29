@@ -6,7 +6,7 @@ metadata:
     name: falco-remove-bulk-data-from-disk
     annotations:
         aegis.io/falco-tags: maturity_stable,host,container,process,filesystem,mitre_impact,T1485
-        aegis.io/imported-from: aegis-import-4101892790.yaml
+        aegis.io/imported-from: aegis-import-999705196.yaml
         aegis.io/severity: medium
         aegis.io/source-rule: Remove Bulk Data from Disk
 spec:

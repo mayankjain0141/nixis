@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-disallow-default-namespace-validate-podcontroller-namespace-deployment
     annotations:
-        aegis.io/imported-from: aegis-import-3875748632.yaml
+        aegis.io/imported-from: aegis-import-4018604391.yaml
         aegis.io/severity: medium
         kyverno.io/category: Multi-Tenancy
 spec:

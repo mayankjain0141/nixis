@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-limit-hostpath-type-pv-limit-hostpath-type-pv-to-slash-data-persistentvolume
     annotations:
-        aegis.io/imported-from: aegis-import-1777899643.yaml
+        aegis.io/imported-from: aegis-import-348223797.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

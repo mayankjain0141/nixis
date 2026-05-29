@@ -5,7 +5,7 @@ metadata:
     name: falco-correct-mitre-rule-tactics-tags-with-multiple-techniques
     annotations:
         aegis.io/falco-tags: host,container,filesystem,mitre_discovery,mitre_exfiltration,mitre_credential_access,T1555,T1212,T1020,T1552,T1083
-        aegis.io/imported-from: aegis-import-4137115693.yaml
+        aegis.io/imported-from: aegis-import-1844418014.yaml
         aegis.io/severity: medium
         aegis.io/source-rule: correct mitre rule tactics tags with multiple techniques
 spec:

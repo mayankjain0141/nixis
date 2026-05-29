@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-add-karpenter-nodeselector-add-medium
     annotations:
-        aegis.io/imported-from: aegis-import-4198559945.yaml
+        aegis.io/imported-from: aegis-import-2379906077.yaml
         aegis.io/severity: medium
         kyverno.io/category: Karpenter, EKS Best Practices
 spec:

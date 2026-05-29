@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-add-volume-add-volume
     annotations:
-        aegis.io/imported-from: aegis-import-1794918368.yaml
+        aegis.io/imported-from: aegis-import-2477114500.yaml
         aegis.io/severity: low
         kyverno.io/category: Sample
 spec:

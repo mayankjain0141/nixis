@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-label-existing-namespaces-label-existing-namespaces
     annotations:
-        aegis.io/imported-from: aegis-import-610872980.yaml
+        aegis.io/imported-from: aegis-import-4038034617.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

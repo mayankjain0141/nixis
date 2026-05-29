@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-verify-flux-images-verify-cosign-signature-pod
     annotations:
-        aegis.io/imported-from: aegis-import-4028902939.yaml
+        aegis.io/imported-from: aegis-import-3526291889.yaml
         aegis.io/severity: medium
         kyverno.io/category: Flux
 spec:

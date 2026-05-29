@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-protect-node-taints-protect-node-taints-node
     annotations:
-        aegis.io/imported-from: aegis-import-4170459452.yaml
+        aegis.io/imported-from: aegis-import-3280031117.yaml
         aegis.io/severity: low
         kyverno.io/category: Other
 spec:

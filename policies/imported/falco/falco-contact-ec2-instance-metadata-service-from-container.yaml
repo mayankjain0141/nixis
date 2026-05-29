@@ -6,7 +6,7 @@ metadata:
     name: falco-contact-ec2-instance-metadata-service-from-container
     annotations:
         aegis.io/falco-tags: maturity_incubating,network,aws,container,mitre_credential_access,T1552.005
-        aegis.io/imported-from: aegis-import-3831796007.yaml
+        aegis.io/imported-from: aegis-import-2621062960.yaml
         aegis.io/severity: low
         aegis.io/source-rule: Contact EC2 Instance Metadata Service From Container
 spec:

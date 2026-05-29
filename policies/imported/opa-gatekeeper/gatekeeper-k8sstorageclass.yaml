@@ -8,7 +8,7 @@ kind: PolicyTemplate
 metadata:
     name: gatekeeper-k8sstorageclass
     annotations:
-        aegis.io/imported-from: aegis-import-2877836531.yaml
+        aegis.io/imported-from: aegis-import-4138536437.yaml
         aegis.io/original-kind: K8sStorageClass
         aegis.io/severity: high
         aegis.io/source: open-policy-agent/gatekeeper-library

@@ -6,7 +6,7 @@ metadata:
     name: falco-system-user-interactive
     annotations:
         aegis.io/falco-tags: maturity_stable,host,container,users,mitre_execution,T1059,NIST_800-53_AC-2
-        aegis.io/imported-from: aegis-import-4101892790.yaml
+        aegis.io/imported-from: aegis-import-999705196.yaml
         aegis.io/severity: low
         aegis.io/source-rule: System user interactive
 spec:

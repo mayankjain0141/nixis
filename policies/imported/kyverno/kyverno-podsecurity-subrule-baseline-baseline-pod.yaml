@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-podsecurity-subrule-baseline-baseline-pod
     annotations:
-        aegis.io/imported-from: aegis-import-4043549334.yaml
+        aegis.io/imported-from: aegis-import-4072651892.yaml
         aegis.io/severity: high
         kyverno.io/category: Pod Security, EKS Best Practices
 spec:

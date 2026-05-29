@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-node-affinity-check-nodeaffinity-pod
     annotations:
-        aegis.io/imported-from: aegis-import-487128251.yaml
+        aegis.io/imported-from: aegis-import-2757821829.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

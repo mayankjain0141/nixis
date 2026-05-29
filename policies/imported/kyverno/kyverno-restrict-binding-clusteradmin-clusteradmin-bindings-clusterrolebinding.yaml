@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-binding-clusteradmin-clusteradmin-bindings-clusterrolebinding
     annotations:
-        aegis.io/imported-from: aegis-import-848932703.yaml
+        aegis.io/imported-from: aegis-import-324727425.yaml
         aegis.io/severity: medium
         kyverno.io/category: Security
 spec:

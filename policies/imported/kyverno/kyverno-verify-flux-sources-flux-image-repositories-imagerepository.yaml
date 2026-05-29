@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-verify-flux-sources-flux-image-repositories-imagerepository
     annotations:
-        aegis.io/imported-from: aegis-import-2027944085.yaml
+        aegis.io/imported-from: aegis-import-1554976445.yaml
         aegis.io/severity: medium
         kyverno.io/category: Flux
 spec:

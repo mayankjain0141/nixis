@@ -6,7 +6,7 @@ metadata:
     name: falco-contact-cloud-metadata-service-from-container
     annotations:
         aegis.io/falco-tags: maturity_incubating,network,container,mitre_discovery,T1565
-        aegis.io/imported-from: aegis-import-3831796007.yaml
+        aegis.io/imported-from: aegis-import-2621062960.yaml
         aegis.io/severity: low
         aegis.io/source-rule: Contact cloud metadata service from container
 spec:

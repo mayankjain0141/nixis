@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-unique-uid-per-workload-require-unique-uid-pod
     annotations:
-        aegis.io/imported-from: aegis-import-1203367035.yaml
+        aegis.io/imported-from: aegis-import-1510226560.yaml
         aegis.io/severity: low
         kyverno.io/category: Other
 spec:

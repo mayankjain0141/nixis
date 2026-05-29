@@ -1,0 +1,20 @@
+# imported from: rules via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: falco-non-sudo-setuid
+    annotations:
+        aegis.io/falco-tags: maturity_incubating,host,container,users,mitre_privilege_escalation,T1548.001
+        aegis.io/imported-from: aegis-import-2621062960.yaml
+        aegis.io/severity: low
+        aegis.io/source-rule: Non sudo setuid
+spec:
+    description: |
+        Detect attempts to change users through the use of setuid, with exceptions for sudo/su. The users "root" and "nobody" using setuid on themselves are also excluded, as setuid calls in these cases typically involve reducing privileges. By setting the setuid bit, an attacker could execute code in a different user's context, potentially with higher privileges. One drawback is the potential for noise, as many applications legitimately use this approach.
+    matchConstraints:
+        tools: []
+    validations:
+        - expression: tool == "Bash" && request.args.command.matches("(?i)\\b(sshd|dbus-daemon-lau|ping|ping6|critical-stack-|pmmcli|filemng|PassengerAgent|bwrap|osdetect|nginxmng|sw-engine-fpm|start-stop-daem|sudo|su|suexec|critical-stack|dzdo|sendmail|sendmail-msp|postfix|procmail|exim4|pickup|showq|mailq|dovecot|imap-login|imap|mailmng-core|pop3-login|dovecot-lda|pop3|docker|dockerd|containerd-shim|runc:[1:CHILD]|pause|exe|docker-compose|docker-entrypoi|docker-runc-cur|docker-current|dockerd-current|nxexec|nxnode.bin|nxserver.bin|nxclient.bin)\\b")
+          message: 'Falco rule violated: Non sudo setuid'
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW

@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-only-trustworthy-registries-set-root-only-allow-trusted-images-pod
     annotations:
-        aegis.io/imported-from: aegis-import-566182329.yaml
+        aegis.io/imported-from: aegis-import-2949015748.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other, EKS Best Practices
 spec:

@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-scale-scale-max-eight-annotations-deployment-scale
     annotations:
-        aegis.io/imported-from: aegis-import-1640371834.yaml
+        aegis.io/imported-from: aegis-import-3111030600.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

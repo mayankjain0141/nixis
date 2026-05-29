@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-add-karpenter-donot-evict-do-not-evict-cronjobs
     annotations:
-        aegis.io/imported-from: aegis-import-2042438378.yaml
+        aegis.io/imported-from: aegis-import-1673709515.yaml
         aegis.io/severity: medium
         kyverno.io/category: Karpenter, EKS Best Practices
 spec:

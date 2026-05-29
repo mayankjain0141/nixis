@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-annotations-check-for-annotation-pod
     annotations:
-        aegis.io/imported-from: aegis-import-4071739528.yaml
+        aegis.io/imported-from: aegis-import-480693979.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-disallow-privileged-containers-privileged-containers-pod
     annotations:
-        aegis.io/imported-from: aegis-import-1288447576.yaml
+        aegis.io/imported-from: aegis-import-2175097907.yaml
         aegis.io/severity: medium
         kyverno.io/category: Pod Security Standards (Baseline)
 spec:

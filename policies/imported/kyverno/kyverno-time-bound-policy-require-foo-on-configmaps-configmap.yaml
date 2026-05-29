@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-time-bound-policy-require-foo-on-configmaps-configmap
     annotations:
-        aegis.io/imported-from: aegis-import-3590708533.yaml
+        aegis.io/imported-from: aegis-import-622645317.yaml
         aegis.io/severity: low
         kyverno.io/category: Other
 spec:

@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-validate-userid-groupid-fsgroup-validate-userid-groupid-fsgroup-pod
     annotations:
-        aegis.io/imported-from: aegis-import-1260847118.yaml
+        aegis.io/imported-from: aegis-import-2996026848.yaml
         aegis.io/severity: medium
         kyverno.io/category: Sample in CEL
 spec:

@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-audit-event-on-exec-generate-event-on-exec
     annotations:
-        aegis.io/imported-from: aegis-import-3635806942.yaml
+        aegis.io/imported-from: aegis-import-3295915623.yaml
         aegis.io/severity: low
         kyverno.io/category: Other
 spec:

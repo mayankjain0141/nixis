@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-psp-restrict-adding-capabilities-allowed-capabilities-pod
     annotations:
-        aegis.io/imported-from: aegis-import-2037925979.yaml
+        aegis.io/imported-from: aegis-import-3159963300.yaml
         aegis.io/severity: medium
         kyverno.io/category: PSP Migration
 spec:

@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-ingress-https-has-tls-ingress
     annotations:
-        aegis.io/imported-from: aegis-import-1794476645.yaml
+        aegis.io/imported-from: aegis-import-4272845450.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

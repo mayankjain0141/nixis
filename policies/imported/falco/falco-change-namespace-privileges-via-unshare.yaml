@@ -6,7 +6,7 @@ metadata:
     name: falco-change-namespace-privileges-via-unshare
     annotations:
         aegis.io/falco-tags: maturity_incubating,container,mitre_privilege_escalation,T1611
-        aegis.io/imported-from: aegis-import-3831796007.yaml
+        aegis.io/imported-from: aegis-import-2621062960.yaml
         aegis.io/severity: low
         aegis.io/source-rule: Change namespace privileges via unshare
 spec:

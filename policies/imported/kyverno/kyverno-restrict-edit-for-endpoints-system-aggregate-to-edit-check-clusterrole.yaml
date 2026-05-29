@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-edit-for-endpoints-system-aggregate-to-edit-check-clusterrole
     annotations:
-        aegis.io/imported-from: aegis-import-3871852297.yaml
+        aegis.io/imported-from: aegis-import-238021537.yaml
         aegis.io/severity: low
         kyverno.io/category: Security
 spec:

@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-block-ephemeral-containers-block-ephemeral-containers-pod
     annotations:
-        aegis.io/imported-from: aegis-import-642537711.yaml
+        aegis.io/imported-from: aegis-import-2962672472.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

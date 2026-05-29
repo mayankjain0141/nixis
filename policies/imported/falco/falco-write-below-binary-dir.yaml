@@ -6,7 +6,7 @@ metadata:
     name: falco-write-below-binary-dir
     annotations:
         aegis.io/falco-tags: maturity_sandbox,host,container,filesystem,mitre_persistence,T1543
-        aegis.io/imported-from: aegis-import-3210576666.yaml
+        aegis.io/imported-from: aegis-import-1470842712.yaml
         aegis.io/severity: high
         aegis.io/source-rule: Write below binary dir
 spec:

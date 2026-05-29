@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-container-port-names-port-name-pod
     annotations:
-        aegis.io/imported-from: aegis-import-503813744.yaml
+        aegis.io/imported-from: aegis-import-2265174999.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

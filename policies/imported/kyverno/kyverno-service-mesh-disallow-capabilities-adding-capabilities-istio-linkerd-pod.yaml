@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-service-mesh-disallow-capabilities-adding-capabilities-istio-linkerd-pod
     annotations:
-        aegis.io/imported-from: aegis-import-1176105558.yaml
+        aegis.io/imported-from: aegis-import-2860539187.yaml
         aegis.io/severity: medium
         kyverno.io/category: Istio, Linkerd, Pod Security Standards (Baseline)
 spec:

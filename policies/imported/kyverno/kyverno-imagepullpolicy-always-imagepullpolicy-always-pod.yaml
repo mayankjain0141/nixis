@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-imagepullpolicy-always-imagepullpolicy-always-pod
     annotations:
-        aegis.io/imported-from: aegis-import-2927547320.yaml
+        aegis.io/imported-from: aegis-import-4136665146.yaml
         aegis.io/severity: medium
         kyverno.io/category: Sample
 spec:
