@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 package bundle
 
 import (
@@ -470,10 +471,10 @@ func extractBundle(content []byte) (string, error) {
 			continue
 		}
 		name := hdr.Name
-		if strings.Contains(name, "..") {
-			continue
-		}
 		destPath := filepath.Join(dir, name)
+		if !strings.HasPrefix(filepath.Clean(destPath)+string(os.PathSeparator), filepath.Clean(dir)+string(os.PathSeparator)) {
+			continue // path escape attempt, skip entry
+		}
 		fileData, err := io.ReadAll(tr)
 		if err != nil {
 			_ = os.RemoveAll(dir)

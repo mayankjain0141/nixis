@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 package daemon
 
 import (
@@ -31,6 +32,7 @@ func (a *DelegationAPI) handleRevoke(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 4096)
 	var req struct {
 		ChainID string `json:"chain_id"`
 	}
