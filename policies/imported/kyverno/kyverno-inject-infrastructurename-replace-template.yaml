@@ -1,5 +1,7 @@
-# IMPORT_REVIEW: translated by Claude — verify semantics
 # imported from: policies via aegis policy import
+# Gap: Kyverno fetches the infrastructure name from the live OpenShift Cluster CR via
+# JMESPath context lookup and substitutes it into the MachineSet manifest at admission time.
+# CEL cannot perform cross-resource lookups or runtime value substitution — mutate stub retained.
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:
@@ -7,7 +9,6 @@ metadata:
     annotations:
         aegis.io/imported-from: aegis-import-663655629.yaml
         aegis.io/severity: medium
-        aegis.io/llm-confidence: medium
         kyverno.io/category: OpenShift
 spec:
     description: A required component of a MachineSet is the infrastructure name which is a random string created in a separate resource. It can be tedious or impossible to know this for each MachineSet created. This policy fetches the value of the infrastructure name from the Cluster resource and replaces all instances of TEMPLATE in a MachineSet with that name.
