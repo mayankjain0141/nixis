@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Ingress")'
-          message: 'Ingress host and path combinations must be unique across all Ingress resources'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Ingress") && request.args.content.matches("(?s).*rules:.*-.*host:.*-.*host:.*")'
+          message: 'Ingress resources must not define multiple hosts in a single manifest'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
