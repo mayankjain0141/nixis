@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-pod-probes-validate-probes-pod
     annotations:
-        aegis.io/imported-from: aegis-import-1876846771.yaml
+        aegis.io/imported-from: aegis-import-4281716217.yaml
         aegis.io/severity: medium
         kyverno.io/category: Best Practices, EKS Best Practices
 spec:

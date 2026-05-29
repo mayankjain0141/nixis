@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-wildcard-resources-wildcard-resources-role
     annotations:
-        aegis.io/imported-from: aegis-import-401669866.yaml
+        aegis.io/imported-from: aegis-import-1808165141.yaml
         aegis.io/severity: medium
         kyverno.io/category: Security, EKS Best Practices
 spec:

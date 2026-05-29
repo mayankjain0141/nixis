@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-block-images-with-volumes-block-images-with-vols-pod
     annotations:
-        aegis.io/imported-from: aegis-import-251913249.yaml
+        aegis.io/imported-from: aegis-import-4092897958.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

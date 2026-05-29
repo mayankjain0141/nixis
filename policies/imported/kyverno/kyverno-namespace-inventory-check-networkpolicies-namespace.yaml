@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-namespace-inventory-check-networkpolicies-namespace
     annotations:
-        aegis.io/imported-from: aegis-import-3503183395.yaml
+        aegis.io/imported-from: aegis-import-2864242346.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

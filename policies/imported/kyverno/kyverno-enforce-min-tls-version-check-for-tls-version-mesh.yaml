@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-enforce-min-tls-version-check-for-tls-version-mesh
     annotations:
-        aegis.io/imported-from: aegis-import-2871159146.yaml
+        aegis.io/imported-from: aegis-import-3061555689.yaml
         aegis.io/severity: medium
         kyverno.io/category: Consul
 spec:

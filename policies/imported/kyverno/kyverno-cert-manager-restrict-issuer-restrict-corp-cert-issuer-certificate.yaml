@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-cert-manager-restrict-issuer-restrict-corp-cert-issuer-certificate
     annotations:
-        aegis.io/imported-from: aegis-import-515698640.yaml
+        aegis.io/imported-from: aegis-import-655676062.yaml
         aegis.io/severity: medium
         kyverno.io/category: Cert-Manager
 spec:

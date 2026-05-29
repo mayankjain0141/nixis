@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-concatenate-configmaps-concat-cm
     annotations:
-        aegis.io/imported-from: aegis-import-4011544339.yaml
+        aegis.io/imported-from: aegis-import-718173178.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

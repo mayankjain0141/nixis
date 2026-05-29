@@ -6,7 +6,7 @@ metadata:
     name: falco-not-a-mitre-rule
     annotations:
         aegis.io/falco-tags: host,container,filesystem
-        aegis.io/imported-from: aegis-import-4137115693.yaml
+        aegis.io/imported-from: aegis-import-1844418014.yaml
         aegis.io/severity: high
         aegis.io/source-rule: not a mitre rule
 spec:

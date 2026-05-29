@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-set-karpenter-non-cpu-limits-set-ephemeral-storage
     annotations:
-        aegis.io/imported-from: aegis-import-657386465.yaml
+        aegis.io/imported-from: aegis-import-1059922453.yaml
         aegis.io/severity: medium
         kyverno.io/category: Karpenter, EKS Best Practices
 spec:

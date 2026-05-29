@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-signed-tekton-task-bundle-check-signature
     annotations:
-        aegis.io/imported-from: aegis-import-2932578712.yaml
+        aegis.io/imported-from: aegis-import-2476737193.yaml
         aegis.io/severity: medium
         kyverno.io/category: Tekton
 spec:

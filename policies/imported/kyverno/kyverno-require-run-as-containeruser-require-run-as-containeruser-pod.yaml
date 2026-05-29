@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-run-as-containeruser-require-run-as-containeruser-pod
     annotations:
-        aegis.io/imported-from: aegis-import-3139349958.yaml
+        aegis.io/imported-from: aegis-import-1847196217.yaml
         aegis.io/severity: medium
         kyverno.io/category: Windows Security
 spec:

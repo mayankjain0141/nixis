@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-create-default-pdb-create-default-pdb
     annotations:
-        aegis.io/imported-from: aegis-import-3967135495.yaml
+        aegis.io/imported-from: aegis-import-1299038534.yaml
         aegis.io/severity: low
         kyverno.io/category: Sample
 spec:

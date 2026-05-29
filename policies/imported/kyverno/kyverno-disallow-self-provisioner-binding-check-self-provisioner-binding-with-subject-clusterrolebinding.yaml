@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-disallow-self-provisioner-binding-check-self-provisioner-binding-with-subject-clusterrolebinding
     annotations:
-        aegis.io/imported-from: aegis-import-3718576995.yaml
+        aegis.io/imported-from: aegis-import-1107828208.yaml
         aegis.io/severity: high
         kyverno.io/category: OpenShift
 spec:

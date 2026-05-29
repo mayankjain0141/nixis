@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-image-source-check-source-pod
     annotations:
-        aegis.io/imported-from: aegis-import-4287650084.yaml
+        aegis.io/imported-from: aegis-import-3464093786.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

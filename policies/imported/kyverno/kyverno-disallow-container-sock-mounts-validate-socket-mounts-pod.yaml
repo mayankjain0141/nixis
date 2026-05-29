@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-disallow-container-sock-mounts-validate-socket-mounts-pod
     annotations:
-        aegis.io/imported-from: aegis-import-2116620470.yaml
+        aegis.io/imported-from: aegis-import-1304721769.yaml
         aegis.io/severity: medium
         kyverno.io/category: Best Practices, EKS Best Practices in CEL
 spec:

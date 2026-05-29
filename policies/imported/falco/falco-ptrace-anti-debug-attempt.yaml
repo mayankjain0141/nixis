@@ -6,7 +6,7 @@ metadata:
     name: falco-ptrace-anti-debug-attempt
     annotations:
         aegis.io/falco-tags: maturity_stable,host,container,process,mitre_defense_evasion,T1622
-        aegis.io/imported-from: aegis-import-4101892790.yaml
+        aegis.io/imported-from: aegis-import-999705196.yaml
         aegis.io/severity: low
         aegis.io/source-rule: PTRACE anti-debug attempt
 spec:

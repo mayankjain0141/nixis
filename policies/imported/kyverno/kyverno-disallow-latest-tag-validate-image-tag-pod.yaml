@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-disallow-latest-tag-validate-image-tag-pod
     annotations:
-        aegis.io/imported-from: aegis-import-2702119377.yaml
+        aegis.io/imported-from: aegis-import-2309990831.yaml
         aegis.io/severity: medium
         kyverno.io/category: Best Practices
 spec:

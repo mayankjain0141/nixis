@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-cpu-limits-check-cpu-limits-pod
     annotations:
-        aegis.io/imported-from: aegis-import-874231253.yaml
+        aegis.io/imported-from: aegis-import-3089623856.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

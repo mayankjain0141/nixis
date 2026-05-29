@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-ingress-host-match-tls-host-match-tls-ingress
     annotations:
-        aegis.io/imported-from: aegis-import-4074494339.yaml
+        aegis.io/imported-from: aegis-import-3983699395.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

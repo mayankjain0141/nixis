@@ -5,7 +5,7 @@ metadata:
     name: falco-set-setuid-or-setgid-bit
     annotations:
         aegis.io/falco-tags: maturity_incubating,host,container,process,users,mitre_privilege_escalation,T1548.001
-        aegis.io/imported-from: aegis-import-3831796007.yaml
+        aegis.io/imported-from: aegis-import-2621062960.yaml
         aegis.io/severity: low
         aegis.io/source-rule: Set Setuid or Setgid bit
 spec:

@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-emptydir-requests-and-limits-check-emptydir-requests-limits-pod
     annotations:
-        aegis.io/imported-from: aegis-import-3084272401.yaml
+        aegis.io/imported-from: aegis-import-177497570.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

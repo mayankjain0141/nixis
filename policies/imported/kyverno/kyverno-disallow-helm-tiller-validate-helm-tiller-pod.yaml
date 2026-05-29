@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-disallow-helm-tiller-validate-helm-tiller-pod
     annotations:
-        aegis.io/imported-from: aegis-import-3002020879.yaml
+        aegis.io/imported-from: aegis-import-1794046311.yaml
         aegis.io/severity: medium
         kyverno.io/category: Sample
 spec:

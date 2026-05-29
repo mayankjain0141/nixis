@@ -5,7 +5,7 @@ metadata:
     name: falco-reverse-shell-from-web-server
     annotations:
         aegis.io/falco-tags: maturity_sandbox,host,container,process,network,mitre_execution,T1059
-        aegis.io/imported-from: aegis-import-3210576666.yaml
+        aegis.io/imported-from: aegis-import-1470842712.yaml
         aegis.io/severity: critical
         aegis.io/source-rule: Reverse Shell from Web Server
 spec:

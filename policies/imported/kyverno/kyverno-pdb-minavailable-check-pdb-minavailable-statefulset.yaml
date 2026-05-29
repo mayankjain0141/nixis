@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-pdb-minavailable-check-pdb-minavailable-statefulset
     annotations:
-        aegis.io/imported-from: aegis-import-1900540511.yaml
+        aegis.io/imported-from: aegis-import-2709280891.yaml
         aegis.io/severity: low
         kyverno.io/category: Other
 spec:

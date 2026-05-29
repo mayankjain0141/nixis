@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-tekton-namespace-pipelinerun-check-pipelinerun-namespace-pipelinerun
     annotations:
-        aegis.io/imported-from: aegis-import-3465442974.yaml
+        aegis.io/imported-from: aegis-import-1163597477.yaml
         aegis.io/severity: medium
         kyverno.io/category: Tekton
 spec:

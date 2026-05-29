@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-clusterrole-nodesproxy-clusterrole-nodesproxy-clusterrole
     annotations:
-        aegis.io/imported-from: aegis-import-3684088269.yaml
+        aegis.io/imported-from: aegis-import-2949656129.yaml
         aegis.io/severity: medium
         kyverno.io/category: Sample
 spec:

@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-unique-service-selector-check-service-selector-service
     annotations:
-        aegis.io/imported-from: aegis-import-3865262044.yaml
+        aegis.io/imported-from: aegis-import-263464822.yaml
         aegis.io/severity: low
         kyverno.io/category: Other
 spec:

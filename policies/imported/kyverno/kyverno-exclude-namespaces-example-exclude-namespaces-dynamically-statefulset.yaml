@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-exclude-namespaces-example-exclude-namespaces-dynamically-statefulset
     annotations:
-        aegis.io/imported-from: aegis-import-4211568267.yaml
+        aegis.io/imported-from: aegis-import-1305823430.yaml
         aegis.io/severity: medium
         kyverno.io/category: Sample
 spec:

@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-nodeport-validate-nodeport-service
     annotations:
-        aegis.io/imported-from: aegis-import-1389630684.yaml
+        aegis.io/imported-from: aegis-import-1114742723.yaml
         aegis.io/severity: medium
         kyverno.io/category: Best Practices
 spec:

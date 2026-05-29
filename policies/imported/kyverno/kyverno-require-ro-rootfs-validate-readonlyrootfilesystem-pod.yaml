@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-ro-rootfs-validate-readonlyrootfilesystem-pod
     annotations:
-        aegis.io/imported-from: aegis-import-989174671.yaml
+        aegis.io/imported-from: aegis-import-1073302224.yaml
         aegis.io/severity: medium
         kyverno.io/category: Best Practices, EKS Best Practices, PSP Migration
 spec:

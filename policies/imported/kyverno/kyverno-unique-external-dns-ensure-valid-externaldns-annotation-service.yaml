@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-unique-external-dns-ensure-valid-externaldns-annotation-service
     annotations:
-        aegis.io/imported-from: aegis-import-769618411.yaml
+        aegis.io/imported-from: aegis-import-1286843051.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

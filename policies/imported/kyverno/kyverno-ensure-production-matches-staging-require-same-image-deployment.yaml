@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-ensure-production-matches-staging-require-same-image-deployment
     annotations:
-        aegis.io/imported-from: aegis-import-2193863251.yaml
+        aegis.io/imported-from: aegis-import-1578639293.yaml
         aegis.io/severity: low
         kyverno.io/category: Other
 spec:

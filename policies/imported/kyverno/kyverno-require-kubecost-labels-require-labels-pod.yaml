@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-kubecost-labels-require-labels-pod
     annotations:
-        aegis.io/imported-from: aegis-import-4190326498.yaml
+        aegis.io/imported-from: aegis-import-2951944517.yaml
         aegis.io/severity: medium
         kyverno.io/category: Kubecost
 spec:

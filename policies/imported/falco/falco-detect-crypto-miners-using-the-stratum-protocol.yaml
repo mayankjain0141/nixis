@@ -5,7 +5,7 @@ metadata:
     name: falco-detect-crypto-miners-using-the-stratum-protocol
     annotations:
         aegis.io/falco-tags: maturity_sandbox,host,container,process,mitre_impact,T1496
-        aegis.io/imported-from: aegis-import-3210576666.yaml
+        aegis.io/imported-from: aegis-import-1470842712.yaml
         aegis.io/severity: critical
         aegis.io/source-rule: Detect crypto miners using the Stratum protocol
 spec:

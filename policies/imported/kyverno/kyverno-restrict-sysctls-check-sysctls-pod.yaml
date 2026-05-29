@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-sysctls-check-sysctls-pod
     annotations:
-        aegis.io/imported-from: aegis-import-448911737.yaml
+        aegis.io/imported-from: aegis-import-3564782354.yaml
         aegis.io/severity: medium
         kyverno.io/category: Pod Security Standards (Baseline)
 spec:
