@@ -49,10 +49,18 @@ const PolicyEvaluatedDataSchema = z.object({
 const PolicyDeniedDataSchema = PolicyEvaluatedDataSchema;
 
 const DelegationDataSchema = z.object({
+  session_id: z.string().optional(),
+  delegator_id: z.string().optional(),
+  delegatee_id: z.string().optional(),
+  granted_label: SecurityLabelSchema.optional(),
+  ceiling_label: SecurityLabelSchema.optional(),
+  expires_at: z.number().optional(),
+  reason: z.string().optional(),
+  capabilities: z.array(z.string()).optional(),
+  // legacy fields kept for forward compat
   chain_id: z.string().optional(),
   issuer: z.string().optional(),
   subject: z.string().optional(),
-  expires_at: z.number().optional(),
 });
 
 const AuditCheckpointDataSchema = z.object({
