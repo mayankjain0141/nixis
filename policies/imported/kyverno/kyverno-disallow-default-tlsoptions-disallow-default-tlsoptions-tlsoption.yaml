@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("name: default")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: TLSOption") && request.args.content.contains("name: default")'
           message: Only cluster administrators are allowed to set default TLSOptions.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

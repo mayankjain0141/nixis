@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("add:")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("capabilities:") && request.args.content.contains("add:")'
           message: Adding capabilities beyond those listed in the policy must be disallowed.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
