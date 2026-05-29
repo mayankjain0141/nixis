@@ -12,9 +12,11 @@ metadata:
 spec:
     description: When a DaemonSet is added to a cluster every node will get a new pod. There may not be  enough room for this on every node. Karpenter cannot provision extra nodes just for the  DaemonSet because the new pods are not scheduled the way regular pods are. It would require parallel scheduling logic that is not proper to Kubernetes. Therefore, eviction of regular  pods should happen instead. This can be achieved with the priority class system-node-critical.
     matchConstraints:
-        tools: []
+        tools:
+            - Write
+            - Edit
     validations:
-        - expression: 'false'
-          message: 'IMPORT_REVIEW: mutate rule — Aegis does not mutate requests — manual review required'
-          action: AUDIT
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: DaemonSet") && !request.args.content.contains("priorityClassName: system-node-critical")'
+          message: 'DaemonSet manifest is missing priorityClassName: system-node-critical — required for Karpenter node provisioning correctness'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW
