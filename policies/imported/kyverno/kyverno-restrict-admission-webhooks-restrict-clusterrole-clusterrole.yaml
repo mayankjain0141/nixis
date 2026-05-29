@@ -1,0 +1,20 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-restrict-admission-webhooks-restrict-clusterrole-clusterrole
+    annotations:
+        aegis.io/imported-from: aegis-import-restrict-admission-webhooks.yaml
+        aegis.io/severity: high
+        kyverno.io/category: Security
+spec:
+    description: MutatingWebhookConfiguration and ValidatingWebhookConfiguration resources control admission webhook behavior. Misconfigured or malicious webhooks can intercept and modify all API requests. This policy prevents creation of webhook configurations that use a wildcard namespaceSelector or object selector, which could intercept requests across the entire cluster.
+    matchConstraints:
+        tools:
+            - Write
+            - Edit
+    validations:
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (request.args.content.contains("MutatingWebhookConfiguration") || request.args.content.contains("ValidatingWebhookConfiguration"))'
+          message: 'Admission webhook configurations require approval — review for namespace scope and failurePolicy'
+          action: REQUIRE_APPROVAL
+    defaultAction: ALLOW
