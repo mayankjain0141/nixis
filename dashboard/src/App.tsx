@@ -19,7 +19,7 @@ import { useUIStore } from './stores/ui-store';
 import { useLatticeStore } from './stores/lattice-store';
 import { useThreatStore } from './stores/threat-store';
 import { createMockStreamGenerator } from './mocks/streamGenerator';
-import { runDemoScenario } from './mocks/demoScenario';
+import { runDemoScenario, getDemoPolicies } from './mocks/demoScenario';
 import { createWebSocketManager } from './lib/realtime/ws-manager';
 import { createEventIngestionPipeline } from './lib/realtime/ingestion-pipeline';
 import { createEventBus } from './lib/realtime/event-bus';
@@ -346,6 +346,8 @@ export default function App() {
       if (state.requestMockMode) {
         useStreamStore.getState().setConnectionState('MOCK');
         if (mockGenRef.current === null) {
+          // Seed policies directly — bypasses Zod pipeline so CEL expressions are guaranteed present.
+          usePolicyStore.getState().setPolicies(getDemoPolicies(1));
           const cancelDemo = runDemoScenario(
             (json) => {
               window.dispatchEvent(new CustomEvent('aegis:mock-event', { detail: json }));
@@ -447,6 +449,8 @@ export default function App() {
       if (useMock) return;
       useMock = true;
       setConnectionState('MOCK');
+      // Seed policies directly — bypasses Zod pipeline so CEL expressions are guaranteed present.
+      usePolicyStore.getState().setPolicies(getDemoPolicies(1));
       const cancelDemo = runDemoScenario(
         (json) => {
           pipeline.ingest(json, { receivedAt: performance.now() });
@@ -502,6 +506,7 @@ export default function App() {
 
   const handleStartDemo = useCallback(() => {
     useGovernanceStore.getState().clear?.();
+    usePolicyStore.getState().setPolicies(getDemoPolicies(1));
     useStreamStore.getState().setConnectionState('MOCK');
     useStreamStore.getState().setRequestMockMode(false);
     setTimeout(() => useStreamStore.getState().setRequestMockMode(true), 100);
