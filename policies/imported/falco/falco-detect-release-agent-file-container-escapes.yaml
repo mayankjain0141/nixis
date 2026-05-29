@@ -15,6 +15,8 @@ spec:
         Detect an attempt to exploit a container escape using release_agent file. By running a container with certains capabilities, a privileged user can modify release_agent file and escape from the container.
     matchConstraints:
         tools:
+            - Write
+            - Edit
             - Bash
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.endsWith("release_agent") || tool == "Bash" && request.args.command.contains("release_agent")'

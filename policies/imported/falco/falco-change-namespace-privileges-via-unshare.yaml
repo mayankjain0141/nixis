@@ -14,7 +14,8 @@ spec:
     description: |
         Unprivileged users in containers may not have CAP_SYS_ADMIN or other elevated privileges. However, they can use the unshare system call with CLONE_NEWNS or CLONE_NEWUSER to create or clone a namespace or user with the necessary privileges to conduct further attacks. It is best practice to block the unshare system call via seccomp if it is not needed. Misuse of unshare can be related to misconfigured Kubernetes clusters, for example.
     matchConstraints:
-        tools: []
+        tools:
+            - Bash
     validations:
         - expression: 'tool == "Bash" && request.args.command.matches(".*\\bunshare\\b.*(-n|--net|-p|--pid|-m|--mount|-U|--user).*")'
           message: 'Falco rule violated: Change namespace privileges via unshare'

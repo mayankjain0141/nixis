@@ -13,11 +13,11 @@ spec:
         Detect the creation of files under /dev except for authorized device management programs. This can reveal rootkits hiding files in /dev. Additionally, consider the "Execution from /dev/shm" rule. The upstream rule already covers some tuning scenarios that you can further expand upon.
     matchConstraints:
         tools:
-            - Read
             - Write
             - Edit
+            - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)\\b(blkid|rename_device|update_engine|sgdisk)\\b")
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches("^/dev/[^/]+$") || tool == "Bash" && request.args.command.matches(".*(touch|tee|cp|mv|install|mknod)\\s+.*/dev/[a-zA-Z].*")'
           message: 'Falco rule violated: Create files below dev'
           action: DENY
     defaultAction: ALLOW
