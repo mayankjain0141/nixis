@@ -31,7 +31,24 @@ const (
 	maxClients        = 64
 	heartbeatInterval = 10 * time.Second
 	writeTimeout      = 5 * time.Second
+	simulateBodyLimit = 64 * 1024 // 64KB max request body for /simulate
 )
+
+// Evaluator can evaluate a single CheckRequest. Implemented by *policy.PolicyEngine.
+// Injected via WithEvaluator so stream does not import internal/policy.
+type Evaluator interface {
+	Evaluate(ctx context.Context, req aegis.CheckRequest) aegis.CheckResponse
+}
+
+// Option is a functional option for NewStreamServer.
+type Option func(*StreamServer)
+
+// WithEvaluator injects a policy evaluator, enabling the /simulate endpoint.
+func WithEvaluator(e Evaluator) Option {
+	return func(s *StreamServer) {
+		s.evaluator = e
+	}
+}
 
 // client represents one connected dashboard WebSocket client.
 type client struct {
@@ -114,13 +131,14 @@ var droppedTotal atomic.Uint64
 // StreamServer is the WebSocket fan-out hub.
 // It implements aegis.StreamTap (Emit) and aegis.SnapshotReader (LoadSnapshot).
 type StreamServer struct {
-	addr    string
-	tap     aegis.StreamTap // upstream tap (may be nil in tests — server IS the tap)
-	reader  aegis.SnapshotReader
-	clients sync.Map // string → *client
-	seq     sequenceCounter
-	events  chan aegis.StreamEvent // internal fan-out queue
-	httpSrv *http.Server
+	addr      string
+	tap       aegis.StreamTap // upstream tap (may be nil in tests — server IS the tap)
+	reader    aegis.SnapshotReader
+	evaluator Evaluator // injected via WithEvaluator; nil disables /simulate
+	clients   sync.Map  // string → *client
+	seq       sequenceCounter
+	events    chan aegis.StreamEvent // internal fan-out queue
+	httpSrv   *http.Server
 
 	// lastBundlePayload stores the most recent bundle.activated CloudEvent payload.
 	// Replayed to each new client on connect so the dashboard always shows loaded policies.
@@ -130,17 +148,21 @@ type StreamServer struct {
 // NewStreamServer constructs a StreamServer.
 // tap: upstream event source (may be nil; callers may Emit directly).
 // reader: provides current EngineSnapshot for state.snapshot on connect.
-func NewStreamServer(tap aegis.StreamTap, reader aegis.SnapshotReader) *StreamServer {
+func NewStreamServer(tap aegis.StreamTap, reader aegis.SnapshotReader, opts ...Option) *StreamServer {
 	addr := os.Getenv("AEGIS_DASHBOARD_ADDR")
 	if addr == "" {
 		addr = defaultAddr
 	}
-	return &StreamServer{
+	s := &StreamServer{
 		addr:   addr,
 		tap:    tap,
 		reader: reader,
 		events: make(chan aegis.StreamEvent, 512),
 	}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
 }
 
 // Start runs the HTTP server and background goroutines. Blocks until ctx is cancelled.
@@ -157,6 +179,7 @@ func (s *StreamServer) Start(ctx context.Context, addr string) error {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", s.handleWebSocket)
+	mux.HandleFunc("/simulate", s.handleSimulate)
 
 	s.httpSrv = &http.Server{
 		Handler:      mux,
@@ -321,6 +344,94 @@ func isAllowedOrigin(origin, _ string) bool {
 	}
 	h := u.Hostname()
 	return h == "localhost" || h == "127.0.0.1"
+}
+
+// isLocalhostOrigin returns true if the Origin header is http://localhost:* or http://127.0.0.1:*.
+func isLocalhostOrigin(origin string) bool {
+	u, err := url.Parse(origin)
+	if err != nil {
+		return false
+	}
+	h := u.Hostname()
+	return (h == "localhost" || h == "127.0.0.1") && u.Scheme == "http"
+}
+
+// handleSimulate handles POST /simulate requests from the dashboard.
+// It decodes a CheckRequest, calls the injected evaluator, emits the result
+// to the WebSocket stream, and returns the CheckResponse as JSON.
+func (s *StreamServer) handleSimulate(w http.ResponseWriter, r *http.Request) {
+	origin := r.Header.Get("Origin")
+	corsAllowed := origin == "" || isLocalhostOrigin(origin)
+
+	// CORS preflight.
+	if r.Method == http.MethodOptions {
+		if corsAllowed && origin != "" {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if corsAllowed && origin != "" {
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+	}
+
+	if s.evaluator == nil {
+		http.Error(w, "evaluator not configured", http.StatusNotImplemented)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, simulateBodyLimit)
+	var req aegis.CheckRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+		return
+	}
+
+	if req.Timestamp == 0 {
+		req.Timestamp = time.Now().UnixNano()
+	}
+	if req.SessionID == "" {
+		req.SessionID = uuid.New().String()
+	}
+
+	start := time.Now()
+	resp := s.evaluator.Evaluate(r.Context(), req)
+	latencyNs := time.Since(start).Nanoseconds()
+	if resp.LatencyNs == 0 {
+		resp.LatencyNs = latencyNs
+	}
+
+	eventType := "policy.evaluated"
+	if resp.Decision.Action == aegis.ActionDeny {
+		eventType = "policy.denied"
+	}
+	s.Emit(r.Context(), aegis.StreamEvent{
+		Type:           eventType,
+		AegisSequence:  0, // assigned in fan-out goroutine
+		SessionID:      req.SessionID,
+		Tool:           req.Tool,
+		Action:         resp.Decision.Action,
+		Reason:         resp.Decision.Reason,
+		Label:          resp.Decision.Labels,
+		Timestamp:      req.Timestamp,
+		PolicyID:       resp.Decision.PolicyID,
+		EnforcingLayer: string(resp.EnforcingLayer),
+		LabelState:     "fresh",
+		LatencyNs:      resp.LatencyNs,
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		log.Printf("stream: simulate response encode: %v", err)
+	}
 }
 
 // handleWebSocket upgrades an HTTP connection to WebSocket, sends state.snapshot,
