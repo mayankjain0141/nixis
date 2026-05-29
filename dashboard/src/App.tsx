@@ -177,6 +177,34 @@ function routeEvents(
         break;
       }
 
+      case 'audit.checkpoint': {
+        const d = event.data;
+        const seq = d.sequence ?? event.envelope.aegissequence;
+        const hash = d.hash;
+        const prevHash = d.prev_hash ?? d.prevHash ?? '';
+        orchestrator.dispatchUpdate(atomicUpdate('FRAME', event.type, () => {
+          appendEvent({
+            id: event.envelope.id ?? `audit-${event.envelope.aegissequence}`,
+            sessionId: 'audit',
+            tool: 'audit',
+            verdict: 'audit',
+            reason: `Checkpoint #${seq} — ${d.events_since_prev ?? d.eventCount ?? 0} events`,
+            policyId: 'audit.checkpoint',
+            enforcingLayer: 'audit',
+            label: { confidentiality: 0, integrity: 0, categories: 0 },
+            labelState: 'fresh',
+            latencyNs: 0,
+            aegisSequence: event.envelope.aegissequence,
+            timestamp: event.envelope.time
+              ? new Date(event.envelope.time).getTime() * 1_000_000
+              : Date.now() * 1_000_000,
+            celExpression: `hash:${hash.slice(0, 16)} prev:${prevHash.slice(0, 16)}`,
+          });
+          updateLastSequence(event.envelope.aegissequence);
+        }));
+        break;
+      }
+
       case 'system.error':
         if (event.data.severity === 'critical') {
           orchestrator.dispatchUpdate(atomicUpdate('IMMEDIATE', event.type, () => {
