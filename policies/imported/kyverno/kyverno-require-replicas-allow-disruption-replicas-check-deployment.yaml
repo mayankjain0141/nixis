@@ -12,7 +12,11 @@ spec:
         tools:
             - Write
             - Edit
+            - Bash
     validations:
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+delete\\s+pdb\\b.*")'
+          message: 'Deleting a PodDisruptionBudget may remove availability protection for a Deployment — ensure the Deployment replica count still satisfies availability requirements'
+          action: REQUIRE_APPROVAL
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Deployment") && request.args.content.contains("replicas:")'
           message: 'AUDIT: Deployment replica count must exceed the minAvailable of any matching PodDisruptionBudget — cross-resource validation cannot be enforced inline; verify PDB compatibility manually'
           action: AUDIT

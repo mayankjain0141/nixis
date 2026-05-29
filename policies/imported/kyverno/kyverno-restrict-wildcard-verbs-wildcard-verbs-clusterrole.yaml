@@ -13,7 +13,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: ClusterRole") && (request.args.content.contains("- \"*\"") || request.args.content.contains("- ''*''") || request.args.content.matches("(?s).*verbs:\\s*\\[\"\\*\"\\].*"))'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: ClusterRole") && (request.args.content.contains("- \"*\"") || request.args.content.contains("- ''*''") || request.args.content.contains("- *"))'
           message: 'ClusterRoles must not use wildcard (*) verbs — grant only the specific verbs needed'
           action: DENY
     defaultAction: ALLOW

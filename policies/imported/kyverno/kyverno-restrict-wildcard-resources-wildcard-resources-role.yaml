@@ -13,7 +13,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Role") && (request.args.content.contains("- \"*\"") || request.args.content.contains("- ''*''") || request.args.content.matches("(?s).*resources:\\s*\\[\"\\*\"\\].*"))'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Role") && (request.args.content.contains("- \"*\"") || request.args.content.contains("- ''*''") || request.args.content.contains("- *"))'
           message: 'Roles must not use wildcard (*) in the resources list — grant only the specific resource types needed'
           action: DENY
     defaultAction: ALLOW
