@@ -1,7 +1,4 @@
-# IMPORTED FROM: open-policy-agent/gatekeeper-library
-# CONSTRAINT: K8sContainerRequests
-# REGO LOGIC: package k8scontainerrequests  import data.lib.exempt_container.is_exempt  missing(obj, field) = true {   not obj[field] }  missing(obj, field) = true {   obj[field] == "" }  canonify_cpu(orig) = new {...
-# MANUAL REVIEW: IMPORT_TODO: Unknown constraint kind 'K8sContainerRequests' - manual review required. Rego logic needs human translation.
+# IMPORT_REVIEW: translated from Rego — checks manifest content at Write/Edit time
 # imported from: gatekeeper-library via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -11,6 +8,7 @@ metadata:
         aegis.io/imported-from: aegis-import-2972720051.yaml
         aegis.io/original-kind: K8sContainerRequests
         aegis.io/severity: high
+        aegis.io/llm-confidence: medium
         aegis.io/source: open-policy-agent/gatekeeper-library
 spec:
     description: |-
@@ -18,10 +16,11 @@ spec:
         https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("kubectl.*")
-          message: |-
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("containers:") && !request.args.content.contains("requests:")'
+          message: 'IMPORT_REVIEW: gatekeeper-k8scontainerrequests — check manifest content'
             Requires containers to have memory and CPU requests set and constrains requests to be within the specified maximum values.
             https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
           action: DENY

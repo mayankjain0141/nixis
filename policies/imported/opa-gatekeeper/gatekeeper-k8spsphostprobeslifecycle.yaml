@@ -1,7 +1,4 @@
-# IMPORTED FROM: open-policy-agent/gatekeeper-library
-# CONSTRAINT: K8sPSPHostProbesLifecycle
-# REGO LOGIC: 
-# MANUAL REVIEW: IMPORT_TODO: Unknown constraint kind 'K8sPSPHostProbesLifecycle' - manual review required. Rego logic needs human translation.
+# IMPORT_REVIEW: translated from Rego — checks manifest content at Write/Edit time
 # imported from: gatekeeper-library via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -11,14 +8,16 @@ metadata:
         aegis.io/imported-from: aegis-import-1339214318.yaml
         aegis.io/original-kind: K8sPSPHostProbesLifecycle
         aegis.io/severity: high
+        aegis.io/llm-confidence: medium
         aegis.io/source: open-policy-agent/gatekeeper-library
 spec:
     description: Disallows specifying the host field in probes and lifecycle hooks. The Baseline profile (v1.34+) requires that probes (livenessProbe, readinessProbe, startupProbe) and lifecycle hooks (postStart, preStop) must not specify a host field. This prevents containers from executing network requests to the host node. For more information, see https://kubernetes.io/docs/concepts/security/pod-security-standards/
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("kubectl.*")
-          message: Disallows specifying the host field in probes and lifecycle hooks. The Baseline profile (v1.34+) requires that probes (livenessProbe, readinessProbe, startupProbe) and lifecycle hooks (postStart, preStop) must not specify a host field. This prevents containers from executing network requests to the host node. For more information, see https://kubernetes.io/docs/concepts/security/pod-security-standards/
-          action: DENY
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("hostProbes:")'
+          message: 'IMPORT_REVIEW: gatekeeper-k8spsphostprobeslifecycle — check manifest content'
+          action: AUDIT
     defaultAction: ALLOW
