@@ -12,9 +12,11 @@ metadata:
 spec:
     description: 'If a Pod exists with the annotation `karpenter.sh/do-not-evict: true` on a Node, and a request is made to delete the Node, Karpenter will not drain any Pods from that Node or otherwise try to delete the Node. This is useful for Pods that should run uninterrupted to completion. This policy mutates Jobs and CronJobs so that Pods spawned by them will contain the `karpenter.sh/do-not-evict: true` annotation.'
     matchConstraints:
-        tools: []
+        tools:
+            - Write
+            - Edit
     validations:
-        - expression: 'false'
-          message: 'IMPORT_REVIEW: mutate rule — Aegis does not mutate requests — manual review required'
-          action: AUDIT
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Job") && !request.args.content.contains("kind: CronJob") && !request.args.content.contains("karpenter.sh/do-not-evict")'
+          message: 'Job manifest is missing karpenter.sh/do-not-evict annotation on pod template — pods may be drained by Karpenter before completion'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW
