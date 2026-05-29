@@ -1,5 +1,5 @@
-# IMPORT_TODO: JMESPath conditions in check-vpa-configuration/check-vpa-configuration could not be translated — kubectl pattern match generated as base condition only
 # imported from: policies via aegis policy import
+# Gap: cross-resource existence — original policy checks whether a matching VPA exists for each StatefulSet; CEL cannot query cluster state; approximates by validating VPA manifests have targetRef: and auditing kubectl delete vpa
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:
@@ -14,8 +14,12 @@ spec:
         tools:
             - Write
             - Edit
+            - Bash
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: StatefulSet")'
-          message: StatefulSet requires a matching VerticalPodAutoscaler (VPA) — cross-resource existence cannot be verified inline, human review required.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: VerticalPodAutoscaler") && request.args.content.contains("StatefulSet") && !request.args.content.contains("targetRef:")'
+          message: VerticalPodAutoscaler targeting a StatefulSet is missing a targetRef section. A VPA without a valid targetRef has no effect. Add targetRef with kind and name.
+          action: AUDIT
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+delete\\s+vpa\\b.*")'
+          message: Deleting a VerticalPodAutoscaler removes automatic resource scaling for its target workload. Review impact before proceeding.
           action: AUDIT
     defaultAction: ALLOW

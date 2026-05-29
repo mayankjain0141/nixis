@@ -1,5 +1,5 @@
-# IMPORT_TODO: JMESPath conditions in block-kubectl-cp-by-pod-label/block-kubectl-cp could not be translated — kubectl pattern match generated as base condition only
 # imported from: policies via aegis policy import
+# Gap: pod-label filter — original policy blocks kubectl cp only on pods with label block-kubectl-cp=true; CEL cannot inspect pod labels at command-intercept time so all kubectl cp is blocked; catches both upload (local→pod) and download (pod→local) directions
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:
@@ -14,7 +14,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+cp.*")'
-          message: Cannot use `kubectl cp` on pods
-          action: REQUIRE_APPROVAL
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+cp\\b.*")'
+          message: 'kubectl cp is denied on protected pods (label block-kubectl-cp=true). Both upload (local to pod) and download (pod to local) file transfers are blocked to prevent unauthorized data exfiltration or modification.'
+          action: DENY
     defaultAction: ALLOW
