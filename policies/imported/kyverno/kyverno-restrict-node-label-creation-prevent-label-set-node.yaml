@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches("(?i)kubectl.*(label).*node")'
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+label\\s+node.*")'
           message: 'Modifying node labels is restricted to cluster administrators'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

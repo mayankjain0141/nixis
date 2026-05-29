@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("nodePort:")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (request.args.content.contains("type: NodePort") || request.args.content.contains("nodePort:"))'
           message: 'NodePort Services expose host ports — use ClusterIP or LoadBalancer instead'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
