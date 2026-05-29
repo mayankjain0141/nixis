@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: NetworkPolicy") && request.args.content.contains("podSelector: {}")'
-          message: 'NetworkPolicies must not use an empty podSelector outside of default-deny policies'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: NetworkPolicy") && request.args.content.contains("podSelector: {}") && !request.args.content.contains("default-deny")'
+          message: 'NetworkPolicies must not use an empty podSelector except in explicitly named default-deny policies'
           action: DENY
     defaultAction: ALLOW

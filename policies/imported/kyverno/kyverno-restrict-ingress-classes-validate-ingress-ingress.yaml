@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("ingressClassName:") && !request.args.content.contains("ingressClassName: nginx")'
-          message: 'Ingress must use an approved IngressClass'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (request.args.content.contains("ingressClassName:") || request.args.content.contains("kubernetes.io/ingress.class")) && !(request.args.content.contains("ingressClassName: nginx") || request.args.content.contains("kubernetes.io/ingress.class: nginx"))'
+          message: 'Ingress must use an approved IngressClass (nginx) — other classes are not permitted'
           action: DENY
     defaultAction: ALLOW
