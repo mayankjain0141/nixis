@@ -20,7 +20,7 @@ type StreamEvent struct {
 	LatencyNs      int64         // evaluation duration in nanoseconds for decision events; 0 otherwise
 }
 
-// Canonical stream event type constants (12 total — fixed per ADR-011).
+// Canonical stream event type constants (15 total — fixed per ADR-011).
 //
 // Event types:
 //   - decision: tool call evaluated; carries Action, Tool, PolicyID, LatencyNs
@@ -35,19 +35,25 @@ type StreamEvent struct {
 //   - session.start: new governance session registered
 //   - session.end: governance session ended or expired
 //   - system.error: daemon-level error not attributable to a single session
+//   - delegation.created: a new delegation chain link was established
+//   - delegation.revoked: an active delegation was explicitly revoked
+//   - delegation.expired: a delegation expired due to TTL or session end
 const (
-	EventTypeDecision         = "decision"
-	EventTypeLabelEscalated   = "label.escalated"
-	EventTypeLabelTainted     = "label.tainted"
-	EventTypeSecretFound      = "secret.found"
-	EventTypeBundleActivated  = "bundle.activated"
-	EventTypeBundleRolledBack = "bundle.rolledback"
-	EventTypeReloadStarted    = "reload.started"
-	EventTypeReloadCompleted  = "reload.completed"
-	EventTypeReloadFailed     = "reload.failed"
-	EventTypeSessionStart     = "session.start"
-	EventTypeSessionEnd       = "session.end"
-	EventTypeSystemError      = "system.error"
+	EventTypeDecision            = "decision"
+	EventTypeLabelEscalated      = "label.escalated"
+	EventTypeLabelTainted        = "label.tainted"
+	EventTypeSecretFound         = "secret.found"
+	EventTypeBundleActivated     = "bundle.activated"
+	EventTypeBundleRolledBack    = "bundle.rolledback"
+	EventTypeReloadStarted       = "reload.started"
+	EventTypeReloadCompleted     = "reload.completed"
+	EventTypeReloadFailed        = "reload.failed"
+	EventTypeSessionStart        = "session.start"
+	EventTypeSessionEnd          = "session.end"
+	EventTypeSystemError         = "system.error"
+	EventTypeDelegationCreated   = "delegation.created"
+	EventTypeDelegationRevoked   = "delegation.revoked"
+	EventTypeDelegationExpired   = "delegation.expired"
 )
 
 // StreamTap is the injection interface for internal/stream/ to receive events
