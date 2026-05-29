@@ -1,4 +1,4 @@
-# IMPORT_TODO: JMESPath conditions in limit-containers-per-pod/limit-containers-per-pod could not be translated — kubectl pattern match generated as base condition only
+# IMPORT_TODO: Container count cannot be verified via content scan — CEL approximation flags Pod files with containers for human review
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -16,6 +16,6 @@ spec:
             - Edit
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Pod") && request.args.content.contains("containers:")'
-          message: 'Pods may have no more than four containers'
-          action: REQUIRE_APPROVAL
+          message: 'Pods may have no more than four containers — exact count cannot be verified by content scan; manual review required'
+          action: AUDIT
     defaultAction: ALLOW

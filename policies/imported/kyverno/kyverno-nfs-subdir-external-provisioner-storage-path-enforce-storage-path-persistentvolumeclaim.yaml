@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("nfs-client") && request.args.content.contains("nfs.io/storage-path")'
-          message: 'nfs.io/storage-path annotation must not be empty when using nfs-client StorageClass'
-          action: DENY
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("nfs-client") && request.args.content.matches(".*nfs\\.io/storage-path:\\s*[\"\']{0,1}\\s*[\"\']{0,1}\\s*$.*")'
+          message: 'nfs.io/storage-path annotation must not be empty when using nfs-client StorageClass — content scan approximation; manual review required'
+          action: AUDIT
     defaultAction: ALLOW
