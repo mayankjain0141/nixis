@@ -19,9 +19,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("containers:") && (!request.args.content.contains("limits:") || !request.args.content.contains("requests:"))'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("containers:") && (!request.args.content.contains("limits:") || !request.args.content.contains("requests:"))'
           message: 'IMPORT_REVIEW: gatekeeper-k8srequiredresources — check manifest content'
-            Requires containers to have defined resources set.
-            https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
           action: DENY
     defaultAction: ALLOW

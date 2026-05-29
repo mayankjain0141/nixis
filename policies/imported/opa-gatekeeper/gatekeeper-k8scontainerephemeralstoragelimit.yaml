@@ -19,9 +19,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("containers:") && !request.args.content.contains("ephemeral-storage:")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("containers:") && !request.args.content.contains("ephemeral-storage:")'
           message: 'IMPORT_REVIEW: gatekeeper-k8scontainerephemeralstoragelimit — check manifest content'
-            Requires containers to have an ephemeral storage limit set and constrains the limit to be within the specified maximum values.
-            https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
           action: AUDIT
     defaultAction: ALLOW

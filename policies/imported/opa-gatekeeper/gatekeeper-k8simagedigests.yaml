@@ -19,9 +19,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("image:") && !request.args.content.matches(".*image:.*@sha256:[a-f0-9]+.*")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("image:") && !request.args.content.matches(".*image:.*@sha256:[a-f0-9]+.*")'
           message: 'IMPORT_REVIEW: gatekeeper-k8simagedigests — check manifest content'
-            Requires container images to contain a digest.
-            https://kubernetes.io/docs/concepts/containers/images/
           action: DENY
     defaultAction: ALLOW
