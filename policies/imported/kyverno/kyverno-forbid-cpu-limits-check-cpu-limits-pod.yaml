@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("resources:") && request.args.content.contains("cpu:")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("resources:") && request.args.content.matches("(?s).*limits:.*cpu:.*")'
           message: 'Containers must not define CPU limits'
           action: DENY
     defaultAction: ALLOW
