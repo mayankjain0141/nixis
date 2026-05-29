@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("sidecar.istio.io/inject") && (request.args.content.contains("\"false\"") || request.args.content.matches(".*sidecar\\.istio\\.io/inject:\\s*false.*"))'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("sidecar.istio.io/inject") && (request.args.content.contains("\"false\"") || request.args.content.contains("''false''") || request.args.content.matches(".*sidecar\\.istio\\.io/inject:\\s*false\\b.*"))'
           message: 'Pods must not disable Istio sidecar injection'
           action: DENY
     defaultAction: ALLOW
