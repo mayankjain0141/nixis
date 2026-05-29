@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.matches(".*image:\s+[^\s]+:latest.*")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.matches(".*image:\\s+[^\\s]+:latest.*")'
           message: Using a mutable image tag e.g. 'latest' is not allowed.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("allow-snippet-annotations: \"true\"")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("allow-snippet-annotations: \"true\"")'
           message: ingress-nginx allow-snippet-annotations must be set to false
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

@@ -17,7 +17,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && (request.args.content.contains("PersistentVolumeClaim") || request.args.content.contains("StatefulSet")) && !request.args.content.contains("storageClassName:")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (request.args.content.contains("PersistentVolumeClaim") || request.args.content.contains("StatefulSet")) && !request.args.content.contains("storageClassName:")'
           message: 'IMPORT_REVIEW: gatekeeper-k8sstorageclass — check manifest content'
           action: AUDIT
     defaultAction: ALLOW

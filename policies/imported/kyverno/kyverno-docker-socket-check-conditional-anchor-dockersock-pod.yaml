@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("/var/run/docker.sock")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("/var/run/docker.sock")'
           message: If a hostPath volume exists and is set to `/var/run/docker.sock`, the label `allow-docker` must equal `true`.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

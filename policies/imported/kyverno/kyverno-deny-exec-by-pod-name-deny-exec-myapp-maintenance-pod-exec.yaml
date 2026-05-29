@@ -14,7 +14,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\s+exec.*myapp-maintenance.*")'
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+exec.*myapp-maintenance.*")'
           message: Exec'ing into Pods called "myapp-maintenance" is not allowed.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

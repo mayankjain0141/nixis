@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("hostPath:")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("hostPath:")'
           message: HostPath volumes are forbidden. The field spec.volumes[*].hostPath must be unset.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
