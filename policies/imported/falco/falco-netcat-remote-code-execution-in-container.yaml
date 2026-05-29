@@ -15,7 +15,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.contains(" -e")
+        - expression: 'tool == "Bash" && request.args.command.matches(".*\\bnc\\b.*-e.*(bash|sh|/bin).*") || tool == "Bash" && request.args.command.matches(".*\\b(netcat|ncat)\\b.*-e.*(bash|sh|/bin).*")'
           message: 'Falco rule violated: Netcat Remote Code Execution in Container'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
