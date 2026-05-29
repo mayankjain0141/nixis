@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("hostPath:") && !request.args.content.contains("path: /data")'
-          message: 'hostPath volumes must use /data as their mount path'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("hostPath:") && !request.args.content.matches(".*path:\\s*/data\\s*$.*")'
+          message: 'hostPath PersistentVolumes must use exactly /data as their mount path — exact type field validation not possible via content scan; manual review required'
           action: DENY
     defaultAction: ALLOW
