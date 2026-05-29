@@ -5,7 +5,11 @@
 //
 // Usage:
 //
-//	aegis-daemon [-socket PATH] [-policy-dir DIR] [-audit-db PATH]
+//	aegis-daemon [-socket PATH] [-policy-dir DIR] [-audit-db PATH] [-failopen-log PATH]
+//
+// The gRPC ext_authz listener address is configured via the AEGIS_GRPC_ADDR environment
+// variable. The stream/WebSocket server address defaults to :9090 and can be overridden
+// with AEGIS_DASHBOARD_ADDR.
 package main
 
 import (
