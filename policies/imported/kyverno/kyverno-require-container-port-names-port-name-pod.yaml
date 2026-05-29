@@ -14,7 +14,10 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
-          message: 'Policy validation required — review manifest before applying'
+        # CEL_LIMITATION: !contains("name:") is a false-negative risk — metadata.name or other name: keys
+        # satisfy the check even when the containerPort block itself lacks a name. Downgraded to
+        # REQUIRE_APPROVAL; a human reviewer must verify the name field is inside the port block.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("containerPort:")'
+          message: 'Review required: verify every containerPort definition also has a name field in the same port block'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

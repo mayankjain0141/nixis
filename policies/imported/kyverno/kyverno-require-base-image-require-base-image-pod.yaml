@@ -1,3 +1,8 @@
+# CEL_LIMITATION: the original policy uses Kyverno imageData context to verify live OCI/BuildKit/Buildpack
+# provenance metadata from a running container registry — this requires authenticated registry access
+# that Aegis CEL cannot replicate. The policy targets running Pods, not Dockerfile writes.
+# Translated to false + AUDIT; a content check on Dockerfile FROM lines would check only syntax,
+# not whether the base image has approved provenance metadata.
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -14,7 +19,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
-          message: 'Policy validation required — review manifest before applying'
-          action: REQUIRE_APPROVAL
+        - expression: 'false'
+          message: 'CEL limitation: policy requires live OCI/BuildKit/Buildpack provenance metadata from the container registry (Kyverno imageData context) — Aegis cannot perform authenticated registry introspection at request time'
+          action: AUDIT
     defaultAction: ALLOW

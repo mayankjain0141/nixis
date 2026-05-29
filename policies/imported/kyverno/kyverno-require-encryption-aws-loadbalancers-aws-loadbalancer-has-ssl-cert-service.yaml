@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
-          message: 'Policy validation required — review manifest before applying'
-          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("LoadBalancer") && !request.args.content.contains("aws-load-balancer-ssl-cert")'
+          message: 'AWS LoadBalancer Services must include the service.beta.kubernetes.io/aws-load-balancer-ssl-cert annotation'
+          action: DENY
     defaultAction: ALLOW

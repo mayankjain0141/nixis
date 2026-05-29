@@ -14,7 +14,9 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
-          message: 'Policy validation required — review manifest before applying'
-          action: REQUIRE_APPROVAL
+        # Use contains() instead of matches() for the sha256 check — matches() operates on the whole
+        # content string without DOTALL, so the .*image:.*@sha256:.* regex can fail on multi-line YAML.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("image:") && !request.args.content.contains("@sha256:")'
+          message: 'All container images must use a SHA256 digest (@sha256:...) rather than a mutable tag'
+          action: DENY
     defaultAction: ALLOW

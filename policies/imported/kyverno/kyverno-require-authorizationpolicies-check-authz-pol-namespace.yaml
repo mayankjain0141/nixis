@@ -1,4 +1,4 @@
-# IMPORT_TODO: JMESPath conditions in require-authorizationpolicies/check-authz-pol could not be translated — kubectl pattern match generated as base condition only
+# IMPORT_TODO: JMESPath conditions in require-authorizationpolicies/check-authz-pol could not be translated — cross-resource check (namespace must have AuthorizationPolicy) is not expressible in single-request CEL; translated to AUDIT
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -15,7 +15,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
-          message: 'Policy validation required — review manifest before applying'
-          action: REQUIRE_APPROVAL
+        - expression: 'false'
+          message: 'Cross-resource policy translated to audit-only — Aegis cannot verify that a Namespace has an AuthorizationPolicy within a single request context'
+          action: AUDIT
     defaultAction: ALLOW
