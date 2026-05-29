@@ -147,14 +147,6 @@ func buildCombinedExpression(m *policyManifest) string {
 			return "!(" + inline(v.Expression) + ")"
 		}
 	}
-
-	// AUDIT-only stubs (e.g. mutate-rule translations): load them so they appear in the
-	// bundle for auditing purposes, but wrap in !(expr) so they never block.
-	for _, v := range m.Spec.Validations {
-		if v.Expression != "" && v.Action == "AUDIT" {
-			return "!(" + inline(v.Expression) + ")"
-		}
-	}
 	return ""
 }
 
