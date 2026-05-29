@@ -334,7 +334,7 @@ func (b *BundleLoader) fetchHTTP(ctx context.Context) (content, sig []byte, chan
 		return nil, nil, false, fmt.Errorf("bundle http: unexpected status %d", resp.StatusCode)
 	}
 
-	data, err := io.ReadAll(resp.Body)
+	data, err := io.ReadAll(io.LimitReader(resp.Body, 64<<20))
 	if err != nil {
 		return nil, nil, false, fmt.Errorf("bundle http read body: %w", err)
 	}
@@ -353,7 +353,7 @@ func (b *BundleLoader) fetchHTTP(ctx context.Context) (content, sig []byte, chan
 		}
 	}()
 
-	sigData, err := io.ReadAll(sigResp.Body)
+	sigData, err := io.ReadAll(io.LimitReader(sigResp.Body, 256))
 	if err != nil {
 		return nil, nil, false, fmt.Errorf("bundle http sig read: %w", err)
 	}
@@ -475,7 +475,8 @@ func extractBundle(content []byte) (string, error) {
 		if !strings.HasPrefix(filepath.Clean(destPath)+string(os.PathSeparator), filepath.Clean(dir)+string(os.PathSeparator)) {
 			continue // path escape attempt, skip entry
 		}
-		fileData, err := io.ReadAll(tr)
+		const maxPolicyFileSize = 4 << 20 // 4 MB per policy file
+		fileData, err := io.ReadAll(io.LimitReader(tr, maxPolicyFileSize))
 		if err != nil {
 			_ = os.RemoveAll(dir)
 			return "", fmt.Errorf("extract: read %s: %w", name, err)
