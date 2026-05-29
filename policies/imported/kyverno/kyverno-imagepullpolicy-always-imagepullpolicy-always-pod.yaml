@@ -1,4 +1,7 @@
 # imported from: policies via aegis policy import
+# Gap: detecting images with NO tag (implicit latest, e.g. "image: nginx") requires
+# per-line parsing to identify image: lines that lack a colon-tag suffix — not possible
+# with whole-content substring matching. Only explicit :latest is caught here.
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:

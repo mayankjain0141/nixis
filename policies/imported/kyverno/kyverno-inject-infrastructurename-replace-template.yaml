@@ -1,4 +1,7 @@
 # imported from: policies via aegis policy import
+# Gap: Kyverno fetches the infrastructure name from the live OpenShift Cluster CR via
+# JMESPath context lookup and substitutes it into the MachineSet manifest at admission time.
+# CEL cannot perform cross-resource lookups or runtime value substitution — mutate stub retained.
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:

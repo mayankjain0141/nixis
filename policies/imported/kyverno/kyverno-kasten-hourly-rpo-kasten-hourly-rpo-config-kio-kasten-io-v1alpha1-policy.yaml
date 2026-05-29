@@ -1,4 +1,8 @@
 # imported from: policies via aegis policy import
+# Gap: the Kyverno policy checks via namespaceSelector whether the namespace a Kasten Policy
+# *targets* carries appPriority=critical — a cross-resource lookup CEL cannot perform.
+# The expression below fires when the Kasten Policy manifest itself lists appPriority: critical
+# in its namespaceSelector block, which is the closest approximation possible.
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:
@@ -14,7 +18,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("appPriority") && request.args.content.contains("critical") && !request.args.content.contains("@hourly")'
-          message: 'Mission Critical K10/Kasten policies must use hourly RPO frequency'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("appPriority: critical") && !request.args.content.contains("@hourly")'
+          message: 'Kasten Policies targeting appPriority: critical namespaces must use @hourly RPO frequency'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
