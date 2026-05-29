@@ -19,10 +19,10 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*\\b(mv|cp|rename|install)\\b.*(/(usr/)?(bin|sbin|lib|lib64)).*")'
+        - expression: 'tool == "Bash" && request.args.command.matches(".*\\b(mv|cp|rename|install)\\b.*\\s/(usr/(bin|sbin|lib|lib64)|bin|sbin|lib|lib64)(/|\\s|$).*")'
           message: 'Falco rule violated: Modify binary dirs (shell)'
           action: DENY
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*(/(usr/)?(bin|sbin|lib|lib64))/.*")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches("^/(usr/(bin|sbin|lib|lib64)|bin|sbin|lib|lib64)/.*")'
           message: 'Falco rule violated: Modify binary dirs (file write)'
           action: DENY
     defaultAction: ALLOW

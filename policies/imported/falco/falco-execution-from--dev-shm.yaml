@@ -17,7 +17,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*(/dev/shm/|/run/shm/).*")'
+        - expression: 'tool == "Bash" && (request.args.command.matches(".*chmod.*\\+x.*(/dev/shm/|/run/shm/).*") || request.args.command.matches(".*[;&|]\\s*(/dev/shm/|/run/shm/)[a-zA-Z0-9_.-]+.*") || request.args.command.matches(".*(bash|sh)\\s+-c\\s+.*(/dev/shm/|/run/shm/).*"))'
           message: 'Falco rule violated: Execution from /dev/shm'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

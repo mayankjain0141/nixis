@@ -17,7 +17,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*docker\\s+run.*-v\\s+/(etc|proc|sys|dev|var/run/docker\\.sock)[:/].*")'
+        - expression: 'tool == "Bash" && (request.args.command.matches(".*docker\\s+run.*-v\\s+/(etc|proc|sys)[:/].*") || request.args.command.matches(".*docker\\s+run.*-v\\s+/var/run/docker\\.sock[:/].*") || request.args.command.matches(".*docker\\s+run.*-v\\s+/dev/(mem|kmem|port|sda|nvme)[:/].*"))'
           message: 'Falco rule violated: Launch Sensitive Mount Container'
           action: AUDIT
     defaultAction: ALLOW
