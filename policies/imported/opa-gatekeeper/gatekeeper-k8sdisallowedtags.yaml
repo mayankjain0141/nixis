@@ -1,6 +1,4 @@
-# IMPORTED FROM: open-policy-agent/gatekeeper-library
-# CONSTRAINT: K8sDisallowedTags
-# REGO LOGIC: package k8sdisallowedtags  import data.lib.exempt_container.is_exempt  violation[{"msg": msg}] {     container := input_containers[_]     not is_exempt(container)     tags := [tag_with_prefix | tag :=...
+# IMPORT_REVIEW: translated from Rego — checks manifest content at Write/Edit time
 # imported from: gatekeeper-library via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -10,6 +8,7 @@ metadata:
         aegis.io/imported-from: aegis-import-2227044738.yaml
         aegis.io/original-kind: K8sDisallowedTags
         aegis.io/severity: high
+        aegis.io/llm-confidence: medium
         aegis.io/source: open-policy-agent/gatekeeper-library
 spec:
     description: |-
@@ -17,10 +16,11 @@ spec:
         https://kubernetes.io/docs/concepts/containers/images/#image-names
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("kubectl.*image.*:latest")
-          message: |-
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.matches(".*image:.*:latest.*")'
+          message: 'IMPORT_REVIEW: gatekeeper-k8sdisallowedtags — check manifest content'
             Requires container images to have an image tag different from the ones in the specified list.
             https://kubernetes.io/docs/concepts/containers/images/#image-names
           action: DENY

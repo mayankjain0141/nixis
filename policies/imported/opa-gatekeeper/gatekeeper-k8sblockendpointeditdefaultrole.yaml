@@ -1,7 +1,4 @@
-# IMPORTED FROM: open-policy-agent/gatekeeper-library
-# CONSTRAINT: K8sBlockEndpointEditDefaultRole
-# REGO LOGIC: package k8sblockendpointeditdefaultrole  violation[{"msg": msg}] {     input.review.object.metadata.name == "system:aggregate-to-edit"     endpointRule(input.review.object.rules[_])     msg := "Cluste...
-# MANUAL REVIEW: IMPORT_TODO: Unknown constraint kind 'K8sBlockEndpointEditDefaultRole' - manual review required. Rego logic needs human translation.
+# IMPORT_REVIEW: translated from Rego — checks manifest content at Write/Edit time
 # imported from: gatekeeper-library via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -11,6 +8,7 @@ metadata:
         aegis.io/imported-from: aegis-import-3470698540.yaml
         aegis.io/original-kind: K8sBlockEndpointEditDefaultRole
         aegis.io/severity: high
+        aegis.io/llm-confidence: medium
         aegis.io/source: open-policy-agent/gatekeeper-library
 spec:
     description: |-
@@ -19,9 +17,11 @@ spec:
     matchConstraints:
         tools:
             - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("kubectl.*")
-          message: |-
+        - expression: '((tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("system:aggregate-to-edit") && request.args.content.contains("endpoints")) || (tool == "Bash" && request.args.command.matches(".*kubectl.*(edit|patch).*aggregate-to-edit.*"))'
+          message: 'IMPORT_REVIEW: gatekeeper-k8sblockendpointeditdefaultrole — check manifest content'
             Many Kubernetes installations by default have a system:aggregate-to-edit ClusterRole which does not properly restrict access to editing Endpoints. This ConstraintTemplate forbids the system:aggregate-to-edit ClusterRole from granting permission to create/patch/update Endpoints.
             ClusterRole/system:aggregate-to-edit should not allow Endpoint edit permissions due to CVE-2021-25740, Endpoint & EndpointSlice permissions allow cross-Namespace forwarding, https://github.com/kubernetes/kubernetes/issues/103675
           action: DENY

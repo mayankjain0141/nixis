@@ -1,7 +1,4 @@
-# IMPORTED FROM: open-policy-agent/gatekeeper-library
-# CONSTRAINT: K8sPSPHostProcess
-# REGO LOGIC: 
-# MANUAL REVIEW: IMPORT_TODO: Unknown constraint kind 'K8sPSPHostProcess' - manual review required. Rego logic needs human translation.
+# IMPORT_REVIEW: translated from Rego — checks manifest content at Write/Edit time
 # imported from: gatekeeper-library via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -11,14 +8,16 @@ metadata:
         aegis.io/imported-from: aegis-import-2333992299.yaml
         aegis.io/original-kind: K8sPSPHostProcess
         aegis.io/severity: high
+        aegis.io/llm-confidence: medium
         aegis.io/source: open-policy-agent/gatekeeper-library
 spec:
     description: Disallows HostProcess containers for Windows pods. HostProcess containers enable privileged access on Windows nodes and must be disallowed in Baseline and Restricted policies. Corresponds to the windowsOptions.hostProcess field in a Pod's securityContext or container securityContext. For more information, see https://kubernetes.io/docs/concepts/security/pod-security-standards/
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("kubectl.*")
-          message: Disallows HostProcess containers for Windows pods. HostProcess containers enable privileged access on Windows nodes and must be disallowed in Baseline and Restricted policies. Corresponds to the windowsOptions.hostProcess field in a Pod's securityContext or container securityContext. For more information, see https://kubernetes.io/docs/concepts/security/pod-security-standards/
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("hostProcess: true")'
+          message: 'IMPORT_REVIEW: gatekeeper-k8spsphostprocess — check manifest content'
           action: DENY
     defaultAction: ALLOW

@@ -1,6 +1,4 @@
-# IMPORTED FROM: open-policy-agent/gatekeeper-library
-# CONSTRAINT: K8sBlockWildcardIngress
-# REGO LOGIC: package K8sBlockWildcardIngress  contains_wildcard(hostname) = true {   hostname == "" }  contains_wildcard(hostname) = true {   contains(hostname, "*") }  violation[{"msg": msg}] {   input.review.kin...
+# IMPORT_REVIEW: translated from Rego — checks manifest content at Write/Edit time
 # imported from: gatekeeper-library via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -10,14 +8,16 @@ metadata:
         aegis.io/imported-from: aegis-import-772102698.yaml
         aegis.io/original-kind: K8sBlockWildcardIngress
         aegis.io/severity: high
+        aegis.io/llm-confidence: medium
         aegis.io/source: open-policy-agent/gatekeeper-library
 spec:
     description: Users should not be able to create Ingresses with a blank or wildcard (*) hostname since that would enable them to intercept traffic for other services in the cluster, even if they don't have access to those services.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("kubectl.*ingress.*")
-          message: Users should not be able to create Ingresses with a blank or wildcard (*) hostname since that would enable them to intercept traffic for other services in the cluster, even if they don't have access to those services.
-          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("Ingress") && request.args.content.matches(".*host:\s*\*.*")'
+          message: 'IMPORT_REVIEW: gatekeeper-k8sblockwildcardingress — check manifest content'
+          action: DENY
     defaultAction: ALLOW

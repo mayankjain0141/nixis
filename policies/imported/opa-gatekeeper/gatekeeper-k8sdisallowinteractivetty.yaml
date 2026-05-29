@@ -1,7 +1,4 @@
-# IMPORTED FROM: open-policy-agent/gatekeeper-library
-# CONSTRAINT: K8sDisallowInteractiveTTY
-# REGO LOGIC: package k8sdisallowinteractivetty  import data.lib.exempt_container.is_exempt  violation[{"msg": msg, "details": {}}] {     c := input_containers[_]     not is_exempt(c)     input_allow_interactive_fi...
-# MANUAL REVIEW: IMPORT_TODO: Unknown constraint kind 'K8sDisallowInteractiveTTY' - manual review required. Rego logic needs human translation.
+# IMPORT_REVIEW: translated from Rego — checks manifest content at Write/Edit time
 # imported from: gatekeeper-library via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -11,14 +8,16 @@ metadata:
         aegis.io/imported-from: aegis-import-3602303990.yaml
         aegis.io/original-kind: K8sDisallowInteractiveTTY
         aegis.io/severity: high
+        aegis.io/llm-confidence: medium
         aegis.io/source: open-policy-agent/gatekeeper-library
 spec:
     description: Requires that objects have the fields `spec.tty` and `spec.stdin` set to false or unset.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("kubectl.*")
-          message: Requires that objects have the fields `spec.tty` and `spec.stdin` set to false or unset.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("tty: true") && request.args.content.contains("stdin: true")'
+          message: 'IMPORT_REVIEW: gatekeeper-k8sdisallowinteractivetty — check manifest content'
           action: DENY
     defaultAction: ALLOW

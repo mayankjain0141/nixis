@@ -1,6 +1,4 @@
-# IMPORTED FROM: open-policy-agent/gatekeeper-library
-# CONSTRAINT: K8sPSPCapabilities
-# REGO LOGIC: 
+# IMPORT_REVIEW: translated from Rego — checks manifest content at Write/Edit time
 # imported from: gatekeeper-library via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -10,14 +8,16 @@ metadata:
         aegis.io/imported-from: aegis-import-2537706440.yaml
         aegis.io/original-kind: K8sPSPCapabilities
         aegis.io/severity: high
+        aegis.io/llm-confidence: medium
         aegis.io/source: open-policy-agent/gatekeeper-library
 spec:
     description: Controls Linux capabilities on containers. Corresponds to the `allowedCapabilities` and `requiredDropCapabilities` fields in a PodSecurityPolicy. For more information, see https://kubernetes.io/docs/concepts/policy/pod-security-policy/#capabilities
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("kubectl.*capabilities.*")
-          message: Controls Linux capabilities on containers. Corresponds to the `allowedCapabilities` and `requiredDropCapabilities` fields in a PodSecurityPolicy. For more information, see https://kubernetes.io/docs/concepts/policy/pod-security-policy/#capabilities
-          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("capabilities:") && request.args.content.contains("add:") && (request.args.content.contains("NET_ADMIN") || request.args.content.contains("SYS_ADMIN") || request.args.content.contains("ALL") || request.args.content.contains("SYS_PTRACE") || request.args.content.contains("SYS_MODULE") || request.args.content.contains("NET_RAW") || request.args.content.contains("IPC_LOCK"))'
+          message: 'IMPORT_REVIEW: gatekeeper-k8spspcapabilities — check manifest content'
+          action: DENY
     defaultAction: ALLOW

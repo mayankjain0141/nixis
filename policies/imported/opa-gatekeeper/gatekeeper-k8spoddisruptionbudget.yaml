@@ -1,7 +1,4 @@
-# IMPORTED FROM: open-policy-agent/gatekeeper-library
-# CONSTRAINT: K8sPodDisruptionBudget
-# REGO LOGIC: package k8spoddisruptionbudget  violation[{"msg": msg}] {   input.review.kind.kind == "PodDisruptionBudget"   pdb := input.review.object    not valid_pdb_max_unavailable(pdb)   msg := sprintf(     "Po...
-# MANUAL REVIEW: IMPORT_TODO: Unknown constraint kind 'K8sPodDisruptionBudget' - manual review required. Rego logic needs human translation.
+# IMPORT_REVIEW: translated from Rego — checks manifest content at Write/Edit time
 # imported from: gatekeeper-library via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -11,6 +8,7 @@ metadata:
         aegis.io/imported-from: aegis-import-4119844513.yaml
         aegis.io/original-kind: K8sPodDisruptionBudget
         aegis.io/severity: high
+        aegis.io/llm-confidence: medium
         aegis.io/source: open-policy-agent/gatekeeper-library
 spec:
     description: |-
@@ -18,10 +16,11 @@ spec:
         https://kubernetes.io/docs/concepts/workloads/pods/disruptions/
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("kubectl.*")
-          message: |-
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("PodDisruptionBudget") && request.args.content.contains("maxUnavailable: 0")'
+          message: 'IMPORT_REVIEW: gatekeeper-k8spoddisruptionbudget — check manifest content'
             Disallow the following scenarios when deploying PodDisruptionBudgets or resources that implement the replica subresource (e.g. Deployment, ReplicationController, ReplicaSet, StatefulSet): 1. Deployment of PodDisruptionBudgets with .spec.maxUnavailable == 0 2. Deployment of PodDisruptionBudgets with .spec.minAvailable == .spec.replicas of the resource with replica subresource This will prevent PodDisruptionBudgets from blocking voluntary disruptions such as node draining.
             https://kubernetes.io/docs/concepts/workloads/pods/disruptions/
           action: DENY

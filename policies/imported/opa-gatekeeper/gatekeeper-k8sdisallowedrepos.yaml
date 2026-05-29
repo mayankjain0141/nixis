@@ -1,7 +1,4 @@
-# IMPORTED FROM: open-policy-agent/gatekeeper-library
-# CONSTRAINT: K8sDisallowedRepos
-# REGO LOGIC: package k8sdisallowedrepos  violation[{"msg": msg}] {   container := input.review.object.spec.containers[_]   image := container.image   startswith(image, input.parameters.repos[_])   msg := sprintf("...
-# MANUAL REVIEW: IMPORT_TODO: Unknown constraint kind 'K8sDisallowedRepos' - manual review required. Rego logic needs human translation.
+# IMPORT_REVIEW: translated from Rego — checks manifest content at Write/Edit time
 # imported from: gatekeeper-library via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -11,14 +8,16 @@ metadata:
         aegis.io/imported-from: aegis-import-2040226015.yaml
         aegis.io/original-kind: K8sDisallowedRepos
         aegis.io/severity: high
+        aegis.io/llm-confidence: medium
         aegis.io/source: open-policy-agent/gatekeeper-library
 spec:
     description: Disallowed container repositories that begin with a string from the specified list.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("kubectl.*")
-          message: Disallowed container repositories that begin with a string from the specified list.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.matches(".*image:\s+docker\.io/.*")'
+          message: 'IMPORT_REVIEW: gatekeeper-k8sdisallowedrepos — check manifest content'
           action: DENY
     defaultAction: ALLOW

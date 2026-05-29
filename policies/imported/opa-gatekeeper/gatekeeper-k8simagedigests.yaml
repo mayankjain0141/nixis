@@ -1,7 +1,4 @@
-# IMPORTED FROM: open-policy-agent/gatekeeper-library
-# CONSTRAINT: K8sImageDigests
-# REGO LOGIC: package k8simagedigests  import data.lib.exempt_container.is_exempt  violation[{"msg": msg}] {   container := input.review.object.spec.containers[_]   not is_exempt(container)   not regex.match("@[a-z...
-# MANUAL REVIEW: IMPORT_TODO: Unknown constraint kind 'K8sImageDigests' - manual review required. Rego logic needs human translation.
+# IMPORT_REVIEW: translated from Rego — checks manifest content at Write/Edit time
 # imported from: gatekeeper-library via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -11,6 +8,7 @@ metadata:
         aegis.io/imported-from: aegis-import-494471804.yaml
         aegis.io/original-kind: K8sImageDigests
         aegis.io/severity: high
+        aegis.io/llm-confidence: medium
         aegis.io/source: open-policy-agent/gatekeeper-library
 spec:
     description: |-
@@ -18,10 +16,11 @@ spec:
         https://kubernetes.io/docs/concepts/containers/images/
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("kubectl.*")
-          message: |-
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("image:") && !request.args.content.matches(".*image:.*@sha256:[a-f0-9]+.*")'
+          message: 'IMPORT_REVIEW: gatekeeper-k8simagedigests — check manifest content'
             Requires container images to contain a digest.
             https://kubernetes.io/docs/concepts/containers/images/
           action: DENY

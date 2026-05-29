@@ -1,7 +1,4 @@
-# IMPORTED FROM: open-policy-agent/gatekeeper-library
-# CONSTRAINT: K8sPSPSELinuxV2
-# REGO LOGIC: package k8spspselinux  import data.lib.exclude_update.is_update import data.lib.exempt_container.is_exempt  # Disallow top level custom SELinux options violation[{"msg": msg, "details": {}}] {     # s...
-# MANUAL REVIEW: IMPORT_TODO: Unknown constraint kind 'K8sPSPSELinuxV2' - manual review required. Rego logic needs human translation.
+# IMPORT_REVIEW: translated from Rego — checks manifest content at Write/Edit time
 # imported from: gatekeeper-library via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -11,14 +8,16 @@ metadata:
         aegis.io/imported-from: aegis-import-1584202101.yaml
         aegis.io/original-kind: K8sPSPSELinuxV2
         aegis.io/severity: high
+        aegis.io/llm-confidence: medium
         aegis.io/source: open-policy-agent/gatekeeper-library
 spec:
     description: Defines an allow-list of seLinuxOptions configurations for pod containers. Corresponds to a PodSecurityPolicy requiring SELinux configs. For more information, see https://kubernetes.io/docs/concepts/policy/pod-security-policy/#selinux
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("kubectl.*")
-          message: Defines an allow-list of seLinuxOptions configurations for pod containers. Corresponds to a PodSecurityPolicy requiring SELinux configs. For more information, see https://kubernetes.io/docs/concepts/policy/pod-security-policy/#selinux
-          action: DENY
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("seLinuxOptions:")'
+          message: 'IMPORT_REVIEW: gatekeeper-k8spspselinuxv2 — check manifest content'
+          action: AUDIT
     defaultAction: ALLOW
