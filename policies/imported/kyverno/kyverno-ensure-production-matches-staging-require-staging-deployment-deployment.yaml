@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-ensure-production-matches-staging-require-staging-deployment-deployment
     annotations:
-        aegis.io/imported-from: aegis-import-4050799117.yaml
+        aegis.io/imported-from: aegis-import-2193863251.yaml
         aegis.io/severity: low
         kyverno.io/category: Other
 spec:
@@ -14,7 +14,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+deployment|scale|rollout)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+deployment|scale|rollout)")
           message: Every Deployment in production requires a corresponding Deployment in staging.
           action: DENY
     defaultAction: ALLOW

@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-virtual-service-wildcard-block-virtual-service-wildcard-virtualservice
     annotations:
-        aegis.io/imported-from: aegis-import-4054855196.yaml
+        aegis.io/imported-from: aegis-import-1648356309.yaml
         aegis.io/severity: medium
         kyverno.io/category: Istio
 spec:

@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-ro-rootfs-validate-readonlyrootfilesystem-pod
     annotations:
-        aegis.io/imported-from: aegis-import-127653877.yaml
+        aegis.io/imported-from: aegis-import-989174671.yaml
         aegis.io/severity: medium
         kyverno.io/category: Best Practices, EKS Best Practices, PSP Migration
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
           message: Root filesystem must be read-only.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

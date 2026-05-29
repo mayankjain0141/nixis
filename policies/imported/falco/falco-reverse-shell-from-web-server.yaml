@@ -1,11 +1,11 @@
-# imported from: main via aegis policy import
+# imported from: rules via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-reverse-shell-from-web-server
     annotations:
         aegis.io/falco-tags: maturity_sandbox,host,container,process,network,mitre_execution,T1059
-        aegis.io/imported-from: aegis-import-3595951451.yaml
+        aegis.io/imported-from: aegis-import-3210576666.yaml
         aegis.io/severity: critical
         aegis.io/source-rule: Reverse Shell from Web Server
 spec:

@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-generate-flux-multi-tenant-resources-generate-flux-rolebinding
     annotations:
-        aegis.io/imported-from: aegis-import-2247444947.yaml
+        aegis.io/imported-from: aegis-import-2357560384.yaml
         aegis.io/severity: low
         kyverno.io/category: Flux
 spec:

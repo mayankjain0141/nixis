@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-add-default-resources-add-default-requests
     annotations:
-        aegis.io/imported-from: aegis-import-76099271.yaml
+        aegis.io/imported-from: aegis-import-4050199313.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

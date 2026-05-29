@@ -1,11 +1,11 @@
-# imported from: main via aegis policy import
+# imported from: rules via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-directory-traversal-monitored-file-read
     annotations:
         aegis.io/falco-tags: maturity_stable,host,container,filesystem,mitre_credential_access,T1555
-        aegis.io/imported-from: aegis-import-2766262408.yaml
+        aegis.io/imported-from: aegis-import-4101892790.yaml
         aegis.io/severity: medium
         aegis.io/source-rule: Directory traversal monitored file read
 spec:

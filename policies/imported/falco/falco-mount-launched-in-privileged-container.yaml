@@ -1,12 +1,12 @@
 # IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: spawned_process and container and container.privileged=true and proc.name=mount and not mount_info and not known_gke_mou...
-# imported from: main via aegis policy import
+# imported from: rules via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-mount-launched-in-privileged-container
     annotations:
         aegis.io/falco-tags: maturity_incubating,container,cis,filesystem,mitre_privilege_escalation,T1611
-        aegis.io/imported-from: aegis-import-487448035.yaml
+        aegis.io/imported-from: aegis-import-3831796007.yaml
         aegis.io/severity: medium
         aegis.io/source-rule: Mount Launched in Privileged Container
 spec:

@@ -7,7 +7,7 @@ kind: PolicyTemplate
 metadata:
     name: gatekeeper-k8sexternalips
     annotations:
-        aegis.io/imported-from: aegis-import-704370738.yaml
+        aegis.io/imported-from: aegis-import-205446924.yaml
         aegis.io/original-kind: K8sExternalIPs
         aegis.io/severity: high
         aegis.io/source: open-policy-agent/gatekeeper-library

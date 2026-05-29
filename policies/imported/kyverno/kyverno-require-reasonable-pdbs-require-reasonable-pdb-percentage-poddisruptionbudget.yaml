@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-reasonable-pdbs-require-reasonable-pdb-percentage-poddisruptionbudget
     annotations:
-        aegis.io/imported-from: aegis-import-2746273779.yaml
+        aegis.io/imported-from: aegis-import-609348379.yaml
         aegis.io/severity: low
         kyverno.io/category: Other
 spec:

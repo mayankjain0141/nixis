@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-tekton-securitycontext-check-step-securitycontext-tekton-dev-v1beta1-taskrun-status
     annotations:
-        aegis.io/imported-from: aegis-import-2584712616.yaml
+        aegis.io/imported-from: aegis-import-419821312.yaml
         aegis.io/severity: medium
         kyverno.io/category: Tekton
 spec:

@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-disallow-deprecated-apis-check-deprecated-apis-authorization-openshift-io-v1-clusterrole
     annotations:
-        aegis.io/imported-from: aegis-import-3317751833.yaml
+        aegis.io/imported-from: aegis-import-1968449821.yaml
         aegis.io/severity: medium
         kyverno.io/category: OpenShift
 spec:

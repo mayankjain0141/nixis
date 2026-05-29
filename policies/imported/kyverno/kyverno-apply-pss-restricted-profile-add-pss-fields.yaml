@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-apply-pss-restricted-profile-add-pss-fields
     annotations:
-        aegis.io/imported-from: aegis-import-1175930649.yaml
+        aegis.io/imported-from: aegis-import-3729986457.yaml
         aegis.io/severity: low
         kyverno.io/category: Other, PSP Migration
 spec:

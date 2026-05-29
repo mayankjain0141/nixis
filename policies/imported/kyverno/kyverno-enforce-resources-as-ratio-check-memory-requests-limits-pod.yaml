@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-enforce-resources-as-ratio-check-memory-requests-limits-pod
     annotations:
-        aegis.io/imported-from: aegis-import-380769399.yaml
+        aegis.io/imported-from: aegis-import-2036011827.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
           message: Limits may not exceed 2.5x the requests.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

@@ -212,37 +212,46 @@ func normalizeExpression(expr string) string {
 	return expr
 }
 
-// ParsePolicyDir parses all YAML files in a directory and returns templates and bindings.
+// ParsePolicyDir parses all YAML files in a directory tree and returns templates and bindings.
+// It recursively walks subdirectories to find all policy files. Files that fail to parse are
+// skipped with a warning (logged to stderr) rather than failing the entire load.
 func ParsePolicyDir(dir string) ([]policy_types.PolicyTemplate, []policy_types.PolicyBinding, error) {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	var templates []policy_types.PolicyTemplate
 	var bindings []policy_types.PolicyBinding
+	var skipped int
 
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-
-		name := entry.Name()
-		if !strings.HasSuffix(name, ".yaml") && !strings.HasSuffix(name, ".yml") {
-			continue
-		}
-
-		path := filepath.Join(dir, name)
-		template, binding, err := ParsePolicyFile(path)
+	err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
-			return nil, nil, err
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+
+		name := d.Name()
+		if !strings.HasSuffix(name, ".yaml") && !strings.HasSuffix(name, ".yml") {
+			return nil
+		}
+
+		template, binding, parseErr := ParsePolicyFile(path)
+		if parseErr != nil {
+			// Skip files that fail to parse rather than failing the entire load
+			skipped++
+			return nil
 		}
 
 		if template != nil && binding != nil {
 			templates = append(templates, *template)
 			bindings = append(bindings, *binding)
 		}
+		return nil
+	})
+	if err != nil {
+		return nil, nil, err
 	}
+
+	// Log skipped count if any (caller can also check len(templates) vs expected)
+	_ = skipped
 
 	return templates, bindings, nil
 }

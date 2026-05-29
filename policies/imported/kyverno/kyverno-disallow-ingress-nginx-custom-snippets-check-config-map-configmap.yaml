@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-disallow-ingress-nginx-custom-snippets-check-config-map-configmap
     annotations:
-        aegis.io/imported-from: aegis-import-2241245480.yaml
+        aegis.io/imported-from: aegis-import-594319337.yaml
         aegis.io/severity: low
         kyverno.io/category: Security, NGINX Ingress
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+configmap|create\s+configmap)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+configmap|create\\s+configmap)")
           message: ingress-nginx allow-snippet-annotations must be set to false
           action: DENY
     defaultAction: ALLOW

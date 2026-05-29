@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-check-subjectaccessreview-check-sar-configmap
     annotations:
-        aegis.io/imported-from: aegis-import-3980918709.yaml
+        aegis.io/imported-from: aegis-import-1770587137.yaml
         aegis.io/severity: low
         kyverno.io/category: Other
 spec:
@@ -14,7 +14,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+configmap|create\s+configmap)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+configmap|create\\s+configmap)")
           message: User is not authorized.
           action: AUDIT
     defaultAction: ALLOW

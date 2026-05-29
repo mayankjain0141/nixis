@@ -1,12 +1,12 @@
 # IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: evt.type=connect and (fd.typechar=4 or fd.typechar=6) and container and k8s_api_server and not k8s_containers and not us...
-# imported from: main via aegis policy import
+# imported from: rules via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-contact-k8s-api-server-from-container
     annotations:
         aegis.io/falco-tags: maturity_stable,container,network,k8s,mitre_discovery,T1565
-        aegis.io/imported-from: aegis-import-2766262408.yaml
+        aegis.io/imported-from: aegis-import-4101892790.yaml
         aegis.io/severity: low
         aegis.io/source-rule: Contact K8S API Server From Container
 spec:

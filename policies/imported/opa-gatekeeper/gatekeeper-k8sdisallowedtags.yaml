@@ -7,7 +7,7 @@ kind: PolicyTemplate
 metadata:
     name: gatekeeper-k8sdisallowedtags
     annotations:
-        aegis.io/imported-from: aegis-import-3526536629.yaml
+        aegis.io/imported-from: aegis-import-463686487.yaml
         aegis.io/original-kind: K8sDisallowedTags
         aegis.io/severity: high
         aegis.io/source: open-policy-agent/gatekeeper-library

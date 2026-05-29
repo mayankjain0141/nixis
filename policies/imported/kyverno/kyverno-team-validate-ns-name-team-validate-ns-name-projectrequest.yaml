@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-team-validate-ns-name-team-validate-ns-name-projectrequest
     annotations:
-        aegis.io/imported-from: aegis-import-3871207981.yaml
+        aegis.io/imported-from: aegis-import-1246185796.yaml
         aegis.io/severity: medium
         kyverno.io/category: OpenShift
 spec:

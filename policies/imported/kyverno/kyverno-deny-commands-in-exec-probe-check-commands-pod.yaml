@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-deny-commands-in-exec-probe-check-commands-pod
     annotations:
-        aegis.io/imported-from: aegis-import-3791464914.yaml
+        aegis.io/imported-from: aegis-import-720887298.yaml
         aegis.io/severity: low
         kyverno.io/category: Other in CEL
 spec:

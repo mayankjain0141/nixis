@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-encryption-aws-loadbalancers-aws-loadbalancer-has-ssl-cert-service
     annotations:
-        aegis.io/imported-from: aegis-import-1212557041.yaml
+        aegis.io/imported-from: aegis-import-2900304682.yaml
         aegis.io/severity: medium
         kyverno.io/category: AWS, EKS Best Practices
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+service|expose)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+service|expose)")
           message: Service of type LoadBalancer must carry the annotation service.beta.kubernetes.io/aws-load-balancer-ssl-cert.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

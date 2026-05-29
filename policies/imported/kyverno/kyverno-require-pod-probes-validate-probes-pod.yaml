@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-pod-probes-validate-probes-pod
     annotations:
-        aegis.io/imported-from: aegis-import-2517075808.yaml
+        aegis.io/imported-from: aegis-import-1876846771.yaml
         aegis.io/severity: medium
         kyverno.io/category: Best Practices, EKS Best Practices
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
           message: Liveness, readiness, or startup probes are required for all containers.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-check-routes-require-tls-routes-route-openshift-io-v1-route
     annotations:
-        aegis.io/imported-from: aegis-import-1083747979.yaml
+        aegis.io/imported-from: aegis-import-1993694762.yaml
         aegis.io/severity: high
         kyverno.io/category: OpenShift
 spec:

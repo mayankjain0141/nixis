@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-application-prevent-default-project-default-project-application
     annotations:
-        aegis.io/imported-from: aegis-import-760635698.yaml
+        aegis.io/imported-from: aegis-import-2314774767.yaml
         aegis.io/severity: medium
         kyverno.io/category: Argo
 spec:

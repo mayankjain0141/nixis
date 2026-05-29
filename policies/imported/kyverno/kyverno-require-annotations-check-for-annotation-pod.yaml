@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-annotations-check-for-annotation-pod
     annotations:
-        aegis.io/imported-from: aegis-import-1284308073.yaml
+        aegis.io/imported-from: aegis-import-4071739528.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
           message: The annotation `corp.org/department` is required.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

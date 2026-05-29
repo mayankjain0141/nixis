@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-deployment-has-multiple-replicas-deployment-has-multiple-replicas-deployment
     annotations:
-        aegis.io/imported-from: aegis-import-1369477328.yaml
+        aegis.io/imported-from: aegis-import-2621636939.yaml
         aegis.io/severity: medium
         kyverno.io/category: Sample
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+deployment|scale|rollout)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+deployment|scale|rollout)")
           message: Deployments should have more than one replica to ensure availability.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

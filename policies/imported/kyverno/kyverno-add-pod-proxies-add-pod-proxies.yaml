@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-add-pod-proxies-add-pod-proxies
     annotations:
-        aegis.io/imported-from: aegis-import-1680981996.yaml
+        aegis.io/imported-from: aegis-import-567044110.yaml
         aegis.io/severity: low
         kyverno.io/category: Sample
 spec:

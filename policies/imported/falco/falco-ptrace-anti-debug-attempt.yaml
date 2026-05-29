@@ -1,12 +1,12 @@
 # IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: evt.type=ptrace and evt.arg.request contains PTRACE_TRACEME and proc_name_exists
-# imported from: main via aegis policy import
+# imported from: rules via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-ptrace-anti-debug-attempt
     annotations:
         aegis.io/falco-tags: maturity_stable,host,container,process,mitre_defense_evasion,T1622
-        aegis.io/imported-from: aegis-import-2766262408.yaml
+        aegis.io/imported-from: aegis-import-4101892790.yaml
         aegis.io/severity: low
         aegis.io/source-rule: PTRACE anti-debug attempt
 spec:

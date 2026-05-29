@@ -1,12 +1,12 @@
 # IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: spawned_process and container and network_tool_procs and npm_package_install_ancestor and not user_known_network_tool_in...
-# imported from: main via aegis policy import
+# imported from: rules via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-network-tool-executed-during-npm-package-install
     annotations:
         aegis.io/falco-tags: maturity_sandbox,container,network,process,mitre_execution,T1195.002
-        aegis.io/imported-from: aegis-import-3595951451.yaml
+        aegis.io/imported-from: aegis-import-3210576666.yaml
         aegis.io/severity: medium
         aegis.io/source-rule: Network Tool Executed During NPM Package Install
 spec:

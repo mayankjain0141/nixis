@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-disallow-container-sock-mounts-validate-docker-sock-mount-pod
     annotations:
-        aegis.io/imported-from: aegis-import-3843738209.yaml
+        aegis.io/imported-from: aegis-import-1693381957.yaml
         aegis.io/severity: medium
         kyverno.io/category: Best Practices, EKS Best Practices
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
           message: Use of the Docker Unix socket is not allowed.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

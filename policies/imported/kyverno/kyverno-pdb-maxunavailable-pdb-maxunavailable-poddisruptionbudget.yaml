@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-pdb-maxunavailable-pdb-maxunavailable-poddisruptionbudget
     annotations:
-        aegis.io/imported-from: aegis-import-3246995507.yaml
+        aegis.io/imported-from: aegis-import-3477115929.yaml
         aegis.io/severity: low
         kyverno.io/category: Other
 spec:

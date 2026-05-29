@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-add-karpenter-daemonset-priority-class-add-karpenter-daemonset-priority-class
     annotations:
-        aegis.io/imported-from: aegis-import-3395621963.yaml
+        aegis.io/imported-from: aegis-import-3558087968.yaml
         aegis.io/severity: medium
         kyverno.io/category: Karpenter
 spec:

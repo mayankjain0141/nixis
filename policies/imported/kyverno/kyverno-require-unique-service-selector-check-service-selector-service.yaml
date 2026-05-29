@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-unique-service-selector-check-service-selector-service
     annotations:
-        aegis.io/imported-from: aegis-import-3409867003.yaml
+        aegis.io/imported-from: aegis-import-3865262044.yaml
         aegis.io/severity: low
         kyverno.io/category: Other
 spec:
@@ -14,7 +14,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+service|expose)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+service|expose)")
           message: There is already a matching selector for this Service.
           action: AUDIT
     defaultAction: ALLOW

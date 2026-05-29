@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-imagepullpolicy-always-imagepullpolicy-always-pod
     annotations:
-        aegis.io/imported-from: aegis-import-3352149567.yaml
+        aegis.io/imported-from: aegis-import-2927547320.yaml
         aegis.io/severity: medium
         kyverno.io/category: Sample
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
           message: The imagePullPolicy must be set to `Always` when the tag `latest` is used.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

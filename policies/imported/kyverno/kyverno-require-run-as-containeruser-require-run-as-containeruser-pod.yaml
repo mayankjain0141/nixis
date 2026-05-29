@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-run-as-containeruser-require-run-as-containeruser-pod
     annotations:
-        aegis.io/imported-from: aegis-import-2739885477.yaml
+        aegis.io/imported-from: aegis-import-3139349958.yaml
         aegis.io/severity: medium
         kyverno.io/category: Windows Security
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
           message: Running the container as ContainerAdministrator,NT AUTHORITY\NETWORK SERVICE, NT AUTHORITY\LOCAL SERVICE is not allowed.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

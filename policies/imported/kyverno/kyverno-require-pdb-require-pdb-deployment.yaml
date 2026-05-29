@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-pdb-require-pdb-deployment
     annotations:
-        aegis.io/imported-from: aegis-import-99674439.yaml
+        aegis.io/imported-from: aegis-import-1594067296.yaml
         aegis.io/severity: low
         kyverno.io/category: Sample, EKS Best Practices
 spec:
@@ -14,7 +14,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+deployment|scale|rollout)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+deployment|scale|rollout)")
           message: There is no corresponding PodDisruptionBudget found for this Deployment.
           action: AUDIT
     defaultAction: ALLOW

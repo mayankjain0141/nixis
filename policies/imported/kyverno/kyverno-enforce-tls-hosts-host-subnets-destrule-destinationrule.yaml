@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-enforce-tls-hosts-host-subnets-destrule-destinationrule
     annotations:
-        aegis.io/imported-from: aegis-import-4201530739.yaml
+        aegis.io/imported-from: aegis-import-734178230.yaml
         aegis.io/severity: medium
         kyverno.io/category: Istio
 spec:

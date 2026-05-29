@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-cordon-and-drain-node-mutate-node
     annotations:
-        aegis.io/imported-from: aegis-import-1248820526.yaml
+        aegis.io/imported-from: aegis-import-2224579529.yaml
         aegis.io/severity: low
         kyverno.io/category: Other
 spec:

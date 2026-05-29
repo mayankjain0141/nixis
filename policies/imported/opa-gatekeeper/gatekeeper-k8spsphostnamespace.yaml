@@ -7,7 +7,7 @@ kind: PolicyTemplate
 metadata:
     name: gatekeeper-k8spsphostnamespace
     annotations:
-        aegis.io/imported-from: aegis-import-874062597.yaml
+        aegis.io/imported-from: aegis-import-3639540106.yaml
         aegis.io/original-kind: K8sPSPHostNamespace
         aegis.io/severity: high
         aegis.io/source: open-policy-agent/gatekeeper-library

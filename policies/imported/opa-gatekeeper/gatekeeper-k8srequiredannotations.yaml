@@ -7,7 +7,7 @@ kind: PolicyTemplate
 metadata:
     name: gatekeeper-k8srequiredannotations
     annotations:
-        aegis.io/imported-from: aegis-import-4133597568.yaml
+        aegis.io/imported-from: aegis-import-961956840.yaml
         aegis.io/original-kind: K8sRequiredAnnotations
         aegis.io/severity: high
         aegis.io/source: open-policy-agent/gatekeeper-library

@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-unique-external-dns-ensure-valid-externaldns-annotation-service
     annotations:
-        aegis.io/imported-from: aegis-import-2146294532.yaml
+        aegis.io/imported-from: aegis-import-769618411.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:
@@ -14,7 +14,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+service|expose)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+service|expose)")
           message: External DNS entry "{{request.object.metadata.annotations."external-dns.alpha.kubernetes.io/hostname"}}" is already taken by another service in the cluster.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

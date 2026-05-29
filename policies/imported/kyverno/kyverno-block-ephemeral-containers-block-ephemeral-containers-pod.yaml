@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-block-ephemeral-containers-block-ephemeral-containers-pod
     annotations:
-        aegis.io/imported-from: aegis-import-4105707025.yaml
+        aegis.io/imported-from: aegis-import-642537711.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
           message: Ephemeral (debug) containers are not permitted.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

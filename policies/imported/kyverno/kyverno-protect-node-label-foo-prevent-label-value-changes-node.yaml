@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-protect-node-label-foo-prevent-label-value-changes-node
     annotations:
-        aegis.io/imported-from: aegis-import-3223420419.yaml
+        aegis.io/imported-from: aegis-import-2615706060.yaml
         aegis.io/severity: low
         kyverno.io/category: Sample
 spec:
@@ -14,7 +14,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(drain|cordon|delete\s+node)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(drain|cordon|delete\\s+node)")
           message: Modifying the `foo` label on a Node is not allowed.
           action: DENY
     defaultAction: ALLOW

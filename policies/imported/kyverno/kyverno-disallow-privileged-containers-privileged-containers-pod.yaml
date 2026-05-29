@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-disallow-privileged-containers-privileged-containers-pod
     annotations:
-        aegis.io/imported-from: aegis-import-2122899825.yaml
+        aegis.io/imported-from: aegis-import-1288447576.yaml
         aegis.io/severity: medium
         kyverno.io/category: Pod Security Standards (Baseline)
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
           message: Privileged mode is disallowed. The fields spec.containers[*].securityContext.privileged, spec.initContainers[*].securityContext.privileged, and spec.ephemeralContainers[*].securityContext.privileged must be unset or set to `false`.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

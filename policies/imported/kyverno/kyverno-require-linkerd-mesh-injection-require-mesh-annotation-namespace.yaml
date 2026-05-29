@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-linkerd-mesh-injection-require-mesh-annotation-namespace
     annotations:
-        aegis.io/imported-from: aegis-import-1475573898.yaml
+        aegis.io/imported-from: aegis-import-1109833947.yaml
         aegis.io/severity: medium
         kyverno.io/category: Linkerd
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+namespace|create\s+namespace)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+namespace|create\\s+namespace)")
           message: All Namespaces must set the annotation `linkerd.io/inject` to `enabled`.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

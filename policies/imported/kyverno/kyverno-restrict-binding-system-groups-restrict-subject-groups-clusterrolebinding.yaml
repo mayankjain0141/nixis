@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-binding-system-groups-restrict-subject-groups-clusterrolebinding
     annotations:
-        aegis.io/imported-from: aegis-import-2788118841.yaml
+        aegis.io/imported-from: aegis-import-3053260579.yaml
         aegis.io/severity: medium
         kyverno.io/category: Security, EKS Best Practices in CEL
 spec:

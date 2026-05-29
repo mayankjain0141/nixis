@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-deny-exec-by-pod-name-deny-exec-myapp-maintenance-pod-exec
     annotations:
-        aegis.io/imported-from: aegis-import-1207139242.yaml
+        aegis.io/imported-from: aegis-import-650571146.yaml
         aegis.io/severity: low
         kyverno.io/category: Sample
 spec:

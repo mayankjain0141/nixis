@@ -1,12 +1,12 @@
 # IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: create_symlink and (evt.arg.target in (/etc/shadow, /etc/sudoers, /etc/pam.conf, /etc/security/pwquality.conf) or evt.ar...
-# imported from: main via aegis policy import
+# imported from: rules via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-create-symlink-over-sensitive-files
     annotations:
         aegis.io/falco-tags: maturity_stable,host,container,filesystem,mitre_credential_access,T1555
-        aegis.io/imported-from: aegis-import-2766262408.yaml
+        aegis.io/imported-from: aegis-import-4101892790.yaml
         aegis.io/severity: medium
         aegis.io/source-rule: Create Symlink Over Sensitive Files
 spec:

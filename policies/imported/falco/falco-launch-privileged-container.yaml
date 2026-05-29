@@ -1,12 +1,12 @@
 # IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: container_started and container.privileged=true and not falco_privileged_containers and not user_privileged_containers a...
-# imported from: main via aegis policy import
+# imported from: rules via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-launch-privileged-container
     annotations:
         aegis.io/falco-tags: maturity_incubating,container,cis,mitre_execution,T1610,PCI_DSS_10.2.5
-        aegis.io/imported-from: aegis-import-487448035.yaml
+        aegis.io/imported-from: aegis-import-3831796007.yaml
         aegis.io/severity: low
         aegis.io/source-rule: Launch Privileged Container
 spec:

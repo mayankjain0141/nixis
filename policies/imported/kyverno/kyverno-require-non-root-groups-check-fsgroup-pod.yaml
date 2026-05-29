@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-non-root-groups-check-fsgroup-pod
     annotations:
-        aegis.io/imported-from: aegis-import-4281159808.yaml
+        aegis.io/imported-from: aegis-import-3190810158.yaml
         aegis.io/severity: medium
         kyverno.io/category: Sample, EKS Best Practices
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
           message: Containers cannot run with a root primary or supplementary GID. The field spec.securityContext.fsGroup must be unset or set to a value greater than zero.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

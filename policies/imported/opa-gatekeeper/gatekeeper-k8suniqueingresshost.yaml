@@ -8,7 +8,7 @@ kind: PolicyTemplate
 metadata:
     name: gatekeeper-k8suniqueingresshost
     annotations:
-        aegis.io/imported-from: aegis-import-2255254425.yaml
+        aegis.io/imported-from: aegis-import-847982546.yaml
         aegis.io/original-kind: K8sUniqueIngressHost
         aegis.io/severity: high
         aegis.io/source: open-policy-agent/gatekeeper-library
