@@ -46,15 +46,17 @@ export function AppShell({ header, metricsBar, sidebar, main, inspector }: AppSh
 interface AppHeaderProps {
   connectionState: string;
   onStartDemo: () => void;
+  onStopDemo: () => void;
   onOpenPalette: () => void;
 }
 
-export function AppHeader({ connectionState, onStartDemo, onOpenPalette }: AppHeaderProps) {
+export function AppHeader({ connectionState, onStartDemo, onStopDemo, onOpenPalette }: AppHeaderProps) {
   const CONNECTION_COLORS: Record<string, string> = {
     CONNECTED: '#2da44e', MOCK: '#8250df', CONNECTING: '#d29922',
     DISCONNECTED: '#cf222e', RECONNECTING: '#d29922', IDLE: '#484f58', FAILED: '#cf222e',
   };
   const color = CONNECTION_COLORS[connectionState] ?? '#484f58';
+  const isMock = connectionState === 'MOCK';
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', height: '100%', padding: '0 16px', gap: 12 }}>
@@ -70,33 +72,53 @@ export function AppHeader({ connectionState, onStartDemo, onOpenPalette }: AppHe
 
       <div style={{ flex: 1 }} />
 
-      <button
-        onClick={onStartDemo}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 7,
-          padding: '6px 16px', borderRadius: 6,
-          background: 'var(--info-blue)', border: 'none',
-          color: '#fff', cursor: 'pointer', fontSize: 12,
-          fontWeight: 600, letterSpacing: '0.01em',
-          boxShadow: '0 0 0 0 rgba(88,166,255,0.4)',
-          animation: 'demo-pulse 2.5s ease-in-out infinite',
-          transition: 'transform 0.1s, box-shadow 0.1s',
-        }}
-        onMouseEnter={e => {
-          e.currentTarget.style.transform = 'scale(1.04)';
-          e.currentTarget.style.animation = 'none';
-          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(88,166,255,0.35)';
-        }}
-        onMouseLeave={e => {
-          e.currentTarget.style.transform = 'scale(1)';
-          e.currentTarget.style.animation = 'demo-pulse 2.5s ease-in-out infinite';
-          e.currentTarget.style.boxShadow = '0 0 0 0 rgba(88,166,255,0.4)';
-        }}
-        onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.97)')}
-        onMouseUp={e => (e.currentTarget.style.transform = 'scale(1.04)')}
-      >
-        <span style={{ fontSize: 11 }}>▶</span> Start Demo
-      </button>
+      {isMock ? (
+        <button
+          onClick={onStopDemo}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 7,
+            padding: '6px 16px', borderRadius: 6,
+            background: '#21262d', border: '1px solid #cf222e',
+            color: '#cf222e', cursor: 'pointer', fontSize: 12,
+            fontWeight: 600, letterSpacing: '0.01em',
+            transition: 'transform 0.1s, background 0.1s',
+          }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(207,34,46,0.15)')}
+          onMouseLeave={e => (e.currentTarget.style.background = '#21262d')}
+          onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.97)')}
+          onMouseUp={e => (e.currentTarget.style.transform = 'scale(1)')}
+        >
+          <span style={{ fontSize: 11 }}>&#x25A0;</span> Stop
+        </button>
+      ) : (
+        <button
+          onClick={onStartDemo}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 7,
+            padding: '6px 16px', borderRadius: 6,
+            background: 'var(--info-blue)', border: 'none',
+            color: '#fff', cursor: 'pointer', fontSize: 12,
+            fontWeight: 600, letterSpacing: '0.01em',
+            boxShadow: '0 0 0 0 rgba(88,166,255,0.4)',
+            animation: 'demo-pulse 2.5s ease-in-out infinite',
+            transition: 'transform 0.1s, box-shadow 0.1s',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.transform = 'scale(1.04)';
+            e.currentTarget.style.animation = 'none';
+            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(88,166,255,0.35)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.transform = 'scale(1)';
+            e.currentTarget.style.animation = 'demo-pulse 2.5s ease-in-out infinite';
+            e.currentTarget.style.boxShadow = '0 0 0 0 rgba(88,166,255,0.4)';
+          }}
+          onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.97)')}
+          onMouseUp={e => (e.currentTarget.style.transform = 'scale(1.04)')}
+        >
+          <span style={{ fontSize: 11 }}>&#x25B6;</span> Start Demo
+        </button>
+      )}
 
       <button
         onClick={onOpenPalette}
