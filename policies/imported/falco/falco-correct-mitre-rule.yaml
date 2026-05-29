@@ -14,6 +14,8 @@ spec:
     description: an attempt to write to any file below /etc
     matchConstraints:
         tools:
+            - Write
+            - Edit
             - Bash
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.startsWith("/etc/") || tool == "Bash" && request.args.command.matches(".*>\\s*/etc/.*")'

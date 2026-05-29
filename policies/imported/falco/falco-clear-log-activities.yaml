@@ -15,11 +15,11 @@ spec:
         Detect clearing of critical access log files, typically done to erase evidence that could be attributed to an adversary's actions. To effectively customize and operationalize this detection, check for potentially missing log file destinations relevant to your environment, and adjust the profiled containers you wish not to be alerted on.
     matchConstraints:
         tools:
-            - Read
             - Write
             - Edit
+            - Bash
     validations:
-        - expression: 'tool == "Bash" && (request.args.command.matches(".*truncate.*/var/log.*") || request.args.command.matches(".*> /var/log/.*") || request.args.command.matches(".*rm -f /var/log/.*")) || (tool == "Write" || tool == "Edit") && request.args.path.startsWith("/var/log/")'
+        - expression: 'tool == "Bash" && (request.args.command.matches(".*truncate.*-s\\s*0.*/var/log/.*") || request.args.command.matches(".*>\\s*/var/log/.*") || request.args.command.matches(".*rm\\s+-f\\s+/var/log/.*") || request.args.command.matches(".*shred.*/var/log/.*")) || ((tool == "Write" || tool == "Edit") && request.args.path.startsWith("/var/log/") && request.args.content == "")'
           message: 'Falco rule violated: Clear Log Activities'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
