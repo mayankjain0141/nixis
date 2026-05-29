@@ -1,3 +1,4 @@
+# IMPORT_REVIEW: translated by Claude — verify semantics
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -6,15 +7,14 @@ metadata:
     annotations:
         aegis.io/imported-from: aegis-import-557846200.yaml
         aegis.io/severity: medium
+        aegis.io/llm-confidence: low
         kyverno.io/category: Software Supply Chain Security
 spec:
     description: There may be multiple keys used to sign images based on the parties involved in the creation process. This image verification policy requires the named image be signed by two separate keys. It will search for a global "production" key in a ConfigMap called `keys` in the `default` Namespace and also a Namespace key in the same ConfigMap.
     matchConstraints:
-        tools:
-            - Write
-            - Edit
+        tools: []
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("image:") && !request.args.content.contains("cosign.sigstore.dev/imageDigest")'
-          message: 'Container images must be signed with a valid cosign signature'
-          action: REQUIRE_APPROVAL
+        - expression: 'false'
+          message: 'IMPORT_REVIEW: multi-key cosign signature verification — requires cryptographic registry API calls for two separate keys; cannot verify from manifest content alone'
+          action: AUDIT
     defaultAction: ALLOW
