@@ -38,7 +38,7 @@ type Config struct {
 	// FailOpenLog is the path to the fail-open append log reconciled on startup.
 	// Defaults to ~/.aegis/failopen.log (or $AEGIS_FAILOPEN_LOG).
 	FailOpenLog string
-	// HealthzAddr is the address for the /healthz HTTP endpoint. Defaults to ":9091".
+	// HealthzAddr is the address for the /healthz HTTP endpoint. Defaults to "127.0.0.1:9091".
 	HealthzAddr string
 }
 
