@@ -1,4 +1,8 @@
 # imported from: policies via aegis policy import
+# Gap: Kyverno uses JMESPath to parse the base64-encoded PEM/DER CSR blob and extract the
+# Subject (CN, O, etc.) for the policy report. CEL file-content matching cannot decode base64
+# or parse DER-encoded ASN.1 structures — detection is limited to kind: CertificateSigningRequest
+# presence; Subject inspection must be performed out-of-band.
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:

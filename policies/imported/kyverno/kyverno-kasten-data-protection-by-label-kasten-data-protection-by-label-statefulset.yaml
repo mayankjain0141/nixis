@@ -1,4 +1,8 @@
 # imported from: policies via aegis policy import
+# Gap: Kyverno checks via namespaceSelector whether the *namespace* carries environment=production,
+# not the workload manifest itself. CEL cannot look up namespace labels at file-write time.
+# Expression fires when the StatefulSet manifest carries the label inline — will miss workloads
+# in production namespaces whose manifests do not repeat the environment label.
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:
