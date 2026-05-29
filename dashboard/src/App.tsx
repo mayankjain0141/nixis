@@ -100,6 +100,8 @@ function buildPolicyUpdate(
     timestamp: event.envelope.time
       ? new Date(event.envelope.time).getTime() * 1_000_000
       : Date.now() * 1_000_000,
+    celExpression: (d.decision as { cel_expression?: string }).cel_expression,
+    requestArgs: (d as { request_args?: string }).request_args,
   };
 
   const isDeny = d.decision.action === 'deny' || d.decision.action === 'require_approval';

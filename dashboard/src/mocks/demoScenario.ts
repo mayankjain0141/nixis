@@ -41,6 +41,22 @@ const POLICIES = [
   { id: 'aegis/no-secret-transmission', cel: '!response.contains_secret || verdict == "deny"' },
 ];
 
+// ── Imported policy sample — real policies from the imported catalog ──────────
+// These appear in the bundle alongside the 6 core policies so the sidebar shows
+// what the daemon would actually load from disk (696 policies available).
+const IMPORTED_POLICIES = [
+  { id: 'gatekeeper/block-load-balancer',     cel: 'tool == "Bash" && request.args.command.matches("kubectl.*")' },
+  { id: 'gatekeeper/verify-deprecated-api',   cel: 'tool == "Bash" && request.args.command.matches("kubectl.*")' },
+  { id: 'gatekeeper/container-limits',        cel: 'tool == "Bash" && request.args.command.matches("kubectl.*(create|apply).*")' },
+  { id: 'falco/ssh-keys-authorized',          cel: 'tool == "Bash" && request.args.command.matches("(?i)\\\\b(ssh-keygen|ssh-add|ssh-keyscan)\\\\b")' },
+  { id: 'falco/backdoored-library-cve-2024',  cel: 'tool.matches("Read|Write|Edit") && request.args.path.contains("liblzma.so.5.6.0")' },
+  { id: 'kyverno/no-privileged-containers',   cel: 'tool == "Bash" && request.args.command.matches(".*privileged.*")' },
+  { id: 'agentwall/no-web-scraping',          cel: 'tool == "WebFetch" && request.args.url.matches(".*\\\\.(onion|i2p).*")' },
+  { id: 'agentwall/rate-limit-llm-calls',     cel: 'tool == "WebFetch" && request.args.url.matches(".*(openai|anthropic|huggingface)\\\\..*")' },
+  { id: 'sigma/masquerading-execution',       cel: 'tool == "Bash" && request.args.command.matches(".*(rundll32|regsvr32|mshta).*")' },
+  { id: 'catalog/block-kubectl-delete-node',  cel: 'tool == "Bash" && request.args.command.matches("kubectl delete node.*")' },
+];
+
 // ── Helper builders ───────────────────────────────────────────────────────────
 let _seq = 0;
 function seq(): number { return ++_seq; }
@@ -70,12 +86,14 @@ function policyEval(opts: {
   label?: typeof L_UNCLASSIFIED;
   labelState?: string;
   latencyNs?: number;
+  requestArgs?: string;   // the actual command / path / query that triggered evaluation
 }): string {
   const type = (opts.action === 'deny' || opts.action === 'require_approval')
     ? 'policy.denied' : 'policy.evaluated';
   return ce(type, {
     tool: opts.tool,
     session_id: opts.sessionId,
+    request_args: opts.requestArgs,
     decision: {
       action: opts.action,
       reason: opts.reason ?? '',
@@ -102,7 +120,10 @@ export function buildDemoScenario(): DemoStep[] {
         version: 1,
         policy_count: 6,
         activated_at: Date.now(),
-        policies: POLICIES.map(p => ({ id: p.id, enabled: true, layer: 'cel', cel_expression: p.cel })),
+        policies: [
+          ...POLICIES.map(p => ({ id: p.id, enabled: true, layer: 'cel', cel_expression: p.cel })),
+          ...IMPORTED_POLICIES.map(p => ({ id: p.id, enabled: true, layer: 'cel', cel_expression: p.cel })),
+        ],
       }),
     },
 
@@ -117,6 +138,7 @@ export function buildDemoScenario(): DemoStep[] {
         cel: 'tool == "Read"',
         label: L_UNCLASSIFIED,
         latencyNs: 92_000,
+        requestArgs: '/home/user/project/README.md',
       }),
     },
 
@@ -131,6 +153,7 @@ export function buildDemoScenario(): DemoStep[] {
         cel: '!(tool == "Bash" && request.args.command.matches(".*rm\\s+-rf.*|.*--force.*"))',
         label: L_UNCLASSIFIED,
         latencyNs: 115_000,
+        requestArgs: 'ls -la /home/user/project/',
       }),
     },
 
@@ -172,6 +195,7 @@ export function buildDemoScenario(): DemoStep[] {
         cel: 'tool == "Read" && request.args.path.matches(".*(secret|api.key|passwd|shadow).*")',
         label: L_UNCLASSIFIED,
         latencyNs: 3_200_000, // 3.2ms — cold CEL program compile
+        requestArgs: '/var/secrets/api.key',
       }),
     },
 
@@ -200,6 +224,7 @@ export function buildDemoScenario(): DemoStep[] {
         label: L_CONFIDENTIAL,
         labelState: 'escalated',
         latencyNs: 245_000,
+        requestArgs: 'SELECT * FROM prod-users WHERE email LIKE "%@company.com"',
       }),
     },
 
@@ -216,6 +241,7 @@ export function buildDemoScenario(): DemoStep[] {
         label: L_CONFIDENTIAL,
         labelState: 'escalated',
         latencyNs: 189_000,
+        requestArgs: 'git push --force origin main',
       }),
     },
 
@@ -270,6 +296,7 @@ export function buildDemoScenario(): DemoStep[] {
         label: L_RESTRICTED,
         labelState: 'tainted_by_secret',
         latencyNs: 201_000,
+        requestArgs: '/etc/passwd',
       }),
     },
 
@@ -380,6 +407,22 @@ export function buildDemoScenario(): DemoStep[] {
       }),
     },
 
+    // ── 21.6s: kubectl apply — DENY via gatekeeper/block-load-balancer ──────────
+    {
+      delayMs: 800,
+      json: policyEval({
+        tool: 'Bash',
+        sessionId: SESS_OPERATOR,
+        action: 'deny',
+        reason: 'OPA Gatekeeper: kubectl operations are audited — LoadBalancer type blocked',
+        policyId: 'gatekeeper/block-load-balancer',
+        cel: 'tool == "Bash" && request.args.command.matches("kubectl.*")',
+        label: L_RESTRICTED,
+        latencyNs: 312_000,
+        requestArgs: 'kubectl apply -f loadbalancer-service.yaml',
+      }),
+    },
+
     // ── 22.0s: Delegation expired ─────────────────────────────────────────────
     {
       delayMs: 1200,
@@ -404,6 +447,7 @@ export function buildDemoScenario(): DemoStep[] {
         label: L_RESTRICTED,
         labelState: 'tainted_by_secret',
         latencyNs: 166_000,
+        requestArgs: 'rm -rf /tmp/critical-data/',
       }),
     },
 

@@ -141,6 +141,9 @@ export function Inspector() {
         {/* Key facts */}
         <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
           <KeyRow label="Tool"    value={event.tool} mono />
+          {(event as any).requestArgs && (
+            <KeyRow label="Command" value={(event as any).requestArgs} mono />
+          )}
           <KeyRow label="Policy"  value={policy?.name ?? event.policyId ?? '—'} />
           <KeyRow label="Layer"   value={event.enforcingLayer} />
           <KeyRow label="Session" value={event.sessionId?.slice(-8) ?? '—'} mono />
