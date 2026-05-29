@@ -1,4 +1,4 @@
-# IMPORT_TODO: JMESPath conditions in record-creation-details/prevent-updates-deletes-userinfo-annotations could not be translated — kubectl pattern match generated as base condition only
+# IMPORT_TODO: JMESPath conditions in record-creation-details/prevent-updates-deletes-userinfo-annotations could not be translated — content check for annotation key generated as base condition only
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -15,7 +15,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
-          message: 'Policy validation required — review manifest before applying'
-          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && !request.args.content.contains("kyverno.io/created-by")'
+          message: 'Resources must include the kyverno.io/created-by userInfo annotation before updates or deletes'
+          action: DENY
     defaultAction: ALLOW
