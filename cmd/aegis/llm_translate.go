@@ -16,6 +16,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -59,10 +60,11 @@ Output: tool == "Bash" && bash.isGitForcePush(request.args.command) && bash.gitB
 
 // anthropicRequest is the JSON body for a Claude API call.
 type anthropicRequest struct {
-	Model     string             `json:"model"`
-	MaxTokens int                `json:"max_tokens"`
-	System    string             `json:"system"`
-	Messages  []anthropicMessage `json:"messages"`
+	Model             string             `json:"model,omitempty"`
+	MaxTokens         int                `json:"max_tokens"`
+	System            string             `json:"system"`
+	Messages          []anthropicMessage `json:"messages"`
+	AnthropicVersion  string             `json:"anthropic_version,omitempty"`
 }
 
 // anthropicMessage is one message in the conversation.
@@ -92,11 +94,13 @@ type translationCacheEntry struct {
 
 // LLMTranslator translates opaque policy snippets to CEL using the Claude API.
 type LLMTranslator struct {
-	model      string
-	maxRetries int
-	apiKey     string
-	cacheDir   string
-	celEnv     *aegisCEL.CELEnvironment
+	model           string
+	maxRetries      int
+	apiKey          string
+	vertexProject   string
+	vertexRegion    string
+	cacheDir        string
+	celEnv          *aegisCEL.CELEnvironment
 }
 
 // NewLLMTranslator constructs an LLMTranslator. It returns an error only if the
@@ -115,11 +119,13 @@ func NewLLMTranslator(model string, maxRetries int) (*LLMTranslator, error) {
 	cacheDir := filepath.Join(home, ".aegis", "import-cache")
 
 	return &LLMTranslator{
-		model:      model,
-		maxRetries: maxRetries,
-		apiKey:     os.Getenv("ANTHROPIC_API_KEY"),
-		cacheDir:   cacheDir,
-		celEnv:     celEnv,
+		model:         model,
+		maxRetries:    maxRetries,
+		apiKey:        os.Getenv("ANTHROPIC_API_KEY"),
+		vertexProject: os.Getenv("ANTHROPIC_VERTEX_PROJECT_ID"),
+		vertexRegion:  os.Getenv("CLOUD_ML_REGION"),
+		cacheDir:      cacheDir,
+		celEnv:        celEnv,
 	}, nil
 }
 
@@ -134,7 +140,7 @@ func NewLLMTranslator(model string, maxRetries int) (*LLMTranslator, error) {
 // Translate is NOT safe for concurrent calls on the same LLMTranslator (cache reads
 // and writes are not locked). Import commands run single-threaded, so this is fine.
 func (t *LLMTranslator) Translate(ctx context.Context, snippet, sourceFormat string) (celExpr string, attempts int, err error) {
-	if t.apiKey == "" {
+	if t.apiKey == "" && t.vertexProject == "" {
 		return "", 0, fmt.Errorf("ANTHROPIC_API_KEY not set — skipping LLM translation")
 	}
 
@@ -192,14 +198,54 @@ func (t *LLMTranslator) Translate(ctx context.Context, snippet, sourceFormat str
 
 // callAPI sends one message turn to the Claude API and returns the text response.
 // It enforces a 30-second timeout (respecting the parent context).
+// When ANTHROPIC_API_KEY is set it uses the direct API; otherwise it falls back
+// to Vertex AI using a Bearer token from `gcloud auth print-access-token`.
 func (t *LLMTranslator) callAPI(ctx context.Context, userContent string) (string, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
+	var (
+		endpoint     string
+		authKey      string
+		authVal      string
+		anthropicVer string
+		bodyModel    string
+	)
+
+	if t.apiKey != "" {
+		endpoint = anthropicURL
+		authKey = "x-api-key"
+		authVal = t.apiKey
+		anthropicVer = "2023-06-01"
+		bodyModel = t.model
+	} else {
+		// Vertex AI path — get a Bearer token via gcloud.
+		out, tokenErr := exec.CommandContext(reqCtx, "gcloud", "auth", "print-access-token").Output()
+		if tokenErr != nil {
+			return "", fmt.Errorf("gcloud auth print-access-token: %w", tokenErr)
+		}
+		token := strings.TrimSpace(string(out))
+
+		// Vertex AI uses a fixed region for Anthropic models; "global" is not a valid location.
+		region := t.vertexRegion
+		if region == "" || region == "global" {
+			region = "us-east5"
+		}
+		// Vertex AI model IDs use "@" separator (e.g. claude-haiku-4-5@20251001).
+		vertexModel := vertexModelID(t.model)
+		endpoint = fmt.Sprintf("https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/anthropic/models/%s:rawPredict",
+			region, t.vertexProject, region, vertexModel)
+		authKey = "Authorization"
+		authVal = "Bearer " + token
+		anthropicVer = "vertex-2023-10-16"
+		bodyModel = "" // Vertex AI reads model from the URL path
+	}
+
 	body := anthropicRequest{
-		Model:     t.model,
-		MaxTokens: 512,
-		System:    llmSystemPrompt,
+		Model:            bodyModel,
+		MaxTokens:        512,
+		System:           llmSystemPrompt,
+		AnthropicVersion: anthropicVer,
 		Messages: []anthropicMessage{
 			{Role: "user", Content: userContent},
 		},
@@ -210,12 +256,12 @@ func (t *LLMTranslator) callAPI(ctx context.Context, userContent string) (string
 		return "", fmt.Errorf("marshal request: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, anthropicURL, bytes.NewReader(bodyBytes))
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, endpoint, bytes.NewReader(bodyBytes))
 	if err != nil {
 		return "", fmt.Errorf("build request: %w", err)
 	}
-	req.Header.Set("x-api-key", t.apiKey)
-	req.Header.Set("anthropic-version", "2023-06-01")
+	req.Header.Set(authKey, authVal)
+	req.Header.Set("anthropic-version", anthropicVer)
 	req.Header.Set("content-type", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
@@ -327,6 +373,27 @@ func (t *LLMTranslator) saveCache(entry translationCacheEntry) {
 		return
 	}
 	_ = os.WriteFile(path, data, 0600)
+}
+
+// vertexModelID converts a standard Claude model ID to the Vertex AI format.
+// Vertex AI uses "@" as the separator before the date suffix rather than "-".
+// e.g. "claude-haiku-4-5-20251001" → "claude-haiku-4-5@20251001"
+func vertexModelID(model string) string {
+	// Date suffixes are 8-digit strings; replace the last "-YYYYMMDD" with "@YYYYMMDD".
+	if len(model) > 9 {
+		suffix := model[len(model)-8:]
+		allDigits := true
+		for _, c := range suffix {
+			if c < '0' || c > '9' {
+				allDigits = false
+				break
+			}
+		}
+		if allDigits && model[len(model)-9] == '-' {
+			return model[:len(model)-9] + "@" + suffix
+		}
+	}
+	return model
 }
 
 // truncateStr returns s truncated to at most n bytes, appending "..." if truncated.
