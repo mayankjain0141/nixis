@@ -39,8 +39,8 @@ describe('AuditHashChain', () => {
     useGovernanceStore.getState().appendEvent(makeAuditEvent(1));
     useGovernanceStore.getState().appendEvent(makeAuditEvent(2));
     render(<AuditHashChain />);
-    expect(screen.getByText('#1')).toBeTruthy();
-    expect(screen.getByText('#2')).toBeTruthy();
+    expect(screen.getByText(/Block #1/)).toBeTruthy();
+    expect(screen.getByText(/Block #2/)).toBeTruthy();
   });
 
   it('TestAuditHashChain_FiltersNonAudit: non-audit events are not shown', () => {
