@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -122,7 +123,9 @@ func TestAudit_WriteRecord_Roundtrip(t *testing.T) {
 
 // TestAudit_AppendOnly_NoUpdate verifies the schema DDL and audit.go contain no UPDATE/DELETE.
 func TestAudit_AppendOnly_NoUpdate(t *testing.T) {
-	src, err := os.ReadFile("audit.go")
+	_, thisFile, _, _ := runtime.Caller(0)
+	auditGoPath := filepath.Join(filepath.Dir(thisFile), "audit.go")
+	src, err := os.ReadFile(auditGoPath)
 	if err != nil {
 		t.Fatalf("read audit.go: %v", err)
 	}
