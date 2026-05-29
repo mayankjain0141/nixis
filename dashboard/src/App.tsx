@@ -19,6 +19,7 @@ import { useUIStore } from './stores/ui-store';
 import { useLatticeStore } from './stores/lattice-store';
 import { useThreatStore } from './stores/threat-store';
 import { createMockStreamGenerator } from './mocks/streamGenerator';
+import { runDemoScenario } from './mocks/demoScenario';
 import { createWebSocketManager } from './lib/realtime/ws-manager';
 import { createEventIngestionPipeline } from './lib/realtime/ingestion-pipeline';
 import { createEventBus } from './lib/realtime/event-bus';
@@ -281,15 +282,23 @@ export default function App() {
       if (state.requestMockMode) {
         useStreamStore.getState().setConnectionState('MOCK');
         if (mockGenRef.current === null) {
-          const gen = createMockStreamGenerator(50);
-          mockGenRef.current = gen;
-          gen.onEvent((e) => {
-            mockSeqRef.current++;
-            // pipeline may not be available here; dispatch via custom event so main effect picks it up
-            const raw = mockEventToCloudEvent(e, mockSeqRef.current);
-            window.dispatchEvent(new CustomEvent('aegis:mock-event', { detail: raw }));
-          });
-          gen.start();
+          // Run scripted demo scenario via custom event (pipeline not available here).
+          const cancelDemo = runDemoScenario(
+            (json) => {
+              window.dispatchEvent(new CustomEvent('aegis:mock-event', { detail: json }));
+            },
+            () => {
+              const gen = createMockStreamGenerator(8);
+              gen.onEvent((e) => {
+                mockSeqRef.current++;
+                const raw = mockEventToCloudEvent(e, mockSeqRef.current);
+                window.dispatchEvent(new CustomEvent('aegis:mock-event', { detail: raw }));
+              });
+              gen.start();
+              mockGenRef.current = gen;
+            },
+          );
+          mockGenRef.current = { stop: cancelDemo } as ReturnType<typeof createMockStreamGenerator>;
         }
       } else {
         mockGenRef.current?.stop();
@@ -390,14 +399,25 @@ export default function App() {
       if (useMock) return;
       useMock = true;
       setConnectionState('MOCK');
-      const gen = createMockStreamGenerator(50);
-      mockGenRef.current = gen;
-      gen.onEvent((e: StreamEvent) => {
-        mockSeqRef.current++;
-        const raw = mockEventToCloudEvent(e, mockSeqRef.current);
-        pipeline.ingest(raw, { receivedAt: performance.now() });
-      });
-      gen.start();
+      // Play the scripted demo scenario first, then fall back to random events.
+      const cancelDemo = runDemoScenario(
+        (json) => {
+          pipeline.ingest(json, { receivedAt: performance.now() });
+        },
+        () => {
+          // Demo finished — start random background events at a slow rate.
+          const gen = createMockStreamGenerator(8);
+          mockGenRef.current = gen;
+          gen.onEvent((e: StreamEvent) => {
+            mockSeqRef.current++;
+            const raw = mockEventToCloudEvent(e, mockSeqRef.current);
+            pipeline.ingest(raw, { receivedAt: performance.now() });
+          });
+          gen.start();
+        },
+      );
+      // Store cancel in mockGenRef via a shim so cleanup works.
+      mockGenRef.current = { stop: cancelDemo } as ReturnType<typeof createMockStreamGenerator>;
     }
 
     // Forward mock events dispatched by the requestMockMode subscriber into the live pipeline.
