@@ -11,9 +11,10 @@ spec:
     description: ServiceAccounts with privileges to create Pods may be able to do so and name a ServiceAccount other than the one used to create it. This policy checks the Pod, if created by a ServiceAccount, and ensures the `serviceAccountName` field matches the actual ServiceAccount.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("serviceAccountName:") && request.args.content.contains("default")'
           message: The ServiceAccount used to create this Pod is confined to using the same account when running the Pod.
-          action: AUDIT
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

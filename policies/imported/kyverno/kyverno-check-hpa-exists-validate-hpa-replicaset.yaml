@@ -14,7 +14,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\s+(apply|create).*")'
           message: Deployment is not allowed without a corresponding HPA.
-          action: REQUIRE_APPROVAL
+          action: AUDIT
     defaultAction: ALLOW

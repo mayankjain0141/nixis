@@ -11,9 +11,10 @@ spec:
     description: This policy ensures that the name of the ApplicationSet is the same value provided in the project.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("kind: Application") || request.args.content.contains("kind: AppProject")'
           message: The name must match the project.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
