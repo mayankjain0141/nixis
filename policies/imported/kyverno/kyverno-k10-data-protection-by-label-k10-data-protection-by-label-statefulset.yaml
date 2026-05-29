@@ -1,4 +1,8 @@
 # imported from: policies via aegis policy import
+# Gap: Kyverno checks via namespaceSelector whether the *namespace* carries environment=production,
+# not the workload manifest itself. CEL cannot look up namespace labels at file-write time.
+# Expression fires when the StatefulSet manifest carries the label inline — will miss workloads
+# in production namespaces whose manifests do not repeat the environment label.
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:
@@ -14,7 +18,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (request.args.content.contains("kind: Deployment") || request.args.content.contains("kind: StatefulSet")) && request.args.content.contains("production") && !request.args.content.contains("dataprotection:")'
-          message: 'Production Deployments and StatefulSets must have a dataprotection label'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: StatefulSet") && (request.args.content.contains("environment: production") || request.args.content.contains("env: production")) && !request.args.content.contains("dataprotection:")'
+          message: 'Production StatefulSets must have a dataprotection label for K10'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
