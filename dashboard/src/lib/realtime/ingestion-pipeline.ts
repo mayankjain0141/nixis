@@ -56,9 +56,13 @@ const DelegationDataSchema = z.object({
 });
 
 const AuditCheckpointDataSchema = z.object({
+  sequence: z.number().int().optional(),
   hash: z.string(),
-  prevHash: z.string(),
-  eventCount: z.number().int(),
+  prev_hash: z.string().optional(),
+  prevHash: z.string().optional(),
+  events_since_prev: z.number().int().optional(),
+  eventCount: z.number().int().optional(),
+  merkle_root: z.string().optional(),
   signedTreeHead: z.string().optional(),
 });
 
