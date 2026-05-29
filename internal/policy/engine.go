@@ -20,6 +20,7 @@ package policy
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -226,7 +227,10 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 		)
 	}
 
-	sessionLabel := e.sessions.Current(req.SessionID)
+	var sessionLabel aegis.SecurityLabel
+	if e.sessions != nil {
+		sessionLabel = e.sessions.Current(req.SessionID)
+	}
 	resourceLabel := req.SecurityLabel
 
 	if !ifc.Dominates(sessionLabel, resourceLabel) {
@@ -238,7 +242,10 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 		)
 	}
 
-	ceiling := e.sessions.Ceiling(req.SessionID)
+	var ceiling aegis.SecurityLabel
+	if e.sessions != nil {
+		ceiling = e.sessions.Ceiling(req.SessionID)
+	}
 	if !ifc.Dominates(ceiling, sessionLabel) {
 		return denyResponseWithVerdict(
 			"delegation ceiling exceeded",
@@ -269,6 +276,7 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 
 		val, err := e.activationBuilder.Evaluate(ctx, prog, req, verdict, decodedArgs)
 		if err != nil {
+			log.Printf("WARN: policy %s eval error (skipping): %v", cb.binding.TemplateID, err)
 			continue
 		}
 
@@ -299,7 +307,9 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 		if content != "" {
 			findings, elevatedLabel := e.secretScanner.ScanBoundary(ctx, content, BoundaryToolArgs)
 			if len(findings) > 0 {
-				e.sessions.TaintWithSecret(req.SessionID)
+				if e.sessions != nil {
+					e.sessions.TaintWithSecret(req.SessionID)
+				}
 				return aegis.CheckResponse{
 					Decision: aegis.Decision{
 						Action:   aegis.ActionDeny,

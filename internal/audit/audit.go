@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/json"
+	"log"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -136,6 +137,7 @@ func (w *Writer) WriteRecord(r AuditRecord) {
 	select {
 	case w.ch <- writeItem{record: &r}:
 	default:
+		log.Printf("WARNING: audit record dropped (total dropped: %d) — buffer full", w.dropped.Load()+1)
 		w.dropped.Add(1)
 		otel.InstrumentAuditDropped().Add(context.Background(), 1)
 	}
@@ -176,20 +178,26 @@ func (w *Writer) writeBatch(batch []writeItem, prevHash [32]byte) [32]byte {
 		if item.record != nil {
 			next, err := w.insertRecord(tx, item.record, current)
 			if err != nil {
-				_ = tx.Rollback()
+				if rbErr := tx.Rollback(); rbErr != nil {
+					log.Printf("audit: tx.Rollback error (non-fatal): %v", rbErr)
+				}
 				return prevHash
 			}
 			current = next
 		} else if item.labelRecord != nil {
 			if err := w.insertSessionLabel(tx, item.labelRecord); err != nil {
-				_ = tx.Rollback()
+				if rbErr := tx.Rollback(); rbErr != nil {
+					log.Printf("audit: tx.Rollback error (non-fatal): %v", rbErr)
+				}
 				return prevHash
 			}
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		_ = tx.Rollback()
+		if rbErr := tx.Rollback(); rbErr != nil {
+			log.Printf("audit: tx.Rollback error (non-fatal): %v", rbErr)
+		}
 		return prevHash
 	}
 	return current
