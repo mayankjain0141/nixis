@@ -17,7 +17,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*(apt-get|apt|yum|dnf|pip|pip3|npm|gem)\\s+(install|update|upgrade).*")'
+        - expression: 'tool == "Bash" && request.args.command.matches(".*\\b(apt-get|apt|yum|dnf|pip|pip3|npm|gem)\\s+(install|update|upgrade)\\b.*")'
           message: 'Falco rule violated: Launch Package Management Process in Container'
           action: DENY
     defaultAction: ALLOW

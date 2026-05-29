@@ -17,7 +17,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*\\bmkdir\\b.*(/(usr/)?(bin|sbin|lib|lib64)).*")'
+        - expression: 'tool == "Bash" && request.args.command.matches(".*\\bmkdir\\b.*\\s/(usr/(bin|sbin|lib|lib64)|bin|sbin|lib|lib64)(/|\\s|$).*")'
           message: 'Falco rule violated: Mkdir binary dirs'
           action: DENY
     defaultAction: ALLOW

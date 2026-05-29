@@ -17,7 +17,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && (request.args.command.matches(".*(xmrig|minerd|cgminer|bfgminer|cpuminer|ethminer|xmr-stak).*") || request.args.command.contains("stratum+tcp://"))'
+        - expression: 'tool == "Bash" && (request.args.command.matches(".*\\b(xmrig|minerd|cgminer|bfgminer|cpuminer|ethminer|xmr-stak)\\b.*") || request.args.command.contains("stratum+tcp://"))'
           message: 'Falco rule violated: Known Cryptominer Process Executed'
           action: DENY
     defaultAction: ALLOW
