@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Restore") && request.args.content.matches(".*namespace:\\s*(protected|production|kube-system).*")'
-          message: Velero allows on backup and restore operations and is designed to be run with full cluster admin permissions. It allows on cross namespace restore operations, which means you can restore backup of namespace A to namespace B. This policy protect restore operation into system or any protected namespaces, listed in deny condition section.  It checks the Restore CRD object and its namespaceMapping field. If destination match protected namespace then operation fails and warning message is throw.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Restore") && (request.args.content.contains(": kube-system") || request.args.content.contains(": kube-public") || request.args.content.contains(": kube-node-lease") || request.args.content.contains(": default"))'
+          message: 'Velero Restore targets a protected namespace (kube-system, kube-public, kube-node-lease, or default). Restoring into system namespaces is not allowed — review namespaceMapping destination values.'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
