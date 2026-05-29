@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Package secret implements secret detection for Aegis using Gitleaks.
 package secret
 

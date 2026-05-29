@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Package stream implements the WebSocket streaming server for the Aegis dashboard.
 // It receives governance events via the StreamTap interface and fans them out
 // to connected dashboard clients over WebSocket (RFC 6455), CloudEvents v1.0 format.

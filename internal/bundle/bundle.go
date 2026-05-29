@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Package bundle implements the policy bundle distribution and activation subsystem.
 package bundle
 

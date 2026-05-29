@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 package stream
 
 // validEventTypes is the set of 12 canonical wire event types.

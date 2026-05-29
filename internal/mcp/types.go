@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Package mcp implements an MCP proxy with Aegis governance.
 //
 // The proxy sits between an MCP client (e.g. Claude Code) and an upstream MCP

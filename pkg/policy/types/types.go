@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 package types
 
 // PolicyTemplate is a reusable policy pattern.

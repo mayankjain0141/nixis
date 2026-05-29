@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Package daemon implements the Aegis governance daemon: Unix socket listener,
 // length-prefixed JSON framing, policy evaluation dispatch, and graceful shutdown.
 //

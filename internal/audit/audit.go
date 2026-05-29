@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Package audit provides append-only SQLite persistence for Aegis governance decisions.
 // A single goroutine writes to SQLite (INV-8). The hot path enqueues via a buffered
 // channel and never blocks.
