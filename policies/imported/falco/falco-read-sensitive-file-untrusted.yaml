@@ -14,10 +14,9 @@ spec:
     matchConstraints:
         tools:
             - Read
-            - Write
-            - Edit
+            - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)\\b(login|systemd|\"(systemd)\\b")
+        - expression: '(tool == "Read" && request.args.path.matches(".*(shadow|gshadow|sudoers|ssh_host_[a-z]+_key|passwd|group).*")) || (tool == "Bash" && request.args.command.matches(".*\\bcat\\b.*(shadow|gshadow|sudoers|passwd).*"))'
           message: 'Falco rule violated: Read sensitive file untrusted'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

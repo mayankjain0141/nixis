@@ -17,7 +17,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && (request.args.command.matches(".*>&\\s*/dev/(tcp|udp)/.*") || request.args.command.matches(".*exec\\s+[0-9]+>&.*"))'
+        - expression: 'tool == "Bash" && (request.args.command.matches(".*>&\\s*/dev/(tcp|udp)/.*") || request.args.command.matches(".*<>\\s*/dev/(tcp|udp)/.*") || request.args.command.matches(".*exec\\s+[0-9]+<>/dev/(tcp|udp)/.*") || request.args.command.matches(".*exec\\s+[0-9]+>&\\s*/dev/(tcp|udp)/.*"))'
           message: 'Falco rule violated: Redirect STDOUT/STDIN to Network Connection in Container'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
