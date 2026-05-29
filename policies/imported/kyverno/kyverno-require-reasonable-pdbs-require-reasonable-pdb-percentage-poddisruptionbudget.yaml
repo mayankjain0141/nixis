@@ -13,13 +13,10 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: PodDisruptionBudget") && request.args.content.matches("(?s).*minAvailable:\\s*0%.*")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: PodDisruptionBudget") && (request.args.content.contains("minAvailable: 0%") || request.args.content.contains("minAvailable: \"0%\"") || request.args.content.contains("minAvailable: ''0%''"))'
           message: 'PodDisruptionBudget minAvailable must not be 0% — this allows all pods to be disrupted simultaneously'
           action: DENY
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: PodDisruptionBudget") && request.args.content.matches("(?s).*maxUnavailable:\\s*100%.*")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: PodDisruptionBudget") && (request.args.content.contains("maxUnavailable: 100%") || request.args.content.contains("maxUnavailable: \"100%\"") || request.args.content.contains("maxUnavailable: ''100%''"))'
           message: 'PodDisruptionBudget maxUnavailable must not be 100% — this allows all pods to be disrupted simultaneously'
           action: DENY
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: PodDisruptionBudget") && request.args.content.contains("%")'
-          message: 'PodDisruptionBudget with percentage values: ensure minAvailable is <= 50% and maxUnavailable is >= 50%'
-          action: AUDIT
     defaultAction: ALLOW

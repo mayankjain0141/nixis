@@ -14,7 +14,7 @@ spec:
             - Edit
             - Bash
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+scale.*--replicas=([89]|[1-9][0-9]+).*")'
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+scale.*--replicas=([89]|[1-9][0-9]+)\\b.*")'
           message: 'kubectl scale to 9 or more replicas requires approval — annotation-based limit is max 8'
           action: REQUIRE_APPROVAL
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Deployment") && request.args.content.contains("replicas:")'
