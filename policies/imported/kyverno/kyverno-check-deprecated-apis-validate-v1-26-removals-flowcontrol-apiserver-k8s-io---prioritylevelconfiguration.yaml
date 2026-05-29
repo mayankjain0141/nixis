@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.matches(".*apiVersion:\\s*(autoscaling/v2beta1|autoscaling/v2beta2|flowcontrol\\.apiserver\\.k8s\\.io/v1beta1).*")'
-          message: '{{ request.object.apiVersion }}/{{ request.object.kind }} is deprecated and will be removed in v1.26. See: https://kubernetes.io/docs/reference/using-api/deprecation-guide/'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("apiVersion: flowcontrol.apiserver.k8s.io/v1beta1") && request.args.content.contains("kind: PriorityLevelConfiguration")'
+          message: 'flowcontrol.apiserver.k8s.io/v1beta1 PriorityLevelConfiguration is deprecated and will be removed in v1.26. Use flowcontrol.apiserver.k8s.io/v1 instead. See: https://kubernetes.io/docs/reference/using-api/deprecation-guide/'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
