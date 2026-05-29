@@ -1,3 +1,10 @@
+# CEL_LIMITATION: Kyverno's key-removal rule uses oldObject diff — it checks whether a label key
+# that was present in the previous version of the Node is absent after the UPDATE operation.
+# Aegis sees only the outgoing kubectl command string, not the Kubernetes admission oldObject/newObject
+# diff. As a result, this policy and prevent-label-value-changes share an identical CEL expression
+# and cannot be distinguished at the command level. Both detect kubectl label/annotate operations
+# targeting the foo key on nodes, but neither can verify whether it is a key removal vs value change.
+# IMPORT_TODO: oldObject diff required for full semantic fidelity — kubectl pattern match only.
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
