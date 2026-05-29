@@ -48,7 +48,11 @@ func NewActivationFSM() *ActivationFSM {
 
 // State returns the current ActivationState.
 func (f *ActivationFSM) State() ActivationState {
-	return f.state.Load().(ActivationState)
+	s, ok := f.state.Load().(ActivationState)
+	if !ok {
+		panic("aegis invariant violated: ActivationFSM state is not ActivationState")
+	}
+	return s
 }
 
 // Transition moves the FSM from `from` to `to`. It returns an error if the
@@ -58,7 +62,10 @@ func (f *ActivationFSM) Transition(from, to ActivationState) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	current := f.state.Load().(ActivationState)
+	current, ok := f.state.Load().(ActivationState)
+	if !ok {
+		panic("aegis invariant violated: ActivationFSM state is not ActivationState")
+	}
 	if current != from {
 		return fmt.Errorf("bundle FSM: cannot transition %s→%s: current state is %s",
 			from, to, current)

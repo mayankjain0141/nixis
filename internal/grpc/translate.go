@@ -83,6 +83,9 @@ func translateResponse(resp aegis.CheckResponse) *authv3.CheckResponse {
 }
 
 func denyResponse(reason string) *authv3.CheckResponse {
+	if len(reason) > 256 {
+		reason = reason[:256] + "..."
+	}
 	return &authv3.CheckResponse{
 		Status: &rpcstatus.Status{Code: int32(codes.PermissionDenied)},
 		HttpResponse: &authv3.CheckResponse_DeniedResponse{
