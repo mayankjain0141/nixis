@@ -15,7 +15,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
-          message: 'Policy validation required — review manifest before applying'
-          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("runAsUser:")'
+          message: 'Workloads must use unique UIDs per namespace — cross-workload UID uniqueness cannot be verified from the manifest alone; ensure runAsUser values are distinct across workloads'
+          action: AUDIT
     defaultAction: ALLOW
