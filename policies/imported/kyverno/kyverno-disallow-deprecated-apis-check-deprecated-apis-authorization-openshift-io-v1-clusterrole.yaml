@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.matches(".*apiVersion:\s*(authorization\.openshift\.io/v1).*")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.matches(".*apiVersion:\\s*(authorization\\.openshift\\.io/v1).*")'
           message: '{{ request.object.apiVersion }}/{{ request.object.kind }} is deprecated.'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

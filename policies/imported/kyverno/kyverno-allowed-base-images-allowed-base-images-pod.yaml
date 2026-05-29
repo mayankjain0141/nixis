@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && !request.args.content.matches(".*image:\s+(gcr\.io/company|company\.registry\.io).*")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && !request.args.content.matches(".*image:\\s+(gcr\\.io/company|company\\.registry\\.io).*")'
           message: This container image's base is not in the approved list or is not specified. Only pre-approved base images may be used. Please contact the platform team for assistance.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

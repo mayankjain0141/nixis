@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && !request.args.content.matches(".*image:\s+(corp\.registry\.io|gcr\.io|docker\.io/company).*")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && !request.args.content.matches(".*image:\\s+(corp\\.registry\\.io|gcr\\.io|docker\\.io/company).*")'
           message: This Pod names an image that is not from an approved registry.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

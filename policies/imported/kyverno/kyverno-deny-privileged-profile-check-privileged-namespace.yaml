@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("privileged: true")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("privileged: true")'
           message: Only cluster-admins may create Namespaces that allow setting the privileged level.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

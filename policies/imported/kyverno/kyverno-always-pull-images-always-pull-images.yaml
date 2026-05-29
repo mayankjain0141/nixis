@@ -14,7 +14,7 @@ spec:
     matchConstraints:
         tools: []
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && !request.args.content.contains("imagePullPolicy: Always")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && !request.args.content.contains("imagePullPolicy: Always")'
           message: 'IMPORT_REVIEW: mutate rule — Aegis does not mutate requests — manual review required'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

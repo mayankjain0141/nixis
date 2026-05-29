@@ -15,7 +15,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("kind: Route") && !request.args.content.contains("tls:")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Route") && !request.args.content.contains("tls:")'
           message: HTTP routes are not allowed. Configure TLS for secure routes.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

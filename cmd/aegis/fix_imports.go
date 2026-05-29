@@ -129,6 +129,13 @@ func fixImportsFile(ctx context.Context, t *LLMTranslator, path string, dryRun b
 		return fixResultSkip, fmt.Errorf("retries exhausted: %w", translateErr)
 	}
 
+	// Defense-in-depth: verify the expression compiles even though Translate already
+	// validated it. If it somehow fails, try fixCELEscaping before giving up.
+	celExpr = validateOrFixExpr(celExpr, path)
+	if celExpr == "" {
+		return fixResultSkip, fmt.Errorf("CEL still invalid after escape fix — skipping")
+	}
+
 	celPreview := celExpr
 	if len(celPreview) > 80 {
 		celPreview = celPreview[:80] + "..."

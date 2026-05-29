@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && !request.args.content.contains("drop:")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && !request.args.content.contains("drop:")'
           message: Containers must drop `ALL` capabilities.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
