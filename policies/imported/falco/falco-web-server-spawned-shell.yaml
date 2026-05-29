@@ -15,7 +15,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.contains("healthcheck")
+        - expression: 'tool == "Bash" && request.args.command.matches(".*\\b(php|python|ruby|node|nginx|apache|httpd|gunicorn|uwsgi)\\b.*") && request.args.command.matches(".*(bash|sh|exec|system|popen).*")'
           message: 'Falco rule violated: Web Server Spawned Shell'
           action: DENY
     defaultAction: ALLOW

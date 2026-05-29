@@ -15,11 +15,9 @@ spec:
         Affecting sudo (<= 1.9.5p2), there's a privilege escalation vulnerability. By executing sudo using the sudoedit -s or sudoedit -i command with a command-line argument that ends with a single backslash character, an unprivileged user can potentially escalate privileges to root. This rule is highly specific and might be bypassed due to potential issues with string matching on command line arguments.
     matchConstraints:
         tools:
-            - Read
-            - Write
-            - Edit
+            - Bash
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*\\bsudo(edit)?\\b.*(--shell|-s|-i).*")'
+        - expression: 'tool == "Bash" && request.args.command.matches(".*\\bsudo(edit)?\\b.*(--shell|-s\\b|-i\\b).*")'
           message: 'Falco rule violated: Sudo Potential Privilege Escalation'
           action: DENY
     defaultAction: ALLOW

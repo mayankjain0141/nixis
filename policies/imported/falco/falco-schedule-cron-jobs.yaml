@@ -15,11 +15,11 @@ spec:
         Detect scheduled cron jobs; this is a highly generic detection and certainly needs adjustments and profiling in your environment before operationalization. Simultaneously, exploiting the functionality of cron jobs is among one of the oldest TTPs used by adversaries.
     matchConstraints:
         tools:
-            - Read
+            - Bash
             - Write
             - Edit
     validations:
-        - expression: 'tool == "Bash" && (request.args.command.contains("crontab") || request.args.command.matches(".*>\\s*/etc/cron.*")) || (tool == "Write" || tool == "Edit") && request.args.path.startsWith("/etc/cron")'
+        - expression: 'tool == "Bash" && (request.args.command.contains("crontab") || request.args.command.matches(".*>\\s*/etc/cron\\.(d|daily|hourly|weekly|monthly)/.*")) || (tool == "Write" || tool == "Edit") && request.args.path.matches(".*/etc/cron.*")'
           message: 'Falco rule violated: Schedule Cron Jobs'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

@@ -14,9 +14,10 @@ spec:
     description: |
         A shell was used as the entrypoint/exec point into a container with an attached terminal. Parent process may have legitimately already exited and be null (read container_entrypoint macro). Common when using "kubectl exec" in Kubernetes. Correlate with k8saudit exec logs if possible to find user or serviceaccount token used (fuzzy correlation by namespace and pod name). Rather than considering it a standalone rule, it may be best used as generic auditing rule while examining other triggered rules in this container/tty.
     matchConstraints:
-        tools: []
+        tools:
+            - Bash
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*docker.*exec.*(-it|-t|-i).*") && request.args.command.matches(".*(bash|sh|zsh|ash).*")'
+        - expression: 'tool == "Bash" && request.args.command.matches(".*docker\\s+exec.*(-it|-i|-t).*") && request.args.command.matches(".*(bash|sh|ash|zsh).*")'
           message: 'Falco rule violated: Terminal shell in container'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
