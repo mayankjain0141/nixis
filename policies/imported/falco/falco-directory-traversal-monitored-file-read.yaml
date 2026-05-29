@@ -16,8 +16,12 @@ spec:
             - Read
             - Write
             - Edit
+            - Bash
     validations:
-        - expression: tool.matches("Read|Write|Edit") && request.args.path.contains("id_rsa")
-          message: 'Falco rule violated: Directory traversal monitored file read'
+        - expression: '(tool == "Read" || tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.\\./.*") && request.args.path.matches(".*(passwd|shadow|sudoers|ssh|id_rsa|id_ed25519|authorized_keys|hosts|group|gshadow).*")'
+          message: 'Falco rule violated: Directory traversal monitored file read (path traversal to sensitive file)'
+          action: REQUIRE_APPROVAL
+        - expression: 'tool == "Bash" && request.args.command.matches(".*(cat|less|more|head|tail|strings).*\\.\\./.*") && request.args.command.matches(".*(passwd|shadow|sudoers|id_rsa|authorized_keys).*")'
+          message: 'Falco rule violated: Directory traversal monitored file read (shell traversal to sensitive file)'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

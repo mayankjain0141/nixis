@@ -14,7 +14,8 @@ spec:
     description: |
         Identify containers that start with a powerful set of capabilities, with exceptions for recognized trusted images. Similar to the "Launch Privileged Container" rule, this functions as a robust auditing rule. Compromised highly privileged containers can lead to substantial harm. For instance, if another rule is triggered within such a container, it might raise suspicion, prompting closer scrutiny.
     matchConstraints:
-        tools: []
+        tools:
+            - Bash
     validations:
         - expression: 'tool == "Bash" && request.args.command.matches(".*docker\\s+run.*(--cap-add|--privileged).*")'
           message: 'Falco rule violated: Launch Excessively Capable Container'

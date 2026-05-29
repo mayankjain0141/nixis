@@ -14,7 +14,8 @@ spec:
     description: |
         Detect the initial process initiation within a privileged container, with exemptions for known and trusted images. This rule primarily serves as an excellent auditing mechanism since highly privileged containers, when compromised, can result in significant harm. For instance, if another rule triggers within such a privileged container, it could be seen as more suspicious, prompting a closer inspection.
     matchConstraints:
-        tools: []
+        tools:
+            - Bash
     validations:
         - expression: 'tool == "Bash" && request.args.command.matches(".*(docker\\s+run|kubectl\\s+run).*--privileged.*")'
           message: 'Falco rule violated: Launch Privileged Container'

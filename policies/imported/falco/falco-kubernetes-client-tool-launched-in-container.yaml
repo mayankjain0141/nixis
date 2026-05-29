@@ -12,9 +12,10 @@ spec:
     description: |
         Detect the execution of a Kubernetes client tool (like docker, kubectl, crictl) within a container, which is typically not expected behavior. Although this rule targets container workloads, monitoring the use of tools like crictl on the host over interactive access could also be valuable for broader auditing objectives.
     matchConstraints:
-        tools: []
+        tools:
+            - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)\\b(docker|kubectl|crictl)\\b")
+        - expression: 'tool == "Bash" && request.args.command.matches(".*\\b(docker|kubectl|crictl|helm|k9s)\\b.*") && request.args.command.matches(".*(exec|run|apply|delete|scale|port-forward).*")'
           message: 'Falco rule violated: Kubernetes Client Tool Launched in Container'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

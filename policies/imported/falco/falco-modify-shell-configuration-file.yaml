@@ -13,11 +13,14 @@ spec:
         Detect attempts to modify shell configuration files, primarily aimed at establishing persistence by automatically inserting commands into scripts executed by shells. The upstream rule excludes shell processes because they often create unnecessary noise. However, this might lead to missed detections. To customize the rule for your situation, you can fine-tune it using enhanced profiling. For example, you might want to only consider interactive shell processes (where proc.tty != 0).
     matchConstraints:
         tools:
-            - Read
             - Write
             - Edit
+            - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)\\b(ash|bash|csh|ksh|sh|tcsh|zsh|dash)\\b")
-          message: 'Falco rule violated: Modify Shell Configuration File'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*/\\.(bashrc|zshrc|bash_profile|zprofile|profile|bash_login|bash_logout|zlogin|zlogout|cshrc|tcshrc|kshrc)$")'
+          message: 'Falco rule violated: Modify Shell Configuration File (direct write)'
+          action: REQUIRE_APPROVAL
+        - expression: 'tool == "Bash" && request.args.command.matches(".*(>>|tee)\\s+.*\\.(bashrc|zshrc|bash_profile|zprofile|profile|bash_login|bash_logout).*")'
+          message: 'Falco rule violated: Modify Shell Configuration File (shell append)'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
