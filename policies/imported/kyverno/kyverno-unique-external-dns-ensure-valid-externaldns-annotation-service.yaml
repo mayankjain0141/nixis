@@ -1,4 +1,4 @@
-# IMPORT_TODO: JMESPath conditions in unique-external-dns/ensure-valid-externaldns-annotation could not be translated — kubectl pattern match generated as base condition only
+# IMPORT_REVIEW: translated by Claude — cross-resource uniqueness (hostname unique across all Services) cannot be enforced in single-request CEL; policy audits presence of annotation only
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -7,6 +7,7 @@ metadata:
     annotations:
         aegis.io/imported-from: aegis-import-1286843051.yaml
         aegis.io/severity: medium
+        aegis.io/llm-confidence: medium
         kyverno.io/category: Other
 spec:
     description: ExternalDNS, part of Kubernetes SIGs, triggers the creation of external DNS records in supported providers when the annotation`external-dns.alpha.kubernetes.io/hostname` is present. Like with internal DNS, duplicates must be avoided. This policy requires every such Service have a cluster-unique hostname present in the value of the annotation.

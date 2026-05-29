@@ -1,4 +1,4 @@
-# IMPORT_TODO: JMESPath conditions in unique-ingress-path/check-path could not be translated — kubectl pattern match generated as base condition only
+# IMPORT_REVIEW: translated by Claude — cross-resource path uniqueness (path unique across all namespaces) cannot be enforced in single-request CEL; policy audits all Ingress writes
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -7,6 +7,7 @@ metadata:
     annotations:
         aegis.io/imported-from: aegis-import-1390634402.yaml
         aegis.io/severity: medium
+        aegis.io/llm-confidence: medium
         kyverno.io/category: Sample
 spec:
     description: Just like the need to ensure uniqueness among Ingress hosts, there is a need to have the paths be unique as well. This policy checks an incoming Ingress to ensure its root path does not conflict with another root path in a different Namespace. It requires that incoming Ingress resources have a single rule with a single path only and assumes the root path is specified explicitly in an existing Ingress rule (ex., when blocking /foo/bar /foo must exist by itself and not part of /foo/baz).
