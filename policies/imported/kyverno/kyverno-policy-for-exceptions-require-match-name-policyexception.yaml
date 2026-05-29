@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-policy-for-exceptions-require-match-name-policyexception
     annotations:
-        aegis.io/imported-from: aegis-import-1163432214.yaml
+        aegis.io/imported-from: aegis-import-642799768.yaml
         aegis.io/severity: low
         kyverno.io/category: Sample
 spec:

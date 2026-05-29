@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-prevent-linkerd-port-skipping-pod-prevent-port-skipping-pod
     annotations:
-        aegis.io/imported-from: aegis-import-95662266.yaml
+        aegis.io/imported-from: aegis-import-2944007338.yaml
         aegis.io/severity: medium
         kyverno.io/category: Linkerd
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
           message: Pods may not skip ports. The annotations `config.linkerd.io/skip-inbound-ports` or `config.linkerd.io/skip-outbound-ports` must not be set.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

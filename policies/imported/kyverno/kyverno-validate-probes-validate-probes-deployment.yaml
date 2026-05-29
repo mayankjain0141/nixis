@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-validate-probes-validate-probes-deployment
     annotations:
-        aegis.io/imported-from: aegis-import-1460891479.yaml
+        aegis.io/imported-from: aegis-import-2405971351.yaml
         aegis.io/severity: medium
         kyverno.io/category: Sample
 spec:
@@ -14,7 +14,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+deployment|scale|rollout)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+deployment|scale|rollout)")
           message: Liveness and readiness probes cannot be the same.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-pdb-minavailable-check-pdb-minavailable-deployment
     annotations:
-        aegis.io/imported-from: aegis-import-718879101.yaml
+        aegis.io/imported-from: aegis-import-1900540511.yaml
         aegis.io/severity: low
         kyverno.io/category: Other
 spec:
@@ -14,7 +14,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+deployment|scale|rollout)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+deployment|scale|rollout)")
           message: The matching PodDisruptionBudget for this resource has its minAvailable value equal to the replica count which is not permitted.
           action: AUDIT
     defaultAction: ALLOW

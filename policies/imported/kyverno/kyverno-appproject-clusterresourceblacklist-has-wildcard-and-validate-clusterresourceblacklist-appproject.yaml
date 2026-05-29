@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-appproject-clusterresourceblacklist-has-wildcard-and-validate-clusterresourceblacklist-appproject
     annotations:
-        aegis.io/imported-from: aegis-import-708918724.yaml
+        aegis.io/imported-from: aegis-import-3721428392.yaml
         aegis.io/severity: medium
         kyverno.io/category: Argo in CEL
 spec:

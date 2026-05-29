@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-no-loadbalancer-service-no-loadbalancer-service
     annotations:
-        aegis.io/imported-from: aegis-import-2305009080.yaml
+        aegis.io/imported-from: aegis-import-1578847308.yaml
         aegis.io/severity: medium
         kyverno.io/category: Sample
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+service|expose)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+service|expose)")
           message: Service of type LoadBalancer is not allowed.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

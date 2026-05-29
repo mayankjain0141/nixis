@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-add-networkpolicy-dns-add-netpol-dns
     annotations:
-        aegis.io/imported-from: aegis-import-1168521864.yaml
+        aegis.io/imported-from: aegis-import-3265132184.yaml
         aegis.io/severity: low
         kyverno.io/category: Multi-Tenancy, EKS Best Practices
 spec:

@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-disallow-selinux-selinux-user-role-pod
     annotations:
-        aegis.io/imported-from: aegis-import-310557119.yaml
+        aegis.io/imported-from: aegis-import-3311192639.yaml
         aegis.io/severity: medium
         kyverno.io/category: Pod Security Standards (Baseline)
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
           message: Setting the SELinux user or role is forbidden. The fields spec.securityContext.seLinuxOptions.user, spec.securityContext.seLinuxOptions.role, spec.containers[*].securityContext.seLinuxOptions.user, spec.containers[*].securityContext.seLinuxOptions.role, spec.initContainers[*].securityContext.seLinuxOptions.user, spec.initContainers[*].securityContext.seLinuxOptions.role, spec.ephemeralContainers[*].securityContext.seLinuxOptions.user, and spec.ephemeralContainers[*].securityContext.seLinuxOptions.role must be unset.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

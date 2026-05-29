@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-node-label-creation-prevent-label-set-node
     annotations:
-        aegis.io/imported-from: aegis-import-2455113875.yaml
+        aegis.io/imported-from: aegis-import-4287619475.yaml
         aegis.io/severity: low
         kyverno.io/category: Sample
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(drain|cordon|delete\s+node)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(drain|cordon|delete\\s+node)")
           message: Setting the `foo` label on a Node is not allowed.
           action: DENY
     defaultAction: ALLOW

@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-qos-guaranteed-guaranteed-pod
     annotations:
-        aegis.io/imported-from: aegis-import-1998472770.yaml
+        aegis.io/imported-from: aegis-import-587886528.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other, Multi-Tenancy
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
           message: All containers must define memory and CPU requests and limits where they are equal.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

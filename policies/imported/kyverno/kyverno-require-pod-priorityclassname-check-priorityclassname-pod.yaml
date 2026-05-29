@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-pod-priorityclassname-check-priorityclassname-pod
     annotations:
-        aegis.io/imported-from: aegis-import-4109487234.yaml
+        aegis.io/imported-from: aegis-import-1672631094.yaml
         aegis.io/severity: medium
         kyverno.io/category: Multi-Tenancy, EKS Best Practices
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
           message: Pods must define the priorityClassName field.
           action: DENY
     defaultAction: ALLOW

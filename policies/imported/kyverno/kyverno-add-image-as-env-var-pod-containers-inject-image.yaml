@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-add-image-as-env-var-pod-containers-inject-image
     annotations:
-        aegis.io/imported-from: aegis-import-966648422.yaml
+        aegis.io/imported-from: aegis-import-4118308174.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

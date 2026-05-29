@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-image-checksum-require-image-checksum-pod
     annotations:
-        aegis.io/imported-from: aegis-import-2190210939.yaml
+        aegis.io/imported-from: aegis-import-2663082090.yaml
         aegis.io/severity: medium
         kyverno.io/category: Sample
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
           message: Images must use checksums rather than tags.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

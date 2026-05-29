@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-check-vpa-configuration-check-vpa-configuration-statefulset
     annotations:
-        aegis.io/imported-from: aegis-import-70797052.yaml
+        aegis.io/imported-from: aegis-import-2685510323.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

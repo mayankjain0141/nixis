@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-linkerd-server-check-deployment-has-server-deployment
     annotations:
-        aegis.io/imported-from: aegis-import-1261990201.yaml
+        aegis.io/imported-from: aegis-import-3492175443.yaml
         aegis.io/severity: medium
         kyverno.io/category: Linkerd
 spec:
@@ -14,7 +14,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+deployment|scale|rollout)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+deployment|scale|rollout)")
           message: Every Deployment declaring ports requires a matching Server.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

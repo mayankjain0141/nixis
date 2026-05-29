@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-scale-create-max-four-deployment
     annotations:
-        aegis.io/imported-from: aegis-import-2893220568.yaml
+        aegis.io/imported-from: aegis-import-1640371834.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+deployment|scale|rollout)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+deployment|scale|rollout)")
           message: The replica count for this Deployment may not exceed 4.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

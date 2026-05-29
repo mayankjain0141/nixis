@@ -1,11 +1,11 @@
-# imported from: main via aegis policy import
+# imported from: rules via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-adding-ssh-keys-to-authorized-keys
     annotations:
         aegis.io/falco-tags: maturity_incubating,host,filesystem,mitre_persistence,T1098.004
-        aegis.io/imported-from: aegis-import-487448035.yaml
+        aegis.io/imported-from: aegis-import-3831796007.yaml
         aegis.io/severity: medium
         aegis.io/source-rule: Adding ssh keys to authorized_keys
 spec:

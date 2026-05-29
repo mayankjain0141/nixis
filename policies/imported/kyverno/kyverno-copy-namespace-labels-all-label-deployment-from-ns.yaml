@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-copy-namespace-labels-all-label-deployment-from-ns
     annotations:
-        aegis.io/imported-from: aegis-import-1208853473.yaml
+        aegis.io/imported-from: aegis-import-2566063842.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

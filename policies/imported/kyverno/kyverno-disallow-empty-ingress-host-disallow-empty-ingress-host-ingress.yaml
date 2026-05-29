@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-disallow-empty-ingress-host-disallow-empty-ingress-host-ingress
     annotations:
-        aegis.io/imported-from: aegis-import-3563756171.yaml
+        aegis.io/imported-from: aegis-import-1735258865.yaml
         aegis.io/severity: medium
         kyverno.io/category: Best Practices
 spec:

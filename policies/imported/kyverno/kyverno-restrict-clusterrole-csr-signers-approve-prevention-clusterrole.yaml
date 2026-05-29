@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-clusterrole-csr-signers-approve-prevention-clusterrole
     annotations:
-        aegis.io/imported-from: aegis-import-966126348.yaml
+        aegis.io/imported-from: aegis-import-1889381712.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(create\s+clusterrole|delete\s+clusterrole)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(create\\s+clusterrole|delete\\s+clusterrole)")
           message: Use of verbs `approve` are forbidden for signers.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

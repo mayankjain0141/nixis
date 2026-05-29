@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-escalation-verbs-roles-escalate-clusterrole
     annotations:
-        aegis.io/imported-from: aegis-import-3462711417.yaml
+        aegis.io/imported-from: aegis-import-176093869.yaml
         aegis.io/severity: medium
         kyverno.io/category: Security
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(create\s+clusterrole|delete\s+clusterrole)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(create\\s+clusterrole|delete\\s+clusterrole)")
           message: Use of verbs `escalate`, `bind`, and `impersonate` are forbidden.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

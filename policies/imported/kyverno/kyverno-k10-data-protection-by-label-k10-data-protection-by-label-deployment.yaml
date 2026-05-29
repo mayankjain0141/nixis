@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-k10-data-protection-by-label-k10-data-protection-by-label-deployment
     annotations:
-        aegis.io/imported-from: aegis-import-20388936.yaml
+        aegis.io/imported-from: aegis-import-271929674.yaml
         aegis.io/severity: low
         kyverno.io/category: Kasten K10 by Veeam in CEL
 spec:

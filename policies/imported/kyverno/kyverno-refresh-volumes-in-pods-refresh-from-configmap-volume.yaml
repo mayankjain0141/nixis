@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-refresh-volumes-in-pods-refresh-from-configmap-volume
     annotations:
-        aegis.io/imported-from: aegis-import-619645097.yaml
+        aegis.io/imported-from: aegis-import-634809278.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

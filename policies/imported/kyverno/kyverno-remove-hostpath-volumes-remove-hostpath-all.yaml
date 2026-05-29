@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-remove-hostpath-volumes-remove-hostpath-all
     annotations:
-        aegis.io/imported-from: aegis-import-2956855269.yaml
+        aegis.io/imported-from: aegis-import-3246419373.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

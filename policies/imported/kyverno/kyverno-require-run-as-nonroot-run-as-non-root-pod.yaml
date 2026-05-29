@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-run-as-nonroot-run-as-non-root-pod
     annotations:
-        aegis.io/imported-from: aegis-import-3006503940.yaml
+        aegis.io/imported-from: aegis-import-2814848771.yaml
         aegis.io/severity: medium
         kyverno.io/category: Pod Security Standards (Restricted)
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
           message: Running as root is not allowed. Either the field spec.securityContext.runAsNonRoot must be set to `true`, or the fields spec.containers[*].securityContext.runAsNonRoot, spec.initContainers[*].securityContext.runAsNonRoot, and spec.ephemeralContainers[*].securityContext.runAsNonRoot must be set to `true`.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

@@ -1,11 +1,11 @@
-# imported from: main via aegis policy import
+# imported from: rules via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-detect-crypto-miners-using-the-stratum-protocol
     annotations:
         aegis.io/falco-tags: maturity_sandbox,host,container,process,mitre_impact,T1496
-        aegis.io/imported-from: aegis-import-3595951451.yaml
+        aegis.io/imported-from: aegis-import-3210576666.yaml
         aegis.io/severity: critical
         aegis.io/source-rule: Detect crypto miners using the Stratum protocol
 spec:

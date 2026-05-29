@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-pdb-require-pdb-statefulset
     annotations:
-        aegis.io/imported-from: aegis-import-99674439.yaml
+        aegis.io/imported-from: aegis-import-1594067296.yaml
         aegis.io/severity: low
         kyverno.io/category: Sample, EKS Best Practices
 spec:

@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-add-safe-to-evict-annotate-empty-dir
     annotations:
-        aegis.io/imported-from: aegis-import-2103597201.yaml
+        aegis.io/imported-from: aegis-import-267926310.yaml
         aegis.io/severity: low
         kyverno.io/category: Other
 spec:

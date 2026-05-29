@@ -1,14 +1,18 @@
 # IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: (open_read or open_write) and container and (fd.name startswith /host/ or
 #      fd.name startswith /rootfs/ or
 #      fd.na...
+<<<<<<< HEAD
 # imported from: main via aegis policy import
+=======
+# imported from: rules via aegis policy import
+>>>>>>> agent/fix-policy-cel
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-container-access-to-host-sensitive-paths
     annotations:
         aegis.io/falco-tags: maturity_sandbox,container,filesystem,mitre_privilege_escalation,T1611
-        aegis.io/imported-from: aegis-import-3595951451.yaml
+        aegis.io/imported-from: aegis-import-3210576666.yaml
         aegis.io/severity: medium
         aegis.io/source-rule: Container Access to Host Sensitive Paths
 spec:

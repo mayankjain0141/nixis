@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-pod-lifetime-pods-lifetime-pod
     annotations:
-        aegis.io/imported-from: aegis-import-1005813845.yaml
+        aegis.io/imported-from: aegis-import-1750517033.yaml
         aegis.io/severity: low
         kyverno.io/category: Sample
 spec:
@@ -14,7 +14,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
           message: Pod lifetime exceeds limit of 8h
           action: AUDIT
     defaultAction: ALLOW

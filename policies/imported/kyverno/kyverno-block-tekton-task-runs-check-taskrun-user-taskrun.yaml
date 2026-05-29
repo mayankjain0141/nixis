@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-block-tekton-task-runs-check-taskrun-user-taskrun
     annotations:
-        aegis.io/imported-from: aegis-import-4199919070.yaml
+        aegis.io/imported-from: aegis-import-3756652202.yaml
         aegis.io/severity: medium
         kyverno.io/category: Tekton
 spec:

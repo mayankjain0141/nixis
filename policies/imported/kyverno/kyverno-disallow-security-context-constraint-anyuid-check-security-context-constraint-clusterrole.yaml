@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-disallow-security-context-constraint-anyuid-check-security-context-constraint-clusterrole
     annotations:
-        aegis.io/imported-from: aegis-import-709304019.yaml
+        aegis.io/imported-from: aegis-import-2831635399.yaml
         aegis.io/severity: high
         kyverno.io/category: Security
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(create\s+clusterrole|delete\s+clusterrole)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(create\\s+clusterrole|delete\\s+clusterrole)")
           message: Use of the SecurityContextConstraint (SCC) anyuid is not allowed
           action: DENY
     defaultAction: ALLOW

@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-nodeport-validate-nodeport-service
     annotations:
-        aegis.io/imported-from: aegis-import-780545249.yaml
+        aegis.io/imported-from: aegis-import-1389630684.yaml
         aegis.io/severity: medium
         kyverno.io/category: Best Practices
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+service|expose)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+service|expose)")
           message: Services of type NodePort are not allowed.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

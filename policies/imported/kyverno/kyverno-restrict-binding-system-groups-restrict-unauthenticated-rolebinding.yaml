@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-binding-system-groups-restrict-unauthenticated-rolebinding
     annotations:
-        aegis.io/imported-from: aegis-import-1818502442.yaml
+        aegis.io/imported-from: aegis-import-3450283986.yaml
         aegis.io/severity: medium
         kyverno.io/category: Security, EKS Best Practices
 spec:

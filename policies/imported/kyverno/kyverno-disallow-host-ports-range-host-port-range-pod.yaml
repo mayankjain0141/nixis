@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-disallow-host-ports-range-host-port-range-pod
     annotations:
-        aegis.io/imported-from: aegis-import-3134196571.yaml
+        aegis.io/imported-from: aegis-import-2743499363.yaml
         aegis.io/severity: medium
         kyverno.io/category: Pod Security Standards (Baseline) in CEL
 spec:

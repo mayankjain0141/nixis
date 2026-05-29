@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-memory-requests-equal-limits-memory-requests-equal-limits-pod
     annotations:
-        aegis.io/imported-from: aegis-import-4205985816.yaml
+        aegis.io/imported-from: aegis-import-4221412088.yaml
         aegis.io/severity: medium
         kyverno.io/category: Sample
 spec:
@@ -14,7 +14,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
           message: resources.requests.memory must be equal to resources.limits.memory
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

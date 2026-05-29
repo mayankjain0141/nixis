@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-forbid-cpu-limits-check-cpu-limits-pod
     annotations:
-        aegis.io/imported-from: aegis-import-2826214278.yaml
+        aegis.io/imported-from: aegis-import-1596966751.yaml
         aegis.io/severity: low
         kyverno.io/category: Other
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
           message: Containers may not define CPU limits.
           action: DENY
     defaultAction: ALLOW

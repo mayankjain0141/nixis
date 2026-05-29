@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-aws-node-irsa-validate-node-daemonset-irsa-daemonset
     annotations:
-        aegis.io/imported-from: aegis-import-3298880210.yaml
+        aegis.io/imported-from: aegis-import-2567954910.yaml
         aegis.io/severity: medium
         kyverno.io/category: AWS, EKS Best Practices
 spec:

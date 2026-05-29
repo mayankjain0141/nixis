@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-namespace-protection-check-freeze--
     annotations:
-        aegis.io/imported-from: aegis-import-1162478925.yaml
+        aegis.io/imported-from: aegis-import-732340521.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

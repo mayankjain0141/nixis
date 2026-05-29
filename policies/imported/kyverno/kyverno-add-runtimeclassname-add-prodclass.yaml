@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-add-runtimeclassname-add-prodclass
     annotations:
-        aegis.io/imported-from: aegis-import-1082911843.yaml
+        aegis.io/imported-from: aegis-import-1596713021.yaml
         aegis.io/severity: low
         kyverno.io/category: PSP Migration
 spec:
