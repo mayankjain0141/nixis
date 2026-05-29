@@ -1,4 +1,4 @@
-# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: ((open_write and access_repositories) or (modify and modify_repositories)) and not package_mgmt_procs and not package_mg...
+# IMPORT_REVIEW: translated by Claude — verify semantics
 # imported from: rules via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -8,6 +8,7 @@ metadata:
         aegis.io/falco-tags: maturity_sandbox,host,container,filesystem,mitre_execution,T1072
         aegis.io/imported-from: aegis-import-1470842712.yaml
         aegis.io/severity: low
+        aegis.io/llm-confidence: medium
         aegis.io/source-rule: Update Package Repository
 spec:
     description: |
@@ -18,7 +19,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: "false"
+        - expression: '(tool == "Write" || tool == "Edit") && (request.args.path.startsWith("/etc/apt/") || request.args.path.startsWith("/etc/yum.repos.d/")) || tool == "Bash" && request.args.command.matches(".*>\\s*/etc/(apt|yum|dnf).*")'
           message: 'Falco rule violated: Update Package Repository'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

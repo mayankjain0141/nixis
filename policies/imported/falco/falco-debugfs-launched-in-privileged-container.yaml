@@ -1,4 +1,4 @@
-# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: spawned_process and container and container.privileged=true and proc.name=debugfs
+# IMPORT_REVIEW: translated by Claude — verify semantics
 # imported from: rules via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -8,6 +8,7 @@ metadata:
         aegis.io/falco-tags: maturity_stable,container,cis,process,mitre_privilege_escalation,T1611
         aegis.io/imported-from: aegis-import-999705196.yaml
         aegis.io/severity: medium
+        aegis.io/llm-confidence: medium
         aegis.io/source-rule: Debugfs Launched in Privileged Container
 spec:
     description: |
@@ -16,7 +17,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: "false"
+        - expression: 'tool == "Bash" && request.args.command.contains("debugfs")'
           message: 'Falco rule violated: Debugfs Launched in Privileged Container'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

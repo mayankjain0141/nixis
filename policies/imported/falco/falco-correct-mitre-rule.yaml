@@ -1,4 +1,4 @@
-# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: write_etc_common
+# IMPORT_REVIEW: translated by Claude — verify semantics
 # imported from: rules via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -8,6 +8,7 @@ metadata:
         aegis.io/falco-tags: host,container,network,mitre_persistence,T1098
         aegis.io/imported-from: aegis-import-1844418014.yaml
         aegis.io/severity: high
+        aegis.io/llm-confidence: medium
         aegis.io/source-rule: correct mitre rule
 spec:
     description: an attempt to write to any file below /etc
@@ -15,7 +16,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: "false"
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.startsWith("/etc/") || tool == "Bash" && request.args.command.matches(".*>\\s*/etc/.*")'
           message: 'Falco rule violated: correct mitre rule'
           action: DENY
     defaultAction: ALLOW

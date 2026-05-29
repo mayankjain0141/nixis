@@ -1,4 +1,4 @@
-# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: spawned_process and is_miner_process
+# IMPORT_REVIEW: translated by Claude — verify semantics
 # imported from: rules via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -8,6 +8,7 @@ metadata:
         aegis.io/falco-tags: maturity_sandbox,host,container,process,mitre_impact,T1496
         aegis.io/imported-from: aegis-import-1470842712.yaml
         aegis.io/severity: critical
+        aegis.io/llm-confidence: medium
         aegis.io/source-rule: Known Cryptominer Process Executed
 spec:
     description: |
@@ -16,7 +17,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: "false"
+        - expression: 'tool == "Bash" && (request.args.command.matches(".*(xmrig|minerd|cgminer|bfgminer|cpuminer|ethminer|xmr-stak).*") || request.args.command.contains("stratum+tcp://"))'
           message: 'Falco rule violated: Known Cryptominer Process Executed'
           action: DENY
     defaultAction: ALLOW

@@ -1,6 +1,4 @@
-# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: ((open_write and fd.name startswith /etc/cron) or
-#  (spawned_process and proc.name = "crontab"))
-# and not user_known_cron_...
+# IMPORT_REVIEW: translated by Claude — verify semantics
 # imported from: rules via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -10,6 +8,7 @@ metadata:
         aegis.io/falco-tags: maturity_incubating,host,container,filesystem,mitre_execution,T1053.003
         aegis.io/imported-from: aegis-import-2621062960.yaml
         aegis.io/severity: low
+        aegis.io/llm-confidence: medium
         aegis.io/source-rule: Schedule Cron Jobs
 spec:
     description: |
@@ -20,7 +19,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: "false"
+        - expression: 'tool == "Bash" && (request.args.command.contains("crontab") || request.args.command.matches(".*>\\s*/etc/cron.*")) || (tool == "Write" || tool == "Edit") && request.args.path.startsWith("/etc/cron")'
           message: 'Falco rule violated: Schedule Cron Jobs'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

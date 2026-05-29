@@ -1,4 +1,4 @@
-# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: outbound and container and fd.sip="169.254.169.254" and not user_known_metadata_access
+# IMPORT_REVIEW: translated by Claude — verify semantics
 # imported from: rules via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -8,6 +8,7 @@ metadata:
         aegis.io/falco-tags: maturity_incubating,network,container,mitre_discovery,T1565
         aegis.io/imported-from: aegis-import-2621062960.yaml
         aegis.io/severity: low
+        aegis.io/llm-confidence: medium
         aegis.io/source-rule: Contact cloud metadata service from container
 spec:
     description: |
@@ -16,7 +17,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: "false"
+        - expression: 'tool == "Bash" && (request.args.command.contains("169.254.169.254") || request.args.command.contains("metadata.google.internal"))'
           message: 'Falco rule violated: Contact cloud metadata service from container'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

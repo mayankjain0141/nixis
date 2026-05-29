@@ -1,4 +1,4 @@
-# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: container_started and excessively_capable_container and not falco_privileged_containers and not user_privileged_containe...
+# IMPORT_REVIEW: translated by Claude — verify semantics
 # imported from: rules via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -8,6 +8,7 @@ metadata:
         aegis.io/falco-tags: maturity_incubating,container,cis,mitre_execution,T1610
         aegis.io/imported-from: aegis-import-2621062960.yaml
         aegis.io/severity: low
+        aegis.io/llm-confidence: medium
         aegis.io/source-rule: Launch Excessively Capable Container
 spec:
     description: |
@@ -15,7 +16,7 @@ spec:
     matchConstraints:
         tools: []
     validations:
-        - expression: "false"
+        - expression: 'tool == "Bash" && request.args.command.matches(".*docker\\s+run.*(--cap-add|--privileged).*")'
           message: 'Falco rule violated: Launch Excessively Capable Container'
           action: AUDIT
     defaultAction: ALLOW

@@ -1,4 +1,4 @@
-# IMPORT_TODO: mutate rule — Aegis does not mutate requests
+# IMPORT_REVIEW: translated by Claude — verify semantics
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -7,13 +7,14 @@ metadata:
     annotations:
         aegis.io/imported-from: aegis-import-1521143862.yaml
         aegis.io/severity: medium
+        aegis.io/llm-confidence: medium
         kyverno.io/category: Sample
 spec:
     description: Some registries like Harbor offer pull-through caches for images from certain registries. Images can be re-written to be pulled from the redirected registry instead of the original and the registry will proxy pull the image, adding it to its internal cache. The imageData context variable in this policy provides a normalized view of the container image, allowing the policy to make decisions based on various  "live" image details. As a result, it requires access to the source registry and the existence of the target image to verify those details.
     matchConstraints:
         tools: []
     validations:
-        - expression: "false"
-          message: 'IMPORT_TODO: mutate rule — Aegis does not mutate requests — manual review required'
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+(apply|create|patch|run).*")'
+          message: 'IMPORT_REVIEW: mutate rule — Aegis does not mutate requests — manual review required'
           action: AUDIT
     defaultAction: ALLOW

@@ -1,4 +1,4 @@
-# IMPORT_TODO: mutate rule — Aegis does not mutate requests
+# IMPORT_REVIEW: translated by Claude — verify semantics
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -7,13 +7,14 @@ metadata:
     annotations:
         aegis.io/imported-from: aegis-import-3506164410.yaml
         aegis.io/severity: low
+        aegis.io/llm-confidence: medium
         kyverno.io/category: Sample
 spec:
     description: 'The sidecar pattern is very common in Kubernetes whereby other applications can insert components via tacit modification of a submitted resource. This is, for example, often how service meshes and secrets applications are able to function transparently. This policy injects a sidecar container, initContainer, and volume into Pods that match an annotation called `vault.hashicorp.com/agent-inject: true`.'
     matchConstraints:
         tools: []
     validations:
-        - expression: "false"
-          message: 'IMPORT_TODO: mutate rule — Aegis does not mutate requests — manual review required'
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+(apply|create|patch|run).*")'
+          message: 'IMPORT_REVIEW: mutate rule — Aegis does not mutate requests — manual review required'
           action: AUDIT
     defaultAction: ALLOW

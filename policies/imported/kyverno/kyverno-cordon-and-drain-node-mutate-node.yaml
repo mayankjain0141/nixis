@@ -1,4 +1,4 @@
-# IMPORT_TODO: mutate rule — Aegis does not mutate requests
+# IMPORT_REVIEW: translated by Claude — verify semantics
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -7,13 +7,14 @@ metadata:
     annotations:
         aegis.io/imported-from: aegis-import-2378171345.yaml
         aegis.io/severity: low
+        aegis.io/llm-confidence: medium
         kyverno.io/category: Other
 spec:
     description: There are cases where either an operations or security incident may occur and Nodes should be evacuated and placed in an unused state for further analysis. For example, a Node is found to be running a vulnerable version of a CRI engine or kernel and to minimize chances of a compromise may need to be decommissioned so another can be built. This policy shows how to use Kyverno to both cordon and drain a given Node and uses a hypothetical label being written to it called `testing=drain` to illustrate the point. For production use, the match block should be modified to trigger on the appropriate condition.
     matchConstraints:
         tools: []
     validations:
-        - expression: "false"
-          message: 'IMPORT_TODO: mutate rule — Aegis does not mutate requests — manual review required'
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+(apply|create|patch|run).*")'
+          message: 'IMPORT_REVIEW: mutate rule — Aegis does not mutate requests — manual review required'
           action: AUDIT
     defaultAction: ALLOW

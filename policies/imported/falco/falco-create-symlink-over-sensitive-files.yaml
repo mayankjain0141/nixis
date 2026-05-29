@@ -1,4 +1,4 @@
-# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: create_symlink and (evt.arg.target in (/etc/shadow, /etc/sudoers, /etc/pam.conf, /etc/security/pwquality.conf) or evt.ar...
+# IMPORT_REVIEW: translated by Claude — verify semantics
 # imported from: rules via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -8,6 +8,7 @@ metadata:
         aegis.io/falco-tags: maturity_stable,host,container,filesystem,mitre_credential_access,T1555
         aegis.io/imported-from: aegis-import-999705196.yaml
         aegis.io/severity: medium
+        aegis.io/llm-confidence: medium
         aegis.io/source-rule: Create Symlink Over Sensitive Files
 spec:
     description: |
@@ -18,7 +19,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: "false"
+        - expression: 'tool == "Bash" && request.args.command.matches(".*ln -s.*(shadow|sudoers|pam\\.conf|passwd|pwquality).*")'
           message: 'Falco rule violated: Create Symlink Over Sensitive Files'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

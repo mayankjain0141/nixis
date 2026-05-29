@@ -1,4 +1,4 @@
-# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: spawned_process and recon_binaries_procs and proc.tty != 0 and proc.is_vpgid_leader=true
+# IMPORT_REVIEW: translated by Claude — verify semantics
 # imported from: rules via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -8,6 +8,7 @@ metadata:
         aegis.io/falco-tags: maturity_sandbox,host,container,process,mitre_reconnaissance,TA0043
         aegis.io/imported-from: aegis-import-1470842712.yaml
         aegis.io/severity: low
+        aegis.io/llm-confidence: medium
         aegis.io/source-rule: Basic Interactive Reconnaissance
 spec:
     description: |
@@ -16,7 +17,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: "false"
+        - expression: 'tool == "Bash" && (request.args.command.contains("whoami") || request.args.command.contains("id ") || request.args.command.contains("hostname") || request.args.command.contains("uname") || request.args.command.contains("ifconfig") || request.args.command.contains("netstat") || request.args.command.contains("ps aux"))'
           message: 'Falco rule violated: Basic Interactive Reconnaissance'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
