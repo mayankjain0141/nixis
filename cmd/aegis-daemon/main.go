@@ -45,7 +45,7 @@ const (
 func main() {
 	var (
 		socketPath  = flag.String("socket", "", "Unix socket path (default: $AEGIS_SOCKET_PATH or /tmp/aegis.sock)")
-		policyDir   = flag.String("policy-dir", "policies/builtin", "Policy YAML directory")
+		policyDir   = flag.String("policy-dir", "policies", "Policy YAML directory (recursively loads all subdirectories)")
 		auditDB     = flag.String("audit-db", "~/.aegis/audit.db", "Audit SQLite database path")
 		failOpenLog = flag.String("failopen-log", "", "Fail-open log path (default: $AEGIS_FAILOPEN_LOG or ~/.aegis/failopen.log)")
 	)
@@ -149,7 +149,9 @@ func main() {
 
 	streamSrv := stream.NewStreamServer(nil, nil, stream.WithEvaluator(engine))
 	streamCtx, streamCancel := context.WithCancel(ctx)
+	streamDone := make(chan struct{})
 	go func() {
+		defer close(streamDone)
 		addr := os.Getenv("AEGIS_DASHBOARD_ADDR")
 		if addr == "" {
 			addr = ":9090"
@@ -158,7 +160,18 @@ func main() {
 			fmt.Fprintf(os.Stderr, "aegis-daemon: stream server error: %v\n", err)
 		}
 	}()
-	defer streamCancel()
+	// Graceful shutdown: cancel the stream server context and wait for it to
+	// drain connections and release the TCP port before the process exits.
+	// Without this wait the goroutine never gets scheduled and the port lingers
+	// in TIME_WAIT, causing "address already in use" on rapid restart.
+	defer func() {
+		streamCancel()
+		select {
+		case <-streamDone:
+		case <-time.After(6 * time.Second): // stream server has 5s shutdown timeout
+			fmt.Fprintf(os.Stderr, "aegis-daemon: stream server drain timed out\n")
+		}
+	}()
 
 	// Emit bundle.activated so the dashboard shows the policies loaded at startup.
 	// The payload is stored in the stream server and replayed to each client on connect,
