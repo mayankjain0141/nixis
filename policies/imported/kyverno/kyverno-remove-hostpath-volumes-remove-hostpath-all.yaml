@@ -1,3 +1,8 @@
+# CEL_LIMITATION (class: mutate/generate): Kyverno mutate rules run server-side inside the
+# Kubernetes admission webhook and can modify the resource object before it is persisted.
+# Aegis CEL runs client-side at agent tool-call time and has no mechanism to rewrite manifest
+# content or inject fields. All Kyverno mutate/generate policies in this batch are therefore
+# translated to false + AUDIT. The stub loads and appears in governance output but never blocks.
 # MUTATE policy: translated to false + AUDIT (Aegis cannot strip hostPath volumes from manifests at runtime)
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
