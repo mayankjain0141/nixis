@@ -62,7 +62,7 @@ export function DelegationTree() {
 
   // Collect all chains (may be multiple sessions)
   const allChains: Array<{ delegatorId: string; hops: DelegationHop[] }> = [];
-  for (const [sessionId, hops] of delegationChains.entries()) {
+  for (const [, hops] of delegationChains.entries()) {
     if (hops.length > 0) {
       allChains.push({ delegatorId: hops[0].delegatorId, hops });
     }
@@ -70,7 +70,7 @@ export function DelegationTree() {
 
   if (allChains.length === 0) {
     return (
-      <div style={{
+      <div aria-label="Delegation chain tree" style={{
         padding: 24, color: 'var(--text-muted)', fontSize: 13,
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
       }}>
@@ -85,7 +85,7 @@ export function DelegationTree() {
   }
 
   return (
-    <div style={{ padding: '8px 12px', overflow: 'auto' }}>
+    <div aria-label="Delegation chain tree" style={{ padding: '8px 12px', overflow: 'auto' }}>
       {allChains.map(({ delegatorId, hops }, ci) => {
         const entries = buildChainEntries(delegatorId, hops);
         return (

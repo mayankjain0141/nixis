@@ -1,17 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { DelegationTree } from './DelegationTree';
-import { useGovernanceStore, type DelegationHop } from '../../stores/governance-store';
-
-function makeHop(i: number): DelegationHop {
-  return {
-    hopIndex: i,
-    delegatorId: `delegator-${i}`,
-    delegateeId: `delegatee-${i}`,
-    grantedLabel: { confidentiality: 16384, integrity: 0, categories: 0 },
-    ceilingLabel: { confidentiality: 32768, integrity: 0, categories: 0 },
-  };
-}
+import { useGovernanceStore } from '../../stores/governance-store';
 
 beforeEach(() => {
   useGovernanceStore.getState().clear();
@@ -23,26 +13,45 @@ describe('DelegationTree', () => {
     expect(container.querySelector('[aria-label="Delegation chain tree"]')).toBeTruthy();
   });
 
-  it('TestDelegationTree_SVGPresent: svg element is rendered', () => {
-    const { container } = render(<DelegationTree />);
-    expect(container.querySelector('svg')).toBeTruthy();
+  it('TestDelegationTree_EmptyState: shows no-chains message when store is empty', () => {
+    render(<DelegationTree />);
+    expect(screen.getByText(/No delegation chains active/i)).toBeTruthy();
   });
 
-  it('TestDelegationTree_EmptyState: shows no-chains text when store is empty', () => {
+  it('TestDelegationTree_RendersChain: renders chain nodes when delegation data present', () => {
+    useGovernanceStore.getState().updateDelegationChain('sess_delegatee', [{
+      hopIndex: 0,
+      delegatorId: 'sess_origin',
+      delegateeId: 'sess_delegatee',
+      grantedLabel: { confidentiality: 49152, integrity: 32768, categories: 7 },
+      ceilingLabel: { confidentiality: 8192,  integrity: 8192,  categories: 0 },
+    }]);
+
     const { container } = render(<DelegationTree />);
-    const svg = container.querySelector('svg');
-    expect(svg).toBeTruthy();
-    // D3 appends a text node with the empty message
-    const texts = svg!.querySelectorAll('text');
-    expect(texts.length).toBeGreaterThan(0);
-    expect(texts[0].textContent).toMatch(/No delegation chains active/);
+
+    // Should not show empty state
+    expect(screen.queryByText(/No delegation chains active/i)).toBeNull();
+
+    // Should show delegation connector text
+    expect(container.textContent).toContain('delegates');
+
+    // Should show attenuation indicator since ceiling < granted
+    // Use "↓ attenuated from" — the legend also contains the word "attenuated" but
+    // only chain nodes emit the "↓ attenuated from <level>" indicator text.
+    expect(container.textContent).toContain('↓ attenuated from');
   });
 
-  it('TestDelegationTree_RendersChain: nodes appear when delegation chain is present', () => {
-    useGovernanceStore.getState().updateDelegationChain('session-1', [makeHop(0), makeHop(1)]);
+  it('TestDelegationTree_NoAttenuation: no attenuation shown when ceiling equals granted', () => {
+    useGovernanceStore.getState().updateDelegationChain('sess_equal', [{
+      hopIndex: 0,
+      delegatorId: 'sess_parent',
+      delegateeId: 'sess_equal',
+      grantedLabel: { confidentiality: 8192, integrity: 8192, categories: 0 },
+      ceilingLabel: { confidentiality: 8192, integrity: 8192, categories: 0 },
+    }]);
+
     const { container } = render(<DelegationTree />);
-    const circles = container.querySelectorAll('circle');
-    // root node + 2 hops = 3 nodes
-    expect(circles.length).toBe(3);
+    // Only chain nodes emit "↓ attenuated from <level>" — legend text is different
+    expect(container.textContent).not.toContain('↓ attenuated from');
   });
 });
