@@ -15,6 +15,6 @@ spec:
             - Edit
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: PodDisruptionBudget")'
-          message: PodDisruption budget minAvailable ({{ request.object.spec.minAvailable }}) cannot be greater than or equal to the replica count of any matching existing Deployment. There are {{ length(deploymentreplicas) }} Deployments which match this labelSelector having {{ deploymentreplicas[*].spec.replicas }} replicas.
+          message: PodDisruptionBudget minAvailable cannot be greater than or equal to the replica count of any matching existing Deployment.
           action: AUDIT
     defaultAction: ALLOW

@@ -15,6 +15,6 @@ spec:
             - Edit
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.matches(".*apiVersion:\\s*(authorization\\.openshift\\.io/v1).*")'
-          message: '{{ request.object.apiVersion }}/{{ request.object.kind }} is deprecated.'
+          message: Using deprecated apiVersion authorization.openshift.io/v1 for ClusterRoleBinding is not allowed.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
