@@ -155,17 +155,26 @@ function routeEvents(
             adapterCount: b.adapterCount ?? 0,
             activatedAt: Date.now(),
           });
-          // Populate the policy sidebar list from the policy count.
-          // The daemon sends named policies when available; for startup bundles
-          // loaded from a directory, we synthesise one entry per policy.
-          const syntheticPolicies = Array.from({ length: b.policyCount }, (_, i) => ({
-            id: `policy-${b.version}-${i}`,
-            name: `Policy ${i + 1}`,
-            layer: 'cel' as const,
-            enabled: true,
-            bundleVersion: b.version,
-          }));
-          setPolicies(syntheticPolicies);
+          // Use named policies from the event when available (demo scenario and daemon both send them).
+          // Fall back to synthetic entries only when the bundle carries no policy list.
+          const namedPolicies: import('./stores/policy-store').PolicySummary[] =
+            Array.isArray(b.policies) && b.policies.length > 0
+              ? b.policies.map((p: { id: string; enabled: boolean; layer: string; cel_expression?: string }) => ({
+                  id: p.id,
+                  name: p.id.replace(/^aegis\//, ''),
+                  layer: (p.layer ?? 'cel') as 'cel' | 'ifc' | 'adapter' | 'delegation' | 'secret-scan',
+                  enabled: p.enabled ?? true,
+                  bundleVersion: b.version,
+                  celExpression: p.cel_expression,
+                }))
+              : Array.from({ length: b.policyCount }, (_, i) => ({
+                  id: `policy-${b.version}-${i}`,
+                  name: `Policy ${i + 1}`,
+                  layer: 'cel' as const,
+                  enabled: true,
+                  bundleVersion: b.version,
+                }));
+          setPolicies(namedPolicies);
           updateLastSequence(event.envelope.aegissequence);
         }));
         break;
