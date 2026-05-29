@@ -73,16 +73,29 @@ export function AppHeader({ connectionState, onStartDemo, onOpenPalette }: AppHe
       <button
         onClick={onStartDemo}
         style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          padding: '5px 12px', borderRadius: 6,
-          background: '#1f2937', border: '1px solid var(--border)',
-          color: 'var(--text-primary)', cursor: 'pointer', fontSize: 12,
-          fontWeight: 500,
+          display: 'flex', alignItems: 'center', gap: 7,
+          padding: '6px 16px', borderRadius: 6,
+          background: 'var(--info-blue)', border: 'none',
+          color: '#fff', cursor: 'pointer', fontSize: 12,
+          fontWeight: 600, letterSpacing: '0.01em',
+          boxShadow: '0 0 0 0 rgba(88,166,255,0.4)',
+          animation: 'demo-pulse 2.5s ease-in-out infinite',
+          transition: 'transform 0.1s, box-shadow 0.1s',
         }}
-        onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--info-blue)')}
-        onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+        onMouseEnter={e => {
+          e.currentTarget.style.transform = 'scale(1.04)';
+          e.currentTarget.style.animation = 'none';
+          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(88,166,255,0.35)';
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.transform = 'scale(1)';
+          e.currentTarget.style.animation = 'demo-pulse 2.5s ease-in-out infinite';
+          e.currentTarget.style.boxShadow = '0 0 0 0 rgba(88,166,255,0.4)';
+        }}
+        onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.97)')}
+        onMouseUp={e => (e.currentTarget.style.transform = 'scale(1.04)')}
       >
-        ▶ Start Demo
+        <span style={{ fontSize: 11 }}>▶</span> Start Demo
       </button>
 
       <button
