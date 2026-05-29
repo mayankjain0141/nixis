@@ -17,7 +17,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*\\bln\\b(?!\\s+-s).*(shadow|sudoers|pam\\.conf|pwquality\\.conf|passwd|gshadow).*")'
+        - expression: 'tool == "Bash" && request.args.command.matches(".*\\bln\\b.*(shadow|sudoers|pam\\.conf|pwquality\\.conf|passwd|gshadow).*") && !request.args.command.matches(".*\\bln\\s+-s\\b.*")'
           message: 'Falco rule violated: Create Hardlink Over Sensitive Files'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

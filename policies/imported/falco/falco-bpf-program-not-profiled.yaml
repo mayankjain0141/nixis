@@ -17,7 +17,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && (request.args.command.contains("bpftrace") || request.args.command.contains("bpftool") || request.args.command.matches(".*\\bbpf_prog_load\\b.*"))'
+        - expression: 'tool == "Bash" && (request.args.command.matches(".*(^|\\s|/)bpftrace(\\s|$).*") || request.args.command.matches(".*(^|\\s|/)bpftool(\\s|$).*") || request.args.command.matches(".*\\bbpf_prog_load\\b.*"))'
           message: 'Falco rule violated: BPF Program Not Profiled'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

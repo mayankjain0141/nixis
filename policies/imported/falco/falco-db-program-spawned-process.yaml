@@ -15,7 +15,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && (request.args.command.matches(".*\\b(mysql|psql|sqlplus|mongosh)\\b.*\\bSYSTEM\\b.*") || request.args.command.matches(".*\\b(mysql|psql|sqlplus|mongosh)\\b.*(;|\\|).*(sh|bash|curl|wget|nc|python|perl|ruby).*"))'
+        - expression: 'tool == "Bash" && (request.args.command.matches(".*\\b(mysql|psql|sqlplus|mongosh)\\b.*\\bSYSTEM\\s*\\(.*") || request.args.command.matches(".*\\b(mysql|psql|sqlplus|mongosh)\\b.*\\binto\\s+outfile\\b.*") || request.args.command.matches(".*\\b(mysql|psql|sqlplus|mongosh)\\b.*(;|\\|)\\s*(bash|sh|python3?|perl|ruby|curl|wget|nc|ncat)\\s.*"))'
           message: 'Falco rule violated: DB program spawned process'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
