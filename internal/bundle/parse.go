@@ -62,13 +62,14 @@ func ParsePolicyFile(path string) (*policy_types.PolicyTemplate, *policy_types.P
 
 	expr := buildCombinedExpression(&manifest)
 	if expr == "" {
+		log.Printf("bundle: %s: PolicyTemplate %q has no evaluable validations — skipping", path, manifest.Metadata.Name)
 		return nil, nil, nil
 	}
 
 	template := &policy_types.PolicyTemplate{
 		ID:          manifest.Metadata.Name,
 		Name:        manifest.Metadata.Name,
-		Description: manifest.Spec.Description,
+		Description: strings.TrimRight(manifest.Spec.Description, "\n\r "),
 		Expression:  expr,
 		SourceFile:  path,
 		SourceLine:  1,
