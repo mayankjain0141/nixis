@@ -16,6 +16,6 @@ spec:
             - Edit
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Route")'
-          message: 'OpenShift Route host names must be unique'
-          action: REQUIRE_APPROVAL
+          message: 'OpenShift Route host names must be unique across the cluster — cross-resource uniqueness cannot be enforced in single-request CEL'
+          action: AUDIT
     defaultAction: ALLOW

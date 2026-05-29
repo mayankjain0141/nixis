@@ -1,3 +1,4 @@
+# IMPORT_TODO: Original Kyverno policy validates that Flux source URLs match a trusted-domain allowlist (e.g., github.com, your-org.com) — that URL allowlist check is not translatable to CEL text-search without hardcoding domains; this policy only checks for presence of verification: field, not that the URL is trusted
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate

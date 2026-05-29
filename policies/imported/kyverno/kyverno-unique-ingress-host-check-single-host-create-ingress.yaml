@@ -15,7 +15,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Ingress")'
-          message: 'Ingress host and path combinations must be unique across all Ingress resources'
-          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Ingress") && !request.args.content.contains("host:")'
+          message: 'Ingress resources must specify a host — and hosts must be unique across the cluster (cross-resource uniqueness audited, not enforced in CEL)'
+          action: AUDIT
     defaultAction: ALLOW

@@ -1,3 +1,4 @@
+# IMPORT_TODO: time-bound JMESPath precondition (active only 8am-5pm EST / 13:00-22:00 UTC) cannot be expressed in CEL — policy fires at all times
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
