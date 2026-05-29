@@ -46,10 +46,11 @@ export function AppShell({ header, metricsBar, sidebar, main, inspector }: AppSh
 interface AppHeaderProps {
   connectionState: string;
   onStartDemo: () => void;
+  onStopDemo: () => void;
   onOpenPalette: () => void;
 }
 
-export function AppHeader({ connectionState, onStartDemo, onOpenPalette }: AppHeaderProps) {
+export function AppHeader({ connectionState, onStartDemo, onStopDemo, onOpenPalette }: AppHeaderProps) {
   const CONNECTION_COLORS: Record<string, string> = {
     CONNECTED: '#2da44e', MOCK: '#8250df', CONNECTING: '#d29922',
     DISCONNECTED: '#cf222e', RECONNECTING: '#d29922', IDLE: '#484f58', FAILED: '#cf222e',
@@ -97,6 +98,22 @@ export function AppHeader({ connectionState, onStartDemo, onOpenPalette }: AppHe
       >
         <span style={{ fontSize: 11 }}>▶</span> Start Demo
       </button>
+
+      {connectionState === 'MOCK' && (
+        <button
+          onClick={onStopDemo}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '5px 12px', borderRadius: 6,
+            background: 'transparent', border: '1px solid var(--border)',
+            color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12,
+          }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-overlay)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+        >
+          Stop
+        </button>
+      )}
 
       <button
         onClick={onOpenPalette}
