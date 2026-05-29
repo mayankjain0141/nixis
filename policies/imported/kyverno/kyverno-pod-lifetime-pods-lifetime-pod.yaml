@@ -1,4 +1,4 @@
-# IMPORT_TODO: JMESPath conditions in pod-lifetime/pods-lifetime could not be translated — kubectl pattern match generated as base condition only
+# IMPORT_REVIEW: Duration comparison — Aegis flags pod-lifetime annotation presence and kubectl run without restart/TTL flags; numeric duration bound (8h) cannot be enforced via string matching
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -7,6 +7,7 @@ metadata:
     annotations:
         aegis.io/imported-from: aegis-import-3811290886.yaml
         aegis.io/severity: low
+        aegis.io/llm-confidence: medium
         kyverno.io/category: Sample
 spec:
     description: This validation is valuable when annotations are used to define durations, such as to ensure a Pod lifetime annotation does not exceed some site specific max threshold. Pod lifetime annotation can be no greater than 8 hours.
@@ -14,8 +15,12 @@ spec:
         tools:
             - Write
             - Edit
+            - Bash
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("pod-lifetime:") && request.args.content.contains("kind: Pod")'
-          message: 'Pod lifetime annotation must not exceed 8 hours'
-          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Pod") && request.args.content.contains("pod-lifetime:")'
+          message: 'Pod specifies a pod-lifetime annotation — ensure its value does not exceed 8 hours; duration bound cannot be enforced via static analysis and requires Kyverno for numeric validation'
+          action: AUDIT
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl.*run.*") && !request.args.command.contains("--restart=Never") && !request.args.command.contains("activeDeadlineSeconds")'
+          message: 'kubectl run without --restart=Never or activeDeadlineSeconds — pods created without a lifetime bound may run indefinitely; set activeDeadlineSeconds or use a Job/CronJob instead'
+          action: AUDIT
     defaultAction: ALLOW

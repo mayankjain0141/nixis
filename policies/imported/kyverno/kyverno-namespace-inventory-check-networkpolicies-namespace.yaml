@@ -1,4 +1,4 @@
-# IMPORT_TODO: Cross-resource existence check (background scan) cannot be fully translated — CEL approximation checks file content for NetworkPolicy co-presence
+# IMPORT_REVIEW: Cross-resource existence check — Aegis flags Namespace writes lacking inline NetworkPolicy and intercepts kubectl delete networkpolicy commands; full background scan enforcement requires Kyverno
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -7,6 +7,7 @@ metadata:
     annotations:
         aegis.io/imported-from: aegis-import-2864242346.yaml
         aegis.io/severity: medium
+        aegis.io/llm-confidence: medium
         kyverno.io/category: Other
 spec:
     description: In cases such as multi-tenancy where new Namespaces must be fully provisioned before they can be used, it may not be easy to declare and understand if/when the Namespace is ready. Having a policy which defines all the resources which are required for each Namespace can assist in determining compliance. This policy, expected to be run in background mode only, performs a Namespace inventory check to ensure that all Namespaces have a ResourceQuota and NetworkPolicy. Additional rules may be written to extend the check for your needs. By default, background scans occur every one hour which may be changed with an additional container flag. Please see the installation documentation for details.
@@ -14,8 +15,12 @@ spec:
         tools:
             - Write
             - Edit
+            - Bash
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Namespace") && !request.args.content.contains("NetworkPolicy")'
-          message: 'All namespaces must have a NetworkPolicy — cross-resource existence check; manual review required'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Namespace") && !request.args.content.contains("kind: NetworkPolicy")'
+          message: 'Namespace manifest written without an accompanying NetworkPolicy — all namespaces must have a NetworkPolicy; cross-resource existence check requires Kyverno background scan for full enforcement'
+          action: AUDIT
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl.*delete.*networkpolic.*")'
+          message: 'Deleting a NetworkPolicy may violate namespace inventory requirements — all namespaces must maintain at least one NetworkPolicy'
           action: AUDIT
     defaultAction: ALLOW
