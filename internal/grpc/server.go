@@ -79,6 +79,7 @@ func (s *Server) Start(ctx context.Context) error {
 func (s *Server) Serve(ctx context.Context, lis net.Listener) error {
 	srv := grpc.NewServer(
 		grpc.MaxConcurrentStreams(uint32(s.cfg.MaxConcurrent)),
+		grpc.MaxRecvMsgSize(2*1024*1024),
 	)
 	authv3.RegisterAuthorizationServer(srv, s)
 

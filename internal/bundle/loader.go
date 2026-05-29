@@ -14,6 +14,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -250,7 +251,9 @@ func (b *BundleLoader) tryActivate(ctx context.Context) {
 	}
 
 	// GC old bundles from the store.
-	_ = b.store.gc()
+	if gcErr := b.store.gc(); gcErr != nil {
+		log.Printf("bundle: store gc warning: %v", gcErr)
+	}
 
 	// Store manifest and mark current as the new previous for future rollbacks.
 	manifest := &BundleManifest{
@@ -470,7 +473,7 @@ func extractBundle(content []byte) (string, error) {
 		if strings.Contains(name, "..") {
 			continue
 		}
-		destPath := fmt.Sprintf("%s/%s", dir, name)
+		destPath := filepath.Join(dir, name)
 		fileData, err := io.ReadAll(tr)
 		if err != nil {
 			_ = os.RemoveAll(dir)
