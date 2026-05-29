@@ -28,6 +28,8 @@ export function EventStreamList() {
   const filterVerdict = useGovernanceStore((s) => s.filterVerdict);
   const inspectorTarget = useUIStore((s) => s.inspectorTarget);
   const openInspector = useUIStore((s) => s.openInspector);
+  const isPaused = useUIStore((s) => s.isPaused);
+  const togglePause = useUIStore((s) => s.togglePause);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -50,18 +52,32 @@ export function EventStreamList() {
   }, []);
 
   useEffect(() => {
+    if (isPaused) {
+      setShowNewBadge(true);
+      return;
+    }
     if (!isUserScrolled.current) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      bottomRef.current?.scrollIntoView({ behavior: 'instant' });
       setShowNewBadge(false);
     } else {
       setShowNewBadge(true);
     }
-  }, [events]);
+  }, [visible, isPaused]);
 
   const scrollToBottom = useCallback(() => {
     isUserScrolled.current = false;
     setShowNewBadge(false);
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+
+  useEffect(() => {
+    function handleScrollToBottom() {
+      isUserScrolled.current = false;
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      setShowNewBadge(false);
+    }
+    window.addEventListener('aegis:scroll-to-bottom', handleScrollToBottom);
+    return () => window.removeEventListener('aegis:scroll-to-bottom', handleScrollToBottom);
   }, []);
 
   if (visible.length === 0) {
@@ -87,6 +103,26 @@ export function EventStreamList() {
             style={{ background: 'none', border: 'none', color: 'var(--info-blue)', cursor: 'pointer', fontSize: 11 }}
           >
             ✕ clear
+          </button>
+        </div>
+      )}
+      {isPaused && (
+        <div style={{
+          padding: '4px 12px',
+          background: 'rgba(210,153,34,0.12)',
+          borderBottom: '1px solid rgba(210,153,34,0.3)',
+          fontSize: 11,
+          color: 'var(--escalate, #d29922)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}>
+          <span>&#9208; Paused — new events buffering</span>
+          <button
+            onClick={() => togglePause()}
+            style={{ background: 'none', border: 'none', color: 'var(--escalate, #d29922)', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}
+          >
+            &#9654; Resume
           </button>
         </div>
       )}
