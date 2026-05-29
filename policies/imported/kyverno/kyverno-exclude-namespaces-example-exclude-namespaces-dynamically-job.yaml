@@ -1,3 +1,4 @@
+# IMPORT_TODO: JMESPath ConfigMap context lookup (namespace allowlist) cannot be translated to CEL — expression is best-effort content check only
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -15,6 +16,6 @@ spec:
             - Edit
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && !request.args.content.contains("foo:")'
-          message: 'Resources outside allowed namespaces must have the label foo'
-          action: REQUIRE_APPROVAL
+          message: 'Resources outside allowed namespaces must have the label foo — ConfigMap namespace allowlist lookup not available in CEL translation'
+          action: AUDIT
     defaultAction: ALLOW
