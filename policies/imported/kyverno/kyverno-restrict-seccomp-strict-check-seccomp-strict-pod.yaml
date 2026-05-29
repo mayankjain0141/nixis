@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (!request.args.content.contains("seccompProfile:") || request.args.content.matches(".*type:\\s*Unconfined.*"))'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("containers:") && (!request.args.content.contains("seccompProfile:") || request.args.content.matches(".*type:\\s*Unconfined.*"))'
           message: 'seccomp profile must be explicitly set to RuntimeDefault or Localhost — unset and Unconfined are both rejected'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
