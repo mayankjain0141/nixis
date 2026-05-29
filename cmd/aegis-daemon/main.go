@@ -147,7 +147,7 @@ func main() {
 		auditWriter.Start(ctx)
 	}()
 
-	streamSrv := stream.NewStreamServer(nil, nil)
+	streamSrv := stream.NewStreamServer(nil, nil, stream.WithEvaluator(engine))
 	streamCtx, streamCancel := context.WithCancel(ctx)
 	go func() {
 		addr := os.Getenv("AEGIS_DASHBOARD_ADDR")
