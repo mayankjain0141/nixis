@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-label-nodes-all-label-node-foo
     annotations:
-        aegis.io/imported-from: aegis-import-1917280135.yaml
+        aegis.io/imported-from: aegis-import-3564991496.yaml
         aegis.io/severity: low
 spec:
     description: label-nodes-all

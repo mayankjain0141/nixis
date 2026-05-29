@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-ensure-production-matches-staging-require-same-or-older-imageversion-deployment
     annotations:
-        aegis.io/imported-from: aegis-import-4050799117.yaml
+        aegis.io/imported-from: aegis-import-2193863251.yaml
         aegis.io/severity: low
         kyverno.io/category: Other
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+deployment|scale|rollout)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+deployment|scale|rollout)")
           message: Every Deployment in production is required to use an image version less than or equal to the one in staging.
           action: DENY
     defaultAction: ALLOW

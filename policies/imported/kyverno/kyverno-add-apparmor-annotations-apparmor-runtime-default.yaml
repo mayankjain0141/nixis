@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-add-apparmor-annotations-apparmor-runtime-default
     annotations:
-        aegis.io/imported-from: aegis-import-3552359524.yaml
+        aegis.io/imported-from: aegis-import-1267479208.yaml
         aegis.io/severity: low
         kyverno.io/category: PSP Migration
 spec:

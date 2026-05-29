@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-add-ttl-jobs-add-ttlsecondsafterfinished
     annotations:
-        aegis.io/imported-from: aegis-import-1215786759.yaml
+        aegis.io/imported-from: aegis-import-3295677394.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

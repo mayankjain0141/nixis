@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-add-linkerd-mesh-injection-add-mesh-annotations
     annotations:
-        aegis.io/imported-from: aegis-import-2655452287.yaml
+        aegis.io/imported-from: aegis-import-905066893.yaml
         aegis.io/severity: medium
         kyverno.io/category: Linkerd
 spec:

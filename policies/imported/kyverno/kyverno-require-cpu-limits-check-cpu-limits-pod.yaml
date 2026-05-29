@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-cpu-limits-check-cpu-limits-pod
     annotations:
-        aegis.io/imported-from: aegis-import-838475422.yaml
+        aegis.io/imported-from: aegis-import-874231253.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
           message: CPU limits are required for all containers.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

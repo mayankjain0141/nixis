@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-networkpolicy-empty-podselector-empty-podselector-networkpolicy
     annotations:
-        aegis.io/imported-from: aegis-import-3964971703.yaml
+        aegis.io/imported-from: aegis-import-1159065635.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other, Multi-Tenancy
 spec:

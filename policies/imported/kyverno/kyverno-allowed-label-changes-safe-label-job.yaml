@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-allowed-label-changes-safe-label-job
     annotations:
-        aegis.io/imported-from: aegis-import-659068830.yaml
+        aegis.io/imported-from: aegis-import-1646326480.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

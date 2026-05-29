@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-disallow-latest-tag-validate-image-tag-pod
     annotations:
-        aegis.io/imported-from: aegis-import-3576217584.yaml
+        aegis.io/imported-from: aegis-import-2702119377.yaml
         aegis.io/severity: medium
         kyverno.io/category: Best Practices
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
           message: Using a mutable image tag e.g. 'latest' is not allowed.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

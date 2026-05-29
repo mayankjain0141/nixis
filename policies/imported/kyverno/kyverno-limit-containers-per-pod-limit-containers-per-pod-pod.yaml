@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-limit-containers-per-pod-limit-containers-per-pod-pod
     annotations:
-        aegis.io/imported-from: aegis-import-2644301419.yaml
+        aegis.io/imported-from: aegis-import-1150401584.yaml
         aegis.io/severity: low
         kyverno.io/category: Sample
 spec:
@@ -14,7 +14,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
           message: Pods can only have a maximum of 4 containers.
           action: AUDIT
     defaultAction: ALLOW

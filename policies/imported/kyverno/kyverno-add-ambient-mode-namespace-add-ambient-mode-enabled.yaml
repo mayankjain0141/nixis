@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-add-ambient-mode-namespace-add-ambient-mode-enabled
     annotations:
-        aegis.io/imported-from: aegis-import-2938314272.yaml
+        aegis.io/imported-from: aegis-import-1672845931.yaml
         aegis.io/severity: medium
         kyverno.io/category: Istio
 spec:

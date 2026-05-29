@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-qos-burstable-burstable-pod
     annotations:
-        aegis.io/imported-from: aegis-import-3836519106.yaml
+        aegis.io/imported-from: aegis-import-4169469498.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other, Multi-Tenancy
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
           message: At least one container in the Pod must define either requests or limits for either CPU or memory.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

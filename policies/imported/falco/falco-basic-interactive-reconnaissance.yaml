@@ -1,12 +1,12 @@
 # IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: spawned_process and recon_binaries_procs and proc.tty != 0 and proc.is_vpgid_leader=true
-# imported from: main via aegis policy import
+# imported from: rules via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-basic-interactive-reconnaissance
     annotations:
         aegis.io/falco-tags: maturity_sandbox,host,container,process,mitre_reconnaissance,TA0043
-        aegis.io/imported-from: aegis-import-3595951451.yaml
+        aegis.io/imported-from: aegis-import-3210576666.yaml
         aegis.io/severity: low
         aegis.io/source-rule: Basic Interactive Reconnaissance
 spec:

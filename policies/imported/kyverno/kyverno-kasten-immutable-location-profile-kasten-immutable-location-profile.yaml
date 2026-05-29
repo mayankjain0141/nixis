@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-kasten-immutable-location-profile-kasten-immutable-location-profile
     annotations:
-        aegis.io/imported-from: aegis-import-3010139426.yaml
+        aegis.io/imported-from: aegis-import-3243570002.yaml
         aegis.io/severity: low
         kyverno.io/category: Veeam Kasten
 spec:

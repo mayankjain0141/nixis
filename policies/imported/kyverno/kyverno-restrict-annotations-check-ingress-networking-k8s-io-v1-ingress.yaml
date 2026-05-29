@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-annotations-check-ingress-networking-k8s-io-v1-ingress
     annotations:
-        aegis.io/imported-from: aegis-import-1141593680.yaml
+        aegis.io/imported-from: aegis-import-415447309.yaml
         aegis.io/severity: high
         kyverno.io/category: Security, NGINX Ingress in CEL
 spec:

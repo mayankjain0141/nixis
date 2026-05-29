@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-disallow-ingress-nginx-custom-snippets-check-ingress-annotations-networking-k8s-io-v1-ingress
     annotations:
-        aegis.io/imported-from: aegis-import-2241245480.yaml
+        aegis.io/imported-from: aegis-import-594319337.yaml
         aegis.io/severity: low
         kyverno.io/category: Security, NGINX Ingress
 spec:

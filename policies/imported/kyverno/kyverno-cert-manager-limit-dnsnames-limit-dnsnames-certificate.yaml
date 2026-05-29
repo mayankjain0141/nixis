@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-cert-manager-limit-dnsnames-limit-dnsnames-certificate
     annotations:
-        aegis.io/imported-from: aegis-import-3564060398.yaml
+        aegis.io/imported-from: aegis-import-2385397385.yaml
         aegis.io/severity: medium
         kyverno.io/category: Cert-Manager
 spec:

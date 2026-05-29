@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-k6t-enforce-instancetype-k6t-ensure-instance-type-and-preference-virtualmachine
     annotations:
-        aegis.io/imported-from: aegis-import-3203111021.yaml
+        aegis.io/imported-from: aegis-import-2912143974.yaml
         aegis.io/severity: low
         kyverno.io/category: KubeVirt
 spec:

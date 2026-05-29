@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-topologyspreadconstraints-policy-spread-pods-statefulset
     annotations:
-        aegis.io/imported-from: aegis-import-1849742902.yaml
+        aegis.io/imported-from: aegis-import-3244974862.yaml
         aegis.io/severity: medium
         kyverno.io/category: Sample
 spec:

@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-cert-manager-limit-duration-certificate-duration-max-100days-certificate
     annotations:
-        aegis.io/imported-from: aegis-import-2875346806.yaml
+        aegis.io/imported-from: aegis-import-168318829.yaml
         aegis.io/severity: medium
         kyverno.io/category: Cert-Manager
 spec:

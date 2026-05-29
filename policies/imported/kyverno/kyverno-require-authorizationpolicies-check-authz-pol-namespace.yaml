@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-authorizationpolicies-check-authz-pol-namespace
     annotations:
-        aegis.io/imported-from: aegis-import-2917053961.yaml
+        aegis.io/imported-from: aegis-import-2696498858.yaml
         aegis.io/severity: medium
         kyverno.io/category: Istio
 spec:
@@ -14,7 +14,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+namespace|create\s+namespace)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+namespace|create\\s+namespace)")
           message: All Namespaces must have an AuthorizationPolicy.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-deprecated-registry-restrict-deprecated-registry-pod
     annotations:
-        aegis.io/imported-from: aegis-import-3419726746.yaml
+        aegis.io/imported-from: aegis-import-2288748517.yaml
         aegis.io/severity: high
         kyverno.io/category: Best Practices, EKS Best Practices
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
           message: The "k8s.gcr.io" image registry is deprecated. "registry.k8s.io" should now be used.
           action: DENY
     defaultAction: ALLOW

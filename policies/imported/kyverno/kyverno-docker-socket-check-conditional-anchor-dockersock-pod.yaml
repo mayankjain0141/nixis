@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-docker-socket-check-conditional-anchor-dockersock-pod
     annotations:
-        aegis.io/imported-from: aegis-import-2127531645.yaml
+        aegis.io/imported-from: aegis-import-3501846200.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
           message: If a hostPath volume exists and is set to `/var/run/docker.sock`, the label `allow-docker` must equal `true`.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

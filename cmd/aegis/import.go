@@ -1604,9 +1604,12 @@ func writeManifests(cmd *cobra.Command, manifests []aegisManifest, comments []st
 
 		var content strings.Builder
 		if i < len(comments) && comments[i] != "" {
-			content.WriteString("# ")
-			content.WriteString(comments[i])
-			content.WriteString("\n")
+			// Format multi-line comments: prefix each line with "# "
+			for _, line := range strings.Split(comments[i], "\n") {
+				content.WriteString("# ")
+				content.WriteString(line)
+				content.WriteString("\n")
+			}
 		}
 		content.WriteString("# imported from: ")
 		content.WriteString(filepath.Base(sourcePath))
@@ -2103,16 +2106,20 @@ type kyvernoRule struct {
 	Generate map[string]interface{} `yaml:"generate"`
 }
 func kyvernoKindToKubectlPattern(kind string, operations []string) string {
+	// NOTE: Use \\s (double backslash) so the output YAML contains \s,
+	// which CEL then passes to the RE2 regex engine as whitespace class.
+	// Single \s in Go string → \s in YAML → CEL parse error (invalid escape).
+	// Double \\s in Go string → \\s in YAML → CEL sees \s → RE2 whitespace match.
 	kindMap := map[string]string{
-		"Pod":              `kubectl.*(delete\s+pod|exec|run)`,
-		"Deployment":       `kubectl.*(delete\s+deployment|scale|rollout)`,
-		"Service":          `kubectl.*(delete\s+service|expose)`,
-		"ConfigMap":        `kubectl.*(delete\s+configmap|create\s+configmap)`,
-		"Secret":           `kubectl.*(get\s+secret|create\s+secret)`,
-		"Namespace":        `kubectl.*(delete\s+namespace|create\s+namespace)`,
-		"ClusterRole":      `kubectl.*(create\s+clusterrole|delete\s+clusterrole)`,
-		"Node":             `kubectl.*(drain|cordon|delete\s+node)`,
-		"PersistentVolume": `kubectl.*delete\s+pv`,
+		"Pod":              `kubectl.*(delete\\s+pod|exec|run)`,
+		"Deployment":       `kubectl.*(delete\\s+deployment|scale|rollout)`,
+		"Service":          `kubectl.*(delete\\s+service|expose)`,
+		"ConfigMap":        `kubectl.*(delete\\s+configmap|create\\s+configmap)`,
+		"Secret":           `kubectl.*(get\\s+secret|create\\s+secret)`,
+		"Namespace":        `kubectl.*(delete\\s+namespace|create\\s+namespace)`,
+		"ClusterRole":      `kubectl.*(create\\s+clusterrole|delete\\s+clusterrole)`,
+		"Node":             `kubectl.*(drain|cordon|delete\\s+node)`,
+		"PersistentVolume": `kubectl.*delete\\s+pv`,
 	}
 
 	opPatterns := map[string]string{
@@ -2462,6 +2469,8 @@ func falcoTranslateCondition(condition string, macros map[string]string, lists m
 	}
 
 	// Pattern: proc.name in (nc, ncat, netcat) — resolved to alternation
+	// Use \b in the raw string (single backslash). When %q formats this for output,
+	// it becomes \\b in the YAML, which CEL parses as \b for RE2 word boundary.
 	if m := falcoProcNameIn.FindStringSubmatch(condition); m != nil {
 		items := splitFalcoList(m[1])
 		if len(items) > 0 {

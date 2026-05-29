@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-inject-sidecar-inject-sidecar
     annotations:
-        aegis.io/imported-from: aegis-import-2449932080.yaml
+        aegis.io/imported-from: aegis-import-2549899845.yaml
         aegis.io/severity: low
         kyverno.io/category: Sample
 spec:

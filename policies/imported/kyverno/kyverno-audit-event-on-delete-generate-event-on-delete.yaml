@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-audit-event-on-delete-generate-event-on-delete
     annotations:
-        aegis.io/imported-from: aegis-import-4185358437.yaml
+        aegis.io/imported-from: aegis-import-101583046.yaml
         aegis.io/severity: low
         kyverno.io/category: Other
 spec:

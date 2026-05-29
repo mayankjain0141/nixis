@@ -8,7 +8,7 @@ kind: PolicyTemplate
 metadata:
     name: gatekeeper-k8scontainerratios
     annotations:
-        aegis.io/imported-from: aegis-import-522819817.yaml
+        aegis.io/imported-from: aegis-import-3338036358.yaml
         aegis.io/original-kind: K8sContainerRatios
         aegis.io/severity: high
         aegis.io/source: open-policy-agent/gatekeeper-library

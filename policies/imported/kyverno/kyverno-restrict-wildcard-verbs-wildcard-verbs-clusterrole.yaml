@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-wildcard-verbs-wildcard-verbs-clusterrole
     annotations:
-        aegis.io/imported-from: aegis-import-3055280821.yaml
+        aegis.io/imported-from: aegis-import-3522202064.yaml
         aegis.io/severity: medium
         kyverno.io/category: Security, EKS Best Practices
 spec:
@@ -14,7 +14,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(create\s+clusterrole|delete\s+clusterrole)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(create\\s+clusterrole|delete\\s+clusterrole)")
           message: Use of a wildcard ('*') in any verbs is forbidden.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

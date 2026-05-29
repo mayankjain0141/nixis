@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-disallow-host-path-host-path-pod
     annotations:
-        aegis.io/imported-from: aegis-import-3002004889.yaml
+        aegis.io/imported-from: aegis-import-253537364.yaml
         aegis.io/severity: medium
         kyverno.io/category: Pod Security Standards (Baseline)
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
           message: HostPath volumes are forbidden. The field spec.volumes[*].hostPath must be unset.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

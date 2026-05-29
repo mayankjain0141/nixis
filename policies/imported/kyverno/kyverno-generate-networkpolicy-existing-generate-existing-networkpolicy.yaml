@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-generate-networkpolicy-existing-generate-existing-networkpolicy
     annotations:
-        aegis.io/imported-from: aegis-import-1015833949.yaml
+        aegis.io/imported-from: aegis-import-2375735353.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

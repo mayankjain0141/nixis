@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-kubecost-labels-require-labels-pod
     annotations:
-        aegis.io/imported-from: aegis-import-1630760892.yaml
+        aegis.io/imported-from: aegis-import-4190326498.yaml
         aegis.io/severity: medium
         kyverno.io/category: Kubecost
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
           message: The Kubecost labels `owner`, `team`, `department`, `app`, and `env` are all required for Pods.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

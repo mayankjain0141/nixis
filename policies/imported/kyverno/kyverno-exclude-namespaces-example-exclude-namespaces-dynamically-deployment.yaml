@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-exclude-namespaces-example-exclude-namespaces-dynamically-deployment
     annotations:
-        aegis.io/imported-from: aegis-import-795822543.yaml
+        aegis.io/imported-from: aegis-import-4211568267.yaml
         aegis.io/severity: medium
         kyverno.io/category: Sample
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+deployment|scale|rollout)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+deployment|scale|rollout)")
           message: |
             Creating Pods in the {{request.namespace}} namespace, which is not in the excluded list of namespaces {{ namespacefilters.data.exclude }}, is forbidden unless it carries the label `foo`.
           action: REQUIRE_APPROVAL

@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-inject-infrastructurename-replace-template
     annotations:
-        aegis.io/imported-from: aegis-import-3038386317.yaml
+        aegis.io/imported-from: aegis-import-1032718961.yaml
         aegis.io/severity: medium
         kyverno.io/category: OpenShift
 spec:

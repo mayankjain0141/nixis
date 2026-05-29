@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-label-nodes-cri-label-node-containerd
     annotations:
-        aegis.io/imported-from: aegis-import-1465922264.yaml
+        aegis.io/imported-from: aegis-import-3873410672.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

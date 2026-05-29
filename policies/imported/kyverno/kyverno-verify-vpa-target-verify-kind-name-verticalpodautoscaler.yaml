@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-verify-vpa-target-verify-kind-name-verticalpodautoscaler
     annotations:
-        aegis.io/imported-from: aegis-import-2068672790.yaml
+        aegis.io/imported-from: aegis-import-2723532119.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

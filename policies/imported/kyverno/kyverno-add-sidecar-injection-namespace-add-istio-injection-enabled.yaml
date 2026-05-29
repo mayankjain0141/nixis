@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-add-sidecar-injection-namespace-add-istio-injection-enabled
     annotations:
-        aegis.io/imported-from: aegis-import-1128979664.yaml
+        aegis.io/imported-from: aegis-import-1370052230.yaml
         aegis.io/severity: medium
         kyverno.io/category: Istio
 spec:

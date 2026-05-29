@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-check-deprecated-apis-validate-v1-25-removals-policy---poddisruptionbudget
     annotations:
-        aegis.io/imported-from: aegis-import-3273228979.yaml
+        aegis.io/imported-from: aegis-import-2958473053.yaml
         aegis.io/severity: low
         kyverno.io/category: Best Practices
 spec:

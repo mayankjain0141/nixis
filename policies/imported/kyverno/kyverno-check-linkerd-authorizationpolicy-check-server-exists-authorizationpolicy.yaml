@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-check-linkerd-authorizationpolicy-check-server-exists-authorizationpolicy
     annotations:
-        aegis.io/imported-from: aegis-import-811606723.yaml
+        aegis.io/imported-from: aegis-import-2881691710.yaml
         aegis.io/severity: medium
         kyverno.io/category: Linkerd
 spec:

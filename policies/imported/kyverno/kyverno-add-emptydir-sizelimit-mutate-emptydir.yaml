@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-add-emptydir-sizelimit-mutate-emptydir
     annotations:
-        aegis.io/imported-from: aegis-import-3480340255.yaml
+        aegis.io/imported-from: aegis-import-1172949186.yaml
         aegis.io/severity: low
         kyverno.io/category: Other
 spec:

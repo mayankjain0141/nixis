@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-application-field-validation-destination-server-name-application
     annotations:
-        aegis.io/imported-from: aegis-import-669985809.yaml
+        aegis.io/imported-from: aegis-import-2089094181.yaml
         aegis.io/severity: medium
         kyverno.io/category: Argo
 spec:

@@ -7,7 +7,7 @@ kind: PolicyTemplate
 metadata:
     name: gatekeeper-k8spspallowedusers
     annotations:
-        aegis.io/imported-from: aegis-import-3663536539.yaml
+        aegis.io/imported-from: aegis-import-26296887.yaml
         aegis.io/original-kind: K8sPSPAllowedUsers
         aegis.io/severity: high
         aegis.io/source: open-policy-agent/gatekeeper-library

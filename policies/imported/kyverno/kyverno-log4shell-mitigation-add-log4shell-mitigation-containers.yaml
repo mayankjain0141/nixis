@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-log4shell-mitigation-add-log4shell-mitigation-containers
     annotations:
-        aegis.io/imported-from: aegis-import-32237153.yaml
+        aegis.io/imported-from: aegis-import-3391531531.yaml
         aegis.io/severity: low
         kyverno.io/category: Sample
 spec:

@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-base-image-require-base-image-pod
     annotations:
-        aegis.io/imported-from: aegis-import-2821312324.yaml
+        aegis.io/imported-from: aegis-import-763902139.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other, EKS Best Practices
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
           message: Images must specify a source/base image from which they are built.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

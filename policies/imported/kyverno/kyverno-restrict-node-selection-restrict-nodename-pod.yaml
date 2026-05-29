@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-node-selection-restrict-nodename-pod
     annotations:
-        aegis.io/imported-from: aegis-import-3093797342.yaml
+        aegis.io/imported-from: aegis-import-3304365.yaml
         aegis.io/severity: low
         kyverno.io/category: Sample
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
           message: Setting the nodeName field is prohibited.
           action: AUDIT
     defaultAction: ALLOW

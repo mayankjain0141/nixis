@@ -1,14 +1,18 @@
 # IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: ((open_write and fd.name startswith /etc/cron) or
 #  (spawned_process and proc.name = "crontab"))
 # and not user_known_cron_...
+<<<<<<< HEAD
 # imported from: main via aegis policy import
+=======
+# imported from: rules via aegis policy import
+>>>>>>> agent/fix-policy-cel
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-schedule-cron-jobs
     annotations:
         aegis.io/falco-tags: maturity_incubating,host,container,filesystem,mitre_execution,T1053.003
-        aegis.io/imported-from: aegis-import-487448035.yaml
+        aegis.io/imported-from: aegis-import-3831796007.yaml
         aegis.io/severity: low
         aegis.io/source-rule: Schedule Cron Jobs
 spec:

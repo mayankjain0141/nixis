@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-replicas-allow-disruption-replicas-check-statefulset
     annotations:
-        aegis.io/imported-from: aegis-import-629933210.yaml
+        aegis.io/imported-from: aegis-import-989309272.yaml
         aegis.io/severity: low
         kyverno.io/category: Other
 spec:

@@ -8,7 +8,7 @@ kind: PolicyTemplate
 metadata:
     name: gatekeeper-k8shorizontalpodautoscaler
     annotations:
-        aegis.io/imported-from: aegis-import-1144756378.yaml
+        aegis.io/imported-from: aegis-import-3624645261.yaml
         aegis.io/original-kind: K8sHorizontalPodAutoscaler
         aegis.io/severity: high
         aegis.io/source: open-policy-agent/gatekeeper-library

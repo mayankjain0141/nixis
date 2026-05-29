@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-only-trustworthy-registries-set-root-only-allow-trusted-images-pod
     annotations:
-        aegis.io/imported-from: aegis-import-1957063998.yaml
+        aegis.io/imported-from: aegis-import-566182329.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other, EKS Best Practices
 spec:
@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\s+pod|exec|run)")
+        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
           message: Images with root user are not allowed to be pulled from any registry other than ghcr.io.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

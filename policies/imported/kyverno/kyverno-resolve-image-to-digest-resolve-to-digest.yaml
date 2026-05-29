@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-resolve-image-to-digest-resolve-to-digest
     annotations:
-        aegis.io/imported-from: aegis-import-841665123.yaml
+        aegis.io/imported-from: aegis-import-1153142737.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

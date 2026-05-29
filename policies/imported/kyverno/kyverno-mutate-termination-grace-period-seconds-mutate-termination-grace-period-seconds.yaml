@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-mutate-termination-grace-period-seconds-mutate-termination-grace-period-seconds
     annotations:
-        aegis.io/imported-from: aegis-import-4202701886.yaml
+        aegis.io/imported-from: aegis-import-1919150253.yaml
         aegis.io/severity: medium
         kyverno.io/category: Sample
 spec:

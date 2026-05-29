@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-enable-kubecost-continuous-rightsizing-enable-kubecost-autoscaling
     annotations:
-        aegis.io/imported-from: aegis-import-3022051513.yaml
+        aegis.io/imported-from: aegis-import-3642876549.yaml
         aegis.io/severity: medium
         kyverno.io/category: Kubecost
 spec:
