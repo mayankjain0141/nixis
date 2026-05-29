@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("nvidia.com/gpu")'
-          message: Images which reserve NVIDIA GPUs must be built to use them.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("nvidia.com/gpu") && !request.args.content.contains("NVIDIA_VISIBLE_DEVICES")'
+          message: Containers requesting nvidia.com/gpu must also set the NVIDIA_VISIBLE_DEVICES environment variable.
           action: AUDIT
     defaultAction: ALLOW

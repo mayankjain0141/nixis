@@ -14,7 +14,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+exec.*myapp-maintenance.*nginx.*")'
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+exec.*\\bmyapp-maintenance\\b.*") && request.args.command.contains("-c") && request.args.command.matches(".*-c\\s+nginx.*") && (request.args.command.indexOf(" -- ") == -1 || request.args.command.indexOf("myapp-maintenance") < request.args.command.indexOf(" -- "))'
           message: Nginx containers inside myapp-maintanence Pods may not be exec'd into.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
