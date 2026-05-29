@@ -14,9 +14,10 @@ spec:
     description: |
         Detect the initial process launched within a container that has a mount from a sensitive host directory (e.g. /proc). Exceptions are made for known trusted images. This rule holds value for generic auditing; however, its noisiness varies based on your environment.
     matchConstraints:
-        tools: []
+        tools:
+            - Bash
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*docker\\s+run.*-v\\s+/(etc|proc|sys|dev|var/run/docker\\.sock).*")'
+        - expression: 'tool == "Bash" && request.args.command.matches(".*docker\\s+run.*-v\\s+/(etc|proc|sys|dev|var/run/docker\\.sock)[:/].*")'
           message: 'Falco rule violated: Launch Sensitive Mount Container'
           action: AUDIT
     defaultAction: ALLOW
