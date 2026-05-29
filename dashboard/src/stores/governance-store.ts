@@ -1,7 +1,10 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
+import { enableMapSet } from 'immer';
 import type { SecurityLabel } from '../types/aegis';
 import type { Verdict, LabelState } from '../types/events';
+
+enableMapSet();
 
 export interface DelegationHop {
   hopIndex: number;
