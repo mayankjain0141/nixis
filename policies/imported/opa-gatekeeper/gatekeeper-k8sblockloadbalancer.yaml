@@ -20,9 +20,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '((tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("LoadBalancer")) || (tool == "Bash" && request.args.command.matches(".*kubectl.*(create|apply|expose).*") && request.args.command.contains("LoadBalancer"))'
+        - expression: '((tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("LoadBalancer")) || (tool == "Bash" && request.args.command.matches(".*kubectl.*(create|apply|expose).*") && request.args.command.contains("LoadBalancer"))'
           message: 'IMPORT_REVIEW: gatekeeper-k8sblockloadbalancer — check manifest content'
-            Disallows all Services with type LoadBalancer.
-            https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer
           action: DENY
     defaultAction: ALLOW

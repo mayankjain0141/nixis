@@ -19,9 +19,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("kind: Ingress")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Ingress")'
           message: 'IMPORT_REVIEW: gatekeeper-k8suniqueingresshost — check manifest content'
-            Requires all Ingress rule hosts to be unique.
-            Does not handle hostname wildcards: https://kubernetes.io/docs/concepts/services-networking/ingress/
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

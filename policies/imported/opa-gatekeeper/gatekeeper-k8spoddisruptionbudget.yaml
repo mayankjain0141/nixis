@@ -19,9 +19,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("PodDisruptionBudget") && request.args.content.contains("maxUnavailable: 0")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("PodDisruptionBudget") && request.args.content.contains("maxUnavailable: 0")'
           message: 'IMPORT_REVIEW: gatekeeper-k8spoddisruptionbudget — check manifest content'
-            Disallow the following scenarios when deploying PodDisruptionBudgets or resources that implement the replica subresource (e.g. Deployment, ReplicationController, ReplicaSet, StatefulSet): 1. Deployment of PodDisruptionBudgets with .spec.maxUnavailable == 0 2. Deployment of PodDisruptionBudgets with .spec.minAvailable == .spec.replicas of the resource with replica subresource This will prevent PodDisruptionBudgets from blocking voluntary disruptions such as node draining.
-            https://kubernetes.io/docs/concepts/workloads/pods/disruptions/
           action: DENY
     defaultAction: ALLOW

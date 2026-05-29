@@ -19,9 +19,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("kind: Service")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Service")'
           message: 'IMPORT_REVIEW: gatekeeper-k8suniqueserviceselector — check manifest content'
-            Requires Services to have unique selectors within a namespace. Selectors are considered the same if they have identical keys and values. Selectors may share a key/value pair so long as there is at least one distinct key/value pair between them.
-            https://kubernetes.io/docs/concepts/services-networking/service/#defining-a-service
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

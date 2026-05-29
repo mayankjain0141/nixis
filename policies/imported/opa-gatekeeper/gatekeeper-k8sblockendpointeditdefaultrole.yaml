@@ -20,9 +20,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '((tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("system:aggregate-to-edit") && request.args.content.contains("endpoints")) || (tool == "Bash" && request.args.command.matches(".*kubectl.*(edit|patch).*aggregate-to-edit.*"))'
+        - expression: '((tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("system:aggregate-to-edit") && request.args.content.contains("endpoints")) || (tool == "Bash" && request.args.command.matches(".*kubectl.*(edit|patch).*aggregate-to-edit.*"))'
           message: 'IMPORT_REVIEW: gatekeeper-k8sblockendpointeditdefaultrole — check manifest content'
-            Many Kubernetes installations by default have a system:aggregate-to-edit ClusterRole which does not properly restrict access to editing Endpoints. This ConstraintTemplate forbids the system:aggregate-to-edit ClusterRole from granting permission to create/patch/update Endpoints.
-            ClusterRole/system:aggregate-to-edit should not allow Endpoint edit permissions due to CVE-2021-25740, Endpoint & EndpointSlice permissions allow cross-Namespace forwarding, https://github.com/kubernetes/kubernetes/issues/103675
           action: DENY
     defaultAction: ALLOW
