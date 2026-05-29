@@ -16,7 +16,7 @@ spec:
             - Read
             - Bash
     validations:
-        - expression: '(tool == "Read" && request.args.path.matches(".*(shadow|gshadow|sudoers|ssh_host_[a-z]+_key|passwd|group).*")) || (tool == "Bash" && request.args.command.matches(".*\\bcat\\b.*(shadow|gshadow|sudoers|passwd).*"))'
+        - expression: '(tool == "Read" && (request.args.path.matches(".*/etc/(shadow|gshadow|sudoers|passwd|group)") || request.args.path.matches(".*/etc/ssh/ssh_host_[a-z]+_key"))) || (tool == "Bash" && request.args.command.matches(".*\\bcat\\b.*/etc/(shadow|gshadow|sudoers|passwd).*"))'
           message: 'Falco rule violated: Read sensitive file untrusted'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

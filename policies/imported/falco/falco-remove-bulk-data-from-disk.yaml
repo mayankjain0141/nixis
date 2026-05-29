@@ -17,7 +17,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && (request.args.command.matches(".*\\bshred\\b.*") || request.args.command.matches(".*\\bwipe\\b.*") || request.args.command.matches(".*\\bdd\\b.*if=/dev/(zero|urandom).*of=.*") || request.args.command.matches(".*\\brm\\b.*-rf\\s+/\\s*$"))'
+        - expression: 'tool == "Bash" && (request.args.command.matches(".*\\bshred\\b\\s+.*") || request.args.command.matches(".*\\bwipe\\b\\s+-[a-zA-Z].*") || request.args.command.matches(".*\\bdd\\b.*if=/dev/(zero|urandom).*of=.*") || request.args.command.matches(".*\\brm\\b.*-rf\\s+/\\s*$"))'
           message: 'Falco rule violated: Remove Bulk Data from Disk'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

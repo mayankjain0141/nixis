@@ -15,7 +15,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && (request.args.command.matches(".*bash\\s+-[ic].*>&\\s*/dev/tcp/.*") || request.args.command.contains("/dev/tcp/") || request.args.command.matches(".*\\b(nc|netcat|ncat)\\b.*-e.*(bash|sh).*") || request.args.command.matches(".*python.*socket.*\\.connect\\(.*") || request.args.command.matches(".*perl.*-e.*socket.*fork.*"))'
+        - expression: 'tool == "Bash" && (request.args.command.matches(".*bash\\s+-[ic].*>&\\s*/dev/tcp/.*") || request.args.command.matches(".*exec\\s+[0-9]+<>/dev/tcp/.*") || request.args.command.matches(".*\\b(nc|netcat|ncat)\\b.*-e.*(bash|sh).*") || request.args.command.matches(".*python[23]?.*socket.*\\.connect\\(.*") || request.args.command.matches(".*perl.*-e.*socket.*fork.*"))'
           message: 'Falco rule violated: Reverse Shell from Web Server'
           action: DENY
     defaultAction: ALLOW

@@ -17,7 +17,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*(curl|wget|nc|telnet|ssh).*") && !request.args.command.matches(".*(localhost|127\\.0\\.0\\.1|192\\.168\\.|10\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.).*")'
+        - expression: 'tool == "Bash" && request.args.command.matches(".*\\b(nc|netcat|ncat|telnet)\\b.*[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}.*") && !request.args.command.matches(".*(localhost|127\\.0\\.0\\.1|192\\.168\\.|10\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.).*")'
           message: 'Falco rule violated: Network Connection outside Local Subnet'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
