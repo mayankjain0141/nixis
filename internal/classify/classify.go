@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Package classify implements the three-tier tool classification engine.
 //
 // Hot path contract: Classify() on a VerdictMap hit MUST be zero-alloc.

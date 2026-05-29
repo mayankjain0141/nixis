@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Package ifc implements the Information Flow Control lattice for Aegis.
 //
 // Two operations sound similar but are semantically distinct:

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Package delegation implements Ed25519 delegation chain validation for Aegis.
 package delegation
 
