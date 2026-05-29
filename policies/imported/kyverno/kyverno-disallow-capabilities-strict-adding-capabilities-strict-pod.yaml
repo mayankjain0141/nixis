@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("add:")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("capabilities:") && request.args.content.contains("add:") && !request.args.content.contains("NET_BIND_SERVICE")'
           message: Any capabilities added other than NET_BIND_SERVICE are disallowed.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
