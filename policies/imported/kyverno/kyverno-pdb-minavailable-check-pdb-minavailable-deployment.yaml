@@ -1,4 +1,4 @@
-# IMPORT_REVIEW: Cross-resource numeric equality check — Aegis checks for PodDisruptionBudget manifests with minAvailable of 0 (always blocks disruptions); full replica-count comparison requires Kyverno
+# IMPORT_REVIEW: Cross-resource numeric equality check — Aegis DENYs PodDisruptionBudget manifests with minAvailable of 0 or maxUnavailable of 100%/100; full replica-count comparison requires Kyverno
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -16,7 +16,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: "(tool == \"Write\" || tool == \"Edit\") && request.args.path.matches(\".*\\\\.(yaml|yml|json)$\") && request.args.content.contains(\"kind: PodDisruptionBudget\") && (request.args.content.contains(\"minAvailable: 0\") || request.args.content.contains(\"minAvailable: '0'\") || request.args.content.contains('minAvailable: \"0\"'))"
-          message: 'PodDisruptionBudget minAvailable is set to 0 which blocks all voluntary disruptions including node drains — set minAvailable to at least 1'
+        - expression: "(tool == \"Write\" || tool == \"Edit\") && request.args.path.matches(\".*\\\\.(yaml|yml|json)$\") && request.args.content.contains(\"kind: PodDisruptionBudget\") && (request.args.content.contains(\"minAvailable: 0\") || request.args.content.contains(\"minAvailable: '0'\") || request.args.content.contains('minAvailable: \"0\"') || request.args.content.contains(\"maxUnavailable: 100%\") || request.args.content.contains(\"maxUnavailable: '100%'\") || request.args.content.contains('maxUnavailable: \"100%\"') || request.args.content.contains(\"maxUnavailable: 100\"))"
+          message: 'PodDisruptionBudget allows all pods to be unavailable (minAvailable: 0 or maxUnavailable: 100%/100) which blocks voluntary disruptions including node drains — set minAvailable to at least 1 or maxUnavailable below 100%'
           action: DENY
     defaultAction: ALLOW

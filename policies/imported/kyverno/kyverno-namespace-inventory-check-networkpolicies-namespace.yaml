@@ -1,4 +1,4 @@
-# IMPORT_REVIEW: Cross-resource existence check — Aegis approximates by flagging Namespace writes without an inline NetworkPolicy definition; full enforcement requires Kyverno background scan
+# IMPORT_REVIEW: Cross-resource existence check — Aegis flags Namespace writes lacking inline NetworkPolicy and intercepts kubectl delete networkpolicy commands; full background scan enforcement requires Kyverno
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -15,8 +15,12 @@ spec:
         tools:
             - Write
             - Edit
+            - Bash
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Namespace") && !request.args.content.contains("kind: NetworkPolicy")'
           message: 'Namespace manifest written without an accompanying NetworkPolicy — all namespaces must have a NetworkPolicy; cross-resource existence check requires Kyverno background scan for full enforcement'
+          action: AUDIT
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl.*delete.*networkpolic.*")'
+          message: 'Deleting a NetworkPolicy may violate namespace inventory requirements — all namespaces must maintain at least one NetworkPolicy'
           action: AUDIT
     defaultAction: ALLOW

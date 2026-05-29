@@ -1,4 +1,4 @@
-# IMPORT_REVIEW: QoS Guaranteed requires both requests and limits defined for all containers — Aegis checks for presence of both resources.requests and resources.limits in the Pod manifest; verifying requests == limits for all containers requires numeric parsing not available in CEL string matching
+# IMPORT_REVIEW: QoS Guaranteed requires requests == limits for all containers — Aegis DENYs when either section is absent and REQUIREs APPROVAL when both are present (values need human verification for equality); numeric comparison not available in CEL string matching
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -17,6 +17,9 @@ spec:
             - Edit
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Pod") && !(request.args.content.contains("requests:") && request.args.content.contains("limits:"))'
-          message: 'Pod must define both resource requests and limits for all containers to qualify for QoS class Guaranteed — ensure every container specifies cpu and memory under both requests and limits'
+          message: 'Pod is missing resource requests or limits — QoS Guaranteed requires both requests and limits defined for every container'
           action: DENY
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Pod") && request.args.content.contains("requests:") && request.args.content.contains("limits:")'
+          message: 'Pod defines both requests and limits — verify that requests equal limits for all containers and all resources (cpu and memory) to qualify for QoS Guaranteed'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

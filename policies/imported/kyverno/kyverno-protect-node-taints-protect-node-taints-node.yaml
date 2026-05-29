@@ -1,4 +1,4 @@
-# IMPORT_REVIEW: translated by Claude — kubectl taint node commands are intercepted; cluster-admin bypass check requires RBAC context not available in Aegis CEL
+# IMPORT_REVIEW: translated by Claude — kubectl taint node intercepted at Bash level; Write/Edit pathway DENYs Node manifests that include a taints section (applying such manifests would alter node taints); cluster-admin bypass check requires RBAC context not available in Aegis CEL
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -14,8 +14,13 @@ spec:
     matchConstraints:
         tools:
             - Bash
+            - Write
+            - Edit
     validations:
         - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl.*taint.*node.*")'
           message: 'Altering node taints is not allowed — only cluster-admin ClusterRole holders may modify node taints'
+          action: DENY
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Node") && request.args.content.contains("taints:")'
+          message: 'Node manifest includes a taints section — applying this manifest would alter node taints; only cluster-admin ClusterRole holders may modify node taints'
           action: DENY
     defaultAction: ALLOW

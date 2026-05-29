@@ -1,4 +1,4 @@
-# IMPORT_REVIEW: QoS Burstable requires at least one container to have requests or limits set — Aegis checks for the presence of resources.requests or resources.limits in the Pod manifest; numeric equality comparison (to distinguish Burstable from Guaranteed) requires Kyverno
+# IMPORT_REVIEW: QoS Burstable requires at least one container to have requests set — Aegis AUDITs Pod/Deployment/StatefulSet manifests that lack a resources.requests section; numeric equality comparison (to distinguish Burstable from Guaranteed) requires Kyverno
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -16,7 +16,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Pod") && !request.args.content.contains("requests:") && !request.args.content.contains("limits:")'
-          message: 'Pod does not define any resource requests or limits — at minimum one container must have requests or limits set to qualify for QoS class Burstable'
-          action: DENY
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (request.args.content.contains("kind: Pod") || request.args.content.contains("kind: Deployment") || request.args.content.contains("kind: StatefulSet")) && !request.args.content.contains("requests:")'
+          message: 'Manifest does not define any resource requests — at least one container must have resources.requests set to qualify for QoS class Burstable'
+          action: AUDIT
     defaultAction: ALLOW

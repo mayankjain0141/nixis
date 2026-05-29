@@ -1,4 +1,4 @@
-# IMPORT_REVIEW: CEL_LIMITATION — Kyverno's key-removal rule uses oldObject diff which Aegis cannot replicate; kubectl label/annotate operations targeting the foo key on nodes are intercepted at the command level; key-removal vs value-change cannot be distinguished without admission oldObject
+# IMPORT_REVIEW: CEL_LIMITATION — key-removal vs value-change cannot be distinguished without oldObject diff; Bash pathway intercepts kubectl label/annotate on nodes; Write/Edit pathway DENYs Node manifests that omit the foo label entirely
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -14,8 +14,13 @@ spec:
     matchConstraints:
         tools:
             - Bash
+            - Write
+            - Edit
     validations:
         - expression: 'tool == "Bash" && request.args.command.matches("(?i)kubectl.*(label|annotate).*node.*foo")'
           message: 'Changes to the node label foo are not allowed — key removal or value mutation detected via kubectl command'
+          action: DENY
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Node") && !request.args.content.contains("foo:")'
+          message: 'Node manifest does not contain the required foo label — applying this manifest would remove the foo label from the node'
           action: DENY
     defaultAction: ALLOW

@@ -1,4 +1,4 @@
-# IMPORT_REVIEW: Duplicate-detection and targetRef kind check — Aegis enforces the allowed-kind rule via content checks; duplicate HPA detection across resources requires Kyverno background scan
+# IMPORT_REVIEW: Duplicate-detection and targetRef kind check — Aegis enforces the allowed-kind rule via content checks and intercepts kubectl autoscale commands; full cross-resource duplicate detection requires Kyverno background scan
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -15,11 +15,15 @@ spec:
         tools:
             - Write
             - Edit
+            - Bash
     validations:
         - expression: "(tool == \"Write\" || tool == \"Edit\") && request.args.path.matches(\".*\\\\.(yaml|yml|json)$\") && request.args.content.contains(\"kind: HorizontalPodAutoscaler\") && !(request.args.content.contains(\"kind: Deployment\") || request.args.content.contains(\"kind: StatefulSet\") || request.args.content.contains(\"kind: ReplicaSet\") || request.args.content.contains(\"kind: DaemonSet\"))"
           message: 'HorizontalPodAutoscaler scaleTargetRef.kind must be one of Deployment, StatefulSet, ReplicaSet, or DaemonSet'
           action: DENY
         - expression: "(tool == \"Write\" || tool == \"Edit\") && request.args.path.matches(\".*\\\\.(yaml|yml|json)$\") && request.args.content.contains(\"kind: HorizontalPodAutoscaler\")"
           message: 'HorizontalPodAutoscaler write detected — verify no duplicate HPA targets the same resource; cross-resource duplicate detection requires Kyverno'
+          action: AUDIT
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl.*autoscale.*")'
+          message: 'kubectl autoscale detected — verify this does not create a duplicate HPA targeting the same resource as an existing HPA'
           action: AUDIT
     defaultAction: ALLOW
