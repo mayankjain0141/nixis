@@ -1,7 +1,6 @@
 package bundle
 
 import (
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -221,31 +220,6 @@ func ParsePolicyDir(dir string) ([]policy_types.PolicyTemplate, []policy_types.P
 	var bindings []policy_types.PolicyBinding
 	var skipped int
 
-<<<<<<< HEAD
-	for _, entry := range entries {
-		if entry.IsDir() {
-			// Recurse into subdirectories so policies/imported/ is loaded alongside policies/builtin/
-			subTemplates, subBindings, err := ParsePolicyDir(filepath.Join(dir, entry.Name()))
-			if err != nil {
-				return nil, nil, err
-			}
-			templates = append(templates, subTemplates...)
-			bindings = append(bindings, subBindings...)
-			continue
-		}
-
-		name := entry.Name()
-		if !strings.HasSuffix(name, ".yaml") && !strings.HasSuffix(name, ".yml") {
-			continue
-		}
-
-		path := filepath.Join(dir, name)
-		template, binding, err := ParsePolicyFile(path)
-		if err != nil {
-			// Warn and skip malformed files — don't abort the entire load
-			log.Printf("WARN: skipping malformed policy file %s: %v", path, err)
-			continue
-=======
 	err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -264,7 +238,6 @@ func ParsePolicyDir(dir string) ([]policy_types.PolicyTemplate, []policy_types.P
 			// Skip files that fail to parse rather than failing the entire load
 			skipped++
 			return nil
->>>>>>> agent/fix-policy-cel
 		}
 
 		if template != nil && binding != nil {
