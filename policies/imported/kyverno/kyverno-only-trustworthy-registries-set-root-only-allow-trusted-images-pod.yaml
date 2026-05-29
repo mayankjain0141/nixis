@@ -15,6 +15,6 @@ spec:
             - Edit
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("image:") && !request.args.content.matches(".*image:\\s+ghcr\\.io/.*")'
-          message: 'Containers running as root must use images from ghcr.io'
-          action: DENY
+          message: 'Containers running as root must use images from ghcr.io — runAsRoot detection not possible via content scan; this approximation flags all non-ghcr.io images, manual review required'
+          action: AUDIT
     defaultAction: ALLOW
