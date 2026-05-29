@@ -15,7 +15,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: VerticalPodAutoscaler")'
-          message: Workload '{{request.object.kind}}/{{request.object.metadata.name}}'  requires a matching VerticalPodAutoscaler (VPA) in the  '{{request.object.metadata.namespace}}' namespace.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: ReplicaSet")'
+          message: ReplicaSet requires a matching VerticalPodAutoscaler (VPA) — cross-resource existence cannot be verified inline, human review required.
           action: AUDIT
     defaultAction: ALLOW
