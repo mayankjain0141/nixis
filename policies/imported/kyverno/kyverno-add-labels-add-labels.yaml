@@ -12,9 +12,11 @@ metadata:
 spec:
     description: Labels are used as an important source of metadata describing objects in various ways or triggering other functionality. Labels are also a very basic concept and should be used throughout Kubernetes. This policy performs a simple mutation which adds a label `foo=bar` to Pods, Services, ConfigMaps, and Secrets.
     matchConstraints:
-        tools: []
+        tools:
+            - Write
+            - Edit
     validations:
-        - expression: 'false'
-          message: 'IMPORT_REVIEW: mutate rule — Aegis does not mutate requests — manual review required'
-          action: AUDIT
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (request.args.content.contains("kind: Pod") || request.args.content.contains("kind: Service") || request.args.content.contains("kind: ConfigMap") || request.args.content.contains("kind: Secret")) && !request.args.content.contains("foo: bar")'
+          message: 'Manifest is missing required label foo=bar — add it under metadata.labels before applying'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW
