@@ -16,8 +16,9 @@ spec:
             - Read
             - Write
             - Edit
+            - Bash
     validations:
-        - expression: '(tool == "Read" || tool == "Write" || tool == "Edit") && request.args.path.contains("../") || tool == "Bash" && request.args.command.matches(".*(cat|less|head|tail|cp|curl|wget).*\\.\\./.*")'
+        - expression: '((tool == "Read" || tool == "Write" || tool == "Edit") && (request.args.path.contains("../../") || request.args.path.matches(".*\\.\\./\\.\\./(etc|root|proc|sys|var|home)/.*"))) || (tool == "Bash" && request.args.command.matches(".*(cat|less|head|tail|cp|curl|wget).*\\.\\./\\.\\./.*"))'
           message: 'Falco rule violated: correct mitre rule tactics tags with multiple techniques'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

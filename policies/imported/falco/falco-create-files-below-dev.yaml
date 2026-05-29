@@ -17,7 +17,7 @@ spec:
             - Edit
             - Bash
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches("^/dev/[^/]+$") || tool == "Bash" && request.args.command.matches(".*(touch|tee|cp|mv|install|mknod)\\s+.*/dev/[a-zA-Z].*")'
+        - expression: '((tool == "Write" || tool == "Edit") && request.args.path.matches("^/dev/[^/]+$") && !request.args.path.matches("^/dev/(null|zero|random|urandom|stdin|stdout|stderr|tty|pts.*|fd.*)$")) || (tool == "Bash" && request.args.command.matches(".*\\b(mknod|install)\\b.*/dev/[a-zA-Z].*") && !request.args.command.matches(".*/dev/(null|zero|random|urandom|stdin|stdout|stderr|tty)\\b.*"))'
           message: 'Falco rule violated: Create files below dev'
           action: DENY
     defaultAction: ALLOW
