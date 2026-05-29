@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { usePolicyStore } from '../../stores/policy-store';
 
 const SECTION_HEADER: React.CSSProperties = {
@@ -31,21 +31,47 @@ export function PolicySidebar(): React.ReactElement {
   const selectPolicy = usePolicyStore((s) => s.selectPolicy);
   const bundleStatus = usePolicyStore((s) => s.bundleStatus);
 
+  const [filter, setFilter] = useState('');
+
   const selectedPolicy = useMemo(
     () => policies.find((p) => p.id === selectedPolicyId) ?? null,
     [policies, selectedPolicyId],
   );
+
+  const visiblePolicies = useMemo(() => {
+    if (!filter.trim()) return policies;
+    const q = filter.toLowerCase();
+    return policies.filter(p =>
+      p.id.toLowerCase().includes(q) ||
+      p.name.toLowerCase().includes(q) ||
+      (p.celExpression ?? '').toLowerCase().includes(q),
+    );
+  }, [policies, filter]);
 
   return (
     <div style={{ background: '#0d1117', overflowY: 'auto', height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* POLICIES section */}
       <div style={SECTION_HEADER}>
         <span>Policies</span>
-        <span style={COUNT_BADGE}>{policies.length}</span>
+        <span style={COUNT_BADGE}>{filter ? `${visiblePolicies.length}/${policies.length}` : policies.length}</span>
+      </div>
+
+      <div style={{ padding: '0 12px 6px' }}>
+        <input
+          type="text"
+          value={filter}
+          onChange={e => setFilter(e.target.value)}
+          placeholder="Filter policies…"
+          style={{
+            width: '100%', background: '#161b22', border: '1px solid #30363d',
+            borderRadius: 4, padding: '4px 8px', color: '#e6edf3',
+            fontSize: '12px', outline: 'none', boxSizing: 'border-box',
+          }}
+        />
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        {policies.map((policy) => {
+        {visiblePolicies.map((policy) => {
           const isSelected = policy.id === selectedPolicyId;
           return (
             <div key={policy.id}>
@@ -154,7 +180,13 @@ export function PolicySidebar(): React.ReactElement {
           </div>
         )}
 
-        {selectedPolicyId === null && policies.length > 0 && (
+        {filter && visiblePolicies.length === 0 && policies.length > 0 && (
+          <div style={{ padding: '7px 12px', fontSize: '12px', color: '#484f58' }}>
+            No policies match.
+          </div>
+        )}
+
+        {selectedPolicyId === null && policies.length > 0 && !filter && (
           <div style={{ padding: '6px 12px 4px', fontSize: '11px', color: '#484f58' }}>
             Select a policy to view details
           </div>
