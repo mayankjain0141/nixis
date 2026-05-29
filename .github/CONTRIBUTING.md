@@ -17,7 +17,7 @@ Thank you for your interest in contributing. This document covers prerequisites,
 go build ./...
 ```
 
-### Dashboard (Next.js / React)
+### Dashboard (Vite + React)
 
 ```bash
 cd dashboard
@@ -68,6 +68,18 @@ npm run lint
 ### A note on `IMPORT_TODO:` markers
 
 Policy files in this repository contain markers like `IMPORT_TODO: <description>`. These are intentional workflow artifacts used by the policy import tooling — they are not bugs or incomplete work. Do not remove or "fix" them.
+
+## Local development
+
+The daemon binds to these default addresses:
+
+| Service | Default | Override |
+|---------|---------|---------|
+| WebSocket stream | `ws://127.0.0.1:9090/ws` | `--stream-addr` flag |
+| Healthz / delegation API | `http://127.0.0.1:9091` | `HealthzAddr` in config |
+| gRPC ext_authz | disabled by default | `AEGIS_GRPC_ADDR` env var |
+
+The dashboard dev server defaults to `http://localhost:5173` and connects to the WebSocket stream via `VITE_DAEMON_WS_URL` (defaults to `ws://localhost:9090/ws`).
 
 ## Pull request process
 
