@@ -40,10 +40,11 @@ const PolicyEvaluatedDataSchema = z.object({
   tool: z.string(),
   arg_hash: z.string().optional(),
   session_id: z.string(),
-  decision: DecisionSchema,
+  decision: DecisionSchema.passthrough(),
   label_state: z.string(),
   latency_ns: z.number(),
-});
+  request_args: z.string().optional(),   // actual command/path/query evaluated
+}).passthrough();
 
 const PolicyDeniedDataSchema = PolicyEvaluatedDataSchema;
 
