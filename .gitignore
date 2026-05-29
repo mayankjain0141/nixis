@@ -134,3 +134,9 @@ testdata/
 # Git Worktrees
 # ===========================
 .worktrees/
+
+# compiled binaries (built at repo root)
+/aegis
+/aegis-daemon
+/aegis-fix
+/aegis-hook
