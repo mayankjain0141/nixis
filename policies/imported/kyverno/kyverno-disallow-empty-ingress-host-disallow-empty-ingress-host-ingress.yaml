@@ -12,9 +12,10 @@ spec:
     description: An ingress resource needs to define an actual host name in order to be valid. This policy ensures that there is a hostname for each rule defined.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("host: """) || (request.args.content.contains("rules:") && !request.args.content.contains("host:"))'
           message: The Ingress host name must be defined, not empty.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

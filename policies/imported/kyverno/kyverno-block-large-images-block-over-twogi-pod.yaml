@@ -11,9 +11,10 @@ spec:
     description: Pods which run containers of very large image size take longer to pull and require more space to store. A user may either inadvertently or purposefully name an image which is unusually large to disrupt operations. This policy checks the size of every container image and blocks if it is over 2 Gibibytes.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("image:")'
           message: images with size greater than 2Gi not allowed
-          action: REQUIRE_APPROVAL
+          action: AUDIT
     defaultAction: ALLOW

@@ -14,7 +14,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\s+cp.*")'
           message: Cannot use `kubectl cp` on pods
-          action: DENY
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

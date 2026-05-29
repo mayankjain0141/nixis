@@ -11,9 +11,10 @@ spec:
     description: Certificates for trusted domains should always be steered to a controlled issuer to ensure the chain of trust is appropriate for that application. Users may otherwise be able to create their own issuers and sign certificates for other domains. This policy ensures that a certificate request for a specific domain uses a designated ClusterIssuer.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("kind: Certificate") && !request.args.content.contains("issuerRef:")'
           message: When requesting a cert for this domain, you must use our corporate issuer.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

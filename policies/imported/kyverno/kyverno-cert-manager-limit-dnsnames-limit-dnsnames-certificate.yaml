@@ -12,9 +12,10 @@ spec:
     description: Some applications will not accept certificates containing more than a single name. This policy ensures that each certificate request contains only one DNS name entry.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("kind: Certificate") && request.args.content.contains("dnsNames:")'
           message: Only one dnsNames entry allowed per certificate request.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

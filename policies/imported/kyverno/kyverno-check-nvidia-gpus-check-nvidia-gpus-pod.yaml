@@ -11,9 +11,10 @@ spec:
     description: Containers which request use of an NVIDIA GPU often need to be authored to consume them via a CUDA environment variable called NVIDIA_VISIBLE_DEVICES. This policy checks the containers which request a GPU to ensure they have been authored with this environment variable.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("nvidia.com/gpu")'
           message: Images which reserve NVIDIA GPUs must be built to use them.
-          action: REQUIRE_APPROVAL
+          action: AUDIT
     defaultAction: ALLOW

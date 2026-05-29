@@ -11,9 +11,10 @@ spec:
     description: Privileged mode disables most security mechanisms and must not be allowed. This policy ensures Pods do not call for privileged mode.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("privileged: true")'
           message: Privileged mode is disallowed. The fields spec.containers[*].securityContext.privileged, spec.initContainers[*].securityContext.privileged, and spec.ephemeralContainers[*].securityContext.privileged must be unset or set to `false`.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

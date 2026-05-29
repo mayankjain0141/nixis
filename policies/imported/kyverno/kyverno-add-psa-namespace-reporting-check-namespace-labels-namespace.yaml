@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+namespace|create\\s+namespace)")
+        - expression: 'false'
           message: This Namespace is missing a PSA label.
-          action: REQUIRE_APPROVAL
+          action: AUDIT
     defaultAction: ALLOW
