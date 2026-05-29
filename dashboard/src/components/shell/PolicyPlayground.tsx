@@ -17,6 +17,8 @@ function simulateEval(
   if (celLower.includes('/etc/') && (tool === 'Write' || tool === 'Edit' || tool === 'FileDelete') && args.includes('/etc/')) return 'deny';
   if (celLower.includes('prod') && tool === 'DatabaseQuery' && args.toLowerCase().includes('prod')) return 'require_approval';
   if (celLower.includes('secret') && tool === 'Read' && /secret|api\.key|passwd|shadow/.test(args)) return 'audit';
+  // no-secret-transmission: deny if args explicitly contain a known secret pattern (simulated)
+  if (celLower.includes('contains_secret') && /AWS_SECRET|api_key|password\s*=|token\s*=/i.test(args)) return 'deny';
 
   return 'allow';
 }

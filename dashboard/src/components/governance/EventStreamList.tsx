@@ -5,10 +5,10 @@ import { useUIStore } from '../../stores/ui-store';
 const MAX_VISIBLE = 25;
 
 const VERDICT_STYLE: Record<string, { bg: string; color: string; label: string }> = {
-  deny:             { bg: '#cf222e', color: '#fff',     label: 'DENY' },
-  allow:            { bg: '#2da44e', color: '#fff',     label: 'ALLOW' },
-  require_approval: { bg: '#d29922', color: '#1a1a1a', label: 'APPR' },
-  audit:            { bg: '#8250df', color: '#fff',     label: 'AUDIT' },
+  deny:             { bg: 'var(--deny)',         color: '#fff',     label: 'DENY' },
+  allow:            { bg: 'var(--allow)',         color: '#fff',     label: 'ALLOW' },
+  require_approval: { bg: 'var(--escalate)',      color: '#1a1a1a', label: 'APPR' },
+  audit:            { bg: 'var(--audit-purple)',  color: '#fff',     label: 'AUDIT' },
 };
 
 function formatLatency(ns: number): string {
@@ -71,7 +71,7 @@ export function EventStreamList() {
   }
 
   return (
-    <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div aria-label="Live event stream" style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div
         ref={containerRef}
         onScroll={handleScroll}

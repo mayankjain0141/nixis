@@ -93,7 +93,7 @@ export function Inspector() {
   const ext = event as typeof event & { requestedLabel?: { confidentiality: number; integrity: number; categories: number } };
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', fontSize: 13 }}>
+    <div aria-label="Inspector panel" style={{ height: '100%', display: 'flex', flexDirection: 'column', fontSize: 13 }}>
       {/* Header */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
