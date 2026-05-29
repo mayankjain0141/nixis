@@ -2,6 +2,8 @@ module github.com/mayjain/aegis
 
 go 1.25.0
 
+toolchain go1.26.3
+
 require (
 	github.com/envoyproxy/go-control-plane/envoy v1.37.0
 	github.com/fsnotify/fsnotify v1.10.1
