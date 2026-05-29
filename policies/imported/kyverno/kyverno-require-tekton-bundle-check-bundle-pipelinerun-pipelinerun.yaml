@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: PipelineRun") && !request.args.content.contains("bundle:")'
-          message: 'PipelineRun resources must reference a Tekton bundle'
-          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: PipelineRun")'
+          message: 'PipelineRun resources must be executed from a bundle — verify spec.pipelineRef.bundle (deprecated) or resolver: bundles is set; CEL cannot check field path'
+          action: AUDIT
     defaultAction: ALLOW
