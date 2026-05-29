@@ -16,7 +16,7 @@ spec:
     matchConstraints:
         tools: []
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*docker\\s+run.*")'
+        - expression: 'false'
           message: 'Falco rule violated: wrong mitre rule'
-          action: REQUIRE_APPROVAL
+          action: AUDIT
     defaultAction: ALLOW

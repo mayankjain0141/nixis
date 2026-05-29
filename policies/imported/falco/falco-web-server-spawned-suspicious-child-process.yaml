@@ -15,7 +15,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.contains("healthcheck")
+        - expression: 'tool == "Bash" && request.args.command.matches(".*\\b(php|python|ruby|node|nginx|apache|httpd|gunicorn|uwsgi)\\b.*") && request.args.command.matches(".*\\b(curl|wget|nc|netcat|ncat|python|perl|ruby|bash|sh)\\b.*")'
           message: 'Falco rule violated: Web Server Spawned Suspicious Child Process'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

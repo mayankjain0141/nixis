@@ -17,7 +17,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && (request.args.command.matches(".*\\bnc\\b.*-u.*") || request.args.command.matches(".*socat.*UDP.*"))'
+        - expression: 'tool == "Bash" && (request.args.command.matches(".*\\bnc\\b.*-u.*") || request.args.command.matches(".*socat.*UDP.*") || request.args.command.matches(".*\\bnmap\\b.*-sU.*"))'
           message: 'Falco rule violated: Unexpected UDP Traffic'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
