@@ -1,4 +1,4 @@
-# imported from: policies via aegis policy import
+# IMPORT_TODO: Kyverno policy checks per-key annotations — CEL approximates by detecting manifests with annotations that contain no fluxcd.io/ key; mixed cases (fluxcd + other) are not caught
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:
@@ -15,6 +15,6 @@ spec:
             - Edit
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.matches(".*annotations:.*") && !request.args.content.matches(".*fluxcd\\.io/.*")'
-          message: Rather than creating a deny list of annotations, it may be more useful to invert that list and create an allow list which then denies any others. This policy demonstrates how to allow two annotations with a specific key name of fluxcd.io/ while denying others that do not meet the pattern.
+          message: Only annotations with key prefix fluxcd.io/ are allowed. Remove or rename any other annotation keys.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
