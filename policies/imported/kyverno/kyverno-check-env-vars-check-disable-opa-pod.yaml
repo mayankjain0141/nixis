@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("env:") && !request.args.content.contains("DISABLE_OPA")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("DISABLE_OPA") && request.args.content.contains("value: \"true\"")'
           message: DISABLE_OPA must not be set to true.
           action: AUDIT
     defaultAction: ALLOW
