@@ -14,9 +14,10 @@ spec:
     description: |
         System (e.g. non-login) users spawning new processes. Can add custom service users (e.g. apache or mysqld). 'Interactive' is defined as new processes as descendants of an ssh session or login process. Consider further tuning by only looking at processes in a terminal / tty (proc.tty != 0). A newer field proc.is_vpgid_leader could be of help to distinguish if the process was "directly" executed, for instance, in a tty, or executed as a descendant process in the same process group, which, for example, is the case when subprocesses are spawned from a script. Consider this rule as a great template rule to monitor interactive accesses to your systems more broadly. However, such a custom rule would be unique to your environment. The rule "Terminal shell in container" that fires when using "kubectl exec" is more Kubernetes relevant, whereas this one could be more interesting for the underlying host.
     matchConstraints:
-        tools: []
+        tools:
+            - Bash
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*(su|sudo)\\s+(root|daemon|nobody|www-data|sys|bin).*")'
+        - expression: 'tool == "Bash" && request.args.command.matches(".*\\bsu\\b\\s+(root|daemon|nobody|www-data|sys|bin|mail|games|man|lp|news|uucp).*")'
           message: 'Falco rule violated: System user interactive'
           action: AUDIT
     defaultAction: ALLOW

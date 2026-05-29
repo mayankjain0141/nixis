@@ -15,7 +15,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)\\b(user_known_userfaultfd_processes)\\b")
+        - expression: 'tool == "Bash" && request.args.command.contains("userfaultfd")'
           message: 'Falco rule violated: Unprivileged Delegation of Page Faults Handling to a Userspace Process'
           action: DENY
     defaultAction: ALLOW

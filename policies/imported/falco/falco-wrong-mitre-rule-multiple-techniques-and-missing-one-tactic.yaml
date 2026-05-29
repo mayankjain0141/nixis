@@ -12,12 +12,9 @@ spec:
     description: |
         Read sensitive file untrusted - an attempt to read any sensitive file (e.g. files containing user/password/authentication information). Exceptions are made for known trusted programs.
     matchConstraints:
-        tools:
-            - Read
-            - Write
-            - Edit
+        tools: []
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)\\b(user_mgmt_binaries|userexec_binaries|package_mgmt_binaries|cron_binaries|read_sensitive_file_binaries|shell_binaries|hids_binaries|vpn_binaries|mail_config_binaries|nomachine_binaries|sshkit_script_binaries|in.proftpd|mandb|salt-call|salt-minion|postgres_mgmt_binaries|google_oslogin_)\\b")
+        - expression: 'false'
           message: 'Falco rule violated: wrong mitre rule multiple techniques and missing one tactic'
-          action: REQUIRE_APPROVAL
+          action: AUDIT
     defaultAction: ALLOW
