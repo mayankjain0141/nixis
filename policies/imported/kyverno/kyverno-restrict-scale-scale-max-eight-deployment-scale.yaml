@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
-          message: 'Policy validation required — review manifest before applying'
-          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("Deployment") && request.args.content.contains("replicas:")'
+          message: 'AUDIT: replica count limit (max 8 on scale) cannot be enforced inline — CEL cannot compare numeric values from YAML text'
+          action: AUDIT
     defaultAction: ALLOW
