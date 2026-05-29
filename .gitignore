@@ -129,3 +129,8 @@ SUBAGENT_PLAYBOOK.md
 # ===========================
 testdata/
 .benchmarks/
+
+# ===========================
+# Git Worktrees
+# ===========================
+.worktrees/
