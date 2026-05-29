@@ -1,4 +1,4 @@
-# IMPORT_TODO: JMESPath conditions in require-authorizationpolicies/check-authz-pol could not be translated — cross-resource check (namespace must have AuthorizationPolicy) is not expressible in single-request CEL; translated to AUDIT
+# IMPORT_REVIEW: CEL_LIMITATION — cross-resource existence check (namespace must have AuthorizationPolicy) is not expressible in single-request CEL; Namespace writes are flagged for audit; full enforcement requires Kyverno background scan
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -7,6 +7,7 @@ metadata:
     annotations:
         aegis.io/imported-from: aegis-import-2673448083.yaml
         aegis.io/severity: medium
+        aegis.io/llm-confidence: low
         kyverno.io/category: Istio
 spec:
     description: An AuthorizationPolicy is used to provide access controls for traffic in the mesh and can be defined at multiple levels. For the Namespace level, all Namespaces should have at least one AuthorizationPolicy. This policy, designed to run in background mode for reporting purposes, ensures every Namespace has at least one AuthorizationPolicy.
@@ -15,7 +16,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: 'false'
-          message: 'Cross-resource policy translated to audit-only — Aegis cannot verify that a Namespace has an AuthorizationPolicy within a single request context'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Namespace")'
+          message: 'Namespace write detected — verify that at least one AuthorizationPolicy exists for this namespace; cross-resource existence check requires Kyverno background scan for full enforcement'
           action: AUDIT
     defaultAction: ALLOW
