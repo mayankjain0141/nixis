@@ -1,4 +1,4 @@
-# IMPORT_REVIEW: translated by Claude — validates schedule field exists and contains a recognizable cron pattern or @shorthand; full cron-syntax validation requires a dedicated parser
+# IMPORT_REVIEW: translated by Claude — validates schedule field exists and contains a recognizable cron pattern or @shorthand; full cron-syntax validation requires a dedicated parser; Bash pathway catches kubectl create cronjob without --schedule flag
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -15,8 +15,12 @@ spec:
         tools:
             - Write
             - Edit
+            - Bash
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Schedule") && request.args.content.matches(".*apiVersion:\\s+velero\\.io.*") && !request.args.content.matches(".*schedule:\\s+(@(hourly|daily|weekly|monthly|annually|yearly)|([0-9*,/\\-]+ ){4}[0-9*,/\\-]+).*")'
           message: 'Velero Schedule resources must define a valid 5-field cron expression or @shorthand (@hourly, @daily, @weekly, @monthly, @annually) in the schedule field'
+          action: REQUIRE_APPROVAL
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl.*create.*cronjob.*") && !request.args.command.matches(".*--schedule\\s+[^\\s].*")'
+          message: 'kubectl create cronjob without a --schedule flag — provide a valid cron schedule'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

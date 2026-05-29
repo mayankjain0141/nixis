@@ -1,4 +1,4 @@
-# IMPORT_REVIEW: translated by Claude — cross-resource path uniqueness (path unique across all namespaces) cannot be enforced in single-request CEL; policy audits all Ingress writes
+# IMPORT_REVIEW: translated by Claude — cross-resource path uniqueness cannot be enforced in single-request CEL; Bash pathway added to catch kubectl create ingress with --rule containing a path
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -15,8 +15,12 @@ spec:
         tools:
             - Write
             - Edit
+            - Bash
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Ingress")'
           message: 'Ingress paths must be unique across all namespaces — cross-resource uniqueness cannot be enforced in single-request CEL'
+          action: AUDIT
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl.*create.*ingress.*--rule.*/..*")'
+          message: 'kubectl create ingress with path in --rule — verify the path is unique across all namespaces (cross-resource uniqueness cannot be checked in CEL)'
           action: AUDIT
     defaultAction: ALLOW

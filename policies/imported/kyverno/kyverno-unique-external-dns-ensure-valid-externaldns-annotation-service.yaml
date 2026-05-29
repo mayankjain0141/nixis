@@ -1,4 +1,4 @@
-# IMPORT_REVIEW: translated by Claude — cross-resource uniqueness (hostname unique across all Services) cannot be enforced in single-request CEL; policy audits presence of annotation only
+# IMPORT_REVIEW: translated by Claude — cross-resource uniqueness cannot be enforced in single-request CEL; Bash pathway added to catch kubectl annotate with external-dns hostname annotation
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -15,8 +15,12 @@ spec:
         tools:
             - Write
             - Edit
+            - Bash
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("external-dns.alpha.kubernetes.io/hostname")'
           message: 'External DNS hostname annotations must be unique across Services — cross-resource uniqueness cannot be enforced in single-request CEL'
+          action: AUDIT
+        - expression: 'tool == "Bash" && request.args.command.contains("external-dns.alpha.kubernetes.io/hostname")'
+          message: 'kubectl annotate setting external-dns hostname — verify the hostname is unique across all Services (cross-resource uniqueness cannot be checked in CEL)'
           action: AUDIT
     defaultAction: ALLOW

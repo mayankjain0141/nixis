@@ -1,4 +1,4 @@
-# IMPORT_REVIEW: translated by Claude — cross-resource uniqueness (hostname unique across all Ingresses) cannot be enforced in single-request CEL; policy audits presence of host field only
+# IMPORT_REVIEW: translated by Claude — cross-resource uniqueness cannot be enforced in single-request CEL; Bash pathway added to catch kubectl create ingress with --rule flag
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -15,8 +15,12 @@ spec:
         tools:
             - Write
             - Edit
+            - Bash
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Ingress") && !request.args.content.contains("host:")'
           message: 'Ingress resources must specify a host — cross-resource hostname uniqueness cannot be enforced in single-request CEL'
+          action: AUDIT
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl.*create.*ingress.*--rule.*")'
+          message: 'kubectl create ingress with --rule — verify the host is unique across the cluster (cross-resource uniqueness cannot be checked in CEL)'
           action: AUDIT
     defaultAction: ALLOW
