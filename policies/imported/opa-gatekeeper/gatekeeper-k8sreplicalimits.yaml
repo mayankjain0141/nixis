@@ -1,6 +1,6 @@
 # IMPORTED FROM: open-policy-agent/gatekeeper-library
-CONSTRAINT: K8sReplicaLimits
-REGO LOGIC: package k8sreplicalimits  object_name = input.review.object.metadata.name object_kind = input.review.kind.kind  violation[{"msg": msg}] {     spec := input.review.object.spec     not input_replica_lim...
+# CONSTRAINT: K8sReplicaLimits
+# REGO LOGIC: package k8sreplicalimits  object_name = input.review.object.metadata.name object_kind = input.review.kind.kind  violation[{"msg": msg}] {     spec := input.review.object.spec     not input_replica_lim...
 # imported from: gatekeeper-library via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate

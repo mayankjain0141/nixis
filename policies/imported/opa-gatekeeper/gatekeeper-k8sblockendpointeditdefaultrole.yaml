@@ -1,7 +1,7 @@
 # IMPORTED FROM: open-policy-agent/gatekeeper-library
-CONSTRAINT: K8sBlockEndpointEditDefaultRole
-REGO LOGIC: package k8sblockendpointeditdefaultrole  violation[{"msg": msg}] {     input.review.object.metadata.name == "system:aggregate-to-edit"     endpointRule(input.review.object.rules[_])     msg := "Cluste...
-MANUAL REVIEW: IMPORT_TODO: Unknown constraint kind 'K8sBlockEndpointEditDefaultRole' - manual review required. Rego logic needs human translation.
+# CONSTRAINT: K8sBlockEndpointEditDefaultRole
+# REGO LOGIC: package k8sblockendpointeditdefaultrole  violation[{"msg": msg}] {     input.review.object.metadata.name == "system:aggregate-to-edit"     endpointRule(input.review.object.rules[_])     msg := "Cluste...
+# MANUAL REVIEW: IMPORT_TODO: Unknown constraint kind 'K8sBlockEndpointEditDefaultRole' - manual review required. Rego logic needs human translation.
 # imported from: gatekeeper-library via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate

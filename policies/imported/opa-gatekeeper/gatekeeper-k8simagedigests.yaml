@@ -1,7 +1,7 @@
 # IMPORTED FROM: open-policy-agent/gatekeeper-library
-CONSTRAINT: K8sImageDigests
-REGO LOGIC: package k8simagedigests  import data.lib.exempt_container.is_exempt  violation[{"msg": msg}] {   container := input.review.object.spec.containers[_]   not is_exempt(container)   not regex.match("@[a-z...
-MANUAL REVIEW: IMPORT_TODO: Unknown constraint kind 'K8sImageDigests' - manual review required. Rego logic needs human translation.
+# CONSTRAINT: K8sImageDigests
+# REGO LOGIC: package k8simagedigests  import data.lib.exempt_container.is_exempt  violation[{"msg": msg}] {   container := input.review.object.spec.containers[_]   not is_exempt(container)   not regex.match("@[a-z...
+# MANUAL REVIEW: IMPORT_TODO: Unknown constraint kind 'K8sImageDigests' - manual review required. Rego logic needs human translation.
 # imported from: gatekeeper-library via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate

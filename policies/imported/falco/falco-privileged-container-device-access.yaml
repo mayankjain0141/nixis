@@ -1,6 +1,6 @@
 # IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: (open_read or open_write) and container and (fd.name startswith /dev/sd or
-     fd.name startswith /dev/nvme or
-     fd....
+#      fd.name startswith /dev/nvme or
+#      fd....
 # imported from: main via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate

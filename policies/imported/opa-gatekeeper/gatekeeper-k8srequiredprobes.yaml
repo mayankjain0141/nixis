@@ -1,6 +1,6 @@
 # IMPORTED FROM: open-policy-agent/gatekeeper-library
-CONSTRAINT: K8sRequiredProbes
-REGO LOGIC: package k8srequiredprobes  import data.lib.exclude_update.is_update  probe_type_set = probe_types {     probe_types := {type | type := input.parameters.probeTypes[_]} }  violation[{"msg": msg}] {     ...
+# CONSTRAINT: K8sRequiredProbes
+# REGO LOGIC: package k8srequiredprobes  import data.lib.exclude_update.is_update  probe_type_set = probe_types {     probe_types := {type | type := input.parameters.probeTypes[_]} }  violation[{"msg": msg}] {     ...
 # imported from: gatekeeper-library via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
