@@ -11,9 +11,10 @@ spec:
     description: Setting the annotation on a Pod (or its controller) `linkerd.io/inject` to `disabled` may effectively disable mesh participation for that workload reducing security and visibility. This policy prevents setting the annotation `linkerd.io/inject` to `disabled` for Pods.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
-          message: Pods may not disable sidecar injection.
-          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("linkerd.io/inject") && request.args.content.contains("disabled")'
+          message: 'Pods must not disable Linkerd mesh injection'
+          action: DENY
     defaultAction: ALLOW

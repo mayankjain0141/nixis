@@ -11,9 +11,10 @@ spec:
     description: 'Service externalIPs can be used for a MITM attack (CVE-2020-8554). Restrict externalIPs or limit to a known set of addresses. See: https://github.com/kyverno/kyverno/issues/1367. This policy validates that the `externalIPs` field is not set on a Service.'
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+service|expose)")
-          message: externalIPs are not allowed.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
+          message: 'Policy validation required — review manifest before applying'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

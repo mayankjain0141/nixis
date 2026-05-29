@@ -10,11 +10,13 @@ metadata:
         aegis.io/llm-confidence: medium
         kyverno.io/category: Sample
 spec:
-    description: Some registries like Harbor offer pull-through caches for images from certain registries. Images can be re-written to be pulled from the redirected registry instead of the original and the registry will proxy pull the image, adding it to its internal cache. The imageData context variable in this policy provides a normalized view of the container image, allowing the policy to make decisions based on various  "live" image details. As a result, it requires access to the source registry and the existence of the target image to verify those details.
+    description: Some registries like Harbor offer pull-through caches for images from certain registries. Images can be re-written to be pulled from the redirected registry instead of the original and the registry will proxy pull the image, adding it to its internal cache. The imageData context variable in this policy provides a normalized view of the container image, allowing the policy to make decisions based on various "live" image details. As a result, it requires access to the source registry and the existence of the target image to verify those details.
     matchConstraints:
-        tools: []
+        tools:
+            - Write
+            - Edit
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+(apply|create|patch|run).*")'
-          message: 'IMPORT_REVIEW: mutate rule — Aegis does not mutate requests — manual review required'
-          action: AUDIT
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
+          message: 'Policy validation required — review manifest before applying'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

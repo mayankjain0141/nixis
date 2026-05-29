@@ -11,9 +11,10 @@ spec:
     description: Some annotations control functionality driven by other cluster-wide tools and are not normally set by some class of users. This policy prevents the use of an annotation beginning with `fluxcd.io/`. This can be useful to ensure users either don't set reserved annotations or to force them to use a newer version of an annotation.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+deployment|scale|rollout)")
-          message: Cannot use Flux v1 annotation.
-          action: AUDIT
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
+          message: 'Policy validation required — review manifest before applying'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

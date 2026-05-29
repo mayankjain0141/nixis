@@ -11,9 +11,10 @@ spec:
     description: A PodDisruptionBudget which sets its maxUnavailable value to zero prevents all voluntary evictions including Node drains which may impact maintenance tasks. This may be acceptable if there are no matching controllers, but if there are then creation of such a PDB could allow unintended disruption. This policy enforces that a PodDisruptionBudget may not specify the maxUnavailable field as zero if there are any existing matching Deployments having greater than zero replicas.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(create|run|apply).*|kubectl.*(patch|edit|set).*")
-          message: PodDisruptionBudget must not specify maxUnavailable as zero if there are any existing matching Deployments which have replicas numbering greater than zero. There are {{ length(deploymentreplicas) }} Deployments which match this labelSelector having {{ deploymentreplicas[*].spec.replicas }} replicas.
-          action: AUDIT
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("PodDisruptionBudget") && request.args.content.contains("maxUnavailable: 0")'
+          message: 'PodDisruptionBudget maxUnavailable must be greater than zero'
+          action: DENY
     defaultAction: ALLOW

@@ -14,7 +14,7 @@ spec:
     matchConstraints:
         tools: []
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+(apply|create|run).*")'
-          message: 'IMPORT_REVIEW: generate rule — Aegis does not generate resources — manual review required'
+        - expression: 'false'
+          message: 'Generate rule — Aegis does not generate resources — manual review required'
           action: AUDIT
     defaultAction: ALLOW

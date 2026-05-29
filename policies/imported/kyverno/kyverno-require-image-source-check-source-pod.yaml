@@ -11,9 +11,10 @@ spec:
     description: Images can be built from a variety of source control locations and the name does not necessarily indicate this mapping. Ensuring that known good repositories are the source of images helps ensure supply chain security. This policy checks the container images and ensures that they specify the source in either a label `org.opencontainers.image.source` or a newer annotation in the manifest of the same name.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
-          message: The image source must be specified in a label or annotation.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
+          message: 'Policy validation required — review manifest before applying'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

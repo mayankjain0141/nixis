@@ -12,9 +12,11 @@ metadata:
 spec:
     description: Deployments to a Kubernetes cluster with multiple availability zones often need to distribute those replicas to align with those zones to ensure site-level failures do not impact availability. This policy matches Deployments with the label `distributed=required` and mutates them to spread Pods across zones.
     matchConstraints:
-        tools: []
+        tools:
+            - Write
+            - Edit
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+(apply|create|patch|run).*")'
-          message: 'IMPORT_REVIEW: mutate rule — Aegis does not mutate requests — manual review required'
-          action: AUDIT
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (request.args.content.contains("kind: Deployment") || request.args.content.contains("kind: StatefulSet")) && !request.args.content.contains("topologySpreadConstraints:")'
+          message: 'Deployments and StatefulSets must define topologySpreadConstraints'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

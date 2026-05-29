@@ -12,9 +12,11 @@ metadata:
 spec:
     description: Although ConfigMaps and Secrets mounted as volumes to a Pod, when the contents change, will eventually propagate to the Pods mounting them, this process may take between 60-90 seconds. In order to reduce that time, a modification made to downstream Pods will cause the changes to take effect almost instantly. This policy watches for changes to ConfigMaps which have been marked for this quick reloading process which contain the label `kyverno.io/watch=true` and will write an annotation to any Pods which mount them as volumes causing a fast refresh in their contents. See the related policy entitled "Refresh Environment Variables in Pods" for a similar reloading process when ConfigMaps and Secrets are consumed as environment variables instead. Use of this policy may require providing the Kyverno ServiceAccount with permission to update Pods.
     matchConstraints:
-        tools: []
+        tools:
+            - Write
+            - Edit
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+(apply|create|patch|run).*")'
-          message: 'IMPORT_REVIEW: mutate rule — Aegis does not mutate requests — manual review required'
-          action: AUDIT
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
+          message: 'Policy validation required — review manifest before applying'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

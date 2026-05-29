@@ -11,9 +11,10 @@ spec:
     description: In order for Istio to inject sidecars to workloads deployed into Namespaces, the label `istio-injection` must be set to `enabled`. This policy ensures that all new Namespaces set `istio-inject` to `enabled`.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+namespace|create\\s+namespace)")
-          message: All new Namespaces must have Istio sidecar injection enabled.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("istio-injection")'
+          message: 'Namespaces must set istio-injection: enabled for sidecar injection'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

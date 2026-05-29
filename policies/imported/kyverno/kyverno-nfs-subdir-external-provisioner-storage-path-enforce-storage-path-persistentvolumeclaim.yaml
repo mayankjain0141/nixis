@@ -11,9 +11,10 @@ spec:
     description: The NFS subdir external provisioner project allows defining a StorageClass with a pathPattern, a template used to provision subdirectories on NFS exports. This can be controlled with an annotation on a PVC called `nfs.io/storage-path`. This policy ensures that if the StorageClass name `nfs-client` is used by a PVC, corresponding to the NFS subdir external provisioner, and if it sets the nfs.io/storage-path annotation that it cannot be empty, which may otherwise result in it consuming the root of the designated path.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
-          message: nfs.io/storage-path annotation must not be empty.
-          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("nfs-client") && request.args.content.contains("nfs.io/storage-path")'
+          message: 'nfs.io/storage-path annotation must not be empty when using nfs-client StorageClass'
+          action: DENY
     defaultAction: ALLOW

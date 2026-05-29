@@ -11,9 +11,10 @@ spec:
     description: Check the 'dataprotection' label that production Deployments and StatefulSet have a named K10 Policy. Use in combination with 'generate' ClusterPolicy to 'generate' a specific K10 Policy by name.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(create|run|apply).*|kubectl.*(patch|edit|set).*")
-          message: Check the 'dataprotection' label that production Deployments and StatefulSet have a named K10 Policy. Use in combination with 'generate' ClusterPolicy to 'generate' a specific K10 Policy by name.
-          action: AUDIT
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (request.args.content.contains("kind: Deployment") || request.args.content.contains("kind: StatefulSet")) && request.args.content.contains("production") && !request.args.content.contains("dataprotection:")'
+          message: 'Production Deployments and StatefulSets must have a dataprotection label'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

@@ -12,9 +12,10 @@ spec:
     description: Ingress resources which name a host name that is not present in the TLS section can produce ingress routing failures as a TLS certificate may not correspond to the destination host. This policy ensures that the host name in an Ingress rule is also found in the list of TLS hosts.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
-          message: The host(s) in spec.rules[].host must match those in spec.tls[].hosts[].
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Ingress") && request.args.content.contains("tls:")'
+          message: 'Ingress host must appear in the TLS hosts list'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

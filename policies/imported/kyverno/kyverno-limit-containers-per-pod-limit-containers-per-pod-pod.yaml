@@ -12,9 +12,10 @@ spec:
     description: Pods can have many different containers which are tightly coupled. It may be desirable to limit the amount of containers that can be in a single Pod to control best practice application or so policy can be applied consistently. This policy checks all Pods to ensure they have no more than four containers.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
-          message: Pods can only have a maximum of 4 containers.
-          action: AUDIT
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Pod") && request.args.content.contains("containers:")'
+          message: 'Pods may have no more than four containers'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

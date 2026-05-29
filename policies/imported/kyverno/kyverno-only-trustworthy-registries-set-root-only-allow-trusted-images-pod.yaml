@@ -11,9 +11,10 @@ spec:
     description: Some containers must be built to run as root in order to function properly, but use of those images should be carefully restricted to prevent unneeded privileges. This policy blocks any image that runs as root if it does not come from a trustworthy registry, `ghcr.io` in this case.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
-          message: Images with root user are not allowed to be pulled from any registry other than ghcr.io.
-          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("image:") && !request.args.content.matches(".*image:\\s+ghcr\\.io/.*")'
+          message: 'Containers running as root must use images from ghcr.io'
+          action: DENY
     defaultAction: ALLOW

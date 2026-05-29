@@ -8,12 +8,13 @@ metadata:
         aegis.io/severity: medium
         kyverno.io/category: Flux
 spec:
-    description: Ensures that container images used to run Flux controllers in the cluster are signed with valid Cosign signatures. Prevents the deployment of untrusted or potentially compromised Flux images. Protects the integrity and security  of the Flux deployment process.
+    description: Ensures that container images used to run Flux controllers in the cluster are signed with valid Cosign signatures. Prevents the deployment of untrusted or potentially compromised Flux images. Protects the integrity and security of the Flux deployment process.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
-          message: Ensures that container images used to run Flux controllers in the cluster are signed with valid Cosign signatures. Prevents the deployment of untrusted or potentially compromised Flux images. Protects the integrity and security  of the Flux deployment process.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("image:") && !request.args.content.contains("cosign.sigstore.dev/imageDigest")'
+          message: 'Container images must be signed with a valid cosign signature'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

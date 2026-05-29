@@ -9,12 +9,13 @@ metadata:
         aegis.io/severity: low
         kyverno.io/category: Other
 spec:
-    description: Two distinct workloads should not share a UID so that in a multitenant environment, applications  from different projects never run as the same user ID. When using persistent storage,  any files created by applications will also have different ownership in the file system. Running processes for applications as different user IDs means that if a security  vulnerability were ever discovered in the underlying container runtime, and an application  were able to break out of the container to the host, they would not be able to interact  with processes owned by other users, or from other applications, in other projects.
+    description: Two distinct workloads should not share a UID so that in a multitenant environment, applications from different projects never run as the same user ID. When using persistent storage, any files created by applications will also have different ownership in the file system. Running processes for applications as different user IDs means that if a security vulnerability were ever discovered in the underlying container runtime, and an application were able to break out of the container to the host, they would not be able to interact with processes owned by other users, or from other applications, in other projects.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
-          message: Only cluster-unique UIDs are allowed
-          action: AUDIT
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
+          message: 'Policy validation required — review manifest before applying'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

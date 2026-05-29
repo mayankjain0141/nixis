@@ -11,9 +11,10 @@ spec:
     description: The baseline profile of the Pod Security Standards is a collection of the most basic and important steps that can be taken to secure Pods. Beginning with Kyverno 1.8, an entire profile may be assigned to the cluster through a single rule. This policy configures the baseline profile through the latest version of the Pod Security Standards cluster wide.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
-          message: The baseline profile of the Pod Security Standards is a collection of the most basic and important steps that can be taken to secure Pods. Beginning with Kyverno 1.8, an entire profile may be assigned to the cluster through a single rule. This policy configures the baseline profile through the latest version of the Pod Security Standards cluster wide.
-          action: DENY
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Pod")'
+          message: 'Pod must comply with the Pod Security Standards profile'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

@@ -11,9 +11,10 @@ spec:
     description: One way sidecar injection in an Istio service mesh may be accomplished is by defining an annotation at the Pod level. Pods not receiving a sidecar cannot participate in the mesh thereby reducing visibility. This policy ensures that Pods cannot set the annotation `sidecar.istio.io/inject` to a value of `false`.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
-          message: Pods may not disable sidecar injection by setting the annotation sidecar.istio.io/inject to a value of false.
-          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("sidecar.istio.io/inject") && request.args.content.contains("\"false\"")'
+          message: 'Pods must not disable Istio sidecar injection'
+          action: DENY
     defaultAction: ALLOW

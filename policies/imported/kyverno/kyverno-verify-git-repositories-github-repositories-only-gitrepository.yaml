@@ -11,9 +11,10 @@ spec:
     description: Ensures that Git repositories used for Flux deployments in a cluster originate from a specific, trusted organization. Prevents the use of untrusted or potentially risky Git repositories. Protects the integrity and security of Flux deployments.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
-          message: .spec.url must be from a repository within the organisation X
-          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: GitRepository") && !request.args.content.contains("github.com")'
+          message: 'GitRepository sources must use github.com as the URL host'
+          action: DENY
     defaultAction: ALLOW

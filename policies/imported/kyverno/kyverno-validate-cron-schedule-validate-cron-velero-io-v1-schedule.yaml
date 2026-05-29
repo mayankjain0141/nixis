@@ -12,9 +12,10 @@ spec:
     description: A Velero Schedule is given in Cron format and must be accurate to ensure operation. This policy validates that the schedule is a valid Cron format.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
-          message: The backup schedule must be in a valid cron format.
-          action: AUDIT
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Schedule") && !request.args.content.contains("schedule:")'
+          message: 'Velero Schedule resources must define a valid cron schedule'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

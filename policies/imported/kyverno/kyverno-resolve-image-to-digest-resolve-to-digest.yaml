@@ -12,9 +12,11 @@ metadata:
 spec:
     description: Image tags are mutable and the change of an image can result in the same tag. This policy resolves the image digest of each image in a container and replaces the image with the fully resolved reference which includes the digest rather than tag.
     matchConstraints:
-        tools: []
+        tools:
+            - Write
+            - Edit
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+(apply|create|patch|run).*")'
-          message: 'IMPORT_REVIEW: mutate rule — Aegis does not mutate requests — manual review required'
-          action: AUDIT
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
+          message: 'Policy validation required — review manifest before applying'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

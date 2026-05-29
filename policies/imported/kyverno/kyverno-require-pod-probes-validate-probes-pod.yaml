@@ -11,9 +11,10 @@ spec:
     description: Liveness and readiness probes need to be configured to correctly manage a Pod's lifecycle during deployments, restarts, and upgrades. For each Pod, a periodic `livenessProbe` is performed by the kubelet to determine if the Pod's containers are running or need to be restarted. A `readinessProbe` is used by Services and Deployments to determine if the Pod is ready to receive network traffic. This policy validates that all containers have one of livenessProbe, readinessProbe, or startupProbe defined.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
-          message: Liveness, readiness, or startup probes are required for all containers.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (!request.args.content.contains("livenessProbe:") || !request.args.content.contains("readinessProbe:"))'
+          message: 'Pods must define both livenessProbe and readinessProbe (and they must differ)'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
