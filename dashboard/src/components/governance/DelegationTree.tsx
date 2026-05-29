@@ -60,12 +60,35 @@ function buildChainEntries(
 export function DelegationTree() {
   const delegationChains = useGovernanceStore((s) => s.delegationChains);
 
-  // Collect all chains (may be multiple sessions)
-  const allChains: Array<{ delegatorId: string; hops: DelegationHop[] }> = [];
-  for (const [, hops] of delegationChains.entries()) {
-    if (hops.length > 0) {
-      allChains.push({ delegatorId: hops[0].delegatorId, hops });
+  // Collect all delegatee IDs to identify root delegators
+  const allDelegateeIds = new Set<string>();
+  for (const hops of delegationChains.values()) {
+    for (const hop of hops) {
+      allDelegateeIds.add(hop.delegateeId);
     }
+  }
+
+  // Build full chains starting from root delegators only
+  const allChains: Array<{ delegatorId: string; hops: DelegationHop[] }> = [];
+  for (const hops of delegationChains.values()) {
+    if (hops.length === 0) continue;
+    const rootDelegator = hops[0].delegatorId;
+    // Skip intermediate hops — only process from roots
+    if (allDelegateeIds.has(rootDelegator)) continue;
+
+    // Follow chain from this root, stitching all hops together
+    const fullHops: DelegationHop[] = [...hops];
+    const visited = new Set<string>([rootDelegator]);
+    let tip = hops[hops.length - 1]?.delegateeId;
+    while (tip && !visited.has(tip)) {
+      visited.add(tip);
+      const next = delegationChains.get(tip);
+      if (!next || next.length === 0) break;
+      fullHops.push(...next);
+      tip = next[next.length - 1]?.delegateeId;
+    }
+
+    allChains.push({ delegatorId: rootDelegator, hops: fullHops });
   }
 
   if (allChains.length === 0) {
