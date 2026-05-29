@@ -13,11 +13,10 @@ spec:
         An attempt to read process environment variables from /proc files. The consequences are akin to accessing traditional sensitive files, as sensitive data, including secrets, might be stored in environment variables. Understanding your environment, such as identifying critical namespaces, and incorporating extra filtering statements to alert exclusively for those, can enhance the rule's effectiveness.
     matchConstraints:
         tools:
+            - Bash
             - Read
-            - Write
-            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)\\b(scsi_id|argoexec)\\b")
+        - expression: '(tool == "Bash" && request.args.command.matches(".*/proc/[0-9]+/environ.*")) || (tool == "Read" && request.args.path.matches(".*/proc/[0-9]+/environ.*"))'
           message: 'Falco rule violated: Read environment variable from /proc files'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

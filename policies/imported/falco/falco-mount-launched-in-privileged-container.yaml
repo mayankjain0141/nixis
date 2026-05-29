@@ -15,9 +15,7 @@ spec:
         Detect filesystem mounts (using the mount binary) within a privileged container. Due to the elevated privileges, this action could be one of the TTPs used in an attempt to escape from a container to the host. This type of action is often preceded by reconnaissance activities, for which you can also create custom rules.
     matchConstraints:
         tools:
-            - Read
-            - Write
-            - Edit
+            - Bash
     validations:
         - expression: 'tool == "Bash" && request.args.command.matches(".*\\bmount\\b.*") && !request.args.command.contains("--help")'
           message: 'Falco rule violated: Mount Launched in Privileged Container'
