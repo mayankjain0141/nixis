@@ -67,14 +67,24 @@ const StreamHeartbeatDataSchema = z.object({
   sequence: z.number().int().optional(),
 });
 
+const BundlePolicySchema = z.object({
+  id: z.string(),
+  enabled: z.boolean().default(true),
+  layer: z.string().default('cel'),
+  cel_expression: z.string().optional(),
+  description: z.string().optional(),
+}).passthrough();
+
 const BundleActivatedDataSchema = z.object({
   version: z.number().int(),
   previousVersion: z.number().int().optional(),
-  hash: z.string(),
-  signatureVerified: z.boolean(),
-  policyCount: z.number().int(),
-  adapterCount: z.number().int().optional(),
-});
+  hash: z.string().optional().default(''),
+  signatureVerified: z.boolean().optional().default(false),
+  policyCount: z.number().int().optional().default(0),
+  adapterCount: z.number().int().optional().default(0),
+  activatedAt: z.number().optional(),
+  policies: z.array(BundlePolicySchema).optional(),
+}).passthrough();
 
 const LabelEscalatedDataSchema = z.object({
   session_id: z.string(),

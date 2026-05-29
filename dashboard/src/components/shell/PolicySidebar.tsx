@@ -183,41 +183,38 @@ export function PolicySidebar(): React.ReactElement {
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Policies</span>
-              <span style={{ color: '#e6edf3' }}>{bundleStatus.policyCount}</span>
+              <span>Loaded</span>
+              <span style={{ color: '#e6edf3' }}>{policies.length}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Adapters</span>
-              <span style={{ color: '#e6edf3' }}>{bundleStatus.adapterCount}</span>
-            </div>
+            {bundleStatus.policyCount > policies.length && (
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>On disk</span>
+                <span style={{ color: '#8b949e' }}>{bundleStatus.policyCount}</span>
+              </div>
+            )}
+            {bundleStatus.adapterCount > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Adapters</span>
+                <span style={{ color: '#e6edf3' }}>{bundleStatus.adapterCount}</span>
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span>Signature</span>
-              <span
-                style={{
-                  color: bundleStatus.signatureVerified ? '#2da44e' : '#cf222e',
-                  fontWeight: 600,
-                }}
-              >
-                {bundleStatus.signatureVerified ? 'verified' : 'INVALID'}
+              <span style={{ color: bundleStatus.signatureVerified ? '#2da44e' : '#8b949e', fontWeight: 500 }}>
+                {bundleStatus.signatureVerified ? '✓ verified' : 'unsigned'}
               </span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Hash</span>
-              <span
-                style={{
-                  color: '#e6edf3',
-                  fontFamily: 'monospace',
-                  fontSize: '10px',
-                  maxWidth: '100px',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-                title={bundleStatus.hash}
-              >
-                {bundleStatus.hash.slice(0, 12)}…
-              </span>
-            </div>
+            {bundleStatus.hash && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Hash</span>
+                <span
+                  style={{ color: '#e6edf3', fontFamily: 'monospace', fontSize: '10px' }}
+                  title={bundleStatus.hash}
+                >
+                  {bundleStatus.hash.replace('sha256:', '').slice(0, 8)}…
+                </span>
+              </div>
+            )}
           </div>
         ) : (
           <div style={{ padding: '6px 12px 10px', fontSize: '11px', color: '#484f58' }}>
