@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.matches(".*seLinuxOptions:.*") && request.args.content.contains("type:")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.matches("[\\s\\S]*seLinuxOptions:[\\s\\S]*type:[\\s\\S]*")'
           message: Setting the SELinux type is restricted. The fields spec.securityContext.seLinuxOptions.type, spec.containers[*].securityContext.seLinuxOptions.type, , spec.initContainers[*].securityContext.seLinuxOptions, and spec.ephemeralContainers[*].securityContext.seLinuxOptions.type must either be unset or set to one of the allowed values (container_t, container_init_t, or container_kvm_t).
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
