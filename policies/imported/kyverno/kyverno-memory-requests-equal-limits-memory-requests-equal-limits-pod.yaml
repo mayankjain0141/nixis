@@ -1,4 +1,3 @@
-# IMPORT_TODO: Memory request/limit equality cannot be verified via content scan — CEL approximation flags files with memory resources for human review
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -15,7 +14,10 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("resources:") && request.args.content.contains("memory:")'
-          message: 'Container memory requests must equal limits — equality cannot be verified by content scan; manual review required'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("resources:") && request.args.content.matches("(?s).*limits:.*memory:.*") && !request.args.content.contains("requests:")'
+          message: 'Container defines memory limits without requests — memory requests must be set and equal to limits for Guaranteed QoS class'
+          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("resources:") && request.args.content.matches("(?s).*limits:.*memory:.*") && request.args.content.contains("requests:")'
+          message: 'Container defines memory limits and requests — verify they are equal; value equality cannot be confirmed by content scan'
           action: AUDIT
     defaultAction: ALLOW
