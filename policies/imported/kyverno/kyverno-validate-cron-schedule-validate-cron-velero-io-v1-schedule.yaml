@@ -15,7 +15,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Schedule") && request.args.content.contains("velero") && !request.args.content.matches(".*schedule:\\s+[\"'']?([0-9*,/-]+ ){4}[0-9*,/-]+[\"'']?.*")'
-          message: 'Velero Schedule resources must define a valid 5-field cron expression in the schedule field'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Schedule") && request.args.content.contains("velero") && !request.args.content.matches(".*schedule:\\s+[\"'']?(@(hourly|daily|weekly|monthly|annually|yearly)|([0-9*,/\\-]+ ){4}[0-9*,/\\-]+)[\"'']?.*")'
+          message: 'Velero Schedule resources must define a valid 5-field cron expression or @shorthand (@hourly, @daily, @weekly, @monthly, @annually) in the schedule field'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
