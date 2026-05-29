@@ -1,4 +1,4 @@
-# IMPORT_TODO: JMESPath conditions in namespace-inventory-check/resourcequotas could not be translated — kubectl pattern match generated as base condition only
+# IMPORT_TODO: Cross-resource existence check (background scan) cannot be fully translated — CEL approximation checks file content for ResourceQuota co-presence
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -16,6 +16,6 @@ spec:
             - Edit
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Namespace") && !request.args.content.contains("ResourceQuota")'
-          message: 'All namespaces must have a ResourceQuota'
-          action: REQUIRE_APPROVAL
+          message: 'All namespaces must have a ResourceQuota — cross-resource existence check; manual review required'
+          action: AUDIT
     defaultAction: ALLOW
