@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (request.args.content.contains("kind: Deployment") || request.args.content.contains("kind: StatefulSet")) && request.args.content.contains("production") && !request.args.content.contains("dataprotection:")'
-          message: 'Production Deployments and StatefulSets must have a dataprotection label'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: StatefulSet") && (request.args.content.contains("environment: production") || request.args.content.contains("env: production")) && !request.args.content.contains("dataprotection:")'
+          message: 'Production StatefulSets must have a dataprotection label for K10'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

@@ -1,4 +1,3 @@
-# IMPORT_REVIEW: translated by Claude — verify semantics
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -7,7 +6,6 @@ metadata:
     annotations:
         aegis.io/imported-from: aegis-import-1076853930.yaml
         aegis.io/severity: low
-        aegis.io/llm-confidence: medium
         kyverno.io/category: Sample
 spec:
     description: Applications may involve multiple replicas of the same Pod for availability as well as scale purposes, yet Kubernetes does not by default provide a solution for availability. This policy sets a Pod anti-affinity configuration on Deployments which contain an `app` label if it is not already present.
