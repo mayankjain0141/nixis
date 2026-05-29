@@ -1,5 +1,5 @@
 # imported from: policies via aegis policy import
-# Gap: fluxcd allowlist — CEL approximates by flagging manifests that have annotations: block but no fluxcd.io/ key present; manifests with mixed fluxcd + other keys pass undetected
+# Gap: per-key allowlist — CEL cannot enumerate individual annotation keys; approximates by detecting namespaced annotation keys (containing /) that do not belong to known-safe prefixes (fluxcd.io/, helm.sh/, kubectl.kubernetes.io/, app.kubernetes.io/)
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:
@@ -15,7 +15,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.matches("(?s).*annotations:.*") && !request.args.content.matches("(?s).*fluxcd\\.io/.*")'
-          message: Only annotations with key prefix fluxcd.io/ are allowed. Remove or rename any other annotation keys.
-          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("annotations:") && request.args.content.matches("(?s).*annotations:[^:]*[a-z0-9.-]+/[a-z].*") && !request.args.content.contains("fluxcd.io/") && !request.args.content.contains("helm.sh/") && !request.args.content.contains("kubectl.kubernetes.io/") && !request.args.content.contains("app.kubernetes.io/")'
+          message: 'Pod annotations contain keys from unrecognized namespaces. Only the following annotation prefixes are allowed: fluxcd.io/, helm.sh/, kubectl.kubernetes.io/, app.kubernetes.io/. Remove or rename annotations with other prefixes.'
+          action: AUDIT
     defaultAction: ALLOW

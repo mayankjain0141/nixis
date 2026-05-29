@@ -1,5 +1,5 @@
 # imported from: policies via aegis policy import
-# Gap: namespace-label filter — original policy blocks exec only in namespaces labelled exec=false; CEL cannot inspect namespace labels at command-intercept time so all kubectl exec is flagged for approval
+# Gap: namespace-label filter — original policy blocks exec only in namespaces labelled exec=false; CEL cannot inspect namespace labels; approximates by denying dangerous interactive shell exec and auditing all other kubectl exec
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:
@@ -14,7 +14,10 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+exec\\b.*")'
-          message: kubectl exec is restricted in namespaces protected with label exec=false. Namespace labels cannot be resolved at intercept time — all kubectl exec requires approval.
-          action: REQUIRE_APPROVAL
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+exec\\b.*") && request.args.command.matches(".*(--\\s*(sh|bash|/bin/sh|/bin/bash|/bin/ash|/bin/zsh)|--\\s+sh\\s*$|--\\s+bash\\s*$).*")'
+          message: 'Interactive shell exec (sh, bash, /bin/sh, /bin/bash) into a pod container is denied. This provides unrestricted container access and is not permitted in protected namespaces.'
+          action: DENY
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+exec\\b.*") && !request.args.command.matches(".*(--\\s*(sh|bash|/bin/sh|/bin/bash|/bin/ash|/bin/zsh)|--\\s+sh\\s*$|--\\s+bash\\s*$).*")'
+          message: kubectl exec is audited in namespaces protected with label exec=false. Namespace labels cannot be resolved at intercept time — this exec is logged for review.
+          action: AUDIT
     defaultAction: ALLOW
