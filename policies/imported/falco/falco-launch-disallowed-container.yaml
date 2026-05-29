@@ -14,7 +14,8 @@ spec:
     description: |
         Detect the initial process launched within a container that is not in a list of allowed containers. This rule holds value for generic auditing; however, this rule requires a good understanding of your setup and consistent effort to keep the list of allowed containers current. In some situations, this can be challenging to manage.
     matchConstraints:
-        tools: []
+        tools:
+            - Bash
     validations:
         - expression: 'tool == "Bash" && request.args.command.matches(".*docker\\s+run.*")'
           message: 'Falco rule violated: Launch Disallowed Container'

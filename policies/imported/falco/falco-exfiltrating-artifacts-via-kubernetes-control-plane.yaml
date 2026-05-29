@@ -15,11 +15,9 @@ spec:
         Detect the copying of artifacts from a container's file system using the Kubernetes control plane (kubectl cp). This rule can identify potential exfiltration of application secrets from containers' file systems, potentially revealing the outcomes of unauthorized access and control plane misuse via stolen identities (such as stolen credentials like Kubernetes serviceaccount tokens). Can be customized by the adopter to only monitor specific artifact paths, containers, or namespaces as needed.
     matchConstraints:
         tools:
-            - Read
-            - Write
-            - Edit
+            - Bash
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl.*exec.*") && request.args.command.contains("tar")'
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+cp\\s+.*") || tool == "Bash" && request.args.command.matches(".*kubectl.*exec.*") && request.args.command.contains("tar")'
           message: 'Falco rule violated: Exfiltrating Artifacts via Kubernetes Control Plane'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

@@ -14,7 +14,8 @@ spec:
     description: |
         This rule detects file execution in the /dev/shm directory, a tactic often used by threat actors to store their readable, writable, and occasionally executable files. /dev/shm acts as a link to the host or other containers, creating vulnerabilities for their compromise as well. Notably, /dev/shm remains unchanged even after a container restart. Consider this rule alongside the newer "Drop and execute new binary in container" rule.
     matchConstraints:
-        tools: []
+        tools:
+            - Bash
     validations:
         - expression: 'tool == "Bash" && request.args.command.matches(".*(/dev/shm/|/run/shm/).*")'
           message: 'Falco rule violated: Execution from /dev/shm'
