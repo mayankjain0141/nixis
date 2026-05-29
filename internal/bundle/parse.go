@@ -147,6 +147,14 @@ func buildCombinedExpression(m *policyManifest) string {
 			return "!(" + inline(v.Expression) + ")"
 		}
 	}
+	// AUDIT-only policies: return !(false) so the policy loads and is visible in
+	// governance output, but never blocks. Without this, returning "" causes the
+	// bundle parser to silently drop AUDIT-only policies (mutate/generate stubs).
+	for _, v := range m.Spec.Validations {
+		if v.Expression != "" {
+			return "!(false)"
+		}
+	}
 	return ""
 }
 
