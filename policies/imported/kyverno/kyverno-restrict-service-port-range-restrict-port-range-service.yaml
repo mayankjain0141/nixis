@@ -1,3 +1,9 @@
+# CEL_LIMITATION: original policy uses JMESPath numeric comparison on spec.ports[*].port values
+# to enforce the range 32000-33000. CEL operates on raw content strings and cannot extract numeric
+# field values for arithmetic comparison. Content regex can detect a port field exists but cannot
+# validate the numeric range — false-negatives for all out-of-range ports, false-positives for
+# manifests with port fields that are in range. REQUIRE_APPROVAL fires on any manifest with a port
+# field, not selectively on out-of-range values.
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -14,7 +20,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("port:") && request.args.content.matches(".*port:\\s*[0-9]+.*")'
-          message: 'Service port must be in the range 32000-33000'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("port:")'
+          message: 'Service port must be in the range 32000-33000 — CEL cannot validate numeric range, manual review required'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
