@@ -18,7 +18,6 @@ import { usePolicyStore } from './stores/policy-store';
 import { useUIStore } from './stores/ui-store';
 import { useLatticeStore } from './stores/lattice-store';
 import { useThreatStore } from './stores/threat-store';
-import { createMockStreamGenerator } from './mocks/streamGenerator';
 import { runDemoScenario, getDemoPolicies } from './mocks/demoScenario';
 import { createWebSocketManager } from './lib/realtime/ws-manager';
 import { createEventIngestionPipeline } from './lib/realtime/ingestion-pipeline';
@@ -30,7 +29,7 @@ import { GovernanceInvariantChecker } from './services/invariants';
 import type { ValidatedEvent } from './lib/realtime/ingestion-pipeline';
 import type { GovernanceEvent } from './stores/governance-store';
 import type { BundleStatus } from './stores/policy-store';
-import type { StreamEvent, SecurityLabel } from './types/aegis';
+import type { SecurityLabel } from './types/aegis';
 import type { LabelState, ConnectionState } from './types/events';
 
 const DAEMON_WS_URL = (() => {
@@ -40,34 +39,6 @@ const DAEMON_WS_URL = (() => {
     return 'ws://localhost:9090/ws';
   }
 })();
-
-function mockEventToCloudEvent(e: StreamEvent, seq: number): string {
-  const eventType = (e.action === 'deny' || e.action === 'require_approval')
-    ? 'policy.denied'
-    : 'policy.evaluated';
-  return JSON.stringify({
-    specversion: '1.0',
-    type: eventType,
-    source: 'aegis-mock/local',
-    id: `mock-${seq}`,
-    time: new Date().toISOString(),
-    datacontenttype: 'application/json',
-    aegissequence: seq,
-    data: {
-      tool: e.tool,
-      session_id: e.sessionId,
-      decision: {
-        action: e.action,
-        reason: e.reason,
-        policy_id: 'mock-policy',
-        enforcing_layer: 'adapter',
-        labels: e.label,
-      },
-      label_state: 'fresh',
-      latency_ns: Math.floor(Math.random() * 5_000_000),
-    },
-  });
-}
 
 function buildPolicyUpdate(
   event: ValidatedEvent & { type: 'policy.evaluated' | 'policy.denied' },
@@ -128,7 +99,6 @@ function routeEvents(
   setConnectionState: (state: ConnectionState) => void,
   updateLastSequence: (seq: number) => void,
   setBundleStatus: (status: BundleStatus) => void,
-  setPolicies: (policies: import('./stores/policy-store').PolicySummary[]) => void,
 ): void {
   for (const event of events) {
     switch (event.type) {
@@ -143,34 +113,29 @@ function routeEvents(
       case 'bundle.activated': {
         const b = event.data;
         orchestrator.dispatchUpdate(atomicUpdate('FRAME', event.type, () => {
+          const rawBundle = b as { policyCount?: number; policy_count?: number; policies?: { id: string; enabled: boolean; layer: string; cel_expression?: string }[] };
           setBundleStatus({
             version: b.version,
             previousVersion: b.previousVersion ?? 0,
             hash: b.hash,
             signatureVerified: b.signatureVerified,
-            policyCount: b.policyCount,
+            policyCount: rawBundle.policyCount ?? rawBundle.policy_count ?? 0,
             adapterCount: b.adapterCount ?? 0,
             activatedAt: Date.now(),
           });
-          const rawBundle = b as { policyCount?: number; policy_count?: number; policies?: { id: string; enabled: boolean; layer: string; cel_expression?: string }[] };
-          const namedPolicies: import('./stores/policy-store').PolicySummary[] =
-            Array.isArray(rawBundle.policies) && rawBundle.policies!.length > 0
-              ? rawBundle.policies!.map((p) => ({
-                  id: p.id,
-                  name: p.id.replace(/^aegis\//, ''),
-                  layer: (p.layer ?? 'cel') as 'cel' | 'ifc' | 'adapter' | 'delegation' | 'secret-scan',
-                  enabled: p.enabled ?? true,
-                  bundleVersion: b.version,
-                  celExpression: p.cel_expression,
-                }))
-              : Array.from({ length: rawBundle.policyCount ?? rawBundle.policy_count ?? 0 }, (_, i) => ({
-                  id: `policy-${b.version}-${i}`,
-                  name: `Policy ${i + 1}`,
-                  layer: 'cel' as const,
-                  enabled: true,
-                  bundleVersion: b.version,
-                }));
-          setPolicies(namedPolicies);
+          if (Array.isArray(rawBundle.policies) && rawBundle.policies.length > 0) {
+            // Merge incoming policies into the existing list — preserves CEL expressions
+            // and any policies not mentioned in this bundle event (e.g. pre-seeded demo policies).
+            const incoming: import('./stores/policy-store').PolicySummary[] = rawBundle.policies.map((p) => ({
+              id: p.id,
+              name: p.id.replace(/^aegis\//, ''),
+              layer: (p.layer ?? 'cel') as 'cel' | 'ifc' | 'adapter' | 'delegation' | 'secret-scan',
+              enabled: p.enabled ?? true,
+              bundleVersion: b.version,
+              celExpression: p.cel_expression,
+            }));
+            usePolicyStore.getState().mergePolicies(incoming);
+          }
           updateLastSequence(event.envelope.aegissequence);
         }));
         break;
@@ -237,8 +202,13 @@ function routeEvents(
 
 type MainTab = 'dag' | 'playground' | 'audit' | 'delegation';
 
+// Shared ref so App.tsx's navigate handler can switch tabs without prop-drilling
+const activeTabRef = { current: 'dag' as MainTab, setTab: (_t: MainTab) => {} };
+
 function MainContent() {
   const [activeTab, setActiveTab] = useState<MainTab>('dag');
+  activeTabRef.current = activeTab;
+  activeTabRef.setTab = setActiveTab;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -307,11 +277,9 @@ export default function App() {
   const connectionState = useStreamStore((s) => s.connectionState);
   const coalescedCount = useStreamStore((s) => s.coalescedCount);
   const setBundleStatus = usePolicyStore((s) => s.setBundleStatus);
-  const setPolicies = usePolicyStore((s) => s.setPolicies);
   const setCommandPaletteOpen = useUIStore((s) => s.setCommandPaletteOpen);
 
-  const mockGenRef = useRef<ReturnType<typeof createMockStreamGenerator> | null>(null);
-  const mockSeqRef = useRef(0);
+  const mockGenRef = useRef<{ stop: () => void } | null>(null);
 
   // Keyboard shortcut for command palette
   useEffect(() => {
@@ -329,10 +297,25 @@ export default function App() {
   useEffect(() => {
     function handleNavigate(e: Event) {
       const panel = (e as CustomEvent<{ panel: string }>).detail?.panel;
+      // Tab panels — switch the secondary tab
+      const tabMap: Record<string, MainTab> = {
+        dag: 'dag', playground: 'playground', audit: 'audit', delegation: 'delegation',
+      };
+      if (panel && tabMap[panel]) {
+        activeTabRef.setTab(tabMap[panel]);
+        return;
+      }
+      // Scroll targets
       if (panel === 'events') {
-        document.querySelector('main[aria-label="Live event stream"]')?.scrollIntoView();
+        document.querySelector('[aria-label="Live event stream"]')?.scrollIntoView({ behavior: 'smooth' });
       } else if (panel === 'inspector') {
-        document.querySelector('[aria-label="Inspector panel"]')?.scrollIntoView();
+        document.querySelector('[aria-label="Inspector panel"]')?.scrollIntoView({ behavior: 'smooth' });
+      } else if (panel === 'metrics') {
+        activeTabRef.setTab('dag'); // metrics are in the DAG tab area
+      } else if (panel === 'lattice') {
+        activeTabRef.setTab('delegation'); // closest tab with session info
+      } else if (panel === 'threats') {
+        activeTabRef.setTab('audit'); // threats visible in audit tab
       }
     }
     window.addEventListener('aegis:navigate', handleNavigate);
@@ -348,22 +331,10 @@ export default function App() {
         if (mockGenRef.current === null) {
           // Seed policies directly — bypasses Zod pipeline so CEL expressions are guaranteed present.
           usePolicyStore.getState().setPolicies(getDemoPolicies(1));
-          const cancelDemo = runDemoScenario(
-            (json) => {
-              window.dispatchEvent(new CustomEvent('aegis:mock-event', { detail: json }));
-            },
-            () => {
-              const gen = createMockStreamGenerator(8);
-              gen.onEvent((e) => {
-                mockSeqRef.current++;
-                const raw = mockEventToCloudEvent(e, mockSeqRef.current);
-                window.dispatchEvent(new CustomEvent('aegis:mock-event', { detail: raw }));
-              });
-              gen.start();
-              mockGenRef.current = gen;
-            },
-          );
-          mockGenRef.current = { stop: cancelDemo } as ReturnType<typeof createMockStreamGenerator>;
+          const cancelDemo = runDemoScenario((json) => {
+            window.dispatchEvent(new CustomEvent('aegis:mock-event', { detail: json }));
+          });
+          mockGenRef.current = { stop: cancelDemo } as { stop: () => void };
         }
       } else {
         mockGenRef.current?.stop();
@@ -423,7 +394,7 @@ export default function App() {
         batch.immediateEvents,
         orchestrator,
         appendEvent, updateLabel, recordLatency, recordEvent,
-        setConnectionState, updateLastSequence, setBundleStatus, setPolicies,
+        setConnectionState, updateLastSequence, setBundleStatus,
       );
     });
 
@@ -451,22 +422,10 @@ export default function App() {
       setConnectionState('MOCK');
       // Seed policies directly — bypasses Zod pipeline so CEL expressions are guaranteed present.
       usePolicyStore.getState().setPolicies(getDemoPolicies(1));
-      const cancelDemo = runDemoScenario(
-        (json) => {
-          pipeline.ingest(json, { receivedAt: performance.now() });
-        },
-        () => {
-          const gen = createMockStreamGenerator(8);
-          mockGenRef.current = gen;
-          gen.onEvent((e: StreamEvent) => {
-            mockSeqRef.current++;
-            const raw = mockEventToCloudEvent(e, mockSeqRef.current);
-            pipeline.ingest(raw, { receivedAt: performance.now() });
-          });
-          gen.start();
-        },
-      );
-      mockGenRef.current = { stop: cancelDemo } as ReturnType<typeof createMockStreamGenerator>;
+      const cancelDemo = runDemoScenario((json) => {
+        pipeline.ingest(json, { receivedAt: performance.now() });
+      });
+      mockGenRef.current = { stop: cancelDemo } as { stop: () => void };
     }
 
     function handleMockEvent(e: Event) {
@@ -502,7 +461,7 @@ export default function App() {
       mockGenRef.current = null;
       window.removeEventListener('aegis:mock-event', handleMockEvent);
     };
-  }, [appendEvent, updateLabel, recordLatency, recordEvent, setConnectionState, updateLastSequence, setBundleStatus, setPolicies]);
+  }, [appendEvent, updateLabel, recordLatency, recordEvent, setConnectionState, updateLastSequence, setBundleStatus]);
 
   const handleStartDemo = useCallback(() => {
     useGovernanceStore.getState().clear?.();
@@ -510,6 +469,13 @@ export default function App() {
     useStreamStore.getState().setConnectionState('MOCK');
     useStreamStore.getState().setRequestMockMode(false);
     setTimeout(() => useStreamStore.getState().setRequestMockMode(true), 100);
+  }, []);
+
+  const handleStopDemo = useCallback(() => {
+    mockGenRef.current?.stop();
+    mockGenRef.current = null;
+    useStreamStore.getState().setRequestMockMode(false);
+    useStreamStore.getState().setConnectionState('IDLE');
   }, []);
 
   // Read metrics on render (computed on demand, not stored as reactive state)
@@ -531,6 +497,7 @@ export default function App() {
           <AppHeader
             connectionState={connectionState}
             onStartDemo={handleStartDemo}
+            onStopDemo={handleStopDemo}
             onOpenPalette={() => useUIStore.getState().setCommandPaletteOpen(true)}
           />
         }
