@@ -1,4 +1,4 @@
-# IMPORT_REVIEW: Cross-resource existence check — Aegis flags Service writes with port definitions; verifying that a Linkerd Server resource exists requires Kyverno background scan
+# IMPORT_REVIEW: Cross-resource existence check — Aegis flags Service writes with port definitions and DENYs kubectl delete server commands; verifying a Server resource exists requires Kyverno background scan
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -15,8 +15,12 @@ spec:
         tools:
             - Write
             - Edit
+            - Bash
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Service") && request.args.content.contains("port:")'
           message: 'Service exposes ports but a corresponding Linkerd Server resource may not exist — verify a Server resource exists in this namespace before applying; cross-resource check requires Kyverno'
           action: AUDIT
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl.*delete.*server.*")'
+          message: 'Deleting a Linkerd Server resource may leave active Services without Linkerd policy enforcement — verify no active workloads depend on this Server before deleting'
+          action: DENY
     defaultAction: ALLOW

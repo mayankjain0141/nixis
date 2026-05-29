@@ -1,4 +1,4 @@
-# IMPORT_REVIEW: Cross-resource existence check — Aegis approximates by flagging Namespace writes without an inline ResourceQuota definition; full enforcement requires Kyverno background scan
+# IMPORT_REVIEW: Cross-resource existence check — Aegis flags Namespace writes lacking inline ResourceQuota and intercepts kubectl delete resourcequota commands; full background scan enforcement requires Kyverno
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -15,8 +15,12 @@ spec:
         tools:
             - Write
             - Edit
+            - Bash
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Namespace") && !request.args.content.contains("kind: ResourceQuota")'
           message: 'Namespace manifest written without an accompanying ResourceQuota — all namespaces must have a ResourceQuota; cross-resource existence check requires Kyverno background scan for full enforcement'
+          action: AUDIT
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl.*delete.*resourcequota.*")'
+          message: 'Deleting a ResourceQuota may violate namespace inventory requirements — all namespaces must maintain at least one ResourceQuota'
           action: AUDIT
     defaultAction: ALLOW

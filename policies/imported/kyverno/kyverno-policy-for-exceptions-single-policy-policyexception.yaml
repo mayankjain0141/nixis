@@ -1,4 +1,4 @@
-# IMPORT_REVIEW: translated by Claude — checks that PolicyException references at most one policy name; exact list-length comparison requires JMESPath/Kyverno
+# IMPORT_REVIEW: translated by Claude — detects PolicyException with multiple policyNames entries via regex; exact list-length semantics for non-YAML-literal forms require Kyverno
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -16,7 +16,10 @@ spec:
             - Write
             - Edit
     validations:
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: PolicyException") && request.args.content.matches("(?s).*policyNames:\\s*\n(\\s+-\\s+\\S+\\s*\n){2,}.*")'
+          message: 'PolicyException references more than one policy in policyNames — each PolicyException must target exactly one policy'
+          action: DENY
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: PolicyException")'
-          message: 'PolicyException detected — each PolicyException must reference exactly one policy; verify the exceptions.policyNames list has only one entry'
+          message: 'PolicyException detected — verify that policyNames contains exactly one entry'
           action: AUDIT
     defaultAction: ALLOW
