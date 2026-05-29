@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Job") && !request.args.content.contains("ownerReferences") && !request.args.content.contains("CronJob")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Job") && !request.args.content.contains("ownerReferences")'
           message: 'Jobs must be created by a CronJob controller — direct Job creation is not permitted'
           action: DENY
     defaultAction: ALLOW

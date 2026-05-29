@@ -16,5 +16,5 @@ spec:
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Ingress") && request.args.content.contains("defaultBackend:")'
           message: 'Ingress must not specify a defaultBackend — use explicit rules instead'
-          action: REQUIRE_APPROVAL
+          action: DENY
     defaultAction: ALLOW
