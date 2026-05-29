@@ -158,7 +158,12 @@ func (s *StreamServer) Start(ctx context.Context, addr string) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", s.handleWebSocket)
 
-	s.httpSrv = &http.Server{Handler: mux}
+	s.httpSrv = &http.Server{
+		Handler:      mux,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
 
 	go s.fanOut(ctx)
 	go s.heartbeat(ctx)
@@ -530,7 +535,11 @@ func (s *StreamServer) sendSystemError(c *client, reason, msg string) {
 		"source":    reason,
 		"severity":  "medium",
 	}
-	raw, _ := json.Marshal(data)
+	raw, marshalErr := json.Marshal(data)
+	if marshalErr != nil {
+		log.Printf("stream: marshal error: %v", marshalErr)
+		raw = []byte(`{}`)
+	}
 	evt := cloudEvent{
 		SpecVersion:     "1.0",
 		ID:              fmt.Sprintf("err-%d", seq),

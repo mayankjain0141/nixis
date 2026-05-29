@@ -68,7 +68,11 @@ func (s *modeState) Get() (DaemonMode, string) {
 	if reason == nil {
 		return DaemonMode(s.mode.Load()), ""
 	}
-	return DaemonMode(s.mode.Load()), reason.(string)
+	reasonStr, ok := reason.(string)
+	if !ok {
+		return DaemonMode(s.mode.Load()), ""
+	}
+	return DaemonMode(s.mode.Load()), reasonStr
 }
 
 // Mode returns the current DaemonMode atomically.
