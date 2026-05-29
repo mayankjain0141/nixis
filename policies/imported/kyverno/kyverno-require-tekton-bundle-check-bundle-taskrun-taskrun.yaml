@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: TaskRun") && !request.args.content.contains("bundle:")'
-          message: 'TaskRun resources must reference a Tekton bundle'
-          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: TaskRun")'
+          message: 'TaskRun resources must be executed from a bundle — verify spec.taskRef.bundle (deprecated) or resolver: bundles is set; CEL cannot check field path'
+          action: AUDIT
     defaultAction: ALLOW
