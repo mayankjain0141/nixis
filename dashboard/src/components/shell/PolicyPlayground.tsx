@@ -19,6 +19,16 @@ function simulateEval(
   if (celLower.includes('secret') && tool === 'Read' && /secret|api\.key|passwd|shadow/.test(args)) return 'audit';
   // no-secret-transmission: deny if args explicitly contain a known secret pattern (simulated)
   if (celLower.includes('contains_secret') && /AWS_SECRET|api_key|password\s*=|token\s*=/i.test(args)) return 'deny';
+  // gatekeeper/imported: kubectl command matching
+  if (celLower.includes('kubectl') && tool === 'Bash' && args.toLowerCase().includes('kubectl')) {
+    if (celLower.includes('nodeport') && args.toLowerCase().includes('nodeport')) return 'deny';
+    if (celLower.includes('create|apply') && /kubectl.*(create|apply)/i.test(args)) return 'deny';
+    return 'deny'; // most kubectl-matching policies are DENY
+  }
+  // falco/ssh: SSH key operations
+  if (celLower.includes('ssh') && tool === 'Bash' && /ssh-keygen|ssh-add|ssh-keyscan/i.test(args)) return 'deny';
+  // falco/xz: backdoored library
+  if (celLower.includes('liblzma') && args.includes('liblzma.so.5.6.0')) return 'deny';
 
   return 'allow';
 }

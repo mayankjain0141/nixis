@@ -38,6 +38,7 @@ export interface GovernanceEvent {
   requestedLabel?: SecurityLabel;
   capabilityCeiling?: SecurityLabel;
   celExpression?: string;
+  requestArgs?: string;   // the actual command / path / query that was evaluated
 }
 
 export interface SessionLabelEntry {
