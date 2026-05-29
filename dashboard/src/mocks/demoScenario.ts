@@ -264,7 +264,97 @@ export function buildDemoScenario(): DemoStep[] {
       }),
     },
 
-    // ── 1.6s: Normal — Bash ls ───────────────────────────────────────────────
+    // ── 1.4s: Hop 1 — SESS_MAIN delegates to SESS_DELEGATE (ceiling: Internal)
+    {
+      delayMs: 600,
+      json: ce('delegation.created', {
+        session_id: SESS_DELEGATE,
+        delegator_id: SESS_MAIN,
+        delegatee_id: SESS_DELEGATE,
+        granted_label: L_RESTRICTED,
+        ceiling_label: L_INTERNAL,
+        capabilities: ['Read', 'Write', 'Bash', 'WebSearch'],
+        expires_at: Date.now() + 30_000,
+        reason: 'Sub-agent granted Internal capability for file processing — cannot access Confidential data',
+      }),
+    },
+
+    // ── 1.8s: Hop 2 — SESS_DELEGATE sub-delegates to SESS_SUBDELEGATE (ceiling: Unclassified)
+    {
+      delayMs: 400,
+      json: ce('delegation.created', {
+        session_id: SESS_SUBDELEGATE,
+        delegator_id: SESS_DELEGATE,
+        delegatee_id: SESS_SUBDELEGATE,
+        granted_label: L_INTERNAL,
+        ceiling_label: L_UNCLASSIFIED,
+        capabilities: ['Read', 'WebSearch'],
+        expires_at: Date.now() + 20_000,
+        reason: 'Read-only sub-agent for public data lookup — Unclassified ceiling only',
+      }),
+    },
+
+    // ── 2.3s: Delegate — Bash echo (allow, within Internal ceiling)
+    {
+      delayMs: 500,
+      json: policyEval({
+        tool: 'Bash',
+        sessionId: SESS_DELEGATE,
+        action: 'allow',
+        label: L_INTERNAL,
+        layer: 'delegation',
+        latencyNs: 62_000,
+        requestArgs: 'echo "processing files"',
+      }),
+    },
+
+    // ── 2.8s: Sub-delegate reads public data (allow — within Unclassified ceiling)
+    {
+      delayMs: 500,
+      json: policyEval({
+        tool: 'Read',
+        sessionId: SESS_SUBDELEGATE,
+        action: 'allow',
+        label: L_UNCLASSIFIED,
+        layer: 'delegation',
+        latencyNs: 48_000,
+        requestArgs: '/public/docs/api-reference.md',
+      }),
+    },
+
+    // ── 3.3s: Sub-delegate tries internal file — DENY (exceeds Unclassified ceiling)
+    {
+      delayMs: 500,
+      json: policyEval({
+        tool: 'Read',
+        sessionId: SESS_SUBDELEGATE,
+        action: 'deny',
+        reason: 'Delegation ceiling exceeded: session ceiling is Unclassified, resource requires Internal',
+        policyId: 'aegis/delegate-ceiling',
+        cel: 'delegation.ceiling.confidentiality >= resource.classification.confidentiality',
+        label: L_UNCLASSIFIED,
+        layer: 'delegation',
+        latencyNs: 91_000,
+        requestArgs: '/internal/reports/q4-financials.pdf',
+      }),
+    },
+
+    // ── 3.5s: Delegate hop-1 reads same file — ALLOW (Internal ceiling permits it)
+    {
+      delayMs: 200,
+      json: policyEval({
+        tool: 'Read',
+        sessionId: SESS_DELEGATE,
+        action: 'allow',
+        policyId: 'aegis/delegate-ceiling',
+        label: L_INTERNAL,
+        layer: 'delegation',
+        latencyNs: 54_000,
+        requestArgs: '/internal/reports/q4-financials.pdf',
+      }),
+    },
+
+    // ── 4.3s: Normal — Bash ls ───────────────────────────────────────────────
     {
       delayMs: 800,
       json: policyEval({
@@ -715,98 +805,6 @@ export function buildDemoScenario(): DemoStep[] {
       }),
     },
 
-    // ── 25.2s: Hop 1 — SESS_MAIN (Restricted) delegates to SESS_DELEGATE (ceiling: Internal)
-    //   Attenuation: Restricted → Internal (cannot access Confidential or above)
-    {
-      delayMs: 1000,
-      json: ce('delegation.created', {
-        session_id: SESS_DELEGATE,
-        delegator_id: SESS_MAIN,
-        delegatee_id: SESS_DELEGATE,
-        granted_label: L_RESTRICTED,    // parent's current label
-        ceiling_label: L_INTERNAL,      // attenuated: sub-agent capped at Internal
-        capabilities: ['Read', 'Write', 'Bash', 'WebSearch'],
-        expires_at: Date.now() + 30_000,
-        reason: 'Sub-agent granted Internal capability for file processing — cannot access Confidential data',
-      }),
-    },
-
-    // ── 25.6s: Hop 2 — SESS_DELEGATE (Internal) sub-delegates to SESS_SUBDELEGATE (ceiling: Unclassified)
-    //   Second attenuation: Internal → Unclassified (read-only, no sensitive data)
-    {
-      delayMs: 400,
-      json: ce('delegation.created', {
-        session_id: SESS_SUBDELEGATE,
-        delegator_id: SESS_DELEGATE,
-        delegatee_id: SESS_SUBDELEGATE,
-        granted_label: L_INTERNAL,       // delegator's ceiling
-        ceiling_label: L_UNCLASSIFIED,   // attenuated again: only public data
-        capabilities: ['Read', 'WebSearch'],
-        expires_at: Date.now() + 20_000,
-        reason: 'Read-only sub-agent for public data lookup — Unclassified ceiling only',
-      }),
-    },
-
-    // ── 26.2s: Delegate — Bash echo (allow) ──────────────────────────────────
-    {
-      delayMs: 1000,
-      json: policyEval({
-        tool: 'Bash',
-        sessionId: SESS_DELEGATE,
-        action: 'allow',
-        label: L_INTERNAL,
-        layer: 'delegation',
-        latencyNs: 62_000,
-        requestArgs: 'echo "processing files"',
-      }),
-    },
-
-    // ── 27.0s: Sub-delegate reads public data (allow — within Unclassified ceiling)
-    {
-      delayMs: 800,
-      json: policyEval({
-        tool: 'Read',
-        sessionId: SESS_SUBDELEGATE,
-        action: 'allow',
-        label: L_UNCLASSIFIED,
-        layer: 'delegation',
-        latencyNs: 48_000,
-        requestArgs: '/public/docs/api-reference.md',
-      }),
-    },
-
-    // ── 27.6s: Sub-delegate tries to read internal file — DENY (exceeds ceiling)
-    {
-      delayMs: 600,
-      json: policyEval({
-        tool: 'Read',
-        sessionId: SESS_SUBDELEGATE,
-        action: 'deny',
-        reason: 'Delegation ceiling exceeded: session ceiling is Unclassified, resource requires Internal',
-        policyId: 'aegis/delegate-ceiling',
-        cel: 'delegation.ceiling.confidentiality >= resource.classification.confidentiality',
-        label: L_UNCLASSIFIED,
-        layer: 'delegation',
-        latencyNs: 91_000,
-        requestArgs: '/internal/reports/q4-financials.pdf',
-      }),
-    },
-
-    // ── 27.8s: Delegate hop-1 reads same file — ALLOW (Internal ceiling allows it)
-    {
-      delayMs: 200,
-      json: policyEval({
-        tool: 'Read',
-        sessionId: SESS_DELEGATE,
-        action: 'allow',
-        policyId: 'aegis/delegate-ceiling',
-        label: L_INTERNAL,
-        layer: 'delegation',
-        latencyNs: 54_000,
-        requestArgs: '/internal/reports/q4-financials.pdf',
-      }),
-    },
-
     // ── 27.8s: EXFILTRATION — scp to evil.com DENY ───────────────────────────
     {
       delayMs: 800,
@@ -1232,7 +1230,11 @@ export function runDemoScenario(
     const delay = accumulatedDelay + step.delayMs;
     timeoutId = setTimeout(() => {
       if (cancelled) return;
-      onEvent(step.json, ++localSeq);
+      const now = Date.now();
+      const liveJson = step.json
+        .replace(/"time":"[^"]*"/, `"time":"${new Date(now).toISOString()}"`)
+        .replace(/"server_time":\d+/, `"server_time":${now * 1_000_000}`);
+      onEvent(liveJson, ++localSeq);
       scheduleNext(index + 1, 0);
     }, delay);
   }

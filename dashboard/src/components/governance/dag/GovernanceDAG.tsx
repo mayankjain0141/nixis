@@ -67,20 +67,37 @@ export function GovernanceDAG() {
     const seed = hashNodeIds(nodeIds);
     const rand = mulberry32(seed);
 
+    // Horizontal layout — pipeline flows left → right
+    // Stage 0 (x=0):   Daemon + IFC
+    // Stage 1 (x=240): Tool nodes  (spread vertically)
+    // Stage 2 (x=500): Policy nodes (spread vertically)
+    // Stage 3 (x=780): Audit
+    const toolGap = 72;
+    const policyGap = 48;
+    const totalToolH = Math.max(tools.length * toolGap, 160);
+    const totalPolicyH = Math.max(policies.length * policyGap, 160);
+    const canvasH = Math.max(totalToolH, totalPolicyH) + 80;
+
     const nodes: Node[] = [
-      { id: 'daemon', type: 'daemon', position: { x: 300, y: 0 }, data: { label: 'aegis-daemon' } },
-      { id: 'ifc', type: 'ifc', position: { x: 300, y: 100 }, data: { label: 'IFC Lattice' } },
-      { id: 'audit', type: 'audit', position: { x: 300, y: 400 }, data: { label: 'Audit Chain' } },
+      { id: 'daemon', type: 'daemon', position: { x: 0, y: canvasH / 2 - 50 }, data: { label: 'aegis-daemon' } },
+      { id: 'ifc',    type: 'ifc',    position: { x: 0, y: canvasH / 2 + 50 }, data: { label: 'IFC Lattice' } },
+      { id: 'audit',  type: 'audit',  position: { x: 780, y: canvasH / 2 - 20 }, data: { label: 'Audit Chain' } },
       ...tools.map((tool, i) => ({
         id: `tool-${tool}`,
         type: 'tool' as const,
-        position: { x: 50 + i * 150 + rand() * 20, y: 200 + rand() * 20 },
+        position: {
+          x: 240 + rand() * 10,
+          y: (canvasH - totalToolH) / 2 + i * toolGap + rand() * 8,
+        },
         data: { label: tool },
       })),
       ...policies.map((policy, i) => ({
         id: `policy-${policy}`,
         type: 'policy' as const,
-        position: { x: 50 + i * 150 + rand() * 20, y: 300 + rand() * 20 },
+        position: {
+          x: 500 + rand() * 10,
+          y: (canvasH - totalPolicyH) / 2 + i * policyGap + rand() * 8,
+        },
         data: { label: policy },
       })),
     ];
@@ -144,12 +161,13 @@ export function GovernanceDAG() {
   }
 
   return (
-    <div style={{ width: '100%', height: 400 }} aria-label="Governance evaluation DAG">
+    <div style={{ width: '100%', height: '100%', minHeight: 420 }} aria-label="Governance evaluation DAG">
       <ReactFlow
         nodes={nodes}
         edges={edges}
         nodeTypes={governanceNodeTypes}
         fitView
+        fitViewOptions={{ padding: 0.15 }}
         onlyRenderVisibleElements={nodes.length > 200}
       >
         <Background />
