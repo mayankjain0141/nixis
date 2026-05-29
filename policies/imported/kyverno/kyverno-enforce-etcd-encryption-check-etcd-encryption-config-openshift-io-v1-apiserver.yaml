@@ -15,7 +15,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("encryption:")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: APIServer") && !request.args.content.contains("encryption:")'
           message: 'etcd encryption must be enabled'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

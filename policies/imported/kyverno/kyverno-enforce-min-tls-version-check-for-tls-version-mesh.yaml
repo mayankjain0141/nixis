@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("minProtocolVersion:")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("meshConfig:") && !request.args.content.contains("minProtocolVersion:")'
           message: 'Service mesh must set a minimum TLS version'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
