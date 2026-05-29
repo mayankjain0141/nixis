@@ -57,8 +57,9 @@ func TestIntegration_HotReload(t *testing.T) {
 		watchDone <- watcher.Start(ctx)
 	}()
 
-	// Let fsnotify establish its watch before triggering a change.
-	time.Sleep(50 * time.Millisecond)
+	// fsnotify watch registration is async inside Start(); there is no exported
+	// ready-signal, so we use a short sleep — reduced from 50ms to 20ms.
+	time.Sleep(20 * time.Millisecond)
 
 	writeAt := time.Now()
 	if err := os.WriteFile(dst, append(data, '\n'), 0600); err != nil {
@@ -88,9 +89,9 @@ func TestIntegration_HotReload(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Log("warning: watcher did not stop within 2s")
 	}
-	// Allow the time.AfterFunc goroutine from the debounce to fully drain
-	// before the next test can touch OTel global state.
-	time.Sleep(50 * time.Millisecond)
+	// The debounce time.AfterFunc goroutine has no exported done-signal; wait
+	// briefly so it finishes before the next test touches OTel global state.
+	time.Sleep(20 * time.Millisecond)
 }
 
 // countingReloader satisfies reload.PolicyReloader and signals a channel on each reload.
@@ -104,6 +105,91 @@ func (r *countingReloader) Reload() error {
 	default:
 	}
 	return nil
+}
+
+// errorReloader satisfies reload.PolicyReloader and always returns an error.
+// Used to simulate a policy parse failure on reload.
+type errorReloader struct {
+	called chan struct{}
+}
+
+func (r *errorReloader) Reload() error {
+	select {
+	case r.called <- struct{}{}:
+	default:
+	}
+	return os.ErrInvalid // non-nil so reload.ReloadErrorTotal increments
+}
+
+// TestIntegration_HotReload_CorruptedPolicy_KeepsOld verifies that when a reload
+// attempt fails (corrupted policy file), the watcher keeps the old policy active
+// (INV-007: failed reload must not call Store) and no panic occurs.
+func TestIntegration_HotReload_CorruptedPolicy_KeepsOld(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(builtinPoliciesDir(t), "git-branch-protection.yaml")
+	dst := filepath.Join(dir, "git-branch-protection.yaml")
+	data, err := os.ReadFile(src)
+	if err != nil {
+		t.Fatalf("os.ReadFile policy: %v", err)
+	}
+	if err := os.WriteFile(dst, data, 0600); err != nil {
+		t.Fatalf("os.WriteFile policy: %v", err)
+	}
+
+	errorsBefore := reload.ReloadErrorTotal()
+	successBefore := reload.ReloadSuccessTotal()
+
+	reloadCalled := make(chan struct{}, 1)
+	reloader := &errorReloader{called: reloadCalled}
+
+	watcher, err := reload.New(dir, reloader)
+	if err != nil {
+		t.Fatalf("reload.New: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	watchDone := make(chan error, 1)
+	go func() {
+		watchDone <- watcher.Start(ctx)
+	}()
+
+	// fsnotify watch registration is async inside Start(); no exported ready-signal.
+	time.Sleep(20 * time.Millisecond)
+
+	// Write invalid YAML to trigger a reload attempt that will fail.
+	if err := os.WriteFile(dst, []byte(":\tinvalid: yaml: {{\n"), 0600); err != nil {
+		t.Fatalf("os.WriteFile corrupt: %v", err)
+	}
+
+	// Wait for the reloader to be called (debounce is 100ms; allow 2s total).
+	select {
+	case <-reloadCalled:
+	case <-time.After(2 * time.Second):
+		t.Fatal("reload watcher did not call Reload() within 2s after corrupt file write")
+	}
+
+	// Reload was attempted and failed — ReloadErrorTotal must have incremented.
+	errorsAfter := reload.ReloadErrorTotal()
+	if errorsAfter <= errorsBefore {
+		t.Errorf("ReloadErrorTotal did not increment: before=%d after=%d", errorsBefore, errorsAfter)
+	}
+
+	// ReloadSuccessTotal must NOT have incremented (old policy is still active, INV-007).
+	successAfter := reload.ReloadSuccessTotal()
+	if successAfter != successBefore {
+		t.Errorf("ReloadSuccessTotal changed after a failed reload: before=%d after=%d", successBefore, successAfter)
+	}
+
+	cancel()
+	select {
+	case <-watchDone:
+	case <-time.After(2 * time.Second):
+		t.Log("warning: watcher did not stop within 2s")
+	}
+	// Let the debounce AfterFunc goroutine drain before the next test.
+	time.Sleep(20 * time.Millisecond)
 }
 
 // TestIntegration_OTel_RecordEvaluation verifies that sending CheckRequests through
