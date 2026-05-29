@@ -1,5 +1,5 @@
-# IMPORT_TODO: JMESPath conditions in allowed-podpriorities/validate-pod-priority could not be translated — kubectl pattern match generated as base condition only
 # imported from: policies via aegis policy import
+# Gap: allowlist lookup — CEL cannot resolve per-namespace PriorityClass allowlists from a ConfigMap at request-time; flags any pod with priorityClassName not matching common low/medium/high/critical names
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:
@@ -15,7 +15,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("priorityClassName:") && !request.args.content.matches(".*priorityClassName:\\s*(low|medium|high|critical).*")'
-          message: 'The Pod PriorityClass {{ request.object.spec.priorityClassName }} is not in the list of the following PriorityClasses allowed in this Namespace: {{ podprioritydict.data."{{request.namespace}}" }}.'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("priorityClassName:") && !request.args.content.matches(".*priorityClassName:\\s*(low|medium|high|critical)\\s*.*")'
+          message: The Pod priorityClassName is not in the list of allowed PriorityClasses. Use one of the approved values or request approval.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

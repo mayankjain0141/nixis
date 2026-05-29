@@ -1,5 +1,5 @@
-# IMPORT_TODO: JMESPath conditions in check-linkerd-authorizationpolicy/check-server-exists could not be translated — kubectl pattern match generated as base condition only
 # imported from: policies via aegis policy import
+# Gap: Server existence — original policy checks whether a matching Server or HTTPRoute resource exists in the cluster; CEL approximates by requiring a targetRef: field in the AuthorizationPolicy manifest
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:
@@ -16,6 +16,6 @@ spec:
             - Edit
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: AuthorizationPolicy") && !request.args.content.contains("targetRef:")'
-          message: Server or HTTPRoute not found for this AuthorizationPolicy.
+          message: AuthorizationPolicy must reference a Server or HTTPRoute via targetRef. Ensure the target resource exists before applying this policy.
           action: AUDIT
     defaultAction: ALLOW

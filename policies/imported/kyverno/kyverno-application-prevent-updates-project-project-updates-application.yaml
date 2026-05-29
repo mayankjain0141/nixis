@@ -1,5 +1,5 @@
-# IMPORT_TODO: JMESPath conditions in application-prevent-updates-project/project-updates could not be translated — kubectl pattern match generated as base condition only
 # imported from: policies via aegis policy import
+# Gap: update-detection — CEL cannot distinguish a create from an update; flags all writes to ArgoCD Application manifests that reference a project field for human review
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:
@@ -16,6 +16,6 @@ spec:
             - Edit
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Application") && request.args.content.contains("project:")'
-          message: The spec.project cannot be changed once the Application is created.
+          message: The spec.project field of an ArgoCD Application cannot be changed after creation. Verify this is an intentional project reassignment.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
