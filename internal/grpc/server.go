@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Package grpc exposes Aegis governance as an Envoy ext_authz service.
 package grpc
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // aegis-daemon is the Aegis governance daemon binary.
 //
 // It listens on a Unix domain socket, evaluates incoming CheckRequests from the

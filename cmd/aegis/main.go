@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // aegis is the Aegis governance CLI.
 package main
 
