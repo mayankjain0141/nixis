@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 package main
 
 // LLMTranslator calls the Claude API to translate policy snippets to CEL.
@@ -264,13 +265,14 @@ func (t *LLMTranslator) callAPI(ctx context.Context, userContent string) (string
 	req.Header.Set("anthropic-version", anthropicVer)
 	req.Header.Set("content-type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	httpClient := &http.Client{Timeout: 30 * time.Second}
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("HTTP request: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	respBody, err := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 10<<20))
 	if err != nil {
 		return "", fmt.Errorf("read response body: %w", err)
 	}

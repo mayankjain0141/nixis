@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 package daemon
 
 import (
@@ -285,8 +286,11 @@ func (d *Daemon) serveHealthz(ctx context.Context) {
 		d.delegAPI.RegisterRoutes(mux)
 	}
 	srv := &http.Server{
-		Addr:    d.cfg.HealthzAddr,
-		Handler: mux,
+		Addr:         d.cfg.HealthzAddr,
+		Handler:      mux,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
 	go func() {
 		<-ctx.Done()
