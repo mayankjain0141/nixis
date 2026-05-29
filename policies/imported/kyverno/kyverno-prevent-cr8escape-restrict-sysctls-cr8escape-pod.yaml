@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("sysctls:") && (request.args.content.contains("+") || request.args.content.contains("="))'
-          message: 'sysctl values with + or = are disallowed (CVE-2022-0811 cr8escape mitigation)'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("sysctls:") && request.args.content.matches(".*kernel\\.core_pattern.*")'
+          message: 'sysctl kernel.core_pattern override is disallowed (CVE-2022-0811 cr8escape mitigation)'
           action: DENY
     defaultAction: ALLOW
