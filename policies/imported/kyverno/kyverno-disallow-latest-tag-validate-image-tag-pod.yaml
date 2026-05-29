@@ -11,9 +11,10 @@ spec:
     description: The ':latest' tag is mutable and can lead to unexpected errors if the image changes. A best practice is to use an immutable tag that maps to a specific version of an application Pod. This policy validates that the image specifies a tag and that it is not called `latest`.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.matches(".*image:\s+[^\s]+:latest.*")'
           message: Using a mutable image tag e.g. 'latest' is not allowed.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

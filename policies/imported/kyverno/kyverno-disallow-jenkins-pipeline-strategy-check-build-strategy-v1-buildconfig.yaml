@@ -12,9 +12,10 @@ spec:
     description: The Jenkins Pipeline Build Strategy has been deprecated. This policy prevents its use. Use OpenShift Pipelines instead.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("jenkinsPipeline:")'
           message: Jenkins Pipeline Build Strategy has been deprecated and is not allowed
-          action: DENY
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

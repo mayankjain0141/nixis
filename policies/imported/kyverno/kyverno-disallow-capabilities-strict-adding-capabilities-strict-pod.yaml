@@ -11,9 +11,10 @@ spec:
     description: Adding capabilities other than `NET_BIND_SERVICE` is disallowed. In addition, all containers must explicitly drop `ALL` capabilities.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("add:")'
           message: Any capabilities added other than NET_BIND_SERVICE are disallowed.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

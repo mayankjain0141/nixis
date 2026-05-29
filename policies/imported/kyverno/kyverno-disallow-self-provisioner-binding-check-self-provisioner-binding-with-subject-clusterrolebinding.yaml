@@ -11,9 +11,10 @@ spec:
     description: This policy prevents binding to the self-provisioners role for strict control of OpenShift project creation.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("self-provisioner")'
           message: Binding to the self-provisioners cluster role is not allowed.
-          action: DENY
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

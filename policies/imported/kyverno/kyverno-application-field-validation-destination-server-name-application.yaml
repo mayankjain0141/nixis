@@ -11,9 +11,10 @@ spec:
     description: This policy performs some best practices validation on Application fields. Path or chart must be specified but never both. And destination.name or destination.server must be specified but never both.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("kind: Application") || request.args.content.contains("kind: AppProject")'
           message: '`spec.destination.server` OR `spec.destination.name` should be specified but never both.'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
