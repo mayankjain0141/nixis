@@ -17,7 +17,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && (request.args.content.contains("kind: Pod") || request.args.content.contains("kind: Deployment")) && !request.args.content.contains("seccompProfile:") && !request.args.content.contains("type: RuntimeDefault")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (request.args.content.contains("kind: Pod") || request.args.content.contains("kind: Deployment")) && !request.args.content.contains("seccompProfile:") && !request.args.content.contains("type: RuntimeDefault")'
           message: 'IMPORT_REVIEW: gatekeeper-k8spspseccompv2 — check manifest content'
           action: AUDIT
     defaultAction: ALLOW

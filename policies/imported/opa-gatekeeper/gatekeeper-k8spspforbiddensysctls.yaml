@@ -17,7 +17,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("sysctls:") && (request.args.content.contains("kernel.shm_rmid_forced") || request.args.content.matches(".*net\.(ipv4|ipv6|unix)\..*"))'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("sysctls:") && (request.args.content.contains("kernel.shm_rmid_forced") || request.args.content.matches(".*net\\.(ipv4|ipv6|unix)\\..*"))'
           message: 'IMPORT_REVIEW: gatekeeper-k8spspforbiddensysctls — check manifest content'
           action: DENY
     defaultAction: ALLOW
