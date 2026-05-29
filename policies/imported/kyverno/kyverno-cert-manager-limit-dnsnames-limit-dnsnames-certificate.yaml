@@ -1,4 +1,6 @@
-# AUDIT_ONLY: CEL cannot count list items in YAML string content — cannot enforce dnsNames count limit. Flags all Certificate writes for manual review.
+# CEL_LIMITATION: cannot count YAML list items — cannot enforce "at most 1 dnsNames entry".
+# Expression set to false (pass-through) to avoid firing on every valid cert with dnsNames.
+# Requires structural YAML parsing at engine level to enforce count limit.
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -11,11 +13,9 @@ metadata:
 spec:
     description: Some applications will not accept certificates containing more than a single name. This policy ensures that each certificate request contains only one DNS name entry.
     matchConstraints:
-        tools:
-            - Write
-            - Edit
+        tools: []
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Certificate") && request.args.content.contains("dnsNames:")'
-          message: 'AUDIT: Certificate with dnsNames detected — verify only one DNS name entry is present. Only one dnsNames entry is allowed per certificate request.'
+        - expression: 'false'
+          message: 'CEL cannot count dnsNames list entries — policy not enforceable. Only one dnsNames entry is allowed per certificate request.'
           action: AUDIT
     defaultAction: ALLOW
