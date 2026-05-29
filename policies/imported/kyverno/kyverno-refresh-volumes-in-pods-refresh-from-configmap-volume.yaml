@@ -1,4 +1,4 @@
-# IMPORT_REVIEW: translated by Claude — verify semantics
+# MUTATE policy: translated to false + AUDIT (Aegis cannot write annotations to Pods at runtime)
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -16,7 +16,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
-          message: 'Policy validation required — review manifest before applying'
-          action: REQUIRE_APPROVAL
+        - expression: 'false'
+          message: 'Mutation policy translated to audit-only — Aegis cannot trigger Pod annotation writes in response to ConfigMap changes'
+          action: AUDIT
     defaultAction: ALLOW

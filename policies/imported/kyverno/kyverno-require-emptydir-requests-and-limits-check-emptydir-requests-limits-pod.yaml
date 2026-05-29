@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
-          message: 'Policy validation required — review manifest before applying'
-          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("emptyDir:") && !request.args.content.contains("sizeLimit:") && !request.args.content.contains("ephemeral-storage:")'
+          message: 'Containers mounting emptyDir volumes must set ephemeral-storage requests and limits, or configure a sizeLimit on the emptyDir volume'
+          action: DENY
     defaultAction: ALLOW

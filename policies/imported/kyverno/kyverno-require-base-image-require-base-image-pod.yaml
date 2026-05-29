@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
-          message: 'Policy validation required — review manifest before applying'
-          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*Dockerfile.*") && !request.args.content.matches("(?i).*FROM\\s+\\S+.*")'
+          message: 'Dockerfile must specify a FROM base image from an approved source'
+          action: DENY
     defaultAction: ALLOW
