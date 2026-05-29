@@ -287,7 +287,7 @@ function CommandPaletteContent({
     <div
       style={styles.backdrop}
       onClick={close}
-      aria-hidden="false"
+      aria-hidden="true"
     >
       <div
         role="dialog"

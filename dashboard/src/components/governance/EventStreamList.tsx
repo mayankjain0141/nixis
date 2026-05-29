@@ -103,7 +103,7 @@ export function EventStreamList() {
           const verdictStyle = VERDICT_STYLE[event.verdict] ?? { bg: '#6e7681', color: '#fff', label: event.verdict.toUpperCase() };
           const isSelected = event.id === inspectorTarget;
 
-          const requestArgs = (event as any).requestArgs as string | undefined;
+          const requestArgs = event.requestArgs;
           const hasArgs = Boolean(requestArgs);
 
           return (

@@ -62,6 +62,7 @@ export class DenyColorGuardService {
 
 export const guardInstance = new DenyColorGuardService();
 
+/** Side-effect component that runs invariant checks on every render. Returns null intentionally. */
 export function DenyColorGuard(): null {
   useEffect(() => {
     guardInstance.start();
