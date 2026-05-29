@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (request.args.content.contains("escalate") || request.args.content.contains("bind"))'
-          message: 'Roles must not grant bind or escalate verbs'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (request.args.content.contains("escalate") || request.args.content.contains("impersonate") || request.args.content.contains("bind")) && request.args.content.contains("verbs:")'
+          message: 'Roles must not grant escalate, impersonate, or bind verbs'
           action: DENY
     defaultAction: ALLOW

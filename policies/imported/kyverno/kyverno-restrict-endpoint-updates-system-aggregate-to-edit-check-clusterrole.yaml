@@ -1,0 +1,20 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-restrict-endpoint-updates-system-aggregate-to-edit-check-clusterrole
+    annotations:
+        aegis.io/imported-from: aegis-import-restrict-endpoint-updates.yaml
+        aegis.io/severity: medium
+        kyverno.io/category: Security
+spec:
+    description: The system:aggregate-to-edit ClusterRole should not have edit permissions on Endpoints to avoid confused-deputy attacks (CVE-2021-25740). This policy flags any modification to the system:aggregate-to-edit ClusterRole that grants create, update, or patch permissions on the endpoints resource.
+    matchConstraints:
+        tools:
+            - Write
+            - Edit
+    validations:
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("system:aggregate-to-edit") && request.args.content.contains("endpoints")'
+          message: 'The system:aggregate-to-edit ClusterRole must not grant edit permissions on endpoints (CVE-2021-25740)'
+          action: DENY
+    defaultAction: ALLOW
