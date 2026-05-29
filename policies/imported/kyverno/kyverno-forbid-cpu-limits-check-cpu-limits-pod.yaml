@@ -1,3 +1,4 @@
+# IMPORT_TODO: Cannot distinguish limits.cpu from requests.cpu via content-contains — regex matches limits: and cpu: anywhere in file regardless of nesting; false-positive risk on multi-container manifests; downgraded from DENY to REQUIRE_APPROVAL
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -16,5 +17,5 @@ spec:
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("resources:") && request.args.content.matches("(?s).*limits:.*cpu:.*")'
           message: 'Containers must not define CPU limits'
-          action: DENY
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW
