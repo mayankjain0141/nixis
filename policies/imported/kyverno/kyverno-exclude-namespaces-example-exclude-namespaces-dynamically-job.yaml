@@ -1,4 +1,3 @@
-# IMPORT_TODO: JMESPath ConfigMap context lookup (namespace allowlist) cannot be translated to CEL — expression is best-effort content check only
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -9,11 +8,13 @@ metadata:
         aegis.io/severity: medium
         kyverno.io/category: Sample
 spec:
-    description: It's common where policy lookups need to consider a mapping to many possible values rather than a static mapping. This is a sample which demonstrates how to dynamically look up an allow list of Namespaces from a ConfigMap where the ConfigMap stores an array of strings. This policy validates that any Pods created outside of the list of Namespaces have the label `foo` applied.
+    description: It's common where policy lookups need to consider a mapping to many possible values rather than a static mapping. This is a sample which demonstrates how to dynamically look up an allow list of Namespaces from a ConfigMap where the ConfigMap stores an array of strings. This policy validates that any Jobs created outside of the list of Namespaces have the label `foo` applied.
     matchConstraints:
-        tools: []
+        tools:
+            - Write
+            - Edit
     validations:
-        - expression: 'false'
-          message: 'Namespace allowlist lookup from ConfigMap cannot be translated to CEL — manual review required'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Job") && !request.args.content.contains("foo:")'
+          message: 'Job manifests must include the foo label — namespace allowlist from ConfigMap cannot be checked at request time; manual review required'
           action: AUDIT
     defaultAction: ALLOW
