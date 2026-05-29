@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Pod") && !request.args.content.matches(".*ownerReferences:.*")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Pod") && !request.args.content.contains("ownerReferences:")'
           message: 'Bare Pods without an owner controller are not allowed in production'
           action: DENY
     defaultAction: ALLOW
