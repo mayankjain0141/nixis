@@ -15,7 +15,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)\\b(hyperkube|kubelet|k3s-agent)\\b")
+        - expression: 'tool == "Bash" && (request.args.command.matches(".*chmod.*(u\\+s|g\\+s|[24][0-9][0-9][0-9]).*") || request.args.command.matches(".*chmod.*\\+s.*"))'
           message: 'Falco rule violated: Set Setuid or Setgid bit'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

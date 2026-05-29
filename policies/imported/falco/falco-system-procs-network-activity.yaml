@@ -15,7 +15,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)\\b(ash|bash|csh|ksh|sh|tcsh|zsh|dash)\\b")
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+exec.*(-it|-i|-t).*") && request.args.command.matches(".*(bash|sh|ash|zsh|cmd|powershell).*") || tool == "Bash" && request.args.command.matches(".*\\b(sleep|mkdir|who|date|login|usermod|deluser|adduser|chpasswd)\\b.*curl|wget|nc|netcat|ncat.*")'
           message: 'Falco rule violated: System procs network activity'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

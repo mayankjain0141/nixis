@@ -12,12 +12,9 @@ spec:
     description: |
         Directory traversal monitored file read - Web applications can be vulnerable to directory traversal attacks that allow accessing files outside of the web app's root directory (e.g. Arbitrary File Read bugs). System directories like /etc are typically accessed via absolute paths. Access patterns outside of this (here path traversal) can be regarded as suspicious. This rule includes failed file open attempts.
     matchConstraints:
-        tools:
-            - Read
-            - Write
-            - Edit
+        tools: []
     validations:
-        - expression: tool.matches("Read|Write|Edit") && request.args.path.contains("id_rsa")
+        - expression: 'false'
           message: 'Falco rule violated: too many tactics tags with multiple techniques'
-          action: REQUIRE_APPROVAL
+          action: AUDIT
     defaultAction: ALLOW
