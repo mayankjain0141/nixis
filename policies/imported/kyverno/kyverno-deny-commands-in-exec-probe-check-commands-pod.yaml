@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("exec:") && request.args.content.contains("livenessProbe:")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("livenessProbe:") && request.args.content.contains("exec:") && (request.args.content.contains("jcmd") || request.args.content.contains("- ps") || request.args.content.contains("- ls"))'
           message: Developers may feel compelled to use simple shell commands as a workaround to creating "proper" liveness or readiness probes for a Pod. Such a practice can be discouraged via detection of those commands. This policy prevents the use of certain commands `jcmd`, `ps`, or `ls` if found in a Pod's liveness exec probe.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
