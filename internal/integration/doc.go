@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Package integration contains end-to-end integration tests that exercise
 // all four Phase 4/5 integrations against a real in-process daemon:
 //   - Hot-reload watcher (fsnotify + debounce)

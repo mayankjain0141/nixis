@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // aegis-hook is the per-invocation hook binary for Claude Code and Cursor IDE.
 //
 // It is invoked for every tool call. It reads a HookInput JSON object from stdin,

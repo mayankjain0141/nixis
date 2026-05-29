@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Package policy implements the top-level governance evaluation pipeline for Aegis.
 //
 // PolicyEngine implements aegis.Engine with a 5-layer evaluation pipeline:

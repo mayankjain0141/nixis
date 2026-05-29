@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Package cel implements the CEL (Common Expression Language) policy evaluator for Aegis.
 //
 // Hot path contract: Evaluate() must not allocate. Activation maps are pooled via sync.Pool.

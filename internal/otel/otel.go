@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Package otel provides 4-signal OpenTelemetry observability for Aegis:
 // traces, span events, structured logs, and metrics.
 //
