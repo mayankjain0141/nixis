@@ -13,7 +13,9 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "e2e": "playwright test",
-    "e2e:report": "playwright show-report"
+    "e2e:report": "playwright show-report",
+    "lint:fix": "eslint . --fix",
+    "type-check": "tsc -b --noEmit"
   },
   "dependencies": {
     "@types/react-window": "^1.8.8",

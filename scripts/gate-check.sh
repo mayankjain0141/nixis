@@ -207,6 +207,10 @@ else
     fi
 
     echo ""
+    echo "--- TypeScript type check ---"
+    run_check "npm run type-check" npm run type-check
+
+    echo ""
     echo "--- Build ---"
     run_check "npm run build" npm run build
 
