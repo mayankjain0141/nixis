@@ -622,3 +622,66 @@ func TestStream_EmitBundleActivated_ReplayOnConnect(t *testing.T) {
 		t.Errorf("signatureVerified = %v, want true", data["signatureVerified"])
 	}
 }
+
+// TestStream_GracefulShutdown_PortReleased verifies that after context cancellation
+// the TCP port is released and can be immediately rebound.
+// This is the regression test for the race where main() exits before
+// httpSrv.Shutdown() completes, leaving the port in TIME_WAIT.
+func TestStream_GracefulShutdown_PortReleased(t *testing.T) {
+	// Grab a free port then release it so we own the address string.
+	probe, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr := probe.Addr().String()
+	probe.Close()
+
+	// Start the stream server on that address.
+	s := NewStreamServer(nil, nullReader{})
+	ctx, cancel := context.WithCancel(context.Background())
+
+	started := make(chan struct{})
+	done := make(chan error, 1)
+	go func() {
+		// Signal readiness by attempting a dial; retry until it succeeds.
+		go func() {
+			for i := 0; i < 50; i++ {
+				c, err := net.DialTimeout("tcp", addr, 10*time.Millisecond)
+				if err == nil {
+					c.Close()
+					close(started)
+					return
+				}
+				time.Sleep(10 * time.Millisecond)
+			}
+		}()
+		done <- s.Start(ctx, addr)
+	}()
+
+	// Wait until server is accepting.
+	select {
+	case <-started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("stream server did not start within 2s")
+	}
+
+	// Cancel context — triggers httpSrv.Shutdown inside Start().
+	cancel()
+
+	// Wait for Start() to return (Shutdown has a 5s internal timeout).
+	select {
+	case err := <-done:
+		if err != nil && err != context.Canceled {
+			t.Fatalf("Start returned unexpected error: %v", err)
+		}
+	case <-time.After(6 * time.Second):
+		t.Fatal("stream server did not shut down within 6s")
+	}
+
+	// The port must now be rebindable — no TIME_WAIT blocking.
+	ln2, err := net.Listen("tcp", addr)
+	if err != nil {
+		t.Fatalf("port %s not released after graceful shutdown: %v", addr, err)
+	}
+	ln2.Close()
+}
