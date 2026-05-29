@@ -1094,9 +1094,10 @@ export function buildDemoScenario(): DemoStep[] {
 
 export interface DemoInput {
   delayMs: number;
-  tool: string;
-  args: Record<string, unknown>;
-  sessionId: string;
+  tool?: string;           // undefined for local-inject steps
+  args?: Record<string, unknown>;
+  sessionId?: string;
+  localJson?: string;      // if set: dispatch as aegis:mock-event instead of POST /simulate
 }
 
 // Maps steps with requestArgs from buildDemoScenario() to CheckRequest-compatible inputs.
@@ -1128,7 +1129,29 @@ export function buildDemoInputs(): DemoInput[] {
     { delayMs: 800,  tool: 'Bash',  args: { command: 'history -c' },                                          sessionId: SESS_MAIN },
     { delayMs: 800,  tool: 'Bash',  args: { command: 'truncate -s 0 /var/log/auth.log' },                     sessionId: SESS_MAIN },
     { delayMs: 800,  tool: 'Bash',  args: { command: 'crontab -e' },                                          sessionId: SESS_MAIN },
-    { delayMs: 1000, tool: 'Bash',  args: { command: 'echo "processing files"' },                             sessionId: SESS_DELEGATE },
+    // delegation hop 1
+    { delayMs: 600, localJson: ce('delegation.created', {
+      session_id: SESS_DELEGATE,
+      delegator_id: SESS_MAIN,
+      delegatee_id: SESS_DELEGATE,
+      granted_label: L_RESTRICTED,
+      ceiling_label: L_INTERNAL,
+      capabilities: ['Read', 'Write', 'Bash', 'WebSearch'],
+      expires_at: Date.now() + 30_000,
+      reason: 'Sub-agent granted Internal capability for file processing — cannot access Confidential data',
+    }) },
+    // delegation hop 2
+    { delayMs: 400, localJson: ce('delegation.created', {
+      session_id: SESS_SUBDELEGATE,
+      delegator_id: SESS_DELEGATE,
+      delegatee_id: SESS_SUBDELEGATE,
+      granted_label: L_INTERNAL,
+      ceiling_label: L_UNCLASSIFIED,
+      capabilities: ['Read', 'WebSearch'],
+      expires_at: Date.now() + 20_000,
+      reason: 'Read-only sub-agent for public data lookup — Unclassified ceiling only',
+    }) },
+    { delayMs: 500, tool: 'Bash',  args: { command: 'echo "processing files"' },                              sessionId: SESS_DELEGATE },
     { delayMs: 800,  tool: 'Read',  args: { path: '/public/docs/api-reference.md' },                          sessionId: SESS_SUBDELEGATE },
     { delayMs: 600,  tool: 'Read',  args: { path: '/internal/reports/q4-financials.pdf' },                    sessionId: SESS_SUBDELEGATE },
     { delayMs: 200,  tool: 'Read',  args: { path: '/internal/reports/q4-financials.pdf' },                    sessionId: SESS_DELEGATE },
@@ -1140,6 +1163,12 @@ export function buildDemoInputs(): DemoInput[] {
     { delayMs: 800,  tool: 'Bash',  args: { command: 'kubectl taint node master-1 key=value:NoSchedule' },    sessionId: SESS_OPERATOR },
     { delayMs: 800,  tool: 'Bash',  args: { command: 'iptables -F' },                                         sessionId: SESS_MAIN },
     { delayMs: 800,  tool: 'Bash',  args: { command: 'apt-get install malicious-package' },                   sessionId: SESS_MAIN },
+    { delayMs: 800, localJson: ce('delegation.expired', {
+      session_id: SESS_DELEGATE,
+      delegator_id: SESS_MAIN,
+      reason: 'Delegation TTL elapsed',
+      expired_at: Date.now(),
+    }) },
     { delayMs: 1000, tool: 'Bash',  args: { command: 'git reset --hard HEAD~10' },                            sessionId: SESS_MAIN },
     { delayMs: 1000, tool: 'Bash',  args: { command: 'kill -9 1' },                                           sessionId: SESS_MAIN },
     { delayMs: 800,  tool: 'Bash',  args: { command: 'pkill -9 nginx' },                                      sessionId: SESS_MAIN },
@@ -1158,16 +1187,21 @@ export function runLiveDemoScenario(apiBase: string, onError: (err: Error) => vo
     const input = inputs[index];
     timeoutId = setTimeout(() => {
       if (cancelled) return;
-      fetch(`${apiBase}/simulate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tool: input.tool,
-          args: JSON.stringify(input.args),
-          session_id: input.sessionId,
-          timestamp: Date.now() * 1_000_000,
-        }),
-      }).catch((err: unknown) => onError(err instanceof Error ? err : new Error(String(err))));
+      if (input.localJson) {
+        // Inject directly into the pipeline — no simulate call needed
+        window.dispatchEvent(new CustomEvent('aegis:mock-event', { detail: input.localJson }));
+      } else if (input.tool) {
+        fetch(`${apiBase}/simulate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tool: input.tool,
+            args: JSON.stringify(input.args ?? {}),
+            session_id: input.sessionId,
+            timestamp: Date.now() * 1_000_000,
+          }),
+        }).catch((err: unknown) => onError(err instanceof Error ? err : new Error(String(err))));
+      }
       fireNext(index + 1);
     }, input.delayMs);
   }
