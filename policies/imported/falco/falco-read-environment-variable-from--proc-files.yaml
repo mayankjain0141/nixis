@@ -16,7 +16,7 @@ spec:
             - Bash
             - Read
     validations:
-        - expression: '(tool == "Bash" && request.args.command.matches(".*/proc/[0-9]+/environ.*")) || (tool == "Read" && request.args.path.matches(".*/proc/[0-9]+/environ.*"))'
+        - expression: '(tool == "Bash" && request.args.command.matches(".*/proc/([0-9]+|self)/environ.*")) || (tool == "Read" && request.args.path.matches(".*/proc/([0-9]+|self)/environ.*"))'
           message: 'Falco rule violated: Read environment variable from /proc files'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

@@ -17,7 +17,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && (request.args.command.contains("HTTP_PROXY=") || request.args.command.contains("HTTPS_PROXY=") || request.args.command.contains("http_proxy="))'
+        - expression: 'tool == "Bash" && (request.args.command.contains("HTTP_PROXY=") || request.args.command.contains("HTTPS_PROXY=") || request.args.command.contains("http_proxy=") || request.args.command.contains("https_proxy="))'
           message: 'Falco rule violated: Program run with disallowed http proxy env'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

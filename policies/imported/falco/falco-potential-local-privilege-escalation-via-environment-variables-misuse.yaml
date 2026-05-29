@@ -17,7 +17,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && (request.args.command.contains("GLIBC_TUNABLES") || request.args.command.contains("LD_PRELOAD") || request.args.command.contains("LD_AUDIT") || request.args.command.contains("LD_LIBRARY_PATH"))'
+        - expression: 'tool == "Bash" && (request.args.command.contains("GLIBC_TUNABLES") || request.args.command.contains("LD_PRELOAD") || request.args.command.contains("LD_AUDIT"))'
           message: 'Falco rule violated: Potential Local Privilege Escalation via Environment Variables Misuse'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
