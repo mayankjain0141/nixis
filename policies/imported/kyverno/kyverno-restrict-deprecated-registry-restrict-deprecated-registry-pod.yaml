@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
-          message: 'Policy validation required — review manifest before applying'
-          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.matches(".*image:.*k8s\\.gcr\\.io/.*")'
+          message: 'Images from the deprecated k8s.gcr.io registry are not permitted — migrate to registry.k8s.io'
+          action: DENY
     defaultAction: ALLOW

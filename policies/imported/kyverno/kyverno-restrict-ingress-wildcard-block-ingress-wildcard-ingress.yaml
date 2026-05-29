@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
-          message: 'Policy validation required — review manifest before applying'
-          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (request.args.content.matches(".*host:\\s*\\*.*") || request.args.content.matches(".*host:\\s*\"\\*\".*"))'
+          message: 'Ingress hosts must not use wildcard (*) — specify an explicit hostname'
+          action: DENY
     defaultAction: ALLOW
