@@ -35,7 +35,9 @@ describe('App', () => {
         <App />
       </StoreProvider>,
     );
-    expect(screen.getByRole('status', { name: 'Dashboard metrics' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Live governance event stream')).toBeInTheDocument();
+    // AppHeader renders AEGIS brand name
+    expect(screen.getByText('AEGIS')).toBeInTheDocument();
+    // EventStreamList renders empty state when no events
+    expect(screen.getByText('Waiting for events…')).toBeInTheDocument();
   });
 });
