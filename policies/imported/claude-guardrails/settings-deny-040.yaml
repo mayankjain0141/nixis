@@ -10,7 +10,7 @@ metadata:
 spec:
     description: 'Deny rule imported from settings.json: Bash(rm -rf *)'
     matchConstraints:
-        tools: []
+        tools: [Bash]
     validations:
         - expression: tool == "Bash" && request.args.command.matches("rm -rf .*")
           message: 'Blocked by imported settings.json rule: Bash(rm -rf *)'

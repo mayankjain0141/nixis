@@ -10,9 +10,9 @@ metadata:
 spec:
     description: 'Deny rule imported from settings.json: Read **/.env'
     matchConstraints:
-        tools: []
+        tools: [Read]
     validations:
-        - expression: tool == "Read **/.env"
+        - expression: tool == "Read" && request.args.path.matches(".*\\.env$")
           message: 'Blocked by imported settings.json rule: Read **/.env'
           action: DENY
     defaultAction: ALLOW

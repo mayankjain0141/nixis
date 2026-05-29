@@ -10,9 +10,9 @@ metadata:
 spec:
     description: 'Deny rule imported from settings.json: Edit **/.env.*'
     matchConstraints:
-        tools: []
+        tools: [Edit, Write]
     validations:
-        - expression: tool == "Edit **/.env.*"
+        - expression: (tool == "Edit" || tool == "Write") && request.args.path.matches(".*\\.env\\..*")
           message: 'Blocked by imported settings.json rule: Edit **/.env.*'
           action: DENY
     defaultAction: ALLOW

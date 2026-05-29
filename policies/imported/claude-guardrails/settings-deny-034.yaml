@@ -10,9 +10,9 @@ metadata:
 spec:
     description: 'Deny rule imported from settings.json: Edit ~/.claude/settings.local.json'
     matchConstraints:
-        tools: []
+        tools: [Edit, Write]
     validations:
-        - expression: tool == "Edit ~/.claude/settings.local.json"
+        - expression: (tool == "Edit" || tool == "Write") && request.args.path.matches(".*/\\.claude/settings\\.local\\.json$")
           message: 'Blocked by imported settings.json rule: Edit ~/.claude/settings.local.json'
           action: DENY
     defaultAction: ALLOW

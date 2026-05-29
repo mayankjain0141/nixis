@@ -10,9 +10,9 @@ metadata:
 spec:
     description: 'Deny rule imported from settings.json: Read **/*.pem'
     matchConstraints:
-        tools: []
+        tools: [Read]
     validations:
-        - expression: tool == "Read **/*.pem"
+        - expression: tool == "Read" && request.args.path.matches(".*\\.pem$")
           message: 'Blocked by imported settings.json rule: Read **/*.pem'
           action: DENY
     defaultAction: ALLOW

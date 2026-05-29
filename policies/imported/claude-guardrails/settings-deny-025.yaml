@@ -10,9 +10,9 @@ metadata:
 spec:
     description: 'Deny rule imported from settings.json: Read ~/Library/Application Support/Solflare/**'
     matchConstraints:
-        tools: []
+        tools: [Read]
     validations:
-        - expression: tool == "Read ~/Library/Application Support/Solflare/**"
+        - expression: tool == "Read" && request.args.path.matches(".*/Library/Application Support/Solflare/.*")
           message: 'Blocked by imported settings.json rule: Read ~/Library/Application Support/Solflare/**'
           action: DENY
     defaultAction: ALLOW

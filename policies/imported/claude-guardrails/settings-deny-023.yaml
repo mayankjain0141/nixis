@@ -10,9 +10,9 @@ metadata:
 spec:
     description: 'Deny rule imported from settings.json: Read ~/Library/Application Support/Exodus/**'
     matchConstraints:
-        tools: []
+        tools: [Read]
     validations:
-        - expression: tool == "Read ~/Library/Application Support/Exodus/**"
+        - expression: tool == "Read" && request.args.path.matches(".*/Library/Application Support/Exodus/.*")
           message: 'Blocked by imported settings.json rule: Read ~/Library/Application Support/Exodus/**'
           action: DENY
     defaultAction: ALLOW

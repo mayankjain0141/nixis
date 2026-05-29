@@ -10,9 +10,9 @@ metadata:
 spec:
     description: 'Deny rule imported from settings.json: Edit ~/.bash_profile'
     matchConstraints:
-        tools: []
+        tools: [Edit, Write]
     validations:
-        - expression: tool == "Edit ~/.bash_profile"
+        - expression: (tool == "Edit" || tool == "Write") && request.args.path.matches(".*/\\.bash_profile$")
           message: 'Blocked by imported settings.json rule: Edit ~/.bash_profile'
           action: DENY
     defaultAction: ALLOW

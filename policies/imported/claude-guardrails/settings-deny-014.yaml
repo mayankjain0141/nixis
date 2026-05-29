@@ -10,9 +10,9 @@ metadata:
 spec:
     description: 'Deny rule imported from settings.json: Read ~/.git-credentials'
     matchConstraints:
-        tools: []
+        tools: [Read]
     validations:
-        - expression: tool == "Read ~/.git-credentials"
+        - expression: tool == "Read" && request.args.path.matches(".*/\\.git-credentials$")
           message: 'Blocked by imported settings.json rule: Read ~/.git-credentials'
           action: DENY
     defaultAction: ALLOW
