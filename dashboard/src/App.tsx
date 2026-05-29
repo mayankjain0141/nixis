@@ -18,7 +18,7 @@ import { usePolicyStore } from './stores/policy-store';
 import { useUIStore } from './stores/ui-store';
 import { useLatticeStore } from './stores/lattice-store';
 import { useThreatStore } from './stores/threat-store';
-import { runDemoScenario, getDemoPolicies } from './mocks/demoScenario';
+import { runDemoScenario, runLiveDemoScenario, getDemoPolicies } from './mocks/demoScenario';
 import { createWebSocketManager } from './lib/realtime/ws-manager';
 import { createEventIngestionPipeline } from './lib/realtime/ingestion-pipeline';
 import { createEventBus } from './lib/realtime/event-bus';
@@ -39,6 +39,17 @@ const DAEMON_WS_URL = (() => {
     return 'ws://localhost:9090/ws';
   }
 })();
+
+function getDaemonApiBase(): string {
+  try {
+    if (import.meta.env?.VITE_DAEMON_API_URL) {
+      return import.meta.env.VITE_DAEMON_API_URL as string;
+    }
+  } catch {
+    // import.meta not available in test environments
+  }
+  return 'http://localhost:9090';
+}
 
 function buildPolicyUpdate(
   event: ValidatedEvent & { type: 'policy.evaluated' | 'policy.denied' },
@@ -536,9 +547,24 @@ export default function App() {
   const handleStartDemo = useCallback(() => {
     useGovernanceStore.getState().clear?.();
     usePolicyStore.getState().setPolicies(getDemoPolicies(1));
-    useStreamStore.getState().setConnectionState('MOCK');
-    useStreamStore.getState().setRequestMockMode(false);
-    setTimeout(() => useStreamStore.getState().setRequestMockMode(true), 100);
+
+    const apiBase = getDaemonApiBase();
+    fetch(`${apiBase}/healthz`, { signal: AbortSignal.timeout(1000) })
+      .then(() => {
+        // Daemon is reachable — use live evaluation
+        mockGenRef.current?.stop();
+        mockGenRef.current = null;
+        useStreamStore.getState().setConnectionState('CONNECTING');
+        const cancel = runLiveDemoScenario(apiBase, (err) => console.error('demo error:', err));
+        mockGenRef.current = { stop: cancel };
+      })
+      .catch(() => {
+        // Daemon not reachable — fall back to offline mock
+        console.warn('aegis-daemon not reachable — running offline demo');
+        useStreamStore.getState().setConnectionState('MOCK');
+        useStreamStore.getState().setRequestMockMode(false);
+        setTimeout(() => useStreamStore.getState().setRequestMockMode(true), 100);
+      });
   }, []);
 
   const handleStopDemo = useCallback(() => {
