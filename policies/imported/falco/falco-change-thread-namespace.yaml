@@ -15,7 +15,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.startsWith("containerd")
+        - expression: 'tool == "Bash" && (request.args.command.matches(".*\\bnsenter\\b.*") || request.args.command.matches(".*/proc/[0-9]+/ns/.*") || request.args.command.matches(".*\\bsetns\\b.*"))'
           message: 'Falco rule violated: Change thread namespace'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

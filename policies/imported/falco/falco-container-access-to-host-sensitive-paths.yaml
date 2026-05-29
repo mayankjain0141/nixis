@@ -19,7 +19,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Read" || tool == "Write" || tool == "Edit") && request.args.path.startsWith("/host/") || tool == "Bash" && request.args.command.matches(".*/host/(etc|proc|sys|var)/.*")'
+        - expression: '((tool == "Read" || tool == "Write" || tool == "Edit") && (request.args.path.startsWith("/host/") || request.args.path.startsWith("/rootfs/") || request.args.path.startsWith("/hostfs/"))) || (tool == "Bash" && request.args.command.matches(".*((/host|/rootfs|/hostfs)/(etc|proc|sys|var|root)/|/proc/1/root/).*"))'
           message: 'Falco rule violated: Container Access to Host Sensitive Paths'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
