@@ -85,6 +85,9 @@ export function EventStreamList() {
           const verdictStyle = VERDICT_STYLE[event.verdict] ?? { bg: '#6e7681', color: '#fff', label: event.verdict.toUpperCase() };
           const isSelected = event.id === inspectorTarget;
 
+          const requestArgs = (event as any).requestArgs as string | undefined;
+          const hasArgs = Boolean(requestArgs);
+
           return (
             <div
               key={event.id}
@@ -93,9 +96,9 @@ export function EventStreamList() {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                height: 36,
+                minHeight: hasArgs ? 52 : 36,
                 borderBottom: '1px solid #21262d',
-                borderLeft: isSelected ? '2px solid #58a6ff' : '2px solid transparent',
+                borderLeft: isSelected ? '2px solid var(--info-blue, #58a6ff)' : '2px solid transparent',
                 background: isSelected ? '#1f2937' : undefined,
                 padding: '0 8px',
                 gap: 8,
@@ -121,26 +124,33 @@ export function EventStreamList() {
                 textAlign: 'center',
                 padding: '2px 0',
                 letterSpacing: '0.04em',
+                alignSelf: 'center',
               }}>
                 {verdictStyle.label}
               </div>
 
-              {/* Tool */}
-              <div style={{
-                flex: 1,
-                fontFamily: 'monospace',
-                fontSize: 12,
-                color: '#e6edf3',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}>
-                {event.tool}
+              {/* Tool + command stacked */}
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2 }}>
+                <div style={{
+                  fontFamily: 'monospace', fontSize: 12, color: '#e6edf3',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                  {event.tool}
+                </div>
+                {hasArgs && (
+                  <div style={{
+                    fontFamily: 'monospace', fontSize: 11,
+                    color: event.verdict === 'deny' ? 'var(--deny, #cf222e)' : '#8b949e',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    {requestArgs}
+                  </div>
+                )}
               </div>
 
               {/* Session (last 8 chars) */}
               <div style={{
-                width: 80,
+                width: 72,
                 flexShrink: 0,
                 fontFamily: 'monospace',
                 fontSize: 11,
@@ -148,20 +158,23 @@ export function EventStreamList() {
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
+                alignSelf: 'center',
               }}>
                 {event.sessionId.slice(-8)}
               </div>
 
               {/* Policy */}
               <div style={{
-                flex: 1.5,
+                width: 120,
+                flexShrink: 0,
                 fontSize: 11,
                 color: '#8b949e',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
+                alignSelf: 'center',
               }}>
-                {event.policyId}
+                {(event.policyId ?? '').replace(/^aegis\/|^gatekeeper\/|^falco\/|^kyverno\/|^agentwall\/|^sigma\/|^catalog\//, '')}
               </div>
 
               {/* Latency */}

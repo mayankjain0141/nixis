@@ -118,7 +118,9 @@ export function buildDemoScenario(): DemoStep[] {
       delayMs: 0,
       json: ce('bundle.activated', {
         version: 1,
-        policy_count: 6,
+        policy_count: 16,
+        signatureVerified: true,
+        hash: 'sha256:a3f8c1e5b2d7049f6a1e3c8b5d2f7049a3f8c1e5b2d7049f6a1e3c8b5d2f704',
         activated_at: Date.now(),
         policies: [
           ...POLICIES.map(p => ({ id: p.id, enabled: true, layer: 'cel', cel_expression: p.cel })),

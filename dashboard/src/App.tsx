@@ -152,7 +152,7 @@ function routeEvents(
             adapterCount: b.adapterCount ?? 0,
             activatedAt: Date.now(),
           });
-          const rawBundle = b as { policyCount: number; policies?: { id: string; enabled: boolean; layer: string; cel_expression?: string }[] };
+          const rawBundle = b as { policyCount?: number; policy_count?: number; policies?: { id: string; enabled: boolean; layer: string; cel_expression?: string }[] };
           const namedPolicies: import('./stores/policy-store').PolicySummary[] =
             Array.isArray(rawBundle.policies) && rawBundle.policies!.length > 0
               ? rawBundle.policies!.map((p) => ({
@@ -163,7 +163,7 @@ function routeEvents(
                   bundleVersion: b.version,
                   celExpression: p.cel_expression,
                 }))
-              : Array.from({ length: rawBundle.policyCount ?? b.policyCount }, (_, i) => ({
+              : Array.from({ length: rawBundle.policyCount ?? rawBundle.policy_count ?? 0 }, (_, i) => ({
                   id: `policy-${b.version}-${i}`,
                   name: `Policy ${i + 1}`,
                   layer: 'cel' as const,
