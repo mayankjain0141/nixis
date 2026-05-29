@@ -1,4 +1,4 @@
-# IMPORT_TODO: JMESPath conditions in require-linkerd-server/check-deployment-has-server could not be translated — kubectl pattern match generated as base condition only
+# IMPORT_REVIEW: Cross-resource existence check — Aegis flags Deployment writes with containerPort definitions and DENYs kubectl delete server commands; verifying a Server resource exists requires Kyverno background scan
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -7,6 +7,7 @@ metadata:
     annotations:
         aegis.io/imported-from: aegis-import-687857025.yaml
         aegis.io/severity: medium
+        aegis.io/llm-confidence: medium
         kyverno.io/category: Linkerd
 spec:
     description: In Linkerd 2.11, a Server resource selects ports on a set of Pods in the same Namespace and is used to deny traffic which then must be authorized later. Ensuring that Linkerd policy is enforced on Pods in the mesh is important to maintaining a secure environment. This policy, requiring Linkerd 2.11+, has two rules designed to check Deployments (exposing ports) and Services to ensure a corresponding Server resource exists first.
@@ -14,8 +15,12 @@ spec:
         tools:
             - Write
             - Edit
+            - Bash
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
-          message: 'Policy validation required — review manifest before applying'
-          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Deployment") && request.args.content.contains("containerPort:")'
+          message: 'Deployment exposes ports but a corresponding Linkerd Server resource may not exist — verify a Server resource exists in this namespace before applying; cross-resource check requires Kyverno'
+          action: AUDIT
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl.*delete.*server.*")'
+          message: 'Deleting a Linkerd Server resource may leave active Deployments or Services without Linkerd policy enforcement — verify no active workloads depend on this Server before deleting'
+          action: DENY
     defaultAction: ALLOW

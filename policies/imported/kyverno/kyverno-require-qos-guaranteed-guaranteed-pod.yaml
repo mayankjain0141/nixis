@@ -1,4 +1,4 @@
-# IMPORT_TODO: Guaranteed QoS requires numeric equality check (requests == limits for both CPU and memory) — content-string match insufficient; kubectl pattern match generated as base condition only
+# IMPORT_REVIEW: QoS Guaranteed requires requests == limits for all containers — Aegis DENYs when either section is absent and REQUIREs APPROVAL when both are present (values need human verification for equality); numeric comparison not available in CEL string matching
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -7,6 +7,7 @@ metadata:
     annotations:
         aegis.io/imported-from: aegis-import-315305142.yaml
         aegis.io/severity: medium
+        aegis.io/llm-confidence: medium
         kyverno.io/category: Other, Multi-Tenancy
 spec:
     description: Pod Quality of Service (QoS) is a mechanism to ensure Pods receive certain priority guarantees based upon the resources they define. When Pods define both requests and limits for both memory and CPU, and the requests and limits are equal to each other, Kubernetes grants the QoS class as guaranteed which allows them to run at a higher priority than others. This policy requires that all containers within a Pod run with this definition resulting in a guaranteed QoS. This policy is provided with the intention that users will need to control its scope by using exclusions, preconditions, and other policy language mechanisms.
@@ -15,7 +16,10 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
-          message: 'Policy validation required — review manifest before applying'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Pod") && !(request.args.content.contains("requests:") && request.args.content.contains("limits:"))'
+          message: 'Pod is missing resource requests or limits — QoS Guaranteed requires both requests and limits defined for every container'
+          action: DENY
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Pod") && request.args.content.contains("requests:") && request.args.content.contains("limits:")'
+          message: 'Pod defines both requests and limits — verify that requests equal limits for all containers and all resources (cpu and memory) to qualify for QoS Guaranteed'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

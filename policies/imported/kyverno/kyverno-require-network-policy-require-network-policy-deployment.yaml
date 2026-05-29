@@ -1,4 +1,4 @@
-# IMPORT_TODO: JMESPath conditions in require-network-policy/require-network-policy could not be translated — kubectl pattern match generated as base condition only
+# IMPORT_REVIEW: Cross-resource existence check — Aegis flags Deployment writes; verifying that a matching NetworkPolicy exists for the Deployment's pod selector requires Kyverno background scan
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -7,6 +7,7 @@ metadata:
     annotations:
         aegis.io/imported-from: aegis-import-382613204.yaml
         aegis.io/severity: low
+        aegis.io/llm-confidence: medium
         kyverno.io/category: Sample
 spec:
     description: NetworkPolicy is used to control Pod-to-Pod communication and is a good practice to ensure only authorized Pods can send/receive traffic. This policy checks incoming Deployments to ensure they have a matching, preexisting NetworkPolicy.
@@ -15,7 +16,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
-          message: 'Policy validation required — review manifest before applying'
-          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Deployment")'
+          message: 'Deployment write detected — verify that a matching NetworkPolicy exists for this deployment''s pod selector; cross-resource existence check requires Kyverno'
+          action: AUDIT
     defaultAction: ALLOW
