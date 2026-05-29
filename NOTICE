@@ -1,0 +1,46 @@
+Aegis
+Copyright 2026 Mayank Jain
+
+This product includes software developed by third parties.
+
+---
+
+google/cel-go
+Copyright 2018 Google LLC
+Licensed under the Apache License, Version 2.0
+https://github.com/google/cel-go
+
+---
+
+envoyproxy/go-control-plane
+Copyright 2018 Envoy Project Authors
+Licensed under the Apache License, Version 2.0
+https://github.com/envoyproxy/go-control-plane
+
+---
+
+OpenTelemetry Go
+Copyright The OpenTelemetry Authors
+Licensed under the Apache License, Version 2.0
+https://github.com/open-telemetry/opentelemetry-go
+
+---
+
+gRPC-Go
+Copyright 2014 gRPC authors
+Licensed under the Apache License, Version 2.0
+https://github.com/grpc/grpc-go
+
+---
+
+cobra
+Copyright 2013 Steve Francia <spf@spf13.com>
+Licensed under the Apache License, Version 2.0
+https://github.com/spf13/cobra
+
+---
+
+viper
+Copyright 2014 Steve Francia <spf@spf13.com>
+Licensed under the Apache License, Version 2.0
+https://github.com/spf13/viper
