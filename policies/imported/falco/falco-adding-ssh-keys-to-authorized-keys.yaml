@@ -13,11 +13,11 @@ spec:
         After gaining access, attackers can modify the authorized_keys file to maintain persistence on a victim host. Where authorized_keys files are modified via cloud APIs or command line interfaces, an adversary may achieve privilege escalation on the target virtual machine if they add a key to a higher-privileged user. This rules aims at detecting any modification to the authorized_keys file, that is usually located under the .ssh directory in any user's home directory. This rule complements the more generic auditing rule "Read ssh information" by specifically detecting the writing of new, potentially attacker-provided keys.
     matchConstraints:
         tools:
-            - Read
             - Write
             - Edit
+            - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)\\b(sshd|sftp-server|ssh-agent|ssh|scp|sftp|ssh-keygen|ssh-keysign|ssh-keyscan|ssh-add)\\b")
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*/\\.ssh/authorized_keys$") || tool == "Bash" && request.args.command.matches(".*>>.*/\\.ssh/authorized_keys.*")'
           message: 'Falco rule violated: Adding ssh keys to authorized_keys'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

@@ -15,11 +15,9 @@ spec:
         Detect hardlink created over a curated list of sensitive files or subdirectories under /etc/ or root directories. Can be customized as needed. Refer to further and equivalent guidance within the rule "Read sensitive file untrusted".
     matchConstraints:
         tools:
-            - Read
-            - Write
-            - Edit
+            - Bash
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*\\bln\\b.*(shadow|sudoers|pam\\.conf|pwquality\\.conf).*")'
+        - expression: 'tool == "Bash" && request.args.command.matches(".*\\bln\\b(?!\\s+-s).*(shadow|sudoers|pam\\.conf|pwquality\\.conf|passwd|gshadow).*")'
           message: 'Falco rule violated: Create Hardlink Over Sensitive Files'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
