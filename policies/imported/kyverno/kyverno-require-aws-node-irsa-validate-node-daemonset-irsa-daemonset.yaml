@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
-          message: 'Policy validation required — review manifest before applying'
-          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("DaemonSet") && request.args.content.contains("aws-node") && !request.args.content.contains("eks.amazonaws.com/role-arn")'
+          message: 'The aws-node DaemonSet must use IRSA — configure the eks.amazonaws.com/role-arn annotation instead of using the EC2 instance role'
+          action: DENY
     defaultAction: ALLOW

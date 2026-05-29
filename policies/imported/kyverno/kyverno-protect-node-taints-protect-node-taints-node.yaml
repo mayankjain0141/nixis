@@ -14,7 +14,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches("(?i)kubectl.*(taint).*node")'
-          message: 'Altering node taints requires cluster-admin privileges'
-          action: REQUIRE_APPROVAL
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl.*taint.*node.*")'
+          message: 'Altering node taints is not allowed — cluster-admin ClusterRole required'
+          action: DENY
     defaultAction: ALLOW
