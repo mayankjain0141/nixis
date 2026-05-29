@@ -1,4 +1,4 @@
-# IMPORT_TODO: JMESPath conditions in cert-manager-limit-duration/certificate-duration-max-100days could not be translated — kubectl pattern match generated as base condition only
+# AUDIT_ONLY: CEL cannot parse or compare duration strings in YAML content — cannot enforce the 2400h (100 day) limit. Flags all Certificate duration fields for manual review.
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -16,6 +16,6 @@ spec:
             - Edit
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Certificate") && request.args.content.contains("duration:")'
-          message: certificate duration must be < than 2400h (100 days)
-          action: REQUIRE_APPROVAL
+          message: 'AUDIT: Certificate duration field detected — verify duration is less than 2400h (100 days). Non-letsencrypt certificates must be renewed within 100 days.'
+          action: AUDIT
     defaultAction: ALLOW
