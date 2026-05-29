@@ -39,14 +39,14 @@ function buildStaticCommands(
       label: 'Filter: Show denials only',
       category: 'filter',
       keywords: ['deny', 'block', 'filter', 'show', 'denial'],
-      execute: async () => { setFilterVerdict('deny'); },
+      execute: async () => { setFilterVerdict('deny'); close(); },
     },
     {
       id: 'filter-allow',
       label: 'Filter: Show allow events only',
       category: 'filter',
       keywords: ['allow', 'pass', 'permit', 'filter', 'show'],
-      execute: async () => { setFilterVerdict('allow'); },
+      execute: async () => { setFilterVerdict('allow'); close(); },
     },
     {
       id: 'filter-require_approval',
@@ -66,8 +66,8 @@ function buildStaticCommands(
       id: 'filter-clear',
       label: 'Filter: Clear all filters',
       category: 'filter',
-      keywords: ['clear', 'reset', 'all', 'filter', 'remove'],
-      execute: async () => { setFilterVerdict(null); },
+      keywords: ['clear', 'reset', 'all', 'filter', 'remove', 'show all'],
+      execute: async () => { setFilterVerdict(null); close(); },
     },
     {
       id: 'panel-stream',
@@ -127,6 +127,7 @@ function buildStaticCommands(
       execute: async () => {
         const ui = useUIStore.getState() as { isPaused?: boolean; togglePause?: () => void };
         if (ui.isPaused) ui.togglePause?.();
+        window.dispatchEvent(new CustomEvent('aegis:scroll-to-bottom'));
         close();
       },
     },
