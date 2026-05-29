@@ -306,9 +306,9 @@ func TestProgramCache_IsValueType(t *testing.T) {
 
 func TestCEL_CompileRejectsOverLengthExpression(t *testing.T) {
 	env := mustNewEnv(t)
-	// Build an expression longer than 4096 characters.
+	// Build an expression longer than maxExpressionLength (32768) characters.
 	long := ""
-	for len(long) < 4097 {
+	for len(long) < 32769 {
 		long += "a"
 	}
 	templates := []policy_types.PolicyTemplate{

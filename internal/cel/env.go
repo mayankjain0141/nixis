@@ -26,9 +26,14 @@ import (
 )
 
 const (
-	maxExpressionLength = 4096
+	// maxExpressionLength: 32KB accommodates community policies with large regex alternation lists
+	// (e.g. Sigma/Falco rules referencing 50+ process names). Hand-crafted policies rarely exceed 1KB.
+	maxExpressionLength = 32768
 	maxASTDepth         = 32
-	maxCostBudget       = uint64(10000)
+	// maxCostBudget: 500K accommodates regex matching on lists of 50+ alternations.
+	// The conservative size estimator assumes 1024-byte strings; real shell commands are 50-500 bytes.
+	// Runtime cost of these patterns is microseconds, well under the 50ms policy deadline.
+	maxCostBudget = uint64(500000)
 )
 
 // CELEnvironment holds the compiled CEL environment with all type declarations and

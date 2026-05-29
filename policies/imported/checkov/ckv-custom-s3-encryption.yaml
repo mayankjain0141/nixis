@@ -1,20 +1,20 @@
 # imported from: checkov-custom-policies via aegis policy import
 # IMPORT_TODO: exists check is approximate — verifies string presence of "server_side_encryption_configuration" in file content
-apiVersion: aegis.io/v1
-kind: PolicyTemplate
-metadata:
-  name: ckv2-custom-1
-  annotations:
-    aegis.io/imported-from: checkov-custom-policies
-    aegis.io/severity: high
-    aegis.io/checkov-id: CKV2_CUSTOM_1
-    aegis.io/checkov-source: checkov-custom-policy
-spec:
-  description: "Ensure S3 bucket has encryption enabled"
-  matchConstraints:
-    tools: ["Write", "Edit"]
-  validations:
-    - expression: 'request.args.path.matches("\\.tf$") && !request.args.content.contains("server_side_encryption_configuration")'
-      action: AUDIT
-      message: "Checkov policy CKV2_CUSTOM_1: Ensure S3 bucket has encryption enabled"
-  defaultAction: ALLOW
+# apiVersion: aegis.io/v1
+# kind: PolicyTemplate
+# metadata:
+#   name: ckv2-custom-1
+#   annotations:
+#     aegis.io/imported-from: checkov-custom-policies
+#     aegis.io/severity: high
+#     aegis.io/checkov-id: CKV2_CUSTOM_1
+#     aegis.io/checkov-source: checkov-custom-policy
+# spec:
+#   description: "Ensure S3 bucket has encryption enabled"
+#   matchConstraints:
+#     tools: ["Write", "Edit"]
+#   validations:
+#     - expression: 'request.args.path.matches("\\.tf$") && !request.args.content.contains("server_side_encryption_configuration")'
+#       action: AUDIT
+#       message: "Checkov policy CKV2_CUSTOM_1: Ensure S3 bucket has encryption enabled"
+#   defaultAction: ALLOW
