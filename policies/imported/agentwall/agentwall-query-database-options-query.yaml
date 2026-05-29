@@ -12,7 +12,7 @@ spec:
         tools:
             - query_database
     validations:
-        - expression: tool == "query_database" && request.args.query.matches("^SELECT.*")
-          message: AgentWall constraint violation on options.query
+        - expression: 'tool == "query_database" && !request.args.query.matches("(?i)^\\s*SELECT\\b.*")'
+          message: 'AgentWall: deny non-SELECT queries — read-only enforcement'
           action: DENY
     defaultAction: ALLOW

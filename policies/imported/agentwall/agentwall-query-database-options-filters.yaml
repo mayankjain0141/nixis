@@ -15,6 +15,6 @@ spec:
             - query_database
     validations:
         - expression: tool == "query_database" && "filters" in request.args
-          message: AgentWall constraint violation on options.filters
+          message: 'IMPORT_REVIEW: original constraint was object schema validation — verify intent (deny filters entirely vs validate filter structure)'
           action: DENY
     defaultAction: ALLOW
