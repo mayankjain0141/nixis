@@ -10,7 +10,7 @@ metadata:
 spec:
     description: 'Deny rule imported from settings.json: Bash(sudo *)'
     matchConstraints:
-        tools: []
+        tools: [Bash]
     validations:
         - expression: tool == "Bash" && request.args.command.matches("sudo .*")
           message: 'Blocked by imported settings.json rule: Bash(sudo *)'
