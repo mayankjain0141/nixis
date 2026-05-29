@@ -57,6 +57,21 @@ const IMPORTED_POLICIES = [
   { id: 'catalog/block-kubectl-delete-node',  cel: 'tool == "Bash" && request.args.command.matches("kubectl delete node.*")' },
 ];
 
+// ── Direct policy export — bypasses ingestion pipeline Zod validation ────────
+// Called from App.tsx when demo mode starts to pre-populate the policy store.
+// This guarantees all 16 policies with CEL expressions are visible immediately.
+export function getDemoPolicies(bundleVersion: number = 1): import('../stores/policy-store').PolicySummary[] {
+  const allPolicies = [...POLICIES, ...IMPORTED_POLICIES];
+  return allPolicies.map(p => ({
+    id: p.id,
+    name: p.id.replace(/^(aegis|gatekeeper|falco|kyverno|agentwall|sigma|catalog)\//, ''),
+    layer: 'cel' as const,
+    enabled: true,
+    bundleVersion,
+    celExpression: p.cel,
+  }));
+}
+
 // ── Helper builders ───────────────────────────────────────────────────────────
 let _seq = 0;
 function seq(): number { return ++_seq; }
