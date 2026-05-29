@@ -2,10 +2,10 @@ import { useLatticeStore } from '../../stores/lattice-store';
 import { useGovernanceStore } from '../../stores/governance-store';
 
 const IFC_LEVELS = [
-  { id: 'restricted',   label: 'RES', color: '#cf222e', minConf: 49152 },
-  { id: 'confidential', label: 'CON', color: '#d29922', minConf: 24576 },
-  { id: 'internal',     label: 'INT', color: '#58a6ff', minConf: 8192 },
-  { id: 'unclassified', label: 'UNC', color: '#2da44e', minConf: 0 },
+  { id: 'restricted',   label: 'RES', color: 'var(--deny)',         minConf: 49152 },
+  { id: 'confidential', label: 'CON', color: 'var(--escalate)',     minConf: 24576 },
+  { id: 'internal',     label: 'INT', color: 'var(--info-blue)',    minConf: 8192 },
+  { id: 'unclassified', label: 'UNC', color: 'var(--allow)',        minConf: 0 },
 ];
 
 function confToLevel(c: number) {
@@ -13,11 +13,11 @@ function confToLevel(c: number) {
 }
 
 const STATE_LABELS: Record<string, { label: string; color: string }> = {
-  tainted_by_secret: { label: '! TAINTED BY SECRET', color: '#cf222e' },
-  escalated:         { label: 'Escalated',           color: '#d29922' },
-  ceiling_hit:       { label: 'Ceiling hit',         color: '#8250df' },
-  fresh:             { label: 'Active',               color: '#2da44e' },
-  declassified:      { label: 'Declassified',         color: '#57606a' },
+  tainted_by_secret: { label: '! TAINTED BY SECRET', color: 'var(--deny)' },
+  escalated:         { label: 'Escalated',           color: 'var(--escalate)' },
+  ceiling_hit:       { label: 'Ceiling hit',         color: 'var(--audit-purple)' },
+  fresh:             { label: 'Active',               color: 'var(--allow)' },
+  declassified:      { label: 'Declassified',         color: 'var(--text-muted)' },
 };
 
 export function SessionCards() {
