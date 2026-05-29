@@ -11,9 +11,10 @@ spec:
     description: If the `latest` tag is allowed for images, it is a good idea to have the imagePullPolicy field set to `Always` to ensure should that tag be overwritten that future pulls will get the updated image. This policy validates the imagePullPolicy is set to `Always` when the `latest` tag is specified explicitly or where a tag is not defined at all.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
-          message: The imagePullPolicy must be set to `Always` when the tag `latest` is used.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (request.args.content.contains(":latest") || !request.args.content.contains("tag:")) && !request.args.content.contains("imagePullPolicy: Always")'
+          message: 'Images using the latest tag must set imagePullPolicy: Always'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

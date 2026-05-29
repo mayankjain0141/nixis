@@ -14,7 +14,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(drain|cordon|delete\\s+node)")
-          message: Modifying the `foo` label on a Node is not allowed.
+        - expression: 'tool == "Bash" && request.args.command.matches("(?i)kubectl.*(label|annotate).*node.*foo")'
+          message: 'Changes to the node label foo are not allowed'
           action: DENY
     defaultAction: ALLOW

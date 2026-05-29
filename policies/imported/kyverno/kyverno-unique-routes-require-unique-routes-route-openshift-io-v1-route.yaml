@@ -12,9 +12,10 @@ spec:
     description: An Route host is a URL at which services may be made available externally. In most cases, these hosts should be unique across the cluster to ensure no routing conflicts occur. This policy checks an incoming Route resource to ensure its hosts are unique to the cluster.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
-          message: The Route host name must be unique.
-          action: DENY
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Route")'
+          message: 'OpenShift Route host names must be unique'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

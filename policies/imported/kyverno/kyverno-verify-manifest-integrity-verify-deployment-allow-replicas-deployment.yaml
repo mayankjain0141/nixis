@@ -11,9 +11,10 @@ spec:
     description: Verifying the integrity of resources is important to ensure no tampering has occurred, and in some cases this may need to be extended to certain YAML manifests deployed to Kubernetes. Starting in Kyverno 1.8, these manifests may be signed with Sigstore and the signature(s) validated to prevent this tampering while still allowing some exceptions on a per-field basis. This policy verifies Deployments are signed with the expected key but ignores the `spec.replicas` field allowing other teams to change just this value.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+deployment|scale|rollout)")
-          message: Verifying the integrity of resources is important to ensure no tampering has occurred, and in some cases this may need to be extended to certain YAML manifests deployed to Kubernetes. Starting in Kyverno 1.8, these manifests may be signed with Sigstore and the signature(s) validated to prevent this tampering while still allowing some exceptions on a per-field basis. This policy verifies Deployments are signed with the expected key but ignores the `spec.replicas` field allowing other teams to change just this value.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Deployment")'
+          message: 'Deployment manifests must carry a valid integrity attestation'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

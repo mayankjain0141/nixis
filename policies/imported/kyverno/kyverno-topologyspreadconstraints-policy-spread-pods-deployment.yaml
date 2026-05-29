@@ -9,12 +9,13 @@ metadata:
         aegis.io/severity: medium
         kyverno.io/category: Sample
 spec:
-    description: Deployments to a Kubernetes cluster with multiple availability zones often need to distribute those replicas to align with those zones to ensure site-level failures do not impact availability. This policy ensures topologySpreadConstraints are defined,  to spread pods over nodes and zones. Deployments or Statefulsets with leass than 3  replicas are skipped.
+    description: Deployments to a Kubernetes cluster with multiple availability zones often need to distribute those replicas to align with those zones to ensure site-level failures do not impact availability. This policy ensures topologySpreadConstraints are defined, to spread pods over nodes and zones. Deployments or Statefulsets with leass than 3 replicas are skipped.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+deployment|scale|rollout)")
-          message: topologySpreadConstraint for kubernetes.io/hostname & topology.kubernetes.io/zone are required
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (request.args.content.contains("kind: Deployment") || request.args.content.contains("kind: StatefulSet")) && !request.args.content.contains("topologySpreadConstraints:")'
+          message: 'Deployments and StatefulSets must define topologySpreadConstraints'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

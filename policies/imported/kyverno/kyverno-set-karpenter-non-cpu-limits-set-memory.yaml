@@ -10,11 +10,11 @@ metadata:
         aegis.io/llm-confidence: medium
         kyverno.io/category: Karpenter, EKS Best Practices
 spec:
-    description: For correct node provisioning Karpenter should know exactly what the non-CPU resources are  that the pods will need. Otherwise Karpenter will put as many pods on a node as possible,  which may lead to memory pressure on nodes. This is especially important in consolidation  mode.
+    description: For correct node provisioning Karpenter should know exactly what the non-CPU resources are that the pods will need. Otherwise Karpenter will put as many pods on a node as possible, which may lead to memory pressure on nodes. This is especially important in consolidation mode.
     matchConstraints:
         tools: []
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+(apply|create|patch|run).*")'
-          message: 'IMPORT_REVIEW: mutate rule — Aegis does not mutate requests — manual review required'
+        - expression: 'false'
+          message: 'Mutate rule — Aegis does not mutate requests — manual review required'
           action: AUDIT
     defaultAction: ALLOW

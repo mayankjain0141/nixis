@@ -8,18 +8,13 @@ metadata:
         aegis.io/severity: low
         kyverno.io/category: Veeam Kasten
 spec:
-    description: Kubernetes applications are typically deployed into a single, logical namespace.  Veeam Kasten policies will discover and protect all resources within the selected namespace(s).  This policy ensures all new namespaces include a label referencing a valid Kasten SLA  (Policy Preset) for data protection.This policy can be used in combination with /Users/the `kasten-generate-policy-by-preset-label` ClusterPolicy to automatically create a Kasten policy based on the specified SLA.  The combination ensures that new applications are not inadvertently left unprotected.
+    description: Kubernetes applications are typically deployed into a single, logical namespace. Veeam Kasten policies will discover and protect all resources within the selected namespace(s). This policy ensures all new namespaces include a label referencing a valid Kasten SLA (Policy Preset) for data protection.This policy can be used in combination with /Users/the `kasten-generate-policy-by-preset-label` ClusterPolicy to automatically create a Kasten policy based on the specified SLA. The combination ensures that new applications are not inadvertently left unprotected.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+namespace|create\\s+namespace)")
-          message: |-
-            Namespaces must specify a "dataprotection" label with a value corresponding to a Kasten Policy Preset:
-
-              "gold" - <Insert human readable settings of each preset option>
-              "silver" - <For example, hourly backups, exported to immutable S3 storage>
-              "bronze" - <Or, daily local snapshots, NOT exported to external storage>
-              "none" - No local snapshots or backups
-          action: AUDIT
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Namespace") && !request.args.content.contains("dataprotection:")'
+          message: 'New namespaces must include a dataprotection label for K10/Kasten SLA'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

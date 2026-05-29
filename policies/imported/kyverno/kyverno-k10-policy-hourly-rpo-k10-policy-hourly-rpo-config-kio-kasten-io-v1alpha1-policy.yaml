@@ -8,12 +8,11 @@ metadata:
         aegis.io/severity: low
         kyverno.io/category: Kasten K10 by Veeam in CEL
 spec:
-    description: 'K10 Policy resources can be educated to adhere to common Recovery Point Objective (RPO) best practices.  This policy is advising to use an RPO frequency that with hourly granularity if it has the appPriority: Mission Critical'
+    description: 'K10 Policy resources can be educated to adhere to common Recovery Point Objective (RPO) best practices. This policy is advising to use an RPO frequency that with hourly granularity if it has the appPriority: Mission Critical'
     matchConstraints:
-        tools:
-            - Bash
+        tools: []
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(create|run|apply).*|kubectl.*(patch|edit|set).*")
-          message: 'K10 Policy resources can be educated to adhere to common Recovery Point Objective (RPO) best practices.  This policy is advising to use an RPO frequency that with hourly granularity if it has the appPriority: Mission Critical'
+        - expression: 'false'
+          message: 'Generate rule — Aegis does not generate resources — manual review required'
           action: AUDIT
     defaultAction: ALLOW

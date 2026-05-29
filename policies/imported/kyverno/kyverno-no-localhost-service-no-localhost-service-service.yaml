@@ -11,9 +11,10 @@ spec:
     description: A Service of type ExternalName which points back to localhost can potentially be used to exploit vulnerabilities in some Ingress controllers. This policy audits Services of type ExternalName if the externalName field refers to localhost.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+service|expose)")
-          message: Service of type ExternalName cannot point to localhost.
-          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("ExternalName") && request.args.content.contains("localhost")'
+          message: 'Services of type ExternalName must not point to localhost'
+          action: DENY
     defaultAction: ALLOW
