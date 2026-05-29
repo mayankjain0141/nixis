@@ -434,6 +434,13 @@ export default function App() {
     }
     window.addEventListener('aegis:mock-event', handleMockEvent);
 
+    function handleReconnect() {
+      wsManager.disconnect();
+      setConnectionState('CONNECTING');
+      setTimeout(() => wsManager.connect(), 300);
+    }
+    window.addEventListener('aegis:reconnect', handleReconnect);
+
     stateCheckInterval = setInterval(() => {
       setConnectionState(wsManager.getState());
     }, 250);
@@ -460,6 +467,7 @@ export default function App() {
       mockGenRef.current?.stop();
       mockGenRef.current = null;
       window.removeEventListener('aegis:mock-event', handleMockEvent);
+      window.removeEventListener('aegis:reconnect', handleReconnect);
     };
   }, [appendEvent, updateLabel, recordLatency, recordEvent, setConnectionState, updateLastSequence, setBundleStatus]);
 

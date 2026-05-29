@@ -27,7 +27,7 @@ function fuzzyMatch(query: string, target: string, keywords: string[]): boolean 
 
 function buildStaticCommands(
   setFilterVerdict: (verdict: string | null) => void,
-  reconnect: () => void,
+  connectionState: string,
   startMock: () => void,
   stopMock: () => void,
   setCommandPaletteOpen: (open: boolean) => void,
@@ -142,10 +142,18 @@ function buildStaticCommands(
     },
     {
       id: 'connect',
-      label: 'Connection: Reconnect to daemon',
+      label: connectionState === 'MOCK'
+        ? 'Connection: Switch to daemon mode'
+        : 'Connection: Reconnect to daemon',
       category: 'action',
       keywords: ['connect', 'reconnect', 'daemon', 'websocket', 'ws'],
-      execute: async () => { reconnect(); },
+      execute: async () => {
+        if (connectionState === 'MOCK') {
+          useStreamStore.getState().setRequestMockMode(false);
+        }
+        window.dispatchEvent(new CustomEvent('aegis:reconnect'));
+        close();
+      },
     },
     {
       id: 'mock-start',
@@ -172,7 +180,7 @@ function CommandPaletteContent({
   onClose: () => void;
 }): React.ReactElement {
   const setCommandPaletteOpen = useUIStore((s) => s.setCommandPaletteOpen);
-  const setConnectionState = useStreamStore((s) => s.setConnectionState);
+  const connectionState = useStreamStore((s) => s.connectionState);
   const setFilterVerdict = useGovernanceStore((s) => s.setFilterVerdict);
 
   const [query, setQuery] = useState('');
@@ -193,10 +201,7 @@ function CommandPaletteContent({
   const staticCommands = useMemo(
     () => buildStaticCommands(
       setFilterVerdict,
-      () => {
-        setConnectionState('RECONNECTING');
-        close();
-      },
+      connectionState,
       () => {
         useStreamStore.getState().setRequestMockMode(true);
         close();
@@ -209,7 +214,7 @@ function CommandPaletteContent({
       setCommandPaletteOpen,
       close,
     ),
-    [setFilterVerdict, setConnectionState, close, setCommandPaletteOpen],
+    [setFilterVerdict, connectionState, close, setCommandPaletteOpen],
   );
 
   const allCommands = useMemo(() => {
