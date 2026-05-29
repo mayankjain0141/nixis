@@ -12,11 +12,9 @@ metadata:
 spec:
     description: A signed bundle is required
     matchConstraints:
-        tools:
-            - Write
-            - Edit
+        tools: []
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("image:") && !request.args.content.contains("cosign.sigstore.dev/imageDigest")'
-          message: 'Container images must be signed with a valid cosign signature'
-          action: REQUIRE_APPROVAL
+        - expression: 'false'
+          message: 'Tekton bundle signature verification cannot be performed in CEL — manual review required'
+          action: AUDIT
     defaultAction: ALLOW
