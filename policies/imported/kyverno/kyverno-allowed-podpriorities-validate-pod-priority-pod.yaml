@@ -1,5 +1,5 @@
 # imported from: policies via aegis policy import
-# Gap: allowlist lookup — CEL cannot resolve per-namespace PriorityClass allowlists from a ConfigMap at request-time; flags any pod with priorityClassName not matching common low/medium/high/critical names
+# Gap: per-namespace ConfigMap allowlist — CEL cannot resolve runtime ConfigMap data; approximates by permitting system-prefixed classes (system-cluster-critical, system-node-critical) and requiring approval for all others
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:
@@ -15,7 +15,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("priorityClassName:") && !request.args.content.matches(".*priorityClassName:\\s*(low|medium|high|critical)\\s*.*")'
-          message: The Pod priorityClassName is not in the list of allowed PriorityClasses. Use one of the approved values or request approval.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("priorityClassName:") && !request.args.content.matches(".*priorityClassName:\\s+system-.*")'
+          message: 'The Pod priorityClassName is not in the approved list. Only system-prefixed PriorityClasses (e.g., system-cluster-critical, system-node-critical) are automatically allowed. Custom PriorityClasses require approval.'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

@@ -17,4 +17,7 @@ spec:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Route") && !request.args.content.contains("tls:")'
           message: 'HTTP routes are not allowed. Configure a tls: section for secure OpenShift routes.'
           action: DENY
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Route") && request.args.content.contains("insecureEdgeTerminationPolicy: Allow")'
+          message: 'insecureEdgeTerminationPolicy: Allow permits unencrypted HTTP access and is forbidden. Set insecureEdgeTerminationPolicy to Redirect or None.'
+          action: DENY
     defaultAction: ALLOW
