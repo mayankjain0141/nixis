@@ -6,7 +6,7 @@ metadata:
     name: falco-exfiltrating-artifacts-via-kubernetes-control-plane
     annotations:
         aegis.io/falco-tags: maturity_incubating,container,filesystem,mitre_exfiltration,TA0010
-        aegis.io/imported-from: aegis-import-3831796007.yaml
+        aegis.io/imported-from: aegis-import-2621062960.yaml
         aegis.io/severity: low
         aegis.io/source-rule: Exfiltrating Artifacts via Kubernetes Control Plane
 spec:

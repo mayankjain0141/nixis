@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-inject-env-var-from-image-label-add-env-maintainer
     annotations:
-        aegis.io/imported-from: aegis-import-1053359223.yaml
+        aegis.io/imported-from: aegis-import-1761779970.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

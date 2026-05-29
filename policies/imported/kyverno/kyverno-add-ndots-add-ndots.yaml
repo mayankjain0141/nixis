@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-add-ndots-add-ndots
     annotations:
-        aegis.io/imported-from: aegis-import-1509619736.yaml
+        aegis.io/imported-from: aegis-import-4038978166.yaml
         aegis.io/severity: low
         kyverno.io/category: Sample
 spec:

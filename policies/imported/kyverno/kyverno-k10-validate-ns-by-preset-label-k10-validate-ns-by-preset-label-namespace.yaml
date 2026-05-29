@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-k10-validate-ns-by-preset-label-k10-validate-ns-by-preset-label-namespace
     annotations:
-        aegis.io/imported-from: aegis-import-3744459235.yaml
+        aegis.io/imported-from: aegis-import-898763188.yaml
         aegis.io/severity: low
         kyverno.io/category: Kasten K10 by Veeam in CEL
 spec:

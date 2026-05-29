@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-escalation-verbs-roles-escalate-clusterrole
     annotations:
-        aegis.io/imported-from: aegis-import-176093869.yaml
+        aegis.io/imported-from: aegis-import-536854216.yaml
         aegis.io/severity: medium
         kyverno.io/category: Security
 spec:

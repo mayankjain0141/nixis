@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-non-root-groups-check-fsgroup-pod
     annotations:
-        aegis.io/imported-from: aegis-import-3190810158.yaml
+        aegis.io/imported-from: aegis-import-3096147677.yaml
         aegis.io/severity: medium
         kyverno.io/category: Sample, EKS Best Practices
 spec:

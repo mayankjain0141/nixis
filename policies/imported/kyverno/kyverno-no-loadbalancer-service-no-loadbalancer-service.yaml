@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-no-loadbalancer-service-no-loadbalancer-service
     annotations:
-        aegis.io/imported-from: aegis-import-1578847308.yaml
+        aegis.io/imported-from: aegis-import-2814266990.yaml
         aegis.io/severity: medium
         kyverno.io/category: Sample
 spec:

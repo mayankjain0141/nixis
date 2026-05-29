@@ -8,7 +8,7 @@ kind: PolicyTemplate
 metadata:
     name: gatekeeper-k8spsphostnetworkingports
     annotations:
-        aegis.io/imported-from: aegis-import-2821668866.yaml
+        aegis.io/imported-from: aegis-import-3226027400.yaml
         aegis.io/original-kind: K8sPSPHostNetworkingPorts
         aegis.io/severity: high
         aegis.io/source: open-policy-agent/gatekeeper-library

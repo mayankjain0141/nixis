@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-disallow-host-path-host-path-pod
     annotations:
-        aegis.io/imported-from: aegis-import-253537364.yaml
+        aegis.io/imported-from: aegis-import-2704842723.yaml
         aegis.io/severity: medium
         kyverno.io/category: Pod Security Standards (Baseline)
 spec:

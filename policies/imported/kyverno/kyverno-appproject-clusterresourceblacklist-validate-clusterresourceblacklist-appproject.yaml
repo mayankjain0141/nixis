@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-appproject-clusterresourceblacklist-validate-clusterresourceblacklist-appproject
     annotations:
-        aegis.io/imported-from: aegis-import-2403024085.yaml
+        aegis.io/imported-from: aegis-import-1854350564.yaml
         aegis.io/severity: medium
         kyverno.io/category: Argo
 spec:

@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-schedule-based-quotas-update-quotas-by-schedule
     annotations:
-        aegis.io/imported-from: aegis-import-3612271794.yaml
+        aegis.io/imported-from: aegis-import-1357795143.yaml
         aegis.io/severity: medium
         kyverno.io/category: Resource Management
 spec:

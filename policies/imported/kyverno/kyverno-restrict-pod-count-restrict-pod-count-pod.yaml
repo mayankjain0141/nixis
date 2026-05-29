@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-pod-count-restrict-pod-count-pod
     annotations:
-        aegis.io/imported-from: aegis-import-3901501839.yaml
+        aegis.io/imported-from: aegis-import-80099680.yaml
         aegis.io/severity: medium
         kyverno.io/category: Sample
 spec:

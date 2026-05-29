@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-apparmor-profiles-app-armor-pod
     annotations:
-        aegis.io/imported-from: aegis-import-3935861584.yaml
+        aegis.io/imported-from: aegis-import-4102257275.yaml
         aegis.io/severity: medium
         kyverno.io/category: Pod Security Standards (Baseline)
 spec:

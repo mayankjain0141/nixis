@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-seccomp-strict-check-seccomp-strict-pod
     annotations:
-        aegis.io/imported-from: aegis-import-63981416.yaml
+        aegis.io/imported-from: aegis-import-2320595677.yaml
         aegis.io/severity: medium
         kyverno.io/category: Pod Security Standards (Restricted)
 spec:

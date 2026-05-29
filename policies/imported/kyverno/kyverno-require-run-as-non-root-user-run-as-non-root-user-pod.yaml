@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-run-as-non-root-user-run-as-non-root-user-pod
     annotations:
-        aegis.io/imported-from: aegis-import-1064666804.yaml
+        aegis.io/imported-from: aegis-import-750022264.yaml
         aegis.io/severity: medium
         kyverno.io/category: Pod Security Standards (Restricted)
 spec:

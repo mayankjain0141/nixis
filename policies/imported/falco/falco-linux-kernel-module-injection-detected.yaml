@@ -6,7 +6,7 @@ metadata:
     name: falco-linux-kernel-module-injection-detected
     annotations:
         aegis.io/falco-tags: maturity_stable,host,container,process,mitre_persistence,TA0003
-        aegis.io/imported-from: aegis-import-4101892790.yaml
+        aegis.io/imported-from: aegis-import-999705196.yaml
         aegis.io/severity: medium
         aegis.io/source-rule: Linux Kernel Module Injection Detected
 spec:

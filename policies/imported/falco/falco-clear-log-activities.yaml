@@ -6,7 +6,7 @@ metadata:
     name: falco-clear-log-activities
     annotations:
         aegis.io/falco-tags: maturity_stable,host,container,filesystem,mitre_defense_evasion,T1070,NIST_800-53_AU-10
-        aegis.io/imported-from: aegis-import-4101892790.yaml
+        aegis.io/imported-from: aegis-import-999705196.yaml
         aegis.io/severity: medium
         aegis.io/source-rule: Clear Log Activities
 spec:

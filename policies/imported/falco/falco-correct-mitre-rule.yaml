@@ -6,7 +6,7 @@ metadata:
     name: falco-correct-mitre-rule
     annotations:
         aegis.io/falco-tags: host,container,network,mitre_persistence,T1098
-        aegis.io/imported-from: aegis-import-4137115693.yaml
+        aegis.io/imported-from: aegis-import-1844418014.yaml
         aegis.io/severity: high
         aegis.io/source-rule: correct mitre rule
 spec:

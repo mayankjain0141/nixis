@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-pod-priorityclassname-check-priorityclassname-pod
     annotations:
-        aegis.io/imported-from: aegis-import-1672631094.yaml
+        aegis.io/imported-from: aegis-import-1834642058.yaml
         aegis.io/severity: medium
         kyverno.io/category: Multi-Tenancy, EKS Best Practices
 spec:

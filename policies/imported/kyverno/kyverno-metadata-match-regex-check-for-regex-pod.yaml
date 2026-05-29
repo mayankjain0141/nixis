@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-metadata-match-regex-check-for-regex-pod
     annotations:
-        aegis.io/imported-from: aegis-import-73129230.yaml
+        aegis.io/imported-from: aegis-import-474570505.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

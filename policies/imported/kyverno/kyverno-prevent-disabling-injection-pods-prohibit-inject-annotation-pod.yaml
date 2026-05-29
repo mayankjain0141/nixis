@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-prevent-disabling-injection-pods-prohibit-inject-annotation-pod
     annotations:
-        aegis.io/imported-from: aegis-import-3959608139.yaml
+        aegis.io/imported-from: aegis-import-3421879444.yaml
         aegis.io/severity: medium
         kyverno.io/category: Istio
 spec:

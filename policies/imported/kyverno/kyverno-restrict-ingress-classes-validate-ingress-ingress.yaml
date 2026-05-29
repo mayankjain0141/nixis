@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-ingress-classes-validate-ingress-ingress
     annotations:
-        aegis.io/imported-from: aegis-import-2756861020.yaml
+        aegis.io/imported-from: aegis-import-2914906484.yaml
         aegis.io/severity: medium
         kyverno.io/category: Sample
 spec:

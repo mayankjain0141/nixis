@@ -1,8 +1,10 @@
 package bundle
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -119,6 +121,61 @@ func TestParsePolicyDir_LoadsBuiltin(t *testing.T) {
 	t.Logf("Loaded %d policy templates from %s", len(templates), builtinDir)
 	for _, tmpl := range templates {
 		t.Logf("  - %s: %s", tmpl.ID, tmpl.Description)
+	}
+}
+
+// TestParsePolicyFile_AllImported validates that every file under policies/imported/
+// parses without a YAML error. Files that are valid YAML but not aegis PolicyTemplates
+// (wrong kind/apiVersion) are accepted as returning (nil, nil, nil). Any non-nil error
+// from ParsePolicyFile is reported as a failure.
+func TestParsePolicyFile_AllImported(t *testing.T) {
+	importedDir := "../../policies/imported"
+	if _, err := os.Stat(importedDir); os.IsNotExist(err) {
+		t.Skip("policies/imported directory not found")
+	}
+
+	var total, parsed, skipped, failed int
+	var failures []string
+
+	err := filepath.WalkDir(importedDir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		name := d.Name()
+		if !strings.HasSuffix(name, ".yaml") && !strings.HasSuffix(name, ".yml") {
+			return nil
+		}
+
+		total++
+		template, binding, parseErr := ParsePolicyFile(path)
+		if parseErr != nil {
+			failed++
+			failures = append(failures, fmt.Sprintf("FAIL %s: %v", path, parseErr))
+			return nil
+		}
+		if template != nil && binding != nil {
+			parsed++
+		} else {
+			skipped++ // valid YAML, not a PolicyTemplate (wrong kind/apiVersion)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("WalkDir failed: %v", err)
+	}
+
+	t.Logf("Total YAML files: %d | Parsed as PolicyTemplate: %d | Skipped (non-template): %d | Failures: %d",
+		total, parsed, skipped, failed)
+
+	for _, f := range failures {
+		t.Error(f)
+	}
+
+	if failed > 0 {
+		t.Fatalf("%d of %d imported policy files failed to parse", failed, total)
 	}
 }
 

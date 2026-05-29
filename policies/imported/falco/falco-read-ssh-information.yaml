@@ -5,7 +5,7 @@ metadata:
     name: falco-read-ssh-information
     annotations:
         aegis.io/falco-tags: maturity_incubating,host,container,filesystem,mitre_collection,T1005
-        aegis.io/imported-from: aegis-import-3831796007.yaml
+        aegis.io/imported-from: aegis-import-2621062960.yaml
         aegis.io/severity: high
         aegis.io/source-rule: Read ssh information
 spec:

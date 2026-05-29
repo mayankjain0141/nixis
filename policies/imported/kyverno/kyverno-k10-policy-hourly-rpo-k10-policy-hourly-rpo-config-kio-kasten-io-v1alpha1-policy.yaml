@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-k10-policy-hourly-rpo-k10-policy-hourly-rpo-config-kio-kasten-io-v1alpha1-policy
     annotations:
-        aegis.io/imported-from: aegis-import-3742865982.yaml
+        aegis.io/imported-from: aegis-import-3762704852.yaml
         aegis.io/severity: low
         kyverno.io/category: Kasten K10 by Veeam in CEL
 spec:

@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-docker-socket-check-conditional-anchor-dockersock-pod
     annotations:
-        aegis.io/imported-from: aegis-import-3501846200.yaml
+        aegis.io/imported-from: aegis-import-4252709705.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

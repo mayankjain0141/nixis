@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-spread-pods-spread-pods-across-nodes
     annotations:
-        aegis.io/imported-from: aegis-import-4173219125.yaml
+        aegis.io/imported-from: aegis-import-1382216373.yaml
         aegis.io/severity: low
         kyverno.io/category: Sample
 spec:

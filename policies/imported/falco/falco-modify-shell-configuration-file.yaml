@@ -5,7 +5,7 @@ metadata:
     name: falco-modify-shell-configuration-file
     annotations:
         aegis.io/falco-tags: maturity_incubating,host,container,filesystem,mitre_persistence,T1546.004
-        aegis.io/imported-from: aegis-import-3831796007.yaml
+        aegis.io/imported-from: aegis-import-2621062960.yaml
         aegis.io/severity: medium
         aegis.io/source-rule: Modify Shell Configuration File
 spec:

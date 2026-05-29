@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-add-castai-removal-disabled-do-not-evict-jobs
     annotations:
-        aegis.io/imported-from: aegis-import-4019318453.yaml
+        aegis.io/imported-from: aegis-import-2195082470.yaml
         aegis.io/severity: medium
         kyverno.io/category: CAST AI
 spec:

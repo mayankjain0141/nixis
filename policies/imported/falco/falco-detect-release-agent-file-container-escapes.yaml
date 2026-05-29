@@ -6,7 +6,7 @@ metadata:
     name: falco-detect-release-agent-file-container-escapes
     annotations:
         aegis.io/falco-tags: maturity_stable,container,process,mitre_privilege_escalation,T1611
-        aegis.io/imported-from: aegis-import-4101892790.yaml
+        aegis.io/imported-from: aegis-import-999705196.yaml
         aegis.io/severity: critical
         aegis.io/source-rule: Detect release_agent File Container Escapes
 spec:

@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-prevent-cr8escape-restrict-sysctls-cr8escape-pod
     annotations:
-        aegis.io/imported-from: aegis-import-3340899120.yaml
+        aegis.io/imported-from: aegis-import-545297968.yaml
         aegis.io/severity: high
         kyverno.io/category: Other
 spec:

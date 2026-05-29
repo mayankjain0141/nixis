@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-unique-ingress-host-and-path-check-host-path-combo-ingress
     annotations:
-        aegis.io/imported-from: aegis-import-3791045235.yaml
+        aegis.io/imported-from: aegis-import-2628231260.yaml
         aegis.io/severity: medium
         kyverno.io/category: Sample
 spec:

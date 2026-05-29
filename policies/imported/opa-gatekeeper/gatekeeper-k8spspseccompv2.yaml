@@ -8,7 +8,7 @@ kind: PolicyTemplate
 metadata:
     name: gatekeeper-k8spspseccompv2
     annotations:
-        aegis.io/imported-from: aegis-import-367700328.yaml
+        aegis.io/imported-from: aegis-import-352907982.yaml
         aegis.io/original-kind: K8sPSPSeccompV2
         aegis.io/severity: high
         aegis.io/source: open-policy-agent/gatekeeper-library

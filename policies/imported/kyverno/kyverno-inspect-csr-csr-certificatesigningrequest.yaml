@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-inspect-csr-csr-certificatesigningrequest
     annotations:
-        aegis.io/imported-from: aegis-import-2112788440.yaml
+        aegis.io/imported-from: aegis-import-2537728577.yaml
         aegis.io/severity: low
         kyverno.io/category: Other
 spec:

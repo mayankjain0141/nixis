@@ -6,7 +6,7 @@ metadata:
     name: falco-wrong-mitre-rule
     annotations:
         aegis.io/falco-tags: container,mitre_lateral_movement,T1610
-        aegis.io/imported-from: aegis-import-4137115693.yaml
+        aegis.io/imported-from: aegis-import-1844418014.yaml
         aegis.io/severity: medium
         aegis.io/source-rule: wrong mitre rule
 spec:

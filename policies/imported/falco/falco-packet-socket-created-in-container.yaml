@@ -5,7 +5,7 @@ metadata:
     name: falco-packet-socket-created-in-container
     annotations:
         aegis.io/falco-tags: maturity_stable,container,network,mitre_credential_access,T1557.002
-        aegis.io/imported-from: aegis-import-4101892790.yaml
+        aegis.io/imported-from: aegis-import-999705196.yaml
         aegis.io/severity: low
         aegis.io/source-rule: Packet socket created in container
 spec:

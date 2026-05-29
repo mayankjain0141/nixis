@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-podsecurity-subrule-restricted-restricted-pod
     annotations:
-        aegis.io/imported-from: aegis-import-1546415557.yaml
+        aegis.io/imported-from: aegis-import-1864223818.yaml
         aegis.io/severity: medium
         kyverno.io/category: Pod Security, EKS Best Practices
 spec:

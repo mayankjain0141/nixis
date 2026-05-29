@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-verify-tekton-taskrun-vuln-scan-check-signature-tekton-dev-v1beta1-taskrun-status
     annotations:
-        aegis.io/imported-from: aegis-import-398188930.yaml
+        aegis.io/imported-from: aegis-import-3550397889.yaml
         aegis.io/severity: medium
         kyverno.io/category: Tekton
 spec:

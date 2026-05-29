@@ -1,6 +1,7 @@
 package bundle
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -235,7 +236,7 @@ func ParsePolicyDir(dir string) ([]policy_types.PolicyTemplate, []policy_types.P
 
 		template, binding, parseErr := ParsePolicyFile(path)
 		if parseErr != nil {
-			// Skip files that fail to parse rather than failing the entire load
+			log.Printf("bundle: skipping %s: %v", path, parseErr)
 			skipped++
 			return nil
 		}
@@ -250,8 +251,9 @@ func ParsePolicyDir(dir string) ([]policy_types.PolicyTemplate, []policy_types.P
 		return nil, nil, err
 	}
 
-	// Log skipped count if any (caller can also check len(templates) vs expected)
-	_ = skipped
+	if skipped > 0 {
+		log.Printf("bundle: %d policy file(s) skipped due to parse errors (see above)", skipped)
+	}
 
 	return templates, bindings, nil
 }

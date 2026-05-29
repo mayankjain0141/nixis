@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-enforce-ambient-mode-namespace-check-amblient-mode-enabled-namespace
     annotations:
-        aegis.io/imported-from: aegis-import-2185722952.yaml
+        aegis.io/imported-from: aegis-import-203224275.yaml
         aegis.io/severity: medium
         kyverno.io/category: Istio
 spec:

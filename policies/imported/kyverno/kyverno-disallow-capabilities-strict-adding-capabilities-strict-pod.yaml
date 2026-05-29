@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-disallow-capabilities-strict-adding-capabilities-strict-pod
     annotations:
-        aegis.io/imported-from: aegis-import-88783063.yaml
+        aegis.io/imported-from: aegis-import-3196821695.yaml
         aegis.io/severity: medium
         kyverno.io/category: Pod Security Standards (Restricted)
 spec:

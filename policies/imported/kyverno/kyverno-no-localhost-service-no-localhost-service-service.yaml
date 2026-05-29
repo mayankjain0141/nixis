@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-no-localhost-service-no-localhost-service-service
     annotations:
-        aegis.io/imported-from: aegis-import-3047334716.yaml
+        aegis.io/imported-from: aegis-import-1469448754.yaml
         aegis.io/severity: medium
         kyverno.io/category: Sample
 spec:

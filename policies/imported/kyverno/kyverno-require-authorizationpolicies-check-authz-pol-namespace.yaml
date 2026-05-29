@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-require-authorizationpolicies-check-authz-pol-namespace
     annotations:
-        aegis.io/imported-from: aegis-import-2696498858.yaml
+        aegis.io/imported-from: aegis-import-2673448083.yaml
         aegis.io/severity: medium
         kyverno.io/category: Istio
 spec:

@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-add-env-vars-from-cm-add-env-vars-from-cm
     annotations:
-        aegis.io/imported-from: aegis-import-2591803172.yaml
+        aegis.io/imported-from: aegis-import-3873651939.yaml
         aegis.io/severity: low
         kyverno.io/category: Other
 spec:

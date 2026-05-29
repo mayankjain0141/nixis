@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-kubecost-proactive-cost-control-enforce-monthly-namespace-budget-deployment
     annotations:
-        aegis.io/imported-from: aegis-import-4028611075.yaml
+        aegis.io/imported-from: aegis-import-2497317837.yaml
         aegis.io/severity: medium
         kyverno.io/category: Kubecost
 spec:

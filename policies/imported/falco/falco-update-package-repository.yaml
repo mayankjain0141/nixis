@@ -6,7 +6,7 @@ metadata:
     name: falco-update-package-repository
     annotations:
         aegis.io/falco-tags: maturity_sandbox,host,container,filesystem,mitre_execution,T1072
-        aegis.io/imported-from: aegis-import-3210576666.yaml
+        aegis.io/imported-from: aegis-import-1470842712.yaml
         aegis.io/severity: low
         aegis.io/source-rule: Update Package Repository
 spec:

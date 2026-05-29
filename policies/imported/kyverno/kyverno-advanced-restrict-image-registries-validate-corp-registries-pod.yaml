@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-advanced-restrict-image-registries-validate-corp-registries-pod
     annotations:
-        aegis.io/imported-from: aegis-import-2478086530.yaml
+        aegis.io/imported-from: aegis-import-2996176450.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

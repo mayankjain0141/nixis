@@ -6,7 +6,7 @@ metadata:
     name: falco-ptrace-attached-to-process
     annotations:
         aegis.io/falco-tags: maturity_stable,host,container,process,mitre_privilege_escalation,T1055.008
-        aegis.io/imported-from: aegis-import-4101892790.yaml
+        aegis.io/imported-from: aegis-import-999705196.yaml
         aegis.io/severity: medium
         aegis.io/source-rule: PTRACE attached to process
 spec:

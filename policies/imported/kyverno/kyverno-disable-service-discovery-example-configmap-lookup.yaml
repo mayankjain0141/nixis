@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-disable-service-discovery-example-configmap-lookup
     annotations:
-        aegis.io/imported-from: aegis-import-1908250794.yaml
+        aegis.io/imported-from: aegis-import-1350869897.yaml
         aegis.io/severity: low
         kyverno.io/category: Other, EKS Best Practices
 spec:

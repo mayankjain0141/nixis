@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-clusterrole-mutating-validating-admission-webhooks-restrict-clusterrole-clusterrole
     annotations:
-        aegis.io/imported-from: aegis-import-888029603.yaml
+        aegis.io/imported-from: aegis-import-735230310.yaml
         aegis.io/severity: medium
         kyverno.io/category: Other
 spec:

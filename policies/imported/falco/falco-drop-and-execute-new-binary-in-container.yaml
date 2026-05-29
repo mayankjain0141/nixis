@@ -6,7 +6,7 @@ metadata:
     name: falco-drop-and-execute-new-binary-in-container
     annotations:
         aegis.io/falco-tags: maturity_stable,container,process,mitre_persistence,TA0003,PCI_DSS_11.5.1
-        aegis.io/imported-from: aegis-import-4101892790.yaml
+        aegis.io/imported-from: aegis-import-999705196.yaml
         aegis.io/severity: critical
         aegis.io/source-rule: Drop and execute new binary in container
 spec:

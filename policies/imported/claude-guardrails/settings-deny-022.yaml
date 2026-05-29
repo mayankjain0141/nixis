@@ -4,7 +4,7 @@ kind: PolicyTemplate
 metadata:
     name: settings-deny-022
     annotations:
-        aegis.io/imported-from: aegis-import-3354300726.json
+        aegis.io/imported-from: aegis-import-3430838287.json
         aegis.io/severity: medium
         aegis.io/source-rule: Read ~/Library/Application Support/MetaMask/**
 spec:

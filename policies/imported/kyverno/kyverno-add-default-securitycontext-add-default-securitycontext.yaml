@@ -5,7 +5,7 @@ kind: PolicyTemplate
 metadata:
     name: kyverno-add-default-securitycontext-add-default-securitycontext
     annotations:
-        aegis.io/imported-from: aegis-import-920240442.yaml
+        aegis.io/imported-from: aegis-import-1403277646.yaml
         aegis.io/severity: low
         kyverno.io/category: Sample
 spec:
