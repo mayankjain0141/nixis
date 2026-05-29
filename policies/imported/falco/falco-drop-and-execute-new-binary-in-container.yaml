@@ -17,7 +17,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && (request.args.command.matches(".*(curl|wget).*\\|.*(bash|sh)") || request.args.command.matches(".*chmod.*\\+x.*/tmp/.*") || request.args.command.matches(".*\\b/tmp/[a-zA-Z0-9_.-]+\\b.*"))'
+        - expression: 'tool == "Bash" && (request.args.command.matches(".*(curl|wget).*\\|.*(bash|sh)") || request.args.command.matches(".*chmod.*\\+x.*/tmp/.*") || request.args.command.matches(".*(bash|sh)\\s+-c\\s+.*(/tmp/|/dev/shm/).*") || request.args.command.matches(".*[;&|]\\s*/tmp/[a-zA-Z0-9_.-]+\\b.*"))'
           message: 'Falco rule violated: Drop and execute new binary in container'
           action: DENY
     defaultAction: ALLOW
