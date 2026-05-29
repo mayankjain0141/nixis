@@ -10,9 +10,9 @@ metadata:
 spec:
     description: 'Deny rule imported from settings.json: Read ~/.docker/config.json'
     matchConstraints:
-        tools: []
+        tools: [Read]
     validations:
-        - expression: tool == "Read ~/.docker/config.json"
+        - expression: tool == "Read" && request.args.path.matches(".*/\\.docker/config\\.json")
           message: 'Blocked by imported settings.json rule: Read ~/.docker/config.json'
           action: DENY
     defaultAction: ALLOW

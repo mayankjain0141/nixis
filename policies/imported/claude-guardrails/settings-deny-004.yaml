@@ -10,9 +10,9 @@ metadata:
 spec:
     description: 'Deny rule imported from settings.json: Read ~/.kube/**'
     matchConstraints:
-        tools: []
+        tools: [Read]
     validations:
-        - expression: tool == "Read ~/.kube/**"
+        - expression: tool == "Read" && request.args.path.matches(".*/\\.kube/.*")
           message: 'Blocked by imported settings.json rule: Read ~/.kube/**'
           action: DENY
     defaultAction: ALLOW

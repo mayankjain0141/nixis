@@ -10,9 +10,9 @@ metadata:
 spec:
     description: 'Deny rule imported from settings.json: Read ~/.config/gcloud/**'
     matchConstraints:
-        tools: []
+        tools: [Read]
     validations:
-        - expression: tool == "Read ~/.config/gcloud/**"
+        - expression: tool == "Read" && request.args.path.matches(".*/\\.config/gcloud/.*")
           message: 'Blocked by imported settings.json rule: Read ~/.config/gcloud/**'
           action: DENY
     defaultAction: ALLOW

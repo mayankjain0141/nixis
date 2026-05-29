@@ -10,9 +10,9 @@ metadata:
 spec:
     description: 'Deny rule imported from settings.json: Read ~/.gnupg/**'
     matchConstraints:
-        tools: []
+        tools: [Read]
     validations:
-        - expression: tool == "Read ~/.gnupg/**"
+        - expression: tool == "Read" && request.args.path.matches(".*/\\.gnupg/.*")
           message: 'Blocked by imported settings.json rule: Read ~/.gnupg/**'
           action: DENY
     defaultAction: ALLOW
