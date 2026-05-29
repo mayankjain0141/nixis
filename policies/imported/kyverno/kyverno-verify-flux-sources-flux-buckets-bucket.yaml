@@ -1,4 +1,4 @@
-# IMPORT_REVIEW: translated by Claude — original policy also checks that URLs match a trusted-domain allowlist; CEL text-search cannot verify URL domain without hardcoding; policy checks for presence of verification field only
+# IMPORT_REVIEW: translated by Claude — checks for verification field and non-empty endpoint; trusted-domain URL allowlist cannot be expressed without hardcoding; endpoint HTTPS check added as partial coverage
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -16,7 +16,10 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (request.args.content.contains("kind: GitRepository") || request.args.content.contains("kind: HelmRepository") || request.args.content.contains("kind: ImageRepository") || request.args.content.contains("kind: Bucket")) && !request.args.content.contains("verification:")'
-          message: 'Flux source resources must enable signature verification (trusted-domain URL allowlist check requires hardcoded domains and is not enforced here)'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Bucket") && !request.args.content.contains("verification:")'
+          message: 'Flux Bucket source must enable signature verification'
+          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Bucket") && request.args.content.contains("endpoint:") && !request.args.content.matches(".*endpoint:\\s+https://.*")'
+          message: 'Flux Bucket endpoint must use HTTPS (trusted-domain allowlist requires hardcoded domains and is not enforced here)'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

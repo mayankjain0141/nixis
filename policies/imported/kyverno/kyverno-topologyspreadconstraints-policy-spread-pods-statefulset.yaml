@@ -18,5 +18,5 @@ spec:
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: StatefulSet") && !request.args.content.contains("topologySpreadConstraints:")'
           message: 'StatefulSets must define topologySpreadConstraints (replica-count exclusion cannot be checked via CEL text-search)'
-          action: AUDIT
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

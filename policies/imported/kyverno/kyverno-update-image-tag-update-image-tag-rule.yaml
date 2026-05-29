@@ -1,4 +1,4 @@
-# IMPORT_REVIEW: Kyverno mutate rule — Aegis does not mutate tool requests; original policy patches vault-agent container image tags on Deployments with vault.hashicorp.com/agent-inject="true" — mutation is permanently dropped
+# IMPORT_REVIEW: Kyverno mutate rule (vault-agent tag patch) is permanently dropped — Aegis does not mutate tool requests; validate half implemented: REQUIRE_APPROVAL when manifest or kubectl set image uses :latest or untagged image reference
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -12,9 +12,18 @@ metadata:
 spec:
     description: For use cases like sidecar injection, it is often the case where existing Deployments need the sidecar image updated without destroying the whole Deployment or Pods. This policy updates the image tag on containers named vault-agent for existing Deployments which have the annotation vault.hashicorp.com/agent-inject="true". It may be necessary to grant additional privileges to the Kyverno ServiceAccount, via one of the existing ClusterRoleBindings or a new one, so it can modify Deployments.
     matchConstraints:
-        tools: []
+        tools:
+            - Write
+            - Edit
+            - Bash
     validations:
-        - expression: 'false'
-          message: 'Mutate rule — Aegis does not mutate requests — manual review required'
-          action: AUDIT
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.matches(".*image:\\s+[^\\s:\"'']+:latest.*")'
+          message: 'Manifest uses :latest image tag — pin to a specific digest or version tag'
+          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.matches(".*image:\\s+[a-zA-Z0-9][a-zA-Z0-9._/\\-]+\\s*$.*") && !request.args.content.matches(".*image:\\s+[^\\s]+:[^\\s]+.*")'
+          message: 'Manifest uses an untagged image reference (defaults to :latest) — pin to a specific digest or version tag'
+          action: REQUIRE_APPROVAL
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl.*set\\s+image.*:latest.*")'
+          message: 'kubectl set image with :latest tag — pin to a specific digest or version tag'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

@@ -1,4 +1,4 @@
-# IMPORT_REVIEW: translated by Claude — checks that both livenessProbe and readinessProbe are present; original policy also checks probes are not equal, which cannot be verified via CEL text-search
+# IMPORT_REVIEW: translated by Claude — first validation catches missing probes; second flags when both probes are present with httpGet (common copy-paste pattern) for human review of equality; full structural equality check requires CEL backreferences not supported in RE2
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -17,6 +17,9 @@ spec:
             - Edit
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Deployment") && (!request.args.content.contains("livenessProbe:") || !request.args.content.contains("readinessProbe:"))'
-          message: 'Deployment containers must define both livenessProbe and readinessProbe (probe equality check cannot be verified in CEL)'
+          message: 'Deployment containers must define both livenessProbe and readinessProbe'
+          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Deployment") && request.args.content.contains("livenessProbe:") && request.args.content.contains("readinessProbe:") && request.args.content.matches(".*livenessProbe:.*\\s+httpGet:.*readinessProbe:.*\\s+httpGet:.*")'
+          message: 'Deployment liveness and readiness probes both use httpGet — verify they are not identical (copy-paste anti-pattern)'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

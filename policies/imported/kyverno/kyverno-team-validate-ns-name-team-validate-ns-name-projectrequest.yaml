@@ -1,4 +1,4 @@
-# IMPORT_REVIEW: translated by Claude — JMESPath pattern match approximated as CEL regex; verify naming pattern matches cluster convention
+# IMPORT_REVIEW: translated by Claude — naming convention team-<team>-<env> approximated as three-segment lowercase regex; verify pattern matches cluster convention
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -16,7 +16,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: ProjectRequest") && !request.args.content.matches(".*name:\\s+(team-|env-)[a-z].*")'
-          message: 'ProjectRequest names must follow the team-<name> or env-<name> pattern'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: ProjectRequest") && !request.args.content.matches(".*name:\\s+[a-z][a-z0-9]*-[a-z][a-z0-9]*-[a-z][a-z0-9]*\\s*\\n.*")'
+          message: 'ProjectRequest names must follow the team-<team>-<env> pattern (three lowercase dash-separated segments)'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
