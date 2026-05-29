@@ -16,6 +16,6 @@ spec:
             - Edit
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("external-dns.alpha.kubernetes.io/hostname")'
-          message: 'External DNS hostname annotations must be unique across Services'
-          action: REQUIRE_APPROVAL
+          message: 'External DNS hostname annotations must be unique across Services — cross-resource uniqueness cannot be enforced in single-request CEL'
+          action: AUDIT
     defaultAction: ALLOW

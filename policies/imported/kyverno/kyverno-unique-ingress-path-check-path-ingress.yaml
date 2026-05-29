@@ -16,6 +16,6 @@ spec:
             - Edit
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Ingress")'
-          message: 'Ingress host and path combinations must be unique across all Ingress resources'
-          action: REQUIRE_APPROVAL
+          message: 'Ingress paths must be unique across all namespaces — cross-resource uniqueness cannot be enforced in single-request CEL'
+          action: AUDIT
     defaultAction: ALLOW

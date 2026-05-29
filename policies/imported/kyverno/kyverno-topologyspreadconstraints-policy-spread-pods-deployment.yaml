@@ -1,4 +1,5 @@
 # IMPORT_TODO: JMESPath conditions in topologyspreadconstraints-policy/spread-pods could not be translated — kubectl pattern match generated as base condition only
+# IMPORT_TODO: replica-count exclusion (replicas < 3 are skipped) cannot be expressed in CEL text-search — policy fires on ALL Deployments regardless of replica count
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate

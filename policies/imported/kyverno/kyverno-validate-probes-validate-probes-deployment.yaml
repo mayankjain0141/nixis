@@ -15,7 +15,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (!request.args.content.contains("livenessProbe:") || !request.args.content.contains("readinessProbe:"))'
-          message: 'Pods must define both livenessProbe and readinessProbe (and they must differ)'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Deployment") && (!request.args.content.contains("livenessProbe:") || !request.args.content.contains("readinessProbe:"))'
+          message: 'Deployment containers must define both livenessProbe and readinessProbe — note: probe equality check cannot be verified in CEL (text-search limitation)'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
