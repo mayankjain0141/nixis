@@ -546,6 +546,11 @@ func extractCommandText(args json.RawMessage) (string, bool) {
 	return s, ok
 }
 
+// WARNING: The following implementations are MVP stubs — they always return success.
+// Secret scanning and delegation validation are NOT active in this build.
+// See: https://github.com/mayjain/aegis/issues (track implementation progress)
+// Do NOT deploy in environments where these checks are expected to be enforced.
+
 // noopSecretScanner is the MVP-1 stub that always returns no findings.
 type noopSecretScanner struct{}
 
