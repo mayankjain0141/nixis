@@ -14,9 +14,10 @@ spec:
     description: |
         Process run with suspect environment variable that could be attempting privilege escalation. One use case is detecting the use of the GLIBC_TUNABLES environment variable, which could be used for privilege escalation on systems running vulnerable glibc versions. Only known and carefully profiled processes that legitimately exhibit this behavior should be excluded from this rule. This rule is expected to trigger on every attempt, even failed ones.
     matchConstraints:
-        tools: []
+        tools:
+            - Bash
     validations:
-        - expression: 'tool == "Bash" && (request.args.command.contains("GLIBC_TUNABLES") || request.args.command.contains("LD_PRELOAD") || request.args.command.contains("LD_AUDIT"))'
+        - expression: 'tool == "Bash" && (request.args.command.contains("GLIBC_TUNABLES") || request.args.command.contains("LD_PRELOAD") || request.args.command.contains("LD_AUDIT") || request.args.command.contains("LD_LIBRARY_PATH"))'
           message: 'Falco rule violated: Potential Local Privilege Escalation via Environment Variables Misuse'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

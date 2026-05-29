@@ -14,10 +14,9 @@ spec:
     matchConstraints:
         tools:
             - Read
-            - Write
-            - Edit
+            - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)\\b(sshd|sftp-server|ssh-agent|ssh|scp|sftp|ssh-keygen|ssh-keysign|ssh-keyscan|ssh-add)\\b")
+        - expression: '(tool == "Read" && request.args.path.matches(".*\\.ssh/(id_rsa|id_ed25519|id_ecdsa|id_dsa|authorized_keys|known_hosts|config).*")) || (tool == "Bash" && request.args.command.matches(".*\\bcat\\b.*\\.ssh/(id_rsa|id_ed25519|id_ecdsa|authorized_keys).*"))'
           message: 'Falco rule violated: Read ssh information'
           action: DENY
     defaultAction: ALLOW
