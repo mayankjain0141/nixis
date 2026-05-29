@@ -28,6 +28,7 @@ import (
 	"github.com/mayjain/aegis/internal/delegation"
 	grpcauthz "github.com/mayjain/aegis/internal/grpc"
 	"github.com/mayjain/aegis/internal/ifc"
+	"github.com/mayjain/aegis/internal/otel"
 	"github.com/mayjain/aegis/internal/policy"
 	"github.com/mayjain/aegis/internal/reload"
 	"github.com/mayjain/aegis/internal/secret"
@@ -57,6 +58,27 @@ func main() {
 		PolicyDir:   *policyDir,
 		AuditDBPath: expandHome(*auditDB),
 		FailOpenLog: *failOpenLog,
+	}
+
+	otelCfg := otel.Config{
+		Enabled:     os.Getenv("AEGIS_OTEL_ENDPOINT") != "",
+		Endpoint:    os.Getenv("AEGIS_OTEL_ENDPOINT"),
+		ServiceName: "aegis-daemon",
+	}
+	otelShutdown, err := otel.Initialize(otelCfg)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "aegis-daemon: OTel init failed: %v\n", err)
+		os.Exit(exitStartupFailure)
+	}
+	defer func() {
+		shutCtx, shutCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer shutCancel()
+		if shutErr := otelShutdown(shutCtx); shutErr != nil {
+			fmt.Fprintf(os.Stderr, "aegis-daemon: OTel shutdown error: %v\n", shutErr)
+		}
+	}()
+	if otelCfg.Enabled {
+		fmt.Fprintf(os.Stderr, "aegis-daemon: OTel enabled → %s\n", otelCfg.Endpoint)
 	}
 
 	auditWriter, err := audit.NewWriter(cfg.AuditDBPath)
