@@ -1,4 +1,4 @@
-# IMPORT_TODO: JMESPath conditions in validate-cron-schedule/validate-cron could not be translated — kubectl pattern match generated as base condition only
+# IMPORT_REVIEW: translated by Claude — validates schedule field exists and contains a recognizable cron pattern or @shorthand; full cron-syntax validation requires a dedicated parser; Bash pathway catches kubectl create cronjob without --schedule flag
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -7,6 +7,7 @@ metadata:
     annotations:
         aegis.io/imported-from: aegis-import-2273918750.yaml
         aegis.io/severity: low
+        aegis.io/llm-confidence: medium
         kyverno.io/category: Velero
 spec:
     description: A Velero Schedule is given in Cron format and must be accurate to ensure operation. This policy validates that the schedule is a valid Cron format.
@@ -14,8 +15,12 @@ spec:
         tools:
             - Write
             - Edit
+            - Bash
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Schedule") && request.args.content.contains("velero") && !request.args.content.matches(".*schedule:\\s+[\"'']?(@(hourly|daily|weekly|monthly|annually|yearly)|([0-9*,/\\-]+ ){4}[0-9*,/\\-]+)[\"'']?.*")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Schedule") && request.args.content.matches(".*apiVersion:\\s+velero\\.io.*") && !request.args.content.matches(".*schedule:\\s+(@(hourly|daily|weekly|monthly|annually|yearly)|([0-9*,/\\-]+ ){4}[0-9*,/\\-]+).*")'
           message: 'Velero Schedule resources must define a valid 5-field cron expression or @shorthand (@hourly, @daily, @weekly, @monthly, @annually) in the schedule field'
+          action: REQUIRE_APPROVAL
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl.*create.*cronjob.*") && !request.args.command.matches(".*--schedule\\s+[^\\s].*")'
+          message: 'kubectl create cronjob without a --schedule flag — provide a valid cron schedule'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

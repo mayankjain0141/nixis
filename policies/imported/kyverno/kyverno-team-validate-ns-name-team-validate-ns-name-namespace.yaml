@@ -1,4 +1,4 @@
-# IMPORT_TODO: JMESPath conditions in team-validate-ns-name/team-validate-ns-name could not be translated — kubectl pattern match generated as base condition only
+# IMPORT_REVIEW: translated by Claude — naming convention team-<team>-<env> approximated as three-segment lowercase regex; verify pattern matches cluster convention
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -7,6 +7,7 @@ metadata:
     annotations:
         aegis.io/imported-from: aegis-import-2161341959.yaml
         aegis.io/severity: medium
+        aegis.io/llm-confidence: medium
         kyverno.io/category: OpenShift
 spec:
     description: Naming patterns are commonplace in clusters where creation activities are granted to other users. In order to maintain organization, it is often such that patterns should be established for organizational consistency. This policy denies the creation of a Namespace if the name of the Namespace does not follow a specific naming defined by the cluster admins.
@@ -15,7 +16,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Namespace") && !request.args.content.matches(".*name:\\s+(team-|env-)[a-z].*")'
-          message: 'Namespace names must follow the team-<name> or env-<name> pattern'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Namespace") && !request.args.content.matches(".*name:\\s+[a-z][a-z0-9]*-[a-z][a-z0-9]*-[a-z][a-z0-9]*\\s*\\n.*")'
+          message: 'Namespace names must follow the team-<team>-<env> pattern (three lowercase dash-separated segments)'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
