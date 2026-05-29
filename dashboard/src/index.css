@@ -34,3 +34,9 @@ body {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.6; }
 }
+
+@keyframes demo-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(88, 166, 255, 0.45); }
+  60%  { box-shadow: 0 0 0 6px rgba(88, 166, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(88, 166, 255, 0); }
+}
