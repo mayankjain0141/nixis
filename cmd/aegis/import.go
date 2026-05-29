@@ -19,6 +19,9 @@ import (
 
 var importOutDir string
 var importDryRun bool
+var importLLMAssist bool
+var importLLMModel string
+var importLLMMaxRetries int
 
 var importCmd = &cobra.Command{
 	Use:   "import <source>",
@@ -48,23 +51,26 @@ Examples:
 func init() {
 	importCmd.Flags().StringVar(&importOutDir, "out", "./policies/imported", "Output directory for imported policies")
 	importCmd.Flags().BoolVar(&importDryRun, "dry-run", false, "Print converted policies without writing files")
+	importCmd.Flags().BoolVar(&importLLMAssist, "llm-assist", false, "Use Claude API to translate IMPORT_TODO markers to CEL (requires ANTHROPIC_API_KEY)")
+	importCmd.Flags().StringVar(&importLLMModel, "llm-model", "claude-opus-4-7", "Claude model to use for LLM-assisted translation")
+	importCmd.Flags().IntVar(&importLLMMaxRetries, "llm-max-retries", 3, "Maximum CEL repair attempts per IMPORT_TODO")
 	policyCmd.AddCommand(importCmd)
 }
 
 type importFormat int
 
 const (
-	formatUnknown      importFormat = iota
-	formatPolicyLayer               // layerName + policies[].rule
-	formatGeneric                   // policies[].expression
-	formatSettingsJSON              // {"permissions":{"deny":[...]}}
-	formatAgentWall                 // version: "2" + tools[].action
-	formatMCPVisor                  // deny_path / deny_command_pattern / etc.
-	formatKyverno                   // apiVersion: kyverno.io/* + kind: ClusterPolicy/Policy
-	formatSigma                     // logsource + detection with condition (SigmaHQ format)
-	formatFalco                     // YAML array with rule/macro/list items
-	formatCheckov                   // metadata.id starting with CKV + definition key
-	formatOPAGatekeeper             // apiVersion: templates.gatekeeper.sh/v1
+	formatUnknown       importFormat = iota
+	formatPolicyLayer                // layerName + policies[].rule
+	formatGeneric                    // policies[].expression
+	formatSettingsJSON               // {"permissions":{"deny":[...]}}
+	formatAgentWall                  // version: "2" + tools[].action
+	formatMCPVisor                   // deny_path / deny_command_pattern / etc.
+	formatKyverno                    // apiVersion: kyverno.io/* + kind: ClusterPolicy/Policy
+	formatSigma                      // logsource + detection with condition (SigmaHQ format)
+	formatFalco                      // YAML array with rule/macro/list items
+	formatCheckov                    // metadata.id starting with CKV + definition key
+	formatOPAGatekeeper              // apiVersion: templates.gatekeeper.sh/v1
 )
 
 // ---- format-specific input structs ----
@@ -439,7 +445,6 @@ func detectFormatWithName(filename string, data []byte) importFormat {
 		}
 	}
 
-
 	if (probe.Logsource.Category != "" || probe.Logsource.Product != "") && len(probe.Detection) > 0 {
 		if _, hasCondition := probe.Detection["condition"]; hasCondition {
 			return formatSigma
@@ -450,7 +455,6 @@ func detectFormatWithName(filename string, data []byte) importFormat {
 		(probe.Kind == "ClusterPolicy" || probe.Kind == "Policy") {
 		return formatKyverno
 	}
-
 
 	if strings.HasPrefix(probe.APIVersion, "templates.gatekeeper.sh") && probe.Kind == "ConstraintTemplate" {
 		return formatOPAGatekeeper
@@ -472,10 +476,13 @@ func runImport(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("read source file: %w", err)
 	}
 
+	detectedFormat := detectFormatWithName(source, data)
 	manifests, comments, err := convertFile(data, source)
 	if err != nil {
 		return err
 	}
+
+	manifests, comments = applyLLMAssist(cmd.Context(), manifests, comments, importFormatName(detectedFormat))
 
 	if importDryRun {
 		if err := printDryRun(cmd, manifests, comments); err != nil {
@@ -512,10 +519,12 @@ func runImportGitHub(cmd *cobra.Command, source string) error {
 		if err != nil {
 			continue
 		}
+		detectedFormat := detectFormatWithName(path, data)
 		manifests, comments, err := convertFile(data, path)
 		if err != nil || len(manifests) == 0 {
 			continue
 		}
+		manifests, comments = applyLLMAssist(cmd.Context(), manifests, comments, importFormatName(detectedFormat))
 		allManifests = append(allManifests, manifests...)
 		allComments = append(allComments, comments...)
 		fileCount++
@@ -539,6 +548,36 @@ func runImportGitHub(cmd *cobra.Command, source string) error {
 	}
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "imported %d policies from %d files\n", len(allManifests), fileCount)
 	return nil
+}
+
+// importFormatName returns the human-readable name for an importFormat value.
+// Used in LLM prompts and IMPORT_REVIEW comments.
+func importFormatName(f importFormat) string {
+	switch f {
+	case formatPolicyLayer:
+		return "policy-layer"
+	case formatGeneric:
+		return "generic"
+	case formatSettingsJSON:
+		return "settings-json"
+	case formatAgentWall:
+		return "agentwall-v2"
+	case formatMCPVisor:
+		return "mcp-visor"
+	case formatKyverno:
+		return "kyverno"
+	case formatSigma:
+		return "sigma"
+	case formatFalco:
+		return "falco"
+	case formatCheckov:
+		return "checkov"
+	case formatOPAGatekeeper:
+		return "opa-gatekeeper"
+	case formatUnknown:
+		return "unknown"
+	}
+	return "unknown"
 }
 
 // convertFile detects the format and delegates conversion.
@@ -1567,6 +1606,103 @@ func sanitizeID(s string) string {
 	return strings.ToLower(sb.String())
 }
 
+// ---- LLM assist post-processing ----
+
+// applyLLMAssist iterates over manifests and for each one whose comment contains an
+// IMPORT_TODO marker, attempts LLM-assisted translation. On success the expression is
+// replaced, the comment is updated to IMPORT_REVIEW, and llm-confidence is added.
+// On failure the original expression and IMPORT_TODO comment are preserved.
+//
+// format is the human-readable source format name used in the LLM prompt and cache entry
+// (e.g. "opa-gatekeeper", "sigma", "falco"). It may be empty.
+func applyLLMAssist(ctx context.Context, manifests []aegisManifest, comments []string, format string) ([]aegisManifest, []string) {
+	if !importLLMAssist {
+		return manifests, comments
+	}
+
+	translator, err := NewLLMTranslator(importLLMModel, importLLMMaxRetries)
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "llm-assist: failed to create translator: %v\n", err)
+		return manifests, comments
+	}
+
+	for i := range manifests {
+		comment := ""
+		if i < len(comments) {
+			comment = comments[i]
+		}
+		if !strings.Contains(comment, "IMPORT_TODO") {
+			continue
+		}
+		if len(manifests[i].Spec.Validations) == 0 {
+			continue
+		}
+
+		// Build a snippet from the policy name, format hint, and the current IMPORT_TODO comment.
+		// This gives the LLM the context needed to generate a meaningful CEL expression.
+		snippet := buildLLMSnippet(manifests[i], comment, format)
+
+		celExpr, attempts, translateErr := translator.Translate(ctx, snippet, format)
+		if translateErr != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "llm-assist: %s: %v (keeping IMPORT_TODO)\n",
+				manifests[i].Metadata.Name, translateErr)
+			continue
+		}
+
+		// Replace the expression with the LLM-generated one.
+		manifests[i].Spec.Validations[0].Expression = celExpr
+
+		// Add llm-confidence annotation.
+		if manifests[i].Metadata.Annotations == nil {
+			manifests[i].Metadata.Annotations = make(map[string]string)
+		}
+		manifests[i].Metadata.Annotations["aegis.io/llm-confidence"] = "medium"
+
+		// Replace IMPORT_TODO comment with IMPORT_REVIEW.
+		reviewComment := fmt.Sprintf("IMPORT_REVIEW: LLM-translated from %s — verify semantics (attempts: %d)", format, attempts)
+		if i < len(comments) {
+			comments[i] = reviewComment
+		}
+	}
+
+	return manifests, comments
+}
+
+// buildLLMSnippet constructs a natural-language description of what the policy should
+// do, combining the manifest name, description, IMPORT_TODO comment, and source format.
+// This is the text sent to the LLM as the snippet to translate.
+func buildLLMSnippet(m aegisManifest, comment, format string) string {
+	var sb strings.Builder
+	if m.Metadata.Name != "" {
+		sb.WriteString("Policy name: ")
+		sb.WriteString(m.Metadata.Name)
+		sb.WriteString("\n")
+	}
+	if m.Spec.Description != "" {
+		sb.WriteString("Description: ")
+		sb.WriteString(m.Spec.Description)
+		sb.WriteString("\n")
+	}
+	if format != "" {
+		sb.WriteString("Source format: ")
+		sb.WriteString(format)
+		sb.WriteString("\n")
+	}
+	if len(m.Spec.Validations) > 0 {
+		if msg := m.Spec.Validations[0].Message; msg != "" {
+			sb.WriteString("Original message: ")
+			sb.WriteString(msg)
+			sb.WriteString("\n")
+		}
+	}
+	if comment != "" {
+		sb.WriteString("Translation note: ")
+		sb.WriteString(comment)
+		sb.WriteString("\n")
+	}
+	return strings.TrimSpace(sb.String())
+}
+
 // ---- output helpers ----
 
 func printDryRun(cmd *cobra.Command, manifests []aegisManifest, comments []string) error {
@@ -1627,7 +1763,6 @@ func writeManifests(cmd *cobra.Command, manifests []aegisManifest, comments []st
 	return nil
 }
 
-
 // ---- Sigma translator ----
 
 type sigmaLogsource struct {
@@ -1652,6 +1787,7 @@ type sigmaRule struct {
 	Detection      sigmaDetection `yaml:"detection"`
 	Falsepositives []string       `yaml:"falsepositives"`
 }
+
 func convertSigma(data []byte, sourcePath string) ([]aegisManifest, []string, error) {
 	var rule sigmaRule
 	if err := yaml.Unmarshal(data, &rule); err != nil {
@@ -2105,6 +2241,7 @@ type kyvernoRule struct {
 	Mutate   map[string]interface{} `yaml:"mutate"`
 	Generate map[string]interface{} `yaml:"generate"`
 }
+
 func kyvernoKindToKubectlPattern(kind string, operations []string) string {
 	// NOTE: Use \\s (double backslash) so the output YAML contains \s,
 	// which CEL then passes to the RE2 regex engine as whitespace class.
@@ -2348,8 +2485,6 @@ func kyvernoHasJMESPath(key string) bool {
 
 // convertKyverno translates a Kyverno ClusterPolicy or Policy into Aegis manifests.
 
-
-
 // Falco condition patterns for extractable cases.
 var (
 	falcoCmdlineContains   = regexp.MustCompile(`(?i)\bproc\.cmdline\s+contains\s+"([^"]+)"`)
@@ -2391,6 +2526,7 @@ type falcoFile struct {
 	Macros []falcoMacro
 	Lists  []falcoList
 }
+
 func parseFalcoFile(data []byte) (falcoFile, error) {
 	// Parse as raw sequence so we can route each item by key.
 	var raw []map[string]interface{}
