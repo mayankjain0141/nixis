@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("storageClassName:") && request.args.content.matches(".*StorageClass.*")'
-          message: 'StorageClass reclaimPolicy must be Delete for multi-tenant environments'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: StorageClass") && !request.args.content.contains("reclaimPolicy: Delete")'
+          message: 'StorageClass reclaimPolicy must be Delete — manifests missing reclaimPolicy: Delete require review'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

@@ -1,3 +1,11 @@
+# CEL_LIMITATION: original policy uses JMESPath to iterate spec.securityContext.sysctls[*].name
+# and checks each name against an allowlist of safe sysctls (kernel.shm_rmid_forced,
+# net.ipv4.ip_local_port_range, net.ipv4.tcp_syncookies, net.ipv4.ping_group_range,
+# net.ipv4.ip_unprivileged_port_start, net.ipv4.ip_local_reserved_ports,
+# net.ipv4.tcp_keepalive_time, net.ipv4.tcp_fin_timeout, net.ipv4.tcp_keepalive_intvl,
+# net.ipv4.tcp_keepalive_probes). CEL cannot iterate a list of structs from raw content
+# to compare each name against an allowlist. The expression below covers CVE-2022-0811
+# only (+ and = in sysctl values) — all other out-of-allowlist sysctls are NOT caught.
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -15,6 +23,6 @@ spec:
             - Edit
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("sysctls:") && (request.args.content.contains("+") || request.args.content.contains("="))'
-          message: 'sysctl values with + or = are disallowed (CVE-2022-0811 cr8escape mitigation)'
+          message: 'sysctl values with + or = are disallowed (CVE-2022-0811 cr8escape mitigation) — partial check only, see CEL_LIMITATION comment'
           action: DENY
     defaultAction: ALLOW
