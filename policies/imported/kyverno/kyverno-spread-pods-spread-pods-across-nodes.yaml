@@ -1,3 +1,8 @@
+# CEL_LIMITATION: original policy is a MUTATE rule that fires only on resources with label
+# distributed=required and injects topologySpreadConstraints. It does NOT validate all Deployments.
+# The translation below approximates as a validate rule but cannot check the label selector —
+# it will REQUIRE_APPROVAL on all Deployments/StatefulSets lacking topologySpreadConstraints,
+# including those that legitimately lack the distributed=required label. This is an over-trigger.
 # IMPORT_REVIEW: translated by Claude — verify semantics
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
@@ -16,7 +21,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (request.args.content.contains("kind: Deployment") || request.args.content.contains("kind: StatefulSet")) && !request.args.content.contains("topologySpreadConstraints:")'
-          message: 'Deployments and StatefulSets must define topologySpreadConstraints'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (request.args.content.contains("kind: Deployment") || request.args.content.contains("kind: StatefulSet")) && request.args.content.contains("distributed: required") && !request.args.content.contains("topologySpreadConstraints:")'
+          message: 'Deployments/StatefulSets with distributed=required must define topologySpreadConstraints'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
