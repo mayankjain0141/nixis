@@ -157,9 +157,10 @@ function routeEvents(
           });
           // Use named policies from the event when available (demo scenario and daemon both send them).
           // Fall back to synthetic entries only when the bundle carries no policy list.
+          const rawBundle = b as { policyCount: number; policies?: { id: string; enabled: boolean; layer: string; cel_expression?: string }[] };
           const namedPolicies: import('./stores/policy-store').PolicySummary[] =
-            Array.isArray(b.policies) && b.policies.length > 0
-              ? b.policies.map((p: { id: string; enabled: boolean; layer: string; cel_expression?: string }) => ({
+            Array.isArray(rawBundle.policies) && rawBundle.policies!.length > 0
+              ? rawBundle.policies!.map((p) => ({
                   id: p.id,
                   name: p.id.replace(/^aegis\//, ''),
                   layer: (p.layer ?? 'cel') as 'cel' | 'ifc' | 'adapter' | 'delegation' | 'secret-scan',
@@ -167,7 +168,7 @@ function routeEvents(
                   bundleVersion: b.version,
                   celExpression: p.cel_expression,
                 }))
-              : Array.from({ length: b.policyCount }, (_, i) => ({
+              : Array.from({ length: rawBundle.policyCount ?? b.policyCount }, (_, i) => ({
                   id: `policy-${b.version}-${i}`,
                   name: `Policy ${i + 1}`,
                   layer: 'cel' as const,
