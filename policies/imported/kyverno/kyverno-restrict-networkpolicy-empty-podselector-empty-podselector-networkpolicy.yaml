@@ -1,4 +1,3 @@
-# IMPORT_TODO: JMESPath conditions in restrict-networkpolicy-empty-podselector/empty-podselector could not be translated — kubectl pattern match generated as base condition only
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -15,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
-          message: 'Policy validation required — review manifest before applying'
-          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: NetworkPolicy") && request.args.content.contains("podSelector: {}") && !request.args.content.contains("default-deny")'
+          message: 'NetworkPolicies must not use an empty podSelector except in explicitly named default-deny policies'
+          action: DENY
     defaultAction: ALLOW

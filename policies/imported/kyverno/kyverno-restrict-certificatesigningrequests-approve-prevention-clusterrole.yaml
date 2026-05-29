@@ -1,0 +1,19 @@
+# imported from: policies via aegis policy import
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+    name: kyverno-restrict-certificatesigningrequests-approve-prevention-clusterrole
+    annotations:
+        aegis.io/imported-from: aegis-import-restrict-csr-approve.yaml
+        aegis.io/severity: high
+        kyverno.io/category: Security
+spec:
+    description: This policy prevents approve operations on CertificateSigningRequests via kubectl. Approving CertificateSigningRequests issues new credentials for any user or group, which is equivalent to granting cluster-admin privileges. This operation must go through an approved change management process.
+    matchConstraints:
+        tools:
+            - Bash
+    validations:
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl.*certificate.*approve.*")'
+          message: 'kubectl certificate approve operations are not permitted — CSR approval requires an approved change management process'
+          action: DENY
+    defaultAction: ALLOW
