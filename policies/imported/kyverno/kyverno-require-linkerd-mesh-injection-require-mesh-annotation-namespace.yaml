@@ -11,9 +11,10 @@ spec:
     description: Sidecar proxy injection in Linkerd may be handled at the Namespace level by setting the annotation `linkerd.io/inject` to `enabled`. This policy enforces that all Namespaces contain the annotation `linkerd.io/inject` set to `enabled`.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+namespace|create\\s+namespace)")
-          message: All Namespaces must set the annotation `linkerd.io/inject` to `enabled`.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
+          message: 'Policy validation required — review manifest before applying'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

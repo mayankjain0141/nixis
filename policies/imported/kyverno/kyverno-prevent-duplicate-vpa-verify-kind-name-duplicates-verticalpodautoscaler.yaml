@@ -11,9 +11,10 @@ spec:
     description: VerticalPodAutoscaler (VPA) is useful to automatically adjust the resources assigned to Pods. It requires defining a specific target resource by kind and name. There are no built-in validation checks by the VPA controller to prevent the creation of multiple VPAs which target the same resource. This policy has two rules, the first of which ensures that the only targetRef kinds accepted are one of either Deployment, StatefulSet, ReplicaSet, or DaemonSet. The second prevents the creation of duplicate VPAs by validating that any new VPA targets a unique resource.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(create|run|apply).*")
-          message: The target kind must be specified exactly as Deployment, StatefulSet, ReplicaSet, or DaemonSet.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: VerticalPodAutoscaler")'
+          message: 'VerticalPodAutoscaler must target a unique resource and use an allowed kind'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

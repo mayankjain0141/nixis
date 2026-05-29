@@ -12,9 +12,10 @@ spec:
     description: When a Pod controller which can run multiple replicas is subject to an active PodDisruptionBudget, if the replicas field has a value equal to the minAvailable value of the PodDisruptionBudget it may prevent voluntary disruptions including Node drains which may impact routine maintenance tasks and disrupt operations. This policy checks incoming Deployments and StatefulSets which have a matching PodDisruptionBudget to ensure these two values do not match.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
-          message: The matching PodDisruptionBudget for this resource has its minAvailable value equal to the replica count which is not permitted.
-          action: AUDIT
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("PodDisruptionBudget") && request.args.content.contains("minAvailable:")'
+          message: 'PodDisruptionBudget minAvailable must not equal the controller replica count'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

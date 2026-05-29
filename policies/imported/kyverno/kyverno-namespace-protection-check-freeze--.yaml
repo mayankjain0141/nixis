@@ -11,9 +11,10 @@ spec:
     description: Cases where RBAC may be applied at a higher level and where Namespace-level protections may be necessary can be accomplished with a separate policy. For example, one may want to protect creates, updates, and deletes on only a single Namespace. This policy will block creates, updates, and deletes to any Namespace labeled with `freeze=true`. Caution should be exercised when using rules which match on all kinds (`"*"`) as this will involve, for larger clusters, a substantial amount of processing on Kyverno's part. Additional resource requests and/or limits may be required.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
-          message: This Namespace is frozen and no modifications may be performed.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Namespace") && request.args.content.contains("freeze: \"true\"")'
+          message: 'Namespaces labeled freeze=true must not be created, updated, or deleted'
           action: DENY
     defaultAction: ALLOW

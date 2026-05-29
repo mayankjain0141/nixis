@@ -11,9 +11,10 @@ spec:
     description: The runtimeClass field of a Pod spec defines which container engine runtime should be used. In the previous Pod Security Policy controller, defining restrictions on which classes were allowed was permitted. Limiting runtime classes to only those which have been defined can prevent unintended running states or Pods which may not come online. This policy restricts the runtimeClass field to the values `prodclass` or `expclass`.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
-          message: Only the runtime classes prodclass or expclass may be used.
-          action: DENY
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
+          message: 'Policy validation required — review manifest before applying'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

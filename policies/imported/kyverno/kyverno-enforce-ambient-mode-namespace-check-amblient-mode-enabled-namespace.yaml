@@ -11,9 +11,10 @@ spec:
     description: In order for Istio to include namespaces in ambient mode, the label `istio.io/dataplane-mode` must be set to `ambient`. This policy ensures that all new Namespaces set `istio.io/dataplane-mode` to `ambient`.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+namespace|create\\s+namespace)")
-          message: All new Namespaces must have Istio ambient mode enabled.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("istio.io/dataplane-mode")'
+          message: 'Namespaces must set istio.io/dataplane-mode: ambient'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

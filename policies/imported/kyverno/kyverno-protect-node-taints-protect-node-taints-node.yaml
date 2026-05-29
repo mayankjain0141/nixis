@@ -14,7 +14,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(drain|cordon|delete\\s+node)")
-          message: Node taints may not be altered.
-          action: DENY
+        - expression: 'tool == "Bash" && request.args.command.matches("(?i)kubectl.*(taint).*node")'
+          message: 'Altering node taints requires cluster-admin privileges'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

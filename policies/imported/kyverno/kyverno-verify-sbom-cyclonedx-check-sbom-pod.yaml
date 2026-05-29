@@ -11,9 +11,10 @@ spec:
     description: Software Bill of Materials (SBOM) provide details on the composition of a given container image and may be represented in a couple different standards. Having an SBOM can be important to ensuring images are built using verified processes. This policy verifies that an image has an SBOM in CycloneDX format and was signed by the expected subject and issuer when produced through GitHub Actions and using Cosign's keyless signing. It requires configuration based upon your own values.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
-          message: Software Bill of Materials (SBOM) provide details on the composition of a given container image and may be represented in a couple different standards. Having an SBOM can be important to ensuring images are built using verified processes. This policy verifies that an image has an SBOM in CycloneDX format and was signed by the expected subject and issuer when produced through GitHub Actions and using Cosign's keyless signing. It requires configuration based upon your own values.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("image:") && !request.args.content.contains("cosign.sigstore.dev/imageDigest")'
+          message: 'Container images must be signed with a valid cosign signature'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

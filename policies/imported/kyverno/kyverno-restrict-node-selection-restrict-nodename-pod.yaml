@@ -11,9 +11,10 @@ spec:
     description: The Kubernetes scheduler uses complex logic to determine the optimal placement for new Pods. Users who have access to set certain fields in a Pod spec may sidestep this logic which in many cases is undesirable. This policy prevents users from targeting specific Nodes for scheduling of Pods by prohibiting the use of the `nodeSelector` and `nodeName` fields. Note that this policy is only designed to work on initial creation and not in background mode.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
-          message: Setting the nodeName field is prohibited.
-          action: AUDIT
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
+          message: 'Policy validation required — review manifest before applying'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

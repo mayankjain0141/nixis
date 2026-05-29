@@ -12,9 +12,11 @@ metadata:
 spec:
     description: Pods which mount hostPath volumes are provided access to the underlying filesystem of the Node on which they run. In most scenarios, this should be forbidden. In others, it may be useful to silently remove those hostPath volumes rather than blocking the Pod. This policy removes all hostPath volumes and their volumeMount references from all containers within a Pod.
     matchConstraints:
-        tools: []
+        tools:
+            - Write
+            - Edit
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+(apply|create|patch|run).*")'
-          message: 'IMPORT_REVIEW: mutate rule — Aegis does not mutate requests — manual review required'
-          action: AUDIT
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
+          message: 'Policy validation required — review manifest before applying'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

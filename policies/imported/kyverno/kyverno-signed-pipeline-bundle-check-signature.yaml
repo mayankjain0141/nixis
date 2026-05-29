@@ -12,9 +12,11 @@ metadata:
 spec:
     description: A signed bundle is required
     matchConstraints:
-        tools: []
+        tools:
+            - Write
+            - Edit
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+(apply|create|patch|run).*")'
-          message: 'IMPORT_REVIEW: no match.any or match.all resources found — manual review required'
-          action: AUDIT
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("image:") && !request.args.content.contains("cosign.sigstore.dev/imageDigest")'
+          message: 'Container images must be signed with a valid cosign signature'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

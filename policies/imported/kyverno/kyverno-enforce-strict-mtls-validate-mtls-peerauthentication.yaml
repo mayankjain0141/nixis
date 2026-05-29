@@ -11,9 +11,10 @@ spec:
     description: Strict mTLS requires that mutual TLS be enabled across the entire service mesh, which can be set using a PeerAuthentication resource on a per-Namespace basis and, if set on the `istio-system` Namespace could disable it across the entire mesh. Disabling mTLS can reduce the security for traffic within that portion of the mesh and should be controlled. This policy prevents disabling strict mTLS in a PeerAuthentication resource by requiring the `mode` be set to either `UNSET` or `STRICT`.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
-          message: PeerAuthentication resources may only set UNSET or STRICT for the mode.
-          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("PeerAuthentication") && (request.args.content.contains("DISABLE") || request.args.content.contains("PERMISSIVE"))'
+          message: 'PeerAuthentication mode must be STRICT or UNSET — DISABLE and PERMISSIVE are forbidden'
+          action: DENY
     defaultAction: ALLOW

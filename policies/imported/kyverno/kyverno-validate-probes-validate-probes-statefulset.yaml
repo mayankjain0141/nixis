@@ -9,12 +9,13 @@ metadata:
         aegis.io/severity: medium
         kyverno.io/category: Sample
 spec:
-    description: Liveness and readiness probes accomplish different goals, and setting both to the same is an anti-pattern and often results in app problems in the future. This policy checks that liveness and readiness probes are not equal. Keep in mind that if both the  probes are not set, they are considered to be equal and hence fails the check.
+    description: Liveness and readiness probes accomplish different goals, and setting both to the same is an anti-pattern and often results in app problems in the future. This policy checks that liveness and readiness probes are not equal. Keep in mind that if both the probes are not set, they are considered to be equal and hence fails the check.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
-          message: Liveness and readiness probes cannot be the same.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (!request.args.content.contains("livenessProbe:") || !request.args.content.contains("readinessProbe:"))'
+          message: 'Pods must define both livenessProbe and readinessProbe (and they must differ)'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

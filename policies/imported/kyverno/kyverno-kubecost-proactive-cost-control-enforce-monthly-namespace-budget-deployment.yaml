@@ -12,9 +12,10 @@ spec:
     description: Kubecost Enterprise allows users to define budgets for Namespaces and clusters as well as predict the cost of new Deployments based on historical cost data. By combining these abilities, users can achieve proactive cost controls for clusters with Kubecost installed by denying Deployments which would exceed the remaining configured monthly budget, if applicable. This policy checks for the creation of Deployments and compares the predicted cost of the Deployment to the remaining amount in the monthly budget, if one is found. If the predicted cost is greater than the remaining budget, the Deployment is denied. This policy requires Kubecost Enterprise at a version of 1.108 or greater.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(create|run|apply).*")
-          message: This Deployment, which costs ${{ round(predictedMonthlyCost, `2`) }} to run for a month, will overrun the remaining budget of ${{ round(remainingBudget,`2`) }}. Please seek approval or request a Policy Exception.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Deployment")'
+          message: 'Deployment cost must not exceed the remaining monthly namespace budget'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

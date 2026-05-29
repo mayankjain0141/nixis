@@ -12,9 +12,10 @@ spec:
     description: PodDisruptionBudget resources are useful to ensuring minimum availability is maintained at all times. Achieving a balance between availability and maintainability is important. This policy validates that a PodDisruptionBudget, specified as percentages, allows 50% of the replicas to be out of service in that minAvailable should be no higher than 50% and maxUnavailable should be no lower than 50%.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
-          message: PodDisruptionBudget percentages should allow 50% out of service. minAvailable should be no higher than 50% and maxUnavailable should be no lower than 50%.
-          action: AUDIT
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
+          message: 'Policy validation required — review manifest before applying'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

@@ -12,9 +12,10 @@ spec:
     description: Encryption at rest is a security best practice. This policy ensures encryption is enabled for etcd in OpenShift clusters.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
-          message: Encryption should be enabled for etcd
-          action: DENY
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("encryption:")'
+          message: 'etcd encryption must be enabled'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW
