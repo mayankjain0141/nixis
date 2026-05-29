@@ -1,4 +1,4 @@
-# IMPORT_TODO: JMESPath conditions in validate-probes/validate-probes could not be translated — kubectl pattern match generated as base condition only
+# IMPORT_REVIEW: translated by Claude — checks that both livenessProbe and readinessProbe are present; original policy also checks probes are not equal, which cannot be verified via CEL text-search
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -7,6 +7,7 @@ metadata:
     annotations:
         aegis.io/imported-from: aegis-import-3494881599.yaml
         aegis.io/severity: medium
+        aegis.io/llm-confidence: medium
         kyverno.io/category: Sample
 spec:
     description: Liveness and readiness probes accomplish different goals, and setting both to the same is an anti-pattern and often results in app problems in the future. This policy checks that liveness and readiness probes are not equal. Keep in mind that if both the probes are not set, they are considered to be equal and hence fails the check.
@@ -16,6 +17,6 @@ spec:
             - Edit
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: DaemonSet") && (!request.args.content.contains("livenessProbe:") || !request.args.content.contains("readinessProbe:"))'
-          message: 'DaemonSet containers must define both livenessProbe and readinessProbe — note: probe equality check cannot be verified in CEL (text-search limitation)'
+          message: 'DaemonSet containers must define both livenessProbe and readinessProbe (probe equality check cannot be verified in CEL)'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

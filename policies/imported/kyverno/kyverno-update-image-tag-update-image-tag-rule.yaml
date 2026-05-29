@@ -1,6 +1,4 @@
-# IMPORT_REVIEW: translated by Claude — verify semantics
-# IMPORT_TODO: Kyverno mutate rule — Aegis cannot mutate tool requests; this policy is permanently AUDIT-only with expression: false
-# IMPORT_TODO: Original policy patches vault-agent container image tags on Deployments with vault.hashicorp.com/agent-inject="true" — this mutation is silently dropped
+# IMPORT_REVIEW: Kyverno mutate rule — Aegis does not mutate tool requests; original policy patches vault-agent container image tags on Deployments with vault.hashicorp.com/agent-inject="true" — mutation is permanently dropped
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate

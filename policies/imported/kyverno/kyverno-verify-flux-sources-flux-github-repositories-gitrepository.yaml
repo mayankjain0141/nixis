@@ -1,4 +1,4 @@
-# IMPORT_TODO: Original Kyverno policy validates that Flux source URLs match a trusted-domain allowlist (e.g., github.com, your-org.com) — that URL allowlist check is not translatable to CEL text-search without hardcoding domains; this policy only checks for presence of verification: field, not that the URL is trusted
+# IMPORT_REVIEW: translated by Claude — original policy also checks that URLs match a trusted-domain allowlist; CEL text-search cannot verify URL domain without hardcoding; policy checks for presence of verification field only
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -7,6 +7,7 @@ metadata:
     annotations:
         aegis.io/imported-from: aegis-import-1554976445.yaml
         aegis.io/severity: medium
+        aegis.io/llm-confidence: medium
         kyverno.io/category: Flux
 spec:
     description: Flux source APIs include a number of different sources such as GitRepository, Bucket, HelmRepository, and ImageRepository resources. Each of these by default can be pointed to any location. In a production environment, it may be desired to restrict these to only known sources to prevent accessing outside sources. This policy verifies that each of the Flux sources comes from a trusted location.
@@ -16,6 +17,6 @@ spec:
             - Edit
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (request.args.content.contains("kind: GitRepository") || request.args.content.contains("kind: HelmRepository") || request.args.content.contains("kind: ImageRepository") || request.args.content.contains("kind: Bucket")) && !request.args.content.contains("verification:")'
-          message: 'Flux source resources must enable signature verification'
+          message: 'Flux source resources must enable signature verification (trusted-domain URL allowlist check requires hardcoded domains and is not enforced here)'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
