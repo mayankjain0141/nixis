@@ -17,7 +17,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*\\b(netcat|ncat|nc |nmap|tcpdump|wireshark|socat|tshark).*")'
+        - expression: 'tool == "Bash" && (request.args.command.matches(".*\\b(netcat|ncat|nmap|tcpdump|wireshark|socat|tshark)\\b.*") || request.args.command.matches(".*\\bnc\\s+.*"))'
           message: 'Falco rule violated: Launch Suspicious Network Tool on Host'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
