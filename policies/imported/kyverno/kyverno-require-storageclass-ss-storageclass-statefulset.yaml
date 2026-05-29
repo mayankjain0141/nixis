@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && !request.args.content.contains("storageClassName:")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: StatefulSet") && request.args.content.contains("volumeClaimTemplates:") && !request.args.content.contains("storageClassName:")'
           message: 'StatefulSets must specify storageClassName in volumeClaimTemplates'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
