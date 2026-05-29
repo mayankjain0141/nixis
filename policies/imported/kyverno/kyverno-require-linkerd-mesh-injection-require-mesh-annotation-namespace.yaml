@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Namespace") && !request.args.content.contains("linkerd.io/inject")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Namespace") && !request.args.content.contains("linkerd.io/inject: enabled")'
           message: 'Namespaces must have the annotation linkerd.io/inject: enabled'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

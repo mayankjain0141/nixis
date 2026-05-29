@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Ingress") && !request.args.content.contains("ingress.allow-http")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Ingress") && !request.args.content.contains("allow-http: \"false\"")'
           message: 'Ingress must set the annotation kubernetes.io/ingress.allow-http to "false"'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
