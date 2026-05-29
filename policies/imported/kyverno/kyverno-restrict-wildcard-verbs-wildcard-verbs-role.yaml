@@ -12,9 +12,10 @@ spec:
     description: Wildcards ('*') in verbs grants all access to the resources referenced by it and does not follow the principal of least privilege. As much as possible, avoid such open verbs unless scoped to perhaps a custom API group. This policy blocks any Role or ClusterRole that contains a wildcard entry in the verbs list found in any rule.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
-          message: Use of a wildcard ('*') in any verbs is forbidden.
-          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("verbs:") && (request.args.content.contains("\"*\"") || request.args.content.contains("- ''*''"))'
+          message: 'Roles and ClusterRoles must not use wildcard (*) verbs'
+          action: DENY
     defaultAction: ALLOW

@@ -9,12 +9,13 @@ metadata:
         aegis.io/severity: medium
         kyverno.io/category: Sample
 spec:
-    description: Pods which have memory limits equal to requests could be given a QoS class of Guaranteed if they also set CPU limits equal to requests. Guaranteed is the highest schedulable class.  This policy checks that all containers in a given Pod have memory requests equal to limits.
+    description: Pods which have memory limits equal to requests could be given a QoS class of Guaranteed if they also set CPU limits equal to requests. Guaranteed is the highest schedulable class. This policy checks that all containers in a given Pod have memory requests equal to limits.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
-          message: resources.requests.memory must be equal to resources.limits.memory
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("resources:") && request.args.content.contains("memory:")'
+          message: 'Container memory requests must equal limits'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

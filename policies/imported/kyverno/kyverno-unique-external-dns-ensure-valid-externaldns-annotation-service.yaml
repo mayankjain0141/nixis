@@ -12,9 +12,10 @@ spec:
     description: ExternalDNS, part of Kubernetes SIGs, triggers the creation of external DNS records in supported providers when the annotation`external-dns.alpha.kubernetes.io/hostname` is present. Like with internal DNS, duplicates must be avoided. This policy requires every such Service have a cluster-unique hostname present in the value of the annotation.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+service|expose)")
-          message: External DNS entry "{{request.object.metadata.annotations."external-dns.alpha.kubernetes.io/hostname"}}" is already taken by another service in the cluster.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("external-dns.alpha.kubernetes.io/hostname")'
+          message: 'External DNS hostname annotations must be unique across Services'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

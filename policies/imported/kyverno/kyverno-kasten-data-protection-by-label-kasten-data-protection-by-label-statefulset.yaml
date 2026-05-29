@@ -11,11 +11,10 @@ spec:
     description: Check the 'dataprotection' label for production Deployments and StatefulSet workloads. Use in combination with 'kasten-generate-example-backup-policy' policy to generate a Kasten policy for the workload namespace, if it doesn't already exist.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
-          message: |-
-            "Deployments and StatefulSets with 'purpose=production' label must specify a valid 'dataprotection' label:
-            "dataprotection=kasten-example" - <Insert human readable settings for each option> "dataprotection=none" - No local snapshots or backups
-          action: AUDIT
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (request.args.content.contains("kind: Deployment") || request.args.content.contains("kind: StatefulSet")) && request.args.content.contains("production") && !request.args.content.contains("dataprotection:")'
+          message: 'Production Deployments and StatefulSets must have a dataprotection label'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

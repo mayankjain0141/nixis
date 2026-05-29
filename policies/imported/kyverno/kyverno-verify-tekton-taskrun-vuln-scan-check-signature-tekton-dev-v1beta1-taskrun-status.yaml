@@ -11,9 +11,10 @@ spec:
     description: A signed bundle is required and a vulnerability scan made by Grype must return no vulnerabilities greater than 8.0.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
-          message: A signed bundle is required and a vulnerability scan made by Grype must return no vulnerabilities greater than 8.0.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("image:") && !request.args.content.contains("cosign.sigstore.dev/imageDigest")'
+          message: 'Container images must be signed with a valid cosign signature'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

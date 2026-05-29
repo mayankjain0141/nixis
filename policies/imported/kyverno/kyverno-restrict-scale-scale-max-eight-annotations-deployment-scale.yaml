@@ -12,9 +12,10 @@ spec:
     description: Pod controllers such as Deployments which implement replicas and permit the scale action use a `/scale` subresource to control this behavior. In addition to checks for creations of such controllers that their replica is in a certain shape, the scale operation and subresource needs to be accounted for as well. This policy, operable beginning in Kyverno 1.9, is a collection of rules which can be used to limit the replica count both upon creation of a Deployment and when a scale operation is performed.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
-          message: The replica count for this Deployment may not exceed 8.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
+          message: 'Policy validation required — review manifest before applying'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

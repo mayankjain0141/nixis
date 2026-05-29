@@ -13,7 +13,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(drain|cordon|delete\\s+node)")
-          message: Setting the `foo` label on a Node is not allowed.
-          action: DENY
+        - expression: 'tool == "Bash" && request.args.command.matches("(?i)kubectl.*(label).*node")'
+          message: 'Modifying node labels is restricted to cluster administrators'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

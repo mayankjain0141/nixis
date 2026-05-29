@@ -12,9 +12,11 @@ metadata:
 spec:
     description: Kubernetes by default does not make a record of who or what created a resource in that resource itself. It must be retrieved from an audit log, if enabled, which can make it difficult for cluster operators to know who was responsible for an object's creation. This policy writes an annotation with the key `kyverno.io/created-by` having all the userInfo fields present in the AdmissionReview request for any object being created. It then protects this annotation from tampering or removal making it immutable. Although this policy matches on all kinds ("*") it is highly recommend to more narrowly scope it to only the resources which should be labeled.
     matchConstraints:
-        tools: []
+        tools:
+            - Write
+            - Edit
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+(apply|create|patch|run).*")'
-          message: 'IMPORT_REVIEW: mutate rule — Aegis does not mutate requests — manual review required'
-          action: AUDIT
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
+          message: 'Policy validation required — review manifest before applying'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

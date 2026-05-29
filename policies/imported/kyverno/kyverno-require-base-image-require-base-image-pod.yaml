@@ -11,9 +11,10 @@ spec:
     description: 'Container images can be built from a variety of sources, including other preexisting images. Ensuring images that are allowed to run are built from known, trusted images where their provenance is guaranteed can be an important step in ensuring overall cluster security. This policy ensures that any container image specifies some base image in its metadata from four possible sources: Docker BuildKit, OCI annotations (in manifest or config), or Buildpacks. Note that the ability to detect the presence of a base image is not implicit and requires the author to specify it using metadata or build directives of some sort (ex., Dockerfile FROM statements do not automatically expose this information).'
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
-          message: Images must specify a source/base image from which they are built.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
+          message: 'Policy validation required — review manifest before applying'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

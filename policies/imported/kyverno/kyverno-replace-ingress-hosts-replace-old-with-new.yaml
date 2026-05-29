@@ -12,9 +12,11 @@ metadata:
 spec:
     description: An Ingress may specify host names at a variety of locations in the same resource. In some cases, those host names should be modified to, for example, update domain names silently. The replacement must be done in all the fields where a host name can be specified. This policy, illustrating the use of nested foreach loops and operable in Kyverno 1.9+, replaces host names that end with `old.com` with `new.com`.
     matchConstraints:
-        tools: []
+        tools:
+            - Write
+            - Edit
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+(apply|create|patch|run).*")'
-          message: 'IMPORT_REVIEW: mutate rule — Aegis does not mutate requests — manual review required'
-          action: AUDIT
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
+          message: 'Policy validation required — review manifest before applying'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

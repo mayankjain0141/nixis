@@ -11,9 +11,10 @@ spec:
     description: Check VirtualMachines and validate that they are using an instance type and preference.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
-          message: VirtualMachines must use instance types and preferences
-          action: DENY
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: VirtualMachine") && !request.args.content.contains("instancetype:")'
+          message: 'VirtualMachines must specify an instance type and preference'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

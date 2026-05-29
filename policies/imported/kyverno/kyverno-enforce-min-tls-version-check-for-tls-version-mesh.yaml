@@ -11,9 +11,10 @@ spec:
     description: This policy will check the TLS Min version to ensure that whenever the mesh is set, there is a minimum version of TLS set for all the service mesh proxies and this enforces that service mesh mTLS traffic uses TLS v1.2 or newer.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
-          message: The minimum version of TLS is TLS v1_2
-          action: DENY
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("minProtocolVersion:")'
+          message: 'Service mesh must set a minimum TLS version'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

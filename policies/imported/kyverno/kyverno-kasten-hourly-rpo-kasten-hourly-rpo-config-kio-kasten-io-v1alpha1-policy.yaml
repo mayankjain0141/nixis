@@ -8,12 +8,13 @@ metadata:
         aegis.io/severity: low
         kyverno.io/category: Veeam Kasten
 spec:
-    description: Kasten Policy resources can be required to adhere to common Recovery Point Objective (RPO) best practices.  This example policy validates that the Policy is set to run hourly if it explicitly protects any namespaces containing the `appPriority=critical` label. This policy can be adapted to enforce any Kasten Policy requirements based on a namespace label.
+    description: Kasten Policy resources can be required to adhere to common Recovery Point Objective (RPO) best practices. This example policy validates that the Policy is set to run hourly if it explicitly protects any namespaces containing the `appPriority=critical` label. This policy can be adapted to enforce any Kasten Policy requirements based on a namespace label.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
-          message: Mission Critical RPO frequency should use no shorter than @hourly frequency
-          action: DENY
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("appPriority") && request.args.content.contains("critical") && !request.args.content.contains("@hourly")'
+          message: 'Mission Critical K10/Kasten policies must use hourly RPO frequency'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

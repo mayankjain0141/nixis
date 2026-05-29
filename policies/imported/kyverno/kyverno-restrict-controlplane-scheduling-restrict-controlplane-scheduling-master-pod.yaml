@@ -11,9 +11,10 @@ spec:
     description: Scheduling non-system Pods to control plane nodes (which run kubelet) is often undesirable because it takes away resources from the control plane components and can represent a possible security threat vector. This policy prevents users from setting a toleration in a Pod spec which allows running on control plane nodes with the taint key `node-role.kubernetes.io/master`.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
-          message: Pods may not use tolerations which schedule on control plane nodes.
-          action: AUDIT
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (request.args.content.contains("node-role.kubernetes.io/master") || request.args.content.contains("node-role.kubernetes.io/control-plane"))'
+          message: 'Pods must not be scheduled on control-plane nodes'
+          action: DENY
     defaultAction: ALLOW

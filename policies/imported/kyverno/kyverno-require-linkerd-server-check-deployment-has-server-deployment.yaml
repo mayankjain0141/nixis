@@ -12,9 +12,10 @@ spec:
     description: In Linkerd 2.11, a Server resource selects ports on a set of Pods in the same Namespace and is used to deny traffic which then must be authorized later. Ensuring that Linkerd policy is enforced on Pods in the mesh is important to maintaining a secure environment. This policy, requiring Linkerd 2.11+, has two rules designed to check Deployments (exposing ports) and Services to ensure a corresponding Server resource exists first.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+deployment|scale|rollout)")
-          message: Every Deployment declaring ports requires a matching Server.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
+          message: 'Policy validation required — review manifest before applying'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

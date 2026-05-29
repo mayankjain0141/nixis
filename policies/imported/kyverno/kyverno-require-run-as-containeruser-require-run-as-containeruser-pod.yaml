@@ -8,12 +8,13 @@ metadata:
         aegis.io/severity: medium
         kyverno.io/category: Windows Security
 spec:
-    description: Containers must be required to run as ContainerUser. This policy ensures that the fields  spec.securityContext.windowsOptions.runAsUserName, spec.containers[*].securityContext.windowsOptions.runAsUserName,  spec.initContainers[*].securityContext.windowsOptions.runAsUserName, and  is either unset or set to ContainerUser.
+    description: Containers must be required to run as ContainerUser. This policy ensures that the fields spec.securityContext.windowsOptions.runAsUserName, spec.containers[*].securityContext.windowsOptions.runAsUserName, spec.initContainers[*].securityContext.windowsOptions.runAsUserName, and is either unset or set to ContainerUser.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
-          message: Running the container as ContainerAdministrator,NT AUTHORITY\NETWORK SERVICE, NT AUTHORITY\LOCAL SERVICE is not allowed.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
+          message: 'Policy validation required — review manifest before applying'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

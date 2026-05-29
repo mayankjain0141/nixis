@@ -11,9 +11,10 @@ spec:
     description: Sometimes a policy should be active or inactive based on a time window determined as part of the policy. Whether the policy should come into play should be dependent on that time. This policy illustrates how to time-bound any policy by using preconditions with JMESPath time filters. In this case, the policy enforces that label `foo` be required on all ConfigMaps during the hours of 8am-5pm EST (expressed in UTC). Additional, similar preconditions may be added to perform other time checks, for example a range of days.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+configmap|create\\s+configmap)")
-          message: The foo label must be set.
-          action: AUDIT
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: ConfigMap") && !request.args.content.contains("foo:")'
+          message: 'ConfigMaps must include the required foo label during this time window'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

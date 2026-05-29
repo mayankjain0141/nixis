@@ -11,9 +11,10 @@ spec:
     description: Resource requests often need to be tailored to the type of workload in the container/Pod. With many different types of applications in a cluster, enforcing hard limits on requests or limits may not work and a ratio may be better suited instead. This policy checks every container in a Pod and ensures that memory limits are no more than 2.5x its requests.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(delete\\s+pod|exec|run)")
-          message: Limits may not exceed 2.5x the requests.
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("resources:") && (request.args.content.contains("limits:") || request.args.content.contains("requests:"))'
+          message: 'Memory limits must not exceed 2.5x requests'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
