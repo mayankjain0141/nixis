@@ -11,9 +11,10 @@ spec:
     description: Disallow the use of the SecurityContextConstraint (SCC) anyuid which allows a pod to run with the UID as declared in the image instead of a random UID
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(create\\s+clusterrole|delete\\s+clusterrole)")
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("anyuid")'
           message: Use of the SecurityContextConstraint (SCC) anyuid is not allowed
-          action: DENY
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

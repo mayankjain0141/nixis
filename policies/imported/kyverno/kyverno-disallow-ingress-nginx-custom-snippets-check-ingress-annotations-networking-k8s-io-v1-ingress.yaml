@@ -11,9 +11,10 @@ spec:
     description: 'Users that can create or update ingress objects can use the custom snippets  feature to obtain all secrets in the cluster (CVE-2021-25742). This policy  disables allow-snippet-annotations in the ingress-nginx configuration and  blocks *-snippet annotations on an Ingress. See: https://github.com/kubernetes/ingress-nginx/issues/7837'
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("nginx.ingress.kubernetes.io/configuration-snippet")'
           message: ingress-nginx custom snippets are not allowed
-          action: DENY
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

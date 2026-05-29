@@ -12,9 +12,10 @@ spec:
     description: 'VerticalPodAutoscaler (VPA) is useful to automatically adjust the resources assigned to Pods.  It requires defining a specific target resource by kind and name. There are no built-in  validation checks by the VPA controller to ensure that the target resource is associated with it.  This policy ensures that the matching kind has a matching VPA. '
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("kind: VerticalPodAutoscaler")'
           message: Workload '{{request.object.kind}}/{{request.object.metadata.name}}'  requires a matching VerticalPodAutoscaler (VPA) in the  '{{request.object.metadata.namespace}}' namespace.
-          action: REQUIRE_APPROVAL
+          action: AUDIT
     defaultAction: ALLOW

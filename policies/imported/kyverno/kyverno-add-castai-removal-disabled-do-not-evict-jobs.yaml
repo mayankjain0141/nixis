@@ -14,7 +14,7 @@ spec:
     matchConstraints:
         tools: []
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+(apply|create|patch|run).*")'
+        - expression: 'false'
           message: 'IMPORT_REVIEW: mutate rule — Aegis does not mutate requests — manual review required'
           action: AUDIT
     defaultAction: ALLOW

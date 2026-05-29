@@ -11,9 +11,10 @@ spec:
     description: Restrict creation of TaskRun resources to the Tekton pipelines controller.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("kind: TaskRun")'
           message: Creating a TaskRun is not allowed.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

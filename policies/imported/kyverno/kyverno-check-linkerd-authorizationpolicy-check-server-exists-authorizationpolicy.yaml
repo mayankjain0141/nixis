@@ -12,9 +12,10 @@ spec:
     description: As of Linkerd 2.12, an AuthorizationPolicy is a resource used to selectively allow traffic to either a Server or HTTPRoute resource. Creating AuthorizationPolicies is needed when a Server exists in order to control what traffic is permitted within the mesh to the Pods selected by the Server or HTTPRoute. This policy, requiring Linkerd 2.12+, checks incoming AuthorizationPolicy resources to ensure that either a matching Server or HTTPRoute exists first.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("kind: AuthorizationPolicy") && !request.args.content.contains("targetRef:")'
           message: Server or HTTPRoute not found for this AuthorizationPolicy.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

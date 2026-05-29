@@ -11,9 +11,10 @@ spec:
     description: Adding capabilities beyond those listed in the policy must be disallowed.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*(create|run|apply).*|kubectl.*(patch|edit|set).*")
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("add:")'
           message: Adding capabilities beyond those listed in the policy must be disallowed.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

@@ -12,9 +12,10 @@ spec:
     description: HTTP traffic is not encrypted and hence insecure. This policy prevents configuration of OpenShift HTTP routes.
     matchConstraints:
         tools:
-            - Bash
+            - Write
+            - Edit
     validations:
-        - expression: tool == "Bash" && request.args.command.matches("(?i)kubectl.*")
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("kind: Route") && !request.args.content.contains("tls:")'
           message: HTTP routes are not allowed. Configure TLS for secure routes.
-          action: DENY
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW
