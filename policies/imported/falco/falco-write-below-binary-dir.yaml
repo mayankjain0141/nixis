@@ -15,11 +15,11 @@ spec:
         Trying to write to any file below specific binary directories can serve as an auditing rule to track general system changes. Such rules can be noisy and challenging to interpret, particularly if your system frequently undergoes updates. However, careful profiling of your environment can transform this rule into an effective rule for detecting unusual behavior associated with system changes, including compliance-related cases.
     matchConstraints:
         tools:
-            - Read
+            - Bash
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && (request.args.path.startsWith("/bin/") || request.args.path.startsWith("/sbin/") || request.args.path.startsWith("/usr/bin/") || request.args.path.startsWith("/usr/sbin/")) || tool == "Bash" && request.args.command.matches(".*cp.*(/(usr/)?(bin|sbin))/.*")'
+        - expression: '(tool == "Write" || tool == "Edit") && (request.args.path.startsWith("/bin/") || request.args.path.startsWith("/sbin/") || request.args.path.startsWith("/usr/bin/") || request.args.path.startsWith("/usr/sbin/") || request.args.path.startsWith("/usr/local/bin/") || request.args.path.startsWith("/usr/local/sbin/")) || tool == "Bash" && request.args.command.matches(".*\\bcp\\b.*/(bin|sbin|usr/bin|usr/sbin|usr/local/bin|usr/local/sbin)/.*")'
           message: 'Falco rule violated: Write below binary dir'
           action: DENY
     defaultAction: ALLOW
