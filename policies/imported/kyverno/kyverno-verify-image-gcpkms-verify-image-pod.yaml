@@ -1,3 +1,4 @@
+# IMPORT_REVIEW: translated by Claude — verify semantics
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -6,15 +7,14 @@ metadata:
     annotations:
         aegis.io/imported-from: aegis-import-107445720.yaml
         aegis.io/severity: medium
+        aegis.io/llm-confidence: low
         kyverno.io/category: Software Supply Chain Security
 spec:
     description: Using the Cosign project, OCI images may be signed to ensure supply chain security is maintained. Those signatures can be verified before pulling into a cluster. This policy checks the signature of an image repo called ghcr.io/kyverno/test-verify-image to ensure it has been signed by verifying its signature against the provided public key. This policy serves as an illustration for how to configure a similar rule and will require replacing with your image(s) and keys.
     matchConstraints:
-        tools:
-            - Write
-            - Edit
+        tools: []
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("image:") && !request.args.content.contains("cosign.sigstore.dev/imageDigest")'
-          message: 'Container images must be signed with a valid cosign signature'
-          action: REQUIRE_APPROVAL
+        - expression: 'false'
+          message: 'IMPORT_REVIEW: cosign image signature verification (GCP KMS key) — requires cryptographic registry API call; cannot verify signatures from manifest content alone'
+          action: AUDIT
     defaultAction: ALLOW
