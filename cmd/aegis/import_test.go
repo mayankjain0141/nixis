@@ -2175,5 +2175,3 @@ func TestImport_FalcoTagsToTools(t *testing.T) {
 }
 
 // ---- Checkov tests ----
-
-
