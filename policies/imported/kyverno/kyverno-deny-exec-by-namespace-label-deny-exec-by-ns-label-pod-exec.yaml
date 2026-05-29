@@ -1,5 +1,5 @@
-# IMPORT_TODO: JMESPath conditions in deny-exec-by-namespace-label/deny-exec-by-ns-label could not be translated — kubectl pattern match generated as base condition only
 # imported from: policies via aegis policy import
+# Gap: namespace-label filter — original policy blocks exec only in namespaces labelled exec=false; CEL cannot inspect namespace labels at command-intercept time so all kubectl exec is flagged for approval
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:
@@ -14,7 +14,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+exec.*")'
-          message: Executing a command in a container is forbidden for Pods running in Namespaces protected with the label "exec=false". Namespace labels cannot be resolved at intercept time — operator must approve all kubectl exec.
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+exec\\b.*")'
+          message: kubectl exec is restricted in namespaces protected with label exec=false. Namespace labels cannot be resolved at intercept time — all kubectl exec requires approval.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
