@@ -31,7 +31,6 @@ interface PolicyState {
   setPolicies(policies: PolicySummary[]): void;
   mergePolicies(policies: PolicySummary[]): void;
   upsertPolicy(policy: PolicySummary): void;
-  mergePolicies(policies: PolicySummary[]): void;
   setBundleStatus(status: BundleStatus): void;
   selectPolicy(id: string | null): void;
 }
@@ -73,19 +72,6 @@ export const usePolicyStore = create<PolicyState>()(
           draft.policies[idx] = policy;
         } else if (draft.policies.length < MAX_POLICIES) {
           draft.policies.push(policy);
-        }
-      });
-    },
-
-    mergePolicies(policies) {
-      set((draft) => {
-        for (const p of policies) {
-          const idx = draft.policies.findIndex(existing => existing.id === p.id);
-          if (idx >= 0) {
-            draft.policies[idx] = p;
-          } else if (draft.policies.length < MAX_POLICIES) {
-            draft.policies.push(p);
-          }
         }
       });
     },
