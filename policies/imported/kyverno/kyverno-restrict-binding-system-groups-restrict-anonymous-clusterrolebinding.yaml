@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (request.args.content.contains("system:anonymous") || request.args.content.contains("system:unauthenticated"))'
-          message: 'Binding to system:anonymous or system:unauthenticated groups is not permitted'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (request.args.content.contains("system:anonymous") || request.args.content.contains("system:unauthenticated") || request.args.content.contains("system:masters"))'
+          message: 'Binding to system:anonymous, system:unauthenticated, or system:masters groups is not permitted'
           action: DENY
     defaultAction: ALLOW
