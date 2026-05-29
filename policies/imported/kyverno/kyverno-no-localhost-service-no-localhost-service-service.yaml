@@ -15,6 +15,6 @@ spec:
             - Edit
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("ExternalName") && request.args.content.contains("localhost")'
-          message: 'Services of type ExternalName must not point to localhost — original policy audits this pattern; manual review required'
-          action: AUDIT
+          message: 'Services of type ExternalName must not point to localhost'
+          action: DENY
     defaultAction: ALLOW
