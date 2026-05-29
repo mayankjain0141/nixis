@@ -86,7 +86,7 @@ export function PolicySidebar(): React.ReactElement {
                     color: '#e6edf3',
                   }}
                 >
-                  {selectedPolicy.layer === 'cel' ? (
+                  {selectedPolicy.celExpression != null ? (
                     <>
                       <div style={{ marginBottom: '6px', color: '#8b949e', fontSize: '11px' }}>
                         CEL Expression
@@ -106,7 +106,7 @@ export function PolicySidebar(): React.ReactElement {
                           overflowY: 'auto',
                         }}
                       >
-                        {`tool == "${stripPrefix(selectedPolicy.name)}" &&\nrequest.args != null`}
+                        {selectedPolicy.celExpression}
                       </div>
                     </>
                   ) : (

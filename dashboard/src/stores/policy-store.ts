@@ -7,6 +7,7 @@ export interface PolicySummary {
   layer: 'cel' | 'ifc' | 'adapter' | 'delegation' | 'secret-scan';
   enabled: boolean;
   bundleVersion: number;
+  celExpression?: string;
 }
 
 export interface BundleStatus {
