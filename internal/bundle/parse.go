@@ -140,10 +140,12 @@ func buildCombinedExpression(m *policyManifest) string {
 		return "!(" + strings.Join(denyExprs, " || ") + ")"
 	}
 
-	// Fallback: use first blocking validation (REQUIRE_APPROVAL blocks; AUDIT does not).
-	// AUDIT policies generate log entries but must never block execution.
+	// Fallback: use first non-empty validation expression regardless of action.
+	// AUDIT stubs (expression: "false", action: AUDIT) must still be registered as
+	// always-allow stubs so operators can see them in the active policy list.
+	// The engine skips AUDIT evaluation at runtime; the loader must not drop them.
 	for _, v := range m.Spec.Validations {
-		if v.Expression != "" && v.Action != "AUDIT" {
+		if v.Expression != "" {
 			return "!(" + inline(v.Expression) + ")"
 		}
 	}
