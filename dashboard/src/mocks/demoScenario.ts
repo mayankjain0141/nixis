@@ -507,10 +507,12 @@ export function buildDemoScenario(): DemoStep[] {
       delayMs: 1400,
       json: ce('bundle.activated', {
         version: 2,
+        hash: 'sha256:b8f3d2a1e6c9047f5b2e4a7d0c3f8a1e6b9d2c5f8a3e6b9d2c5a8e1b4d7f0c3',
+        signatureVerified: true,
         policy_count: 7,
         activated_at: Date.now(),
         policies: [
-          ...POLICIES.map(p => ({ id: p.id, enabled: true, layer: 'cel' })),
+          ...POLICIES.map(p => ({ id: p.id, enabled: true, layer: 'cel', cel_expression: p.cel })),
           { id: 'aegis/rate-limit-writes', enabled: true, layer: 'cel', cel_expression: 'write_rate_per_minute < 60' },
         ],
       }),
