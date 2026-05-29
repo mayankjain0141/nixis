@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Application") || request.args.content.contains("kind: AppProject")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: AppProject") && !request.args.content.contains("clusterResourceBlacklist:")'
           message: AppProject must specify clusterResourceBlacklist.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
