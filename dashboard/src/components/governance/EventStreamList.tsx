@@ -25,6 +25,7 @@ function formatAgo(ts: number): string {
 
 export function EventStreamList() {
   const events = useGovernanceStore((s) => s.events);
+  const filterVerdict = useGovernanceStore((s) => s.filterVerdict);
   const inspectorTarget = useUIStore((s) => s.inspectorTarget);
   const openInspector = useUIStore((s) => s.openInspector);
 
@@ -33,7 +34,8 @@ export function EventStreamList() {
   const isUserScrolled = useRef(false);
   const [showNewBadge, setShowNewBadge] = useState(false);
 
-  const visible = events.slice(-MAX_VISIBLE);
+  const filtered = filterVerdict ? events.filter(e => e.verdict === filterVerdict) : events;
+  const visible = filtered.slice(-MAX_VISIBLE);
 
   const handleScroll = useCallback(() => {
     const el = containerRef.current;
@@ -72,6 +74,22 @@ export function EventStreamList() {
 
   return (
     <div aria-label="Live event stream" style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {filterVerdict && (
+        <div style={{
+          padding: '4px 12px', background: 'rgba(88,166,255,0.1)',
+          borderBottom: '1px solid rgba(88,166,255,0.2)',
+          fontSize: 11, color: 'var(--info-blue)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <span>Filtering: {filterVerdict.toUpperCase()} — {filtered.length} events</span>
+          <button
+            onClick={() => useGovernanceStore.getState().setFilterVerdict(null)}
+            style={{ background: 'none', border: 'none', color: 'var(--info-blue)', cursor: 'pointer', fontSize: 11 }}
+          >
+            ✕ clear
+          </button>
+        </div>
+      )}
       <div
         ref={containerRef}
         onScroll={handleScroll}
