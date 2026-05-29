@@ -1,3 +1,4 @@
+# IMPORT_REVIEW: translated by Claude — verify semantics
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -6,15 +7,14 @@ metadata:
     annotations:
         aegis.io/imported-from: aegis-import-3526291889.yaml
         aegis.io/severity: medium
+        aegis.io/llm-confidence: low
         kyverno.io/category: Flux
 spec:
     description: Ensures that container images used to run Flux controllers in the cluster are signed with valid Cosign signatures. Prevents the deployment of untrusted or potentially compromised Flux images. Protects the integrity and security of the Flux deployment process.
     matchConstraints:
-        tools:
-            - Write
-            - Edit
+        tools: []
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("image:")'
-          message: 'Cosign signature verification cannot be performed in CEL — manual review required to confirm image is signed'
+        - expression: 'false'
+          message: 'IMPORT_REVIEW: Flux controller image cosign signature verification — requires cryptographic registry API call; cannot verify image signatures from manifest content alone'
           action: AUDIT
     defaultAction: ALLOW
