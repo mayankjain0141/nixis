@@ -107,6 +107,26 @@ type FailOpenEntry struct {
 }
 
 func main() {
+	// Initialize OTel before any other logic so metrics are routed to a real exporter.
+	// OTel failure is non-fatal for the hook — fail-open behaviour must not be blocked
+	// by telemetry infrastructure.
+	otelCfg := otel.Config{
+		Enabled:      os.Getenv("AEGIS_OTEL_ENDPOINT") != "",
+		Endpoint:     os.Getenv("AEGIS_OTEL_ENDPOINT"),
+		ServiceName:  "aegis-hook",
+		BatchTimeout: 500 * time.Millisecond, // short-lived process: flush fast
+	}
+	otelShutdown, err := otel.Initialize(otelCfg)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "aegis-hook: OTel init warning: %v\n", err)
+		otelShutdown = func(context.Context) error { return nil }
+	}
+	defer func() {
+		shutCtx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+		_ = otelShutdown(shutCtx) // ignore error — hook is exiting anyway
+	}()
+
 	// Deadline covers the entire execution.
 	deadline := time.Now().Add(totalBudget)
 
