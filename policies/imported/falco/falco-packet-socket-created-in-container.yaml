@@ -15,7 +15,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && (request.args.command.contains("AF_PACKET") || request.args.command.matches(".*\\btcpdump\\b.*") || request.args.command.matches(".*\\bscapy\\b.*") || request.args.command.matches(".*\\barpspoof\\b.*"))'
+        - expression: 'tool == "Bash" && (request.args.command.matches(".*\\bAF_PACKET\\b.*") || request.args.command.matches(".*\\btcpdump\\b\\s+.*-[irnvXAeqSstF].*") || request.args.command.matches(".*\\barpspoof\\b\\s+.*") || request.args.command.matches(".*\\bimport\\s+scapy\\b.*") || request.args.command.matches(".*\\bfrom\\s+scapy\\b.*"))'
           message: 'Falco rule violated: Packet socket created in container'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

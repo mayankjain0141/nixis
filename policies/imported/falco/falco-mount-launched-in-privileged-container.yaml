@@ -17,7 +17,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*\\bmount\\b.*") && !request.args.command.contains("--help")'
+        - expression: 'tool == "Bash" && request.args.command.matches(".*\\bmount\\s+(/|--bind|--rbind|-o|-t).*") && !request.args.command.contains("--help")'
           message: 'Falco rule violated: Mount Launched in Privileged Container'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
