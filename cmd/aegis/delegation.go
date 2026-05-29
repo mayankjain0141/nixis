@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -159,12 +160,14 @@ var daemonBaseURL = func() string {
 	return "http://127.0.0.1:9091"
 }
 
+var delegationClient = &http.Client{Timeout: 10 * time.Second}
+
 func runDelegationRevoke(cmd *cobra.Command, _ []string) error {
 	if delegRevokeChainID == "" {
 		return fmt.Errorf("--chain-id is required")
 	}
 	body := fmt.Sprintf(`{"chain_id":%q}`, delegRevokeChainID)
-	resp, err := http.Post(
+	resp, err := delegationClient.Post(
 		daemonBaseURL()+"/api/v1/delegation/revoke",
 		"application/json",
 		strings.NewReader(body),
@@ -181,7 +184,7 @@ func runDelegationRevoke(cmd *cobra.Command, _ []string) error {
 }
 
 func runDelegationList(cmd *cobra.Command, _ []string) error {
-	resp, err := http.Get(daemonBaseURL() + "/api/v1/delegation/list")
+	resp, err := delegationClient.Get(daemonBaseURL() + "/api/v1/delegation/list")
 	if err != nil {
 		return fmt.Errorf("cannot connect to daemon: %w", err)
 	}
@@ -192,7 +195,7 @@ func runDelegationList(cmd *cobra.Command, _ []string) error {
 	var result struct {
 		Chains []internaldel.ActiveChainInfo `json:"chains"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 4096)).Decode(&result); err != nil {
 		return fmt.Errorf("decode response: %w", err)
 	}
 	if len(result.Chains) == 0 {

@@ -175,6 +175,8 @@ func RecordEvaluation(ctx context.Context, tool, sessionID, decision, layer stri
 // buildTracerProvider constructs an SDK TracerProvider with OTLP gRPC export.
 func buildTracerProvider(cfg Config) (*sdktrace.TracerProvider, error) {
 	ctx := context.Background()
+	// WithInsecure is safe for the default localhost:4317 endpoint.
+	// Set OTEL_EXPORTER_OTLP_ENDPOINT to a TLS-capable endpoint for remote collectors.
 	exp, err := otlptracegrpc.New(ctx,
 		otlptracegrpc.WithEndpoint(cfg.endpoint()),
 		otlptracegrpc.WithInsecure(),
@@ -202,6 +204,8 @@ func buildTracerProvider(cfg Config) (*sdktrace.TracerProvider, error) {
 // buildMeterProvider constructs an SDK MeterProvider with OTLP gRPC export.
 func buildMeterProvider(cfg Config) (*sdkmetric.MeterProvider, error) {
 	ctx := context.Background()
+	// WithInsecure is safe for the default localhost:4317 endpoint.
+	// Set OTEL_EXPORTER_OTLP_ENDPOINT to a TLS-capable endpoint for remote collectors.
 	exp, err := otlpmetricgrpc.New(ctx,
 		otlpmetricgrpc.WithEndpoint(cfg.endpoint()),
 		otlpmetricgrpc.WithInsecure(),

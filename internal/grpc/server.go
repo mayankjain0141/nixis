@@ -69,6 +69,8 @@ func (s *Server) Check(ctx context.Context, req *authv3.CheckRequest) (*authv3.C
 
 // Start binds a TCP listener on cfg.ListenAddr and serves until ctx is cancelled.
 func (s *Server) Start(ctx context.Context) error {
+	// NOTE: This server does not enforce TLS. For non-loopback deployments,
+	// place a TLS-terminating proxy (e.g. Envoy) in front of this listener.
 	lis, err := net.Listen("tcp", s.cfg.ListenAddr)
 	if err != nil {
 		return fmt.Errorf("listen %s: %w", s.cfg.ListenAddr, err)
