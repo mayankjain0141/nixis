@@ -1,7 +1,9 @@
 # imported from: policies via aegis policy import
-# Gap: detecting images with NO tag (implicit latest, e.g. "image: nginx") requires
-# per-line parsing to identify image: lines that lack a colon-tag suffix — not possible
-# with whole-content substring matching. Only explicit :latest is caught here.
+# Gap: images with no tag at all (implicit latest, e.g. "image: nginx") cannot be detected
+# via substring matching — per-line parsing required to identify image: lines without a
+# colon-tag suffix. Only explicit :latest is caught by this expression.
+# Gap: cannot distinguish containers from other image: fields (e.g. initContainers, sidecars
+# in different spec sections) without structured YAML parsing.
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:
@@ -17,7 +19,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("image:") && request.args.content.contains(":latest") && !request.args.content.contains("imagePullPolicy: Always")'
-          message: 'Images using the latest tag must set imagePullPolicy: Always'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("image:") && !request.args.content.contains("imagePullPolicy: Always")'
+          message: 'Container images must set imagePullPolicy: Always to ensure the latest image is always pulled'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
