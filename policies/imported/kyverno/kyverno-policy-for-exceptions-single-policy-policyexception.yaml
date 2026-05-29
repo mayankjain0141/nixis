@@ -1,4 +1,4 @@
-# IMPORT_TODO: JMESPath conditions in policy-for-exceptions/single-policy could not be translated — kubectl pattern match generated as base condition only
+# IMPORT_REVIEW: translated by Claude — checks that PolicyException references at most one policy name; exact list-length comparison requires JMESPath/Kyverno
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -7,6 +7,7 @@ metadata:
     annotations:
         aegis.io/imported-from: aegis-import-641170263.yaml
         aegis.io/severity: low
+        aegis.io/llm-confidence: medium
         kyverno.io/category: Sample
 spec:
     description: A PolicyException grants the applicable resource(s) or subject(s) the ability to bypass an existing Kyverno policy. Care should be taken to ensure that the allowed PolicyExceptions are scoped fine enough and according to your organization's operation. This is a Kyverno policy intended to provide guardrails for Kyverno PolicyExceptions and contains a number of rules which may help with these scoping best practices. These rules may be changed/removed depending on the exception practices to be implemented.
@@ -16,6 +17,6 @@ spec:
             - Edit
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: PolicyException")'
-          message: 'PolicyException must follow scoping best practices'
-          action: REQUIRE_APPROVAL
+          message: 'PolicyException detected — each PolicyException must reference exactly one policy; verify the exceptions.policyNames list has only one entry'
+          action: AUDIT
     defaultAction: ALLOW

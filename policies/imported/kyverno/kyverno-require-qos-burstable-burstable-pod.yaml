@@ -1,4 +1,4 @@
-# IMPORT_TODO: Burstable QoS requires numeric comparison (requests set but != limits) — content-string match insufficient; kubectl pattern match generated as base condition only
+# IMPORT_REVIEW: QoS Burstable requires at least one container to have requests or limits set — Aegis checks for the presence of resources.requests or resources.limits in the Pod manifest; numeric equality comparison (to distinguish Burstable from Guaranteed) requires Kyverno
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -7,6 +7,7 @@ metadata:
     annotations:
         aegis.io/imported-from: aegis-import-3076354596.yaml
         aegis.io/severity: medium
+        aegis.io/llm-confidence: medium
         kyverno.io/category: Other, Multi-Tenancy
 spec:
     description: Pod Quality of Service (QoS) is a mechanism to ensure Pods receive certain priority guarantees based upon the resources they define. When a Pod has at least one container which defines either requests or limits for either memory or CPU, Kubernetes grants the QoS class as burstable if it does not otherwise qualify for a QoS class of guaranteed. This policy requires that a Pod meet the criteria qualify for a QoS of burstable. This policy is provided with the intention that users will need to control its scope by using exclusions, preconditions, and other policy language mechanisms.
@@ -15,7 +16,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$")'
-          message: 'Policy validation required — review manifest before applying'
-          action: REQUIRE_APPROVAL
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Pod") && !request.args.content.contains("requests:") && !request.args.content.contains("limits:")'
+          message: 'Pod does not define any resource requests or limits — at minimum one container must have requests or limits set to qualify for QoS class Burstable'
+          action: DENY
     defaultAction: ALLOW
