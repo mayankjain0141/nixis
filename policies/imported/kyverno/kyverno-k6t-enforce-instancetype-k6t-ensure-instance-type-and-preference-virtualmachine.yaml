@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: VirtualMachine") && !request.args.content.contains("instancetype:")'
-          message: 'VirtualMachines must specify an instance type and preference'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: VirtualMachine") && (!request.args.content.contains("instancetype:") || !request.args.content.contains("preference:"))'
+          message: 'VirtualMachines must specify both an instancetype and a preference'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
