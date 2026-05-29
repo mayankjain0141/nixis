@@ -1,3 +1,4 @@
+# IMPORT_TODO: Cannot distinguish Istio-managed namespaces from non-Istio namespaces via content — REQUIRE_APPROVAL would fire on every non-Istio namespace write; downgraded to AUDIT
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -15,6 +16,6 @@ spec:
             - Edit
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Namespace") && !request.args.content.matches("(?s).*istio-injection.*enabled.*")'
-          message: 'Namespaces must set istio-injection: enabled for sidecar injection'
-          action: REQUIRE_APPROVAL
+          message: 'Namespaces must set istio-injection: enabled for sidecar injection — audit only: cannot distinguish Istio vs non-Istio namespaces from file content'
+          action: AUDIT
     defaultAction: ALLOW

@@ -11,11 +11,9 @@ metadata:
 spec:
     description: It's common where policy lookups need to consider a mapping to many possible values rather than a static mapping. This is a sample which demonstrates how to dynamically look up an allow list of Namespaces from a ConfigMap where the ConfigMap stores an array of strings. This policy validates that any Pods created outside of the list of Namespaces have the label `foo` applied.
     matchConstraints:
-        tools:
-            - Write
-            - Edit
+        tools: []
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && !request.args.content.contains("foo:")'
-          message: 'Resources outside allowed namespaces must have the label foo — ConfigMap namespace allowlist lookup not available in CEL translation'
+        - expression: 'false'
+          message: 'Namespace allowlist lookup from ConfigMap cannot be translated to CEL — manual review required'
           action: AUDIT
     defaultAction: ALLOW
