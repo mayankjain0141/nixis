@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (request.args.content.contains("MutatingWebhookConfiguration") || request.args.content.contains("ValidatingWebhookConfiguration"))'
-          message: 'Admission webhook configurations require approval — review for namespace scope and failurePolicy'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (request.args.content.contains("MutatingWebhookConfiguration") || request.args.content.contains("ValidatingWebhookConfiguration")) && (request.args.content.contains("failurePolicy: Ignore") || request.args.content.contains("namespaceSelector:") || request.args.content.contains("objectSelector:"))'
+          message: 'Admission webhook configuration uses failurePolicy: Ignore or a namespace/object selector — review scope carefully before applying'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW
