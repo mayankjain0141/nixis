@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("allowPrivilegeEscalation: true")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("allowPrivilegeEscalation: true")'
           message: Privilege escalation is disallowed. The fields spec.containers[*].securityContext.allowPrivilegeEscalation, spec.initContainers[*].securityContext.allowPrivilegeEscalation, and spec.ephemeralContainers[*].securityContext.allowPrivilegeEscalation must be set to `false`.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

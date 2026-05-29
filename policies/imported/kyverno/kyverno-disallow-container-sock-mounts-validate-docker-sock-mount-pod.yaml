@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("/var/run/docker.sock")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("/var/run/docker.sock")'
           message: Use of the Docker Unix socket is not allowed.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

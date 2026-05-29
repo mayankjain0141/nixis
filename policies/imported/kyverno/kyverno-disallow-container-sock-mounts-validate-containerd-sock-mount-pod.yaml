@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("/run/containerd/containerd.sock")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("/run/containerd/containerd.sock")'
           message: Use of the Containerd Unix socket is not allowed.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

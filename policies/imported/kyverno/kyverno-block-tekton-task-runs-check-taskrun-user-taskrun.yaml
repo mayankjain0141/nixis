@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("kind: TaskRun")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: TaskRun")'
           message: Creating a TaskRun is not allowed.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

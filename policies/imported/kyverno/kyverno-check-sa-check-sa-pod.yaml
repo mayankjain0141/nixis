@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("serviceAccountName:") && request.args.content.contains("default")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("serviceAccountName:") && request.args.content.contains("default")'
           message: The ServiceAccount used to create this Pod is confined to using the same account when running the Pod.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

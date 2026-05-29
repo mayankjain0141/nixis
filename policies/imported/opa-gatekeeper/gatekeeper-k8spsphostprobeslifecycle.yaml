@@ -17,7 +17,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("hostProbes:")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("hostProbes:")'
           message: 'IMPORT_REVIEW: gatekeeper-k8spsphostprobeslifecycle — check manifest content'
           action: AUDIT
     defaultAction: ALLOW

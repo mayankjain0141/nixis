@@ -15,7 +15,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("kind: Certificate") && request.args.content.contains("duration:")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Certificate") && request.args.content.contains("duration:")'
           message: certificate duration must be < than 2400h (100 days)
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

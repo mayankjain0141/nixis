@@ -14,7 +14,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\s+exec.*-n\s+\S+")'
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+exec.*-n\\s+\\S+")'
           message: Executing a command in a container is forbidden for Pods running in Namespaces protected with the label "exec=false".
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

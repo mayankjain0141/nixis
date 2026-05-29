@@ -15,7 +15,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("priorityClassName:") && !request.args.content.matches(".*priorityClassName:\s*(low|medium|high|critical).*")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("priorityClassName:") && !request.args.content.matches(".*priorityClassName:\\s*(low|medium|high|critical).*")'
           message: 'The Pod PriorityClass {{ request.object.spec.priorityClassName }} is not in the list of the following PriorityClasses allowed in this Namespace: {{ podprioritydict.data."{{request.namespace}}" }}.'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

@@ -60,11 +60,11 @@ Output: tool == "Bash" && bash.isGitForcePush(request.args.command) && bash.gitB
 
 // anthropicRequest is the JSON body for a Claude API call.
 type anthropicRequest struct {
-	Model             string             `json:"model,omitempty"`
-	MaxTokens         int                `json:"max_tokens"`
-	System            string             `json:"system"`
-	Messages          []anthropicMessage `json:"messages"`
-	AnthropicVersion  string             `json:"anthropic_version,omitempty"`
+	Model            string             `json:"model,omitempty"`
+	MaxTokens        int                `json:"max_tokens"`
+	System           string             `json:"system"`
+	Messages         []anthropicMessage `json:"messages"`
+	AnthropicVersion string             `json:"anthropic_version,omitempty"`
 }
 
 // anthropicMessage is one message in the conversation.
@@ -94,13 +94,13 @@ type translationCacheEntry struct {
 
 // LLMTranslator translates opaque policy snippets to CEL using the Claude API.
 type LLMTranslator struct {
-	model           string
-	maxRetries      int
-	apiKey          string
-	vertexProject   string
-	vertexRegion    string
-	cacheDir        string
-	celEnv          *aegisCEL.CELEnvironment
+	model         string
+	maxRetries    int
+	apiKey        string
+	vertexProject string
+	vertexRegion  string
+	cacheDir      string
+	celEnv        *aegisCEL.CELEnvironment
 }
 
 // NewLLMTranslator constructs an LLMTranslator. It returns an error only if the

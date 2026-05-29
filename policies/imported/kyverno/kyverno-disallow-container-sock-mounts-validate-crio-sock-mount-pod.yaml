@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("/var/run/crio/crio.sock")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("/var/run/crio/crio.sock")'
           message: Use of the CRI-O Unix socket is not allowed.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

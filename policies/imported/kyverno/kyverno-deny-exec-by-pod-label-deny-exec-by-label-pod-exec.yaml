@@ -14,7 +14,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\s+exec.*")'
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+exec.*")'
           message: Exec'ing into Pods protected with the label `exec=false` is forbidden.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

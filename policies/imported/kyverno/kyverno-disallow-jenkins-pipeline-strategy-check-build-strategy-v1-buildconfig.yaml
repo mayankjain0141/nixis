@@ -15,7 +15,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("jenkinsPipeline:")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("jenkinsPipeline:")'
           message: Jenkins Pipeline Build Strategy has been deprecated and is not allowed
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

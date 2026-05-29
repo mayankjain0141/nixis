@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\.(yaml|yml|json)$") && request.args.content.contains("kind: Certificate") && !request.args.content.contains("issuerRef:")'
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Certificate") && !request.args.content.contains("issuerRef:")'
           message: When requesting a cert for this domain, you must use our corporate issuer.
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

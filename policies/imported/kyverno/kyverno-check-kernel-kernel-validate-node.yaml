@@ -14,7 +14,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\s+(apply|create).*node.*")'
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+(apply|create).*node.*")'
           message: Kernel is vulnerable to CVE-2022-0185.
           action: AUDIT
     defaultAction: ALLOW
