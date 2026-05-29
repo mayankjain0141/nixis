@@ -11,6 +11,10 @@ export default defineConfig({
       // Allow serving policy YAML files from outside the dashboard root
       allow: ['..'],
     },
+    proxy: {
+      '/simulate': 'http://localhost:9090',
+      '/healthz': 'http://localhost:9090',
+    },
   },
   test: {
     globals: true,
