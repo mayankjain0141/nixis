@@ -74,6 +74,6 @@ func (c *Config) applyDefaults() {
 		c.FailOpenLog = defaultFailOpenLog()
 	}
 	if c.HealthzAddr == "" {
-		c.HealthzAddr = ":9091"
+		c.HealthzAddr = "127.0.0.1:9091"
 	}
 }
