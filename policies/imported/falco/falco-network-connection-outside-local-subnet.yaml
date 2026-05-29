@@ -1,4 +1,4 @@
-# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: inbound_outbound and container and k8s.ns.name in (namespace_scope_network_only_subnet) and not network_local_subnet
+# IMPORT_REVIEW: translated by Claude — verify semantics
 # imported from: rules via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -8,6 +8,7 @@ metadata:
         aegis.io/falco-tags: maturity_incubating,container,network,mitre_discovery,T1046,PCI_DSS_6.4.2
         aegis.io/imported-from: aegis-import-2621062960.yaml
         aegis.io/severity: medium
+        aegis.io/llm-confidence: medium
         aegis.io/source-rule: Network Connection outside Local Subnet
 spec:
     description: |
@@ -16,7 +17,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: "false"
+        - expression: 'tool == "Bash" && request.args.command.matches(".*(curl|wget|nc |telnet|ssh).*https?://.*") && !request.args.command.matches(".*(localhost|127\\.0\\.0\\.1|192\\.168\\.|10\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.).*")'
           message: 'Falco rule violated: Network Connection outside Local Subnet'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

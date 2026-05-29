@@ -1,4 +1,4 @@
-# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: open_read and container and proc.name=tar and container_entrypoint and proc.tty=0 and not system_level_side_effect_artif...
+# IMPORT_REVIEW: translated by Claude — verify semantics
 # imported from: rules via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -8,6 +8,7 @@ metadata:
         aegis.io/falco-tags: maturity_incubating,container,filesystem,mitre_exfiltration,TA0010
         aegis.io/imported-from: aegis-import-2621062960.yaml
         aegis.io/severity: low
+        aegis.io/llm-confidence: medium
         aegis.io/source-rule: Exfiltrating Artifacts via Kubernetes Control Plane
 spec:
     description: |
@@ -18,7 +19,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: "false"
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl.*exec.*") && request.args.command.contains("tar")'
           message: 'Falco rule violated: Exfiltrating Artifacts via Kubernetes Control Plane'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

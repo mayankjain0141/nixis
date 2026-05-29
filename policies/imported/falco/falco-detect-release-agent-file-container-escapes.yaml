@@ -1,4 +1,4 @@
-# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: open_write and container and fd.name endswith release_agent and (user.uid=0 or thread.cap_effective contains CAP_DAC_OVE...
+# IMPORT_REVIEW: translated by Claude — verify semantics
 # imported from: rules via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -8,6 +8,7 @@ metadata:
         aegis.io/falco-tags: maturity_stable,container,process,mitre_privilege_escalation,T1611
         aegis.io/imported-from: aegis-import-999705196.yaml
         aegis.io/severity: critical
+        aegis.io/llm-confidence: medium
         aegis.io/source-rule: Detect release_agent File Container Escapes
 spec:
     description: |
@@ -16,7 +17,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: "false"
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.endsWith("release_agent") || tool == "Bash" && request.args.command.contains("release_agent")'
           message: 'Falco rule violated: Detect release_agent File Container Escapes'
           action: DENY
     defaultAction: ALLOW

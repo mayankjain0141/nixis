@@ -1,4 +1,4 @@
-# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: open_write and fd.name startswith /var/lib/rpm and not rpm_procs and not ansible_running_python and not python_running_c...
+# IMPORT_REVIEW: translated by Claude — verify semantics
 # imported from: rules via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -8,6 +8,7 @@ metadata:
         aegis.io/falco-tags: maturity_sandbox,host,container,filesystem,software_mgmt,mitre_persistence,T1072
         aegis.io/imported-from: aegis-import-1470842712.yaml
         aegis.io/severity: high
+        aegis.io/llm-confidence: medium
         aegis.io/source-rule: Write below rpm database
 spec:
     description: |
@@ -18,7 +19,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: "false"
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.startsWith("/var/lib/rpm") || tool == "Bash" && request.args.command.matches(".*>\\s*/var/lib/rpm/.*")'
           message: 'Falco rule violated: Write below rpm database'
           action: DENY
     defaultAction: ALLOW

@@ -1,4 +1,4 @@
-# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: create_hardlink and (evt.arg.oldpath in (/etc/shadow, /etc/sudoers, /etc/pam.conf, /etc/security/pwquality.conf))
+# IMPORT_REVIEW: translated by Claude — verify semantics
 # imported from: rules via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -8,6 +8,7 @@ metadata:
         aegis.io/falco-tags: maturity_stable,host,container,filesystem,mitre_credential_access,T1555
         aegis.io/imported-from: aegis-import-999705196.yaml
         aegis.io/severity: medium
+        aegis.io/llm-confidence: medium
         aegis.io/source-rule: Create Hardlink Over Sensitive Files
 spec:
     description: |
@@ -18,7 +19,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: "false"
+        - expression: 'tool == "Bash" && request.args.command.matches(".*\\bln\\b.*(shadow|sudoers|pam\\.conf|pwquality\\.conf).*")'
           message: 'Falco rule violated: Create Hardlink Over Sensitive Files'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

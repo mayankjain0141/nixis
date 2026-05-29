@@ -1,4 +1,4 @@
-# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: kernel_module_load and container and thread.cap_effective icontains sys_module and not container.image.repository in (al...
+# IMPORT_REVIEW: translated by Claude — verify semantics
 # imported from: rules via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -8,6 +8,7 @@ metadata:
         aegis.io/falco-tags: maturity_stable,host,container,process,mitre_persistence,TA0003
         aegis.io/imported-from: aegis-import-999705196.yaml
         aegis.io/severity: medium
+        aegis.io/llm-confidence: medium
         aegis.io/source-rule: Linux Kernel Module Injection Detected
 spec:
     description: |
@@ -16,7 +17,7 @@ spec:
         tools:
             - Bash
     validations:
-        - expression: "false"
+        - expression: 'tool == "Bash" && (request.args.command.matches(".*\\binsmod\\b.*") || request.args.command.matches(".*\\bmodprobe\\b.*") || request.args.command.matches(".*\\brmmod\\b.*"))'
           message: 'Falco rule violated: Linux Kernel Module Injection Detected'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

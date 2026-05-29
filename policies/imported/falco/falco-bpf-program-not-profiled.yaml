@@ -1,4 +1,4 @@
-# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: evt.type=bpf and (evt.arg.cmd=5 or evt.arg.cmd=BPF_PROG_LOAD) and not bpf_profiled_procs
+# IMPORT_REVIEW: translated by Claude — verify semantics
 # imported from: rules via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -8,6 +8,7 @@ metadata:
         aegis.io/falco-tags: maturity_incubating,host,container,mitre_persistence,TA0003
         aegis.io/imported-from: aegis-import-2621062960.yaml
         aegis.io/severity: low
+        aegis.io/llm-confidence: medium
         aegis.io/source-rule: BPF Program Not Profiled
 spec:
     description: |
@@ -15,7 +16,7 @@ spec:
     matchConstraints:
         tools: []
     validations:
-        - expression: "false"
+        - expression: 'tool == "Bash" && (request.args.command.contains("bpftrace") || request.args.command.contains("bpftool") || request.args.command.contains("bpf_prog_load"))'
           message: 'Falco rule violated: BPF Program Not Profiled'
           action: REQUIRE_APPROVAL
     defaultAction: ALLOW

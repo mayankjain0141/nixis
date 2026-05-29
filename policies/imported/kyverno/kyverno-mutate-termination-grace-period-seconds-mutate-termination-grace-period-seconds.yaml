@@ -1,4 +1,4 @@
-# IMPORT_TODO: mutate rule — Aegis does not mutate requests
+# IMPORT_REVIEW: translated by Claude — verify semantics
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -7,13 +7,14 @@ metadata:
     annotations:
         aegis.io/imported-from: aegis-import-1149699383.yaml
         aegis.io/severity: medium
+        aegis.io/llm-confidence: medium
         kyverno.io/category: Sample
 spec:
     description: Pods with large terminationGracePeriodSeconds (tGPS) might prevent cluster nodes from getting drained, ultimately making the whole cluster unstable. This policy mutates all incoming Pods to set their tGPS under 50s. If the user creates a pod without specifying tGPS, then the Kubernetes default of 30s is maintained.
     matchConstraints:
         tools: []
     validations:
-        - expression: "false"
-          message: 'IMPORT_TODO: mutate rule — Aegis does not mutate requests — manual review required'
+        - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+(apply|create|patch|run).*")'
+          message: 'IMPORT_REVIEW: mutate rule — Aegis does not mutate requests — manual review required'
           action: AUDIT
     defaultAction: ALLOW

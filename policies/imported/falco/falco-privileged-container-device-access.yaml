@@ -1,6 +1,4 @@
-# IMPORT_TODO: Falco condition uses kernel or macro fields that cannot be automatically translated — manual review required. Original condition: (open_read or open_write) and container and (fd.name startswith /dev/sd or
-#      fd.name startswith /dev/nvme or
-#      fd....
+# IMPORT_REVIEW: translated by Claude — verify semantics
 # imported from: rules via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -10,6 +8,7 @@ metadata:
         aegis.io/falco-tags: maturity_sandbox,container,filesystem,mitre_privilege_escalation,T1611
         aegis.io/imported-from: aegis-import-1470842712.yaml
         aegis.io/severity: critical
+        aegis.io/llm-confidence: medium
         aegis.io/source-rule: Privileged Container Device Access
 spec:
     description: |
@@ -20,7 +19,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: "false"
+        - expression: '(tool == "Read" || tool == "Write") && request.args.path.startsWith("/dev/sd") || tool == "Bash" && request.args.command.matches(".*\\b(dd|cat|hexdump)\\b.*/dev/sd[a-z].*")'
           message: 'Falco rule violated: Privileged Container Device Access'
           action: DENY
     defaultAction: ALLOW
