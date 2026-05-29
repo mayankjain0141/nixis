@@ -15,6 +15,9 @@ spec:
             - Edit
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Pod") && !request.args.content.contains("corp.org/version:")'
-          message: 'Pods must have a corp.org/version label matching semver — label presence checked; regex value match cannot be verified via content scan, manual review required'
+          message: 'Pods must have a corp.org/version label matching semver — label is missing'
           action: AUDIT
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Pod") && request.args.content.matches("(?s).*corp\\.org/version:\\s+[^\\n]*[^0-9a-zA-Z.\\-][^\\n]*.*")'
+          message: 'Pods must have a corp.org/version label matching semver — label value contains invalid characters'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

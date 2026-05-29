@@ -14,7 +14,7 @@ spec:
             - Write
             - Edit
     validations:
-        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Pod") && request.args.content.contains("containers:")'
-          message: 'Pods may have no more than four containers — exact count cannot be verified by content scan; manual review required'
-          action: AUDIT
+        - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("kind: Pod") && request.args.content.matches("(?s).*(containers:|initContainers:).*- name:.*- name:.*- name:.*- name:.*- name:.*")'
+          message: 'Pod manifest appears to define more than four containers — manual review required to confirm container count does not exceed the limit of four'
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

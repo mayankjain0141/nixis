@@ -14,6 +14,6 @@ spec:
             - Bash
     validations:
         - expression: 'tool == "Bash" && request.args.command.matches(".*kubectl\\s+exec.*")'
-          message: Exec'ing into Pods is restricted — Pod labels cannot be verified at request time; all kubectl exec commands require review.
-          action: AUDIT
+          message: Pod exec requires approval — Pod labels cannot be verified at request time; exec may be targeting a Pod protected by the exec=false label.
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW
