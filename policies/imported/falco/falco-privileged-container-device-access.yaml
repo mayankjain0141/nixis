@@ -17,7 +17,7 @@ spec:
         tools:
             - Read
             - Write
-            - Edit
+            - Bash
     validations:
         - expression: '((tool == "Read" || tool == "Write") && request.args.path.startsWith("/dev/sd")) || (tool == "Bash" && request.args.command.matches(".*\\b(dd|cat|hexdump)\\b.*/dev/sd[a-z].*"))'
           message: 'Falco rule violated: Privileged Container Device Access'
