@@ -17,5 +17,5 @@ spec:
     validations:
         - expression: 'tool == "Bash" && (request.args.command.matches(".*\\b(nc|netcat|ncat)\\b.*-e.*(bash|sh|/bin).*") || request.args.command.matches(".*\\bsocat\\b.*[Ee][Xx][Ee][Cc]:(bash|sh|/bin/bash|/bin/sh).*"))'
           message: 'Falco rule violated: Netcat/Socat Remote Code Execution on Host'
-          action: REQUIRE_APPROVAL
+          action: DENY
     defaultAction: ALLOW
