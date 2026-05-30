@@ -1,5 +1,4 @@
 # imported from: policies via aegis policy import
-# IMPORT_REVIEW: label-change detection requires old+new diff state unavailable at request-time; approximates by auditing any Pod manifest write that contains a labels: block
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:

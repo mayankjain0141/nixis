@@ -1,4 +1,3 @@
-# IMPORT_REVIEW: translated by Claude — cross-resource uniqueness cannot be enforced in single-request CEL; Bash pathway added to catch kubectl annotate with external-dns hostname annotation
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
