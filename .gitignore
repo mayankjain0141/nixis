@@ -109,9 +109,10 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
 # ===========================
-# Planning & Research Docs
+# Planning & Research Docs (internal engineering artifacts)
 # ===========================
 docs/
+!docs/guide/
 research/
 archive/
 test_data/
@@ -140,6 +141,5 @@ testdata/
 /aegis-daemon
 /aegis-fix
 /aegis-hook
-docs/
 SUBAGENT_PLAYBOOK.md
 CLAUDE.md
