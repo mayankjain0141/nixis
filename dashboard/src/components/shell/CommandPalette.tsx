@@ -30,7 +30,6 @@ function buildStaticCommands(
   connectionState: string,
   startMock: () => void,
   stopMock: () => void,
-  setCommandPaletteOpen: (open: boolean) => void,
   close: () => void,
 ): Command[] {
   return [
@@ -160,7 +159,6 @@ function CommandPaletteContent({
 }: {
   onClose: () => void;
 }): React.ReactElement {
-  const setCommandPaletteOpen = useUIStore((s) => s.setCommandPaletteOpen);
   const connectionState = useStreamStore((s) => s.connectionState);
   const setFilterVerdict = useGovernanceStore((s) => s.setFilterVerdict);
 
@@ -192,10 +190,9 @@ function CommandPaletteContent({
         useGovernanceStore.getState().clear();
         close();
       },
-      setCommandPaletteOpen,
       close,
     ),
-    [setFilterVerdict, connectionState, close, setCommandPaletteOpen],
+    [setFilterVerdict, connectionState, close],
   );
 
   const allCommands = useMemo(() => {
