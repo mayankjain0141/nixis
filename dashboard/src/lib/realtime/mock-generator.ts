@@ -51,7 +51,7 @@ function makePolicyEvent(
     type,
     envelope: {
       type,
-      aegissequence: seq,
+      nixissequence: seq,
       id: `evt-${seq}`,
       time: new Date(Date.now() + seq * 100).toISOString(),
     },
@@ -74,7 +74,7 @@ function makePolicyEvent(
 function makeHeartbeatEvent(seq: number): ValidatedEvent {
   return {
     type: 'stream.heartbeat',
-    envelope: { type: 'stream.heartbeat', aegissequence: seq, id: `hb-${seq}` },
+    envelope: { type: 'stream.heartbeat', nixissequence: seq, id: `hb-${seq}` },
     data: { serverTime: Date.now(), lag: 0, sequence: seq },
   };
 }
@@ -86,7 +86,7 @@ function makeDelegationEvent(
 ): ValidatedEvent {
   return {
     type,
-    envelope: { type, aegissequence: seq, id: `del-${seq}` },
+    envelope: { type, nixissequence: seq, id: `del-${seq}` },
     data: {
       chain_id: `chain-${seed % 100}`,
       issuer: makeSessionId(seed % 4),
@@ -99,7 +99,7 @@ function makeDelegationEvent(
 function makeSecretDetectedEvent(seq: number, seed: number): ValidatedEvent {
   return {
     type: 'secret.detected',
-    envelope: { type: 'secret.detected', aegissequence: seq, id: `sec-${seq}` },
+    envelope: { type: 'secret.detected', nixissequence: seq, id: `sec-${seq}` },
     data: {
       session_id: makeSessionId(seed % 4),
       tool: TOOLS[seed % TOOLS.length],
@@ -114,7 +114,7 @@ function makeSecretDetectedEvent(seq: number, seed: number): ValidatedEvent {
 function makeLabelEscalatedEvent(seq: number, seed: number): ValidatedEvent {
   return {
     type: 'label.escalated',
-    envelope: { type: 'label.escalated', aegissequence: seq, id: `lbl-${seq}` },
+    envelope: { type: 'label.escalated', nixissequence: seq, id: `lbl-${seq}` },
     data: {
       session_id: makeSessionId(seed % 4),
       label: makeLabel(seed >>> 4),
@@ -127,7 +127,7 @@ function makeLabelEscalatedEvent(seq: number, seed: number): ValidatedEvent {
 function makeAuditCheckpointEvent(seq: number, seed: number): ValidatedEvent {
   return {
     type: 'audit.checkpoint',
-    envelope: { type: 'audit.checkpoint', aegissequence: seq, id: `ckpt-${seq}` },
+    envelope: { type: 'audit.checkpoint', nixissequence: seq, id: `ckpt-${seq}` },
     data: {
       hash: `sha256:${seed.toString(16).padStart(64, '0')}`,
       prevHash: `sha256:${(seed - 1).toString(16).padStart(64, '0')}`,
@@ -139,7 +139,7 @@ function makeAuditCheckpointEvent(seq: number, seed: number): ValidatedEvent {
 function makeBundleActivatedEvent(seq: number, seed: number): ValidatedEvent {
   return {
     type: 'bundle.activated',
-    envelope: { type: 'bundle.activated', aegissequence: seq, id: `bndl-${seq}` },
+    envelope: { type: 'bundle.activated', nixissequence: seq, id: `bndl-${seq}` },
     data: {
       version: (seed % 100) + 1,
       previousVersion: seed % 100,
@@ -154,7 +154,7 @@ function makeBundleActivatedEvent(seq: number, seed: number): ValidatedEvent {
 function makeSystemErrorEvent(seq: number, seed: number): ValidatedEvent {
   return {
     type: 'system.error',
-    envelope: { type: 'system.error', aegissequence: seq, id: `err-${seq}` },
+    envelope: { type: 'system.error', nixissequence: seq, id: `err-${seq}` },
     data: {
       subsystem: 'audit',
       error: `Error #${seed % 100}`,
@@ -166,7 +166,7 @@ function makeSystemErrorEvent(seq: number, seed: number): ValidatedEvent {
 function makeMcpToolDriftEvent(seq: number, seed: number): ValidatedEvent {
   return {
     type: 'mcp.tool_drift',
-    envelope: { type: 'mcp.tool_drift', aegissequence: seq, id: `drift-${seq}` },
+    envelope: { type: 'mcp.tool_drift', nixissequence: seq, id: `drift-${seq}` },
     data: {
       tool: TOOLS[seed % TOOLS.length],
       previous_hash: `sha256:prev${seed.toString(16).padStart(60, '0')}`,

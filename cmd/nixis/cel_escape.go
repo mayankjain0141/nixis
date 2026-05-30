@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	aegisCEL "github.com/mayjain/aegis/internal/cel"
+	aegisCEL "github.com/mayjain/nixis/internal/cel"
 )
 
 // validateOrFixExpr checks whether expr compiles (after normalization). If it does,

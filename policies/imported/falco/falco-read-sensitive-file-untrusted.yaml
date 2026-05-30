@@ -1,13 +1,13 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-read-sensitive-file-untrusted
     annotations:
-        aegis.io/falco-tags: maturity_stable,host,container,filesystem,mitre_credential_access,T1555
-        aegis.io/imported-from: aegis-import-999705196.yaml
-        aegis.io/severity: medium
-        aegis.io/source-rule: Read sensitive file untrusted
+        nixis.io/falco-tags: maturity_stable,host,container,filesystem,mitre_credential_access,T1555
+        nixis.io/imported-from: nixis-import-999705196.yaml
+        nixis.io/severity: medium
+        nixis.io/source-rule: Read sensitive file untrusted
 spec:
     description: |
         An attempt to read any sensitive file (e.g. files containing user/password/authentication information). Exceptions are made for known trusted programs. Can be customized as needed. In modern containerized cloud infrastructures, accessing traditional Linux sensitive files might be less relevant, yet it remains valuable for baseline detections. While we provide additional rules for SSH or cloud vendor-specific credentials, you can significantly enhance your security program by crafting custom rules for critical application credentials unique to your environment.

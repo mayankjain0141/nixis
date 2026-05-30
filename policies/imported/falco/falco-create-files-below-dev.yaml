@@ -1,13 +1,13 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-create-files-below-dev
     annotations:
-        aegis.io/falco-tags: maturity_incubating,host,filesystem,mitre_persistence,T1543
-        aegis.io/imported-from: aegis-import-2621062960.yaml
-        aegis.io/severity: high
-        aegis.io/source-rule: Create files below dev
+        nixis.io/falco-tags: maturity_incubating,host,filesystem,mitre_persistence,T1543
+        nixis.io/imported-from: nixis-import-2621062960.yaml
+        nixis.io/severity: high
+        nixis.io/source-rule: Create files below dev
 spec:
     description: |
         Detect the creation of files under /dev except for authorized device management programs. This can reveal rootkits hiding files in /dev. Additionally, consider the "Execution from /dev/shm" rule. The upstream rule already covers some tuning scenarios that you can further expand upon.

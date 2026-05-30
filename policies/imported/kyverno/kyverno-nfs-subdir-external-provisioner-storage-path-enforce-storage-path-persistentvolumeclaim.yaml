@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-nfs-subdir-external-provisioner-storage-path-enforce-storage-path-persistentvolumeclaim
     annotations:
-        aegis.io/imported-from: aegis-import-2481825795.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-2481825795.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Other
 spec:
     description: The NFS subdir external provisioner project allows defining a StorageClass with a pathPattern, a template used to provision subdirectories on NFS exports. This can be controlled with an annotation on a PVC called `nfs.io/storage-path`. This policy ensures that if the StorageClass name `nfs-client` is used by a PVC, corresponding to the NFS subdir external provisioner, and if it sets the nfs.io/storage-path annotation that it cannot be empty, which may otherwise result in it consuming the root of the designated path.

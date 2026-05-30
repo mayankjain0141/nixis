@@ -17,9 +17,9 @@ describe('GovernanceInvariantChecker', () => {
     it('passes when events are in strictly increasing sequence order', () => {
       const checker = new GovernanceInvariantChecker(makeDeps({
         getGovernanceEvents: () => [
-          { id: 'a', aegisSequence: 1, verdict: 'allow' },
-          { id: 'b', aegisSequence: 2, verdict: 'allow' },
-          { id: 'c', aegisSequence: 5, verdict: 'deny' },
+          { id: 'a', nixisSequence: 1, verdict: 'allow' },
+          { id: 'b', nixisSequence: 2, verdict: 'allow' },
+          { id: 'c', nixisSequence: 5, verdict: 'deny' },
         ],
       }));
       expect(checker.checkMonotonicSequence().passed).toBe(true);
@@ -28,8 +28,8 @@ describe('GovernanceInvariantChecker', () => {
     it('fails when a sequence regression is detected', () => {
       const checker = new GovernanceInvariantChecker(makeDeps({
         getGovernanceEvents: () => [
-          { id: 'a', aegisSequence: 5, verdict: 'allow' },
-          { id: 'b', aegisSequence: 3, verdict: 'allow' },
+          { id: 'a', nixisSequence: 5, verdict: 'allow' },
+          { id: 'b', nixisSequence: 3, verdict: 'allow' },
         ],
       }));
       const result = checker.checkMonotonicSequence();
@@ -41,8 +41,8 @@ describe('GovernanceInvariantChecker', () => {
     it('fails when a duplicate sequence number appears', () => {
       const checker = new GovernanceInvariantChecker(makeDeps({
         getGovernanceEvents: () => [
-          { id: 'a', aegisSequence: 4, verdict: 'allow' },
-          { id: 'b', aegisSequence: 4, verdict: 'deny' },
+          { id: 'a', nixisSequence: 4, verdict: 'allow' },
+          { id: 'b', nixisSequence: 4, verdict: 'deny' },
         ],
       }));
       expect(checker.checkMonotonicSequence().passed).toBe(false);
@@ -54,7 +54,7 @@ describe('GovernanceInvariantChecker', () => {
 
     it('passes with a single event', () => {
       const checker = new GovernanceInvariantChecker(makeDeps({
-        getGovernanceEvents: () => [{ id: 'a', aegisSequence: 100, verdict: 'deny' }],
+        getGovernanceEvents: () => [{ id: 'a', nixisSequence: 100, verdict: 'deny' }],
       }));
       expect(checker.checkMonotonicSequence().passed).toBe(true);
     });
@@ -64,10 +64,10 @@ describe('GovernanceInvariantChecker', () => {
     it('passes when all events have canonical verdicts', () => {
       const checker = new GovernanceInvariantChecker(makeDeps({
         getGovernanceEvents: () => [
-          { id: 'a', aegisSequence: 1, verdict: 'deny' },
-          { id: 'b', aegisSequence: 2, verdict: 'allow' },
-          { id: 'c', aegisSequence: 3, verdict: 'require_approval' },
-          { id: 'd', aegisSequence: 4, verdict: 'audit' },
+          { id: 'a', nixisSequence: 1, verdict: 'deny' },
+          { id: 'b', nixisSequence: 2, verdict: 'allow' },
+          { id: 'c', nixisSequence: 3, verdict: 'require_approval' },
+          { id: 'd', nixisSequence: 4, verdict: 'audit' },
         ],
       }));
       expect(checker.checkDenyEdgesNeverGreen().passed).toBe(true);
@@ -76,8 +76,8 @@ describe('GovernanceInvariantChecker', () => {
     it('fails when an event has non-canonical verdict "escalate"', () => {
       const checker = new GovernanceInvariantChecker(makeDeps({
         getGovernanceEvents: () => [
-          { id: 'a', aegisSequence: 1, verdict: 'allow' },
-          { id: 'b', aegisSequence: 2, verdict: 'escalate' },
+          { id: 'a', nixisSequence: 1, verdict: 'allow' },
+          { id: 'b', nixisSequence: 2, verdict: 'escalate' },
         ],
       }));
       const result = checker.checkDenyEdgesNeverGreen();
@@ -88,14 +88,14 @@ describe('GovernanceInvariantChecker', () => {
 
     it('fails when an event has verdict "HITL"', () => {
       const checker = new GovernanceInvariantChecker(makeDeps({
-        getGovernanceEvents: () => [{ id: 'x', aegisSequence: 1, verdict: 'HITL' }],
+        getGovernanceEvents: () => [{ id: 'x', nixisSequence: 1, verdict: 'HITL' }],
       }));
       expect(checker.checkDenyEdgesNeverGreen().passed).toBe(false);
     });
 
     it('fails when an event has verdict "block"', () => {
       const checker = new GovernanceInvariantChecker(makeDeps({
-        getGovernanceEvents: () => [{ id: 'x', aegisSequence: 1, verdict: 'block' }],
+        getGovernanceEvents: () => [{ id: 'x', nixisSequence: 1, verdict: 'block' }],
       }));
       expect(checker.checkDenyEdgesNeverGreen().passed).toBe(false);
     });
@@ -162,8 +162,8 @@ describe('GovernanceInvariantChecker', () => {
     it('surfaces a failure when sequence regresses', () => {
       const checker = new GovernanceInvariantChecker(makeDeps({
         getGovernanceEvents: () => [
-          { id: 'a', aegisSequence: 10, verdict: 'allow' },
-          { id: 'b', aegisSequence: 5, verdict: 'allow' },
+          { id: 'a', nixisSequence: 10, verdict: 'allow' },
+          { id: 'b', nixisSequence: 5, verdict: 'allow' },
         ],
       }));
       expect(checker.runAll().some(r => !r.passed)).toBe(true);

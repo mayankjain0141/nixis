@@ -1,14 +1,14 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-create-hardlink-over-sensitive-files
     annotations:
-        aegis.io/falco-tags: maturity_stable,host,container,filesystem,mitre_credential_access,T1555
-        aegis.io/imported-from: aegis-import-999705196.yaml
-        aegis.io/severity: medium
-        aegis.io/llm-confidence: medium
-        aegis.io/source-rule: Create Hardlink Over Sensitive Files
+        nixis.io/falco-tags: maturity_stable,host,container,filesystem,mitre_credential_access,T1555
+        nixis.io/imported-from: nixis-import-999705196.yaml
+        nixis.io/severity: medium
+        nixis.io/llm-confidence: medium
+        nixis.io/source-rule: Create Hardlink Over Sensitive Files
 spec:
     description: |
         Detect hardlink created over a curated list of sensitive files or subdirectories under /etc/ or root directories. Can be customized as needed. Refer to further and equivalent guidance within the rule "Read sensitive file untrusted".

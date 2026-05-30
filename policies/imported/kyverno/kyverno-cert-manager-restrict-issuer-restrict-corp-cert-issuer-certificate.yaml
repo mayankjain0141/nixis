@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-cert-manager-restrict-issuer-restrict-corp-cert-issuer-certificate
     annotations:
-        aegis.io/imported-from: aegis-import-655676062.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-655676062.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Cert-Manager
 spec:
     description: Certificates for trusted domains should always be steered to a controlled issuer to ensure the chain of trust is appropriate for that application. Users may otherwise be able to create their own issuers and sign certificates for other domains. This policy ensures that a certificate request for a specific domain uses a designated ClusterIssuer.

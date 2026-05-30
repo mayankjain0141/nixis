@@ -1,10 +1,10 @@
-# Aegis Dashboard
+# Nixis Dashboard
 
-Real-time monitoring and analytics UI for the Aegis governance daemon.
+Real-time monitoring and analytics UI for the Nixis governance daemon.
 
 ## Quick Start
 
-Prerequisites: Node.js 18+, Aegis daemon running on localhost:9090.
+Prerequisites: Node.js 18+, Nixis daemon running on localhost:9090.
 
 ```bash
 npm install

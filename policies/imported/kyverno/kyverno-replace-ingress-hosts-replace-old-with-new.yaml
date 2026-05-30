@@ -1,18 +1,18 @@
 # CEL_LIMITATION (class: mutate/generate): Kyverno mutate rules run server-side inside the
 # Kubernetes admission webhook and can modify the resource object before it is persisted.
-# Aegis CEL runs client-side at agent tool-call time and has no mechanism to rewrite manifest
+# Nixis CEL runs client-side at agent tool-call time and has no mechanism to rewrite manifest
 # content or inject fields. All Kyverno mutate/generate policies in this batch are therefore
 # translated to false + AUDIT. The stub loads and appears in governance output but never blocks.
-# MUTATE policy: translated to false + AUDIT (Aegis cannot rewrite Ingress host names at runtime)
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# MUTATE policy: translated to false + AUDIT (Nixis cannot rewrite Ingress host names at runtime)
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-replace-ingress-hosts-replace-old-with-new
     annotations:
-        aegis.io/imported-from: aegis-import-504191393.yaml
-        aegis.io/severity: medium
-        aegis.io/llm-confidence: medium
+        nixis.io/imported-from: nixis-import-504191393.yaml
+        nixis.io/severity: medium
+        nixis.io/llm-confidence: medium
         kyverno.io/category: Other
 spec:
     description: An Ingress may specify host names at a variety of locations in the same resource. In some cases, those host names should be modified to, for example, update domain names silently. The replacement must be done in all the fields where a host name can be specified. This policy, illustrating the use of nested foreach loops and operable in Kyverno 1.9+, replaces host names that end with `old.com` with `new.com`.
@@ -22,6 +22,6 @@ spec:
             - Edit
     validations:
         - expression: 'false'
-          message: 'Mutation policy translated to audit-only — Aegis cannot rewrite Ingress host names from old.com to new.com at runtime'
+          message: 'Mutation policy translated to audit-only — Nixis cannot rewrite Ingress host names from old.com to new.com at runtime'
           action: AUDIT
     defaultAction: ALLOW

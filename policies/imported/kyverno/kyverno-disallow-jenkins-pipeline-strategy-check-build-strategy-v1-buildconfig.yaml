@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-disallow-jenkins-pipeline-strategy-check-build-strategy-v1-buildconfig
     annotations:
-        aegis.io/imported-from: aegis-import-2189692074.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-2189692074.yaml
+        nixis.io/severity: medium
         kyverno.io/category: OpenShift
 spec:
     description: The Jenkins Pipeline Build Strategy has been deprecated. This policy prevents its use. Use OpenShift Pipelines instead.

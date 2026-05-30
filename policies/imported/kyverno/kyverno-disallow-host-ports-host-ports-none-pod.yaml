@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-disallow-host-ports-host-ports-none-pod
     annotations:
-        aegis.io/imported-from: aegis-import-1387304523.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-1387304523.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Pod Security Standards (Baseline)
 spec:
     description: 'Access to host ports allows potential snooping of network traffic and should not be allowed, or at minimum restricted to a known list. This policy ensures the `hostPort` field is unset or set to `0`. '

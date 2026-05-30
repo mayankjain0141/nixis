@@ -1,13 +1,13 @@
-# imported from: policies via aegis policy import
+# imported from: policies via nixis policy import
 # Gap: cross-resource check (does a NetworkPolicy exist for this namespace?) cannot be
 # expressed in CEL file-content matching — always AUDIT for manual review.
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-generate-networkpolicy-existing-generate-existing-networkpolicy
     annotations:
-        aegis.io/imported-from: aegis-import-827739225.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-827739225.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Other
 spec:
     description: A NetworkPolicy is often a critical piece when provisioning new Namespaces, but there may be existing Namespaces which also need the same resource. Creating each one individually or manipulating each Namespace in order to trigger creation is additional overhead. This policy creates a new NetworkPolicy for existing Namespaces which results in a default deny behavior and labels it with created-by=kyverno.

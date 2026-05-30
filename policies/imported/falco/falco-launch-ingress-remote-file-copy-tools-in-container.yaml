@@ -1,14 +1,14 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-launch-ingress-remote-file-copy-tools-in-container
     annotations:
-        aegis.io/falco-tags: maturity_incubating,container,network,process,mitre_command_and_control,TA0011
-        aegis.io/imported-from: aegis-import-2621062960.yaml
-        aegis.io/severity: low
-        aegis.io/llm-confidence: medium
-        aegis.io/source-rule: Launch Ingress Remote File Copy Tools in Container
+        nixis.io/falco-tags: maturity_incubating,container,network,process,mitre_command_and_control,TA0011
+        nixis.io/imported-from: nixis-import-2621062960.yaml
+        nixis.io/severity: low
+        nixis.io/llm-confidence: medium
+        nixis.io/source-rule: Launch Ingress Remote File Copy Tools in Container
 spec:
     description: |
         Detect ingress remote file copy tools (such as curl or wget) launched inside containers. This rule can be considered a valuable auditing tool, but it has the potential to generate notable noise and requires careful profiling before full operationalization.

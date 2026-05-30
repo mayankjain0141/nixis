@@ -158,7 +158,7 @@ policies:
 
 	output := stdout.String()
 
-	if !strings.Contains(output, "apiVersion: aegis.io/v1") {
+	if !strings.Contains(output, "apiVersion: nixis.io/v1") {
 		t.Error("dry-run output should contain apiVersion")
 	}
 	if !strings.Contains(output, "kind: PolicyTemplate") {
@@ -243,7 +243,7 @@ func TestImport_WritesOutputDir(t *testing.T) {
 	if !strings.Contains(contentStr, "# imported from:") {
 		t.Error("generated file should have import comment header")
 	}
-	if !strings.Contains(contentStr, "apiVersion: aegis.io/v1") {
+	if !strings.Contains(contentStr, "apiVersion: nixis.io/v1") {
 		t.Error("generated file should have apiVersion")
 	}
 	if !strings.Contains(contentStr, "action: DENY") {
@@ -323,8 +323,8 @@ func TestImport_GenericConversion(t *testing.T) {
 	}
 
 	m := manifests[0]
-	if m.APIVersion != "aegis.io/v1" {
-		t.Errorf("apiVersion: got %s, want aegis.io/v1", m.APIVersion)
+	if m.APIVersion != "nixis.io/v1" {
+		t.Errorf("apiVersion: got %s, want nixis.io/v1", m.APIVersion)
 	}
 	if m.Kind != "PolicyTemplate" {
 		t.Errorf("kind: got %s, want PolicyTemplate", m.Kind)
@@ -543,8 +543,8 @@ tools:
 	if !strings.Contains(m.Spec.Validations[0].Expression, `tool == "dangerous_tool"`) {
 		t.Errorf("expected tool match expression, got %s", m.Spec.Validations[0].Expression)
 	}
-	if m.Metadata.Annotations["aegis.io/severity"] != "critical" {
-		t.Errorf("expected critical severity, got %s", m.Metadata.Annotations["aegis.io/severity"])
+	if m.Metadata.Annotations["nixis.io/severity"] != "critical" {
+		t.Errorf("expected critical severity, got %s", m.Metadata.Annotations["nixis.io/severity"])
 	}
 }
 
@@ -938,10 +938,10 @@ definition:
 		t.Fatal("expected at least 1 manifest")
 	}
 	m := manifests[0]
-	if m.Metadata.Annotations["aegis.io/checkov-id"] != "CKV2_CUSTOM_1" {
+	if m.Metadata.Annotations["nixis.io/checkov-id"] != "CKV2_CUSTOM_1" {
 		t.Errorf("expected checkov-id annotation, got: %v", m.Metadata.Annotations)
 	}
-	if m.Metadata.Annotations["aegis.io/imported-from"] != "my-policy.yaml" {
+	if m.Metadata.Annotations["nixis.io/imported-from"] != "my-policy.yaml" {
 		t.Errorf("expected imported-from annotation, got: %v", m.Metadata.Annotations)
 	}
 }
@@ -1017,10 +1017,10 @@ func TestImport_GeneratesFromCatalogAnnotations(t *testing.T) {
 	}
 
 	m := manifests[0]
-	if m.Metadata.Annotations["aegis.io/source"] != "pkg/adapters/catalog.json" {
+	if m.Metadata.Annotations["nixis.io/source"] != "pkg/adapters/catalog.json" {
 		t.Errorf("expected catalog source annotation, got %v", m.Metadata.Annotations)
 	}
-	if m.Metadata.Annotations["aegis.io/risk-level"] != "critical" {
+	if m.Metadata.Annotations["nixis.io/risk-level"] != "critical" {
 		t.Errorf("expected risk-level annotation, got %v", m.Metadata.Annotations)
 	}
 	if !strings.Contains(m.Spec.Validations[0].Expression, "terraform destroy") {
@@ -1502,8 +1502,8 @@ spec:
 	if m.Spec.Description != "Test description" {
 		t.Errorf("description should be from annotation, got %q", m.Spec.Description)
 	}
-	if m.Metadata.Annotations["aegis.io/severity"] != "high" {
-		t.Errorf("severity annotation: got %q, want high", m.Metadata.Annotations["aegis.io/severity"])
+	if m.Metadata.Annotations["nixis.io/severity"] != "high" {
+		t.Errorf("severity annotation: got %q, want high", m.Metadata.Annotations["nixis.io/severity"])
 	}
 	if m.Metadata.Annotations["kyverno.io/category"] != "Pod Security" {
 		t.Errorf("category annotation: got %q, want 'Pod Security'", m.Metadata.Annotations["kyverno.io/category"])
@@ -2144,8 +2144,8 @@ func TestImport_FalcoSkipsDisabledRules(t *testing.T) {
 	if len(manifests) != 1 {
 		t.Fatalf("expected 1 manifest (disabled rule skipped), got %d", len(manifests))
 	}
-	if !strings.Contains(manifests[0].Metadata.Annotations["aegis.io/source-rule"], "Enabled rule") {
-		t.Errorf("expected only enabled rule in output, got source-rule: %s", manifests[0].Metadata.Annotations["aegis.io/source-rule"])
+	if !strings.Contains(manifests[0].Metadata.Annotations["nixis.io/source-rule"], "Enabled rule") {
+		t.Errorf("expected only enabled rule in output, got source-rule: %s", manifests[0].Metadata.Annotations["nixis.io/source-rule"])
 	}
 }
 

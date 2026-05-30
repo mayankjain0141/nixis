@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/pkg/nixis"
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +32,7 @@ var simulateCmd = &cobra.Command{
 func init() {
 	simulateCmd.Flags().StringVar(&simulateArgs, "args", "{}", "Tool arguments as JSON")
 	simulateCmd.Flags().StringVar(&simulateSession, "session", "", "Session ID")
-	simulateCmd.Flags().StringVar(&simulateSocket, "socket", "", "Daemon socket path (default: $AEGIS_SOCKET_PATH or /tmp/aegis.sock)")
+	simulateCmd.Flags().StringVar(&simulateSocket, "socket", "", "Daemon socket path (default: $NIXIS_SOCKET_PATH or /tmp/nixis.sock)")
 }
 
 func runSimulate(cmd *cobra.Command, args []string) error {
@@ -43,7 +43,7 @@ func runSimulate(cmd *cobra.Command, args []string) error {
 	}
 
 	rawArgs := json.RawMessage(simulateArgs)
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      tool,
 		Args:      rawArgs,
 		SessionID: simulateSession,
@@ -73,7 +73,7 @@ func runSimulate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("read response: %w", err)
 	}
 
-	var resp aegis.CheckResponse
+	var resp nixis.CheckResponse
 	if err := json.Unmarshal(respBytes, &resp); err != nil {
 		return fmt.Errorf("parse response: %w", err)
 	}
@@ -87,15 +87,15 @@ func runSimulate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func actionString(a aegis.Action) string {
+func actionString(a nixis.Action) string {
 	switch a {
-	case aegis.ActionAllow:
+	case nixis.ActionAllow:
 		return "allow"
-	case aegis.ActionDeny:
+	case nixis.ActionDeny:
 		return "deny"
-	case aegis.ActionRequireApproval:
+	case nixis.ActionRequireApproval:
 		return "require_approval"
-	case aegis.ActionAudit:
+	case nixis.ActionAudit:
 		return "audit"
 	default:
 		return "deny"
@@ -103,13 +103,13 @@ func actionString(a aegis.Action) string {
 }
 
 func daemonSocketPath() string {
-	if v := os.Getenv("AEGIS_SOCKET_PATH"); v != "" {
+	if v := os.Getenv("NIXIS_SOCKET_PATH"); v != "" {
 		return v
 	}
 	if xdg := os.Getenv("XDG_RUNTIME_DIR"); xdg != "" {
-		return xdg + "/aegis/aegis.sock"
+		return xdg + "/nixis/nixis.sock"
 	}
-	return "/tmp/aegis.sock"
+	return "/tmp/nixis.sock"
 }
 
 func writeSimFramed(conn net.Conn, payload []byte, deadline time.Time) error {
@@ -134,7 +134,7 @@ func readSimFramed(conn net.Conn, deadline time.Time) ([]byte, error) {
 		return nil, err
 	}
 	length := binary.BigEndian.Uint32(hdr[:])
-	if int(length) > aegis.MaxMessageSize {
+	if int(length) > nixis.MaxMessageSize {
 		return nil, fmt.Errorf("response exceeds MaxMessageSize")
 	}
 	buf := make([]byte, length)

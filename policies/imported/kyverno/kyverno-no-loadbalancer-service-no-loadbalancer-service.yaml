@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-no-loadbalancer-service-no-loadbalancer-service
     annotations:
-        aegis.io/imported-from: aegis-import-2814266990.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-2814266990.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Sample
 spec:
     description: Especially in cloud provider environments, a Service having type LoadBalancer will cause the provider to respond by creating a load balancer somewhere in the customer account. This adds cost and complexity to a deployment. Without restricting this ability, users may easily overrun established budgets and security practices set by the organization. This policy restricts use of the Service type LoadBalancer.

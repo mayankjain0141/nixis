@@ -26,7 +26,7 @@ func initMetrics() error {
 	var err error
 
 	evalDuration, err = globalMeter.Float64Histogram(
-		"aegis_evaluation_duration_seconds",
+		"nixis_evaluation_duration_seconds",
 		metric.WithDescription("Policy evaluation latency in seconds"),
 	)
 	if err != nil {
@@ -34,7 +34,7 @@ func initMetrics() error {
 	}
 
 	auditBufferUtil, err = globalMeter.Float64ObservableGauge(
-		"aegis_audit_buffer_utilization",
+		"nixis_audit_buffer_utilization",
 		metric.WithDescription("Fraction of the audit write channel that is full (0–1)"),
 	)
 	if err != nil {
@@ -42,7 +42,7 @@ func initMetrics() error {
 	}
 
 	policyReloadTotal, err = globalMeter.Int64Counter(
-		"aegis_policy_reload_total",
+		"nixis_policy_reload_total",
 		metric.WithDescription("Total policy reload attempts, labeled by status"),
 	)
 	if err != nil {
@@ -50,7 +50,7 @@ func initMetrics() error {
 	}
 
 	auditDropped, err = globalMeter.Int64Counter(
-		"aegis_audit_events_dropped_total",
+		"nixis_audit_events_dropped_total",
 		metric.WithDescription("Audit events dropped due to a full write channel"),
 	)
 	if err != nil {
@@ -58,7 +58,7 @@ func initMetrics() error {
 	}
 
 	daemonConns, err = globalMeter.Int64UpDownCounter(
-		"aegis_daemon_active_connections",
+		"nixis_daemon_active_connections",
 		metric.WithDescription("Number of active connections to the daemon"),
 	)
 	if err != nil {
@@ -66,7 +66,7 @@ func initMetrics() error {
 	}
 
 	streamClients, err = globalMeter.Int64UpDownCounter(
-		"aegis_stream_clients_connected",
+		"nixis_stream_clients_connected",
 		metric.WithDescription("Number of connected stream tap clients"),
 	)
 	if err != nil {
@@ -74,7 +74,7 @@ func initMetrics() error {
 	}
 
 	streamDropped, err = globalMeter.Int64Counter(
-		"aegis_stream_tap_dropped_total",
+		"nixis_stream_tap_dropped_total",
 		metric.WithDescription("Stream tap events dropped due to slow consumers"),
 	)
 	if err != nil {
@@ -82,7 +82,7 @@ func initMetrics() error {
 	}
 
 	failOpenTotal, err = globalMeter.Int64Counter(
-		"aegis_failopen_total",
+		"nixis_failopen_total",
 		metric.WithDescription("Total fail-open events, labeled by reason"),
 	)
 	if err != nil {
@@ -90,7 +90,7 @@ func initMetrics() error {
 	}
 
 	gitleaksMemory, err = globalMeter.Int64ObservableGauge(
-		"aegis_gitleaks_memory_bytes",
+		"nixis_gitleaks_memory_bytes",
 		metric.WithDescription("Memory used by the gitleaks scanner in bytes"),
 	)
 	if err != nil {

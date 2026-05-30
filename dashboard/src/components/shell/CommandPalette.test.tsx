@@ -238,7 +238,7 @@ describe('CommandPalette', () => {
       label: { confidentiality: 1, integrity: 1, categories: 0 },
       labelState: 'fresh',
       latencyNs: 1000,
-      aegisSequence: 1,
+      nixisSequence: 1,
       timestamp: Date.now(),
     };
 

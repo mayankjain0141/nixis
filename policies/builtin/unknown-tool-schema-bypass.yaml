@@ -1,13 +1,13 @@
 # Unknown tool schema bypass policy — operator opt-in, disabled by default.
 # Enable this to require approval for any tool not in the arg schema catalog.
 # Default off: backward compat with MCP tools and community tools.
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: unknown-tool-schema-bypass
   annotations:
-    aegis.io/default-enabled: "false"
-    aegis.io/bundle: builtin
+    nixis.io/default-enabled: "false"
+    nixis.io/bundle: builtin
 spec:
   description: "Require approval for tool calls from tools not registered in the arg schema catalog"
   validations:

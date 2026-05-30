@@ -1,14 +1,14 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-program-run-with-disallowed-http-proxy-env
     annotations:
-        aegis.io/falco-tags: maturity_incubating,host,container,users,mitre_execution,T1204
-        aegis.io/imported-from: aegis-import-2621062960.yaml
-        aegis.io/severity: low
-        aegis.io/llm-confidence: medium
-        aegis.io/source-rule: Program run with disallowed http proxy env
+        nixis.io/falco-tags: maturity_incubating,host,container,users,mitre_execution,T1204
+        nixis.io/imported-from: nixis-import-2621062960.yaml
+        nixis.io/severity: low
+        nixis.io/llm-confidence: medium
+        nixis.io/source-rule: Program run with disallowed http proxy env
 spec:
     description: |
         Detect curl or wget usage with HTTP_PROXY environment variable. Attackers can manipulate the HTTP_PROXY variable's value to redirect application's internal HTTP requests. This could expose sensitive information like authentication keys and private data.

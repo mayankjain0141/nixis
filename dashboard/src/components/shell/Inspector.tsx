@@ -93,7 +93,7 @@ export function Inspector() {
         background: 'var(--bg-surface)', flexShrink: 0,
       }}>
         <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
-          #{event.aegisSequence}
+          #{event.nixisSequence}
         </span>
         <button
           onClick={togglePause}
@@ -197,7 +197,7 @@ export function Inspector() {
               Sequence
             </div>
             <div style={{ fontVariantNumeric: 'tabular-nums' }}>
-              #{event.aegisSequence}
+              #{event.nixisSequence}
             </div>
           </div>
         </div>

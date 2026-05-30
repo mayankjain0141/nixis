@@ -13,55 +13,55 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mayjain/aegis/internal/audit"
-	"github.com/mayjain/aegis/internal/ifc"
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/internal/audit"
+	"github.com/mayjain/nixis/internal/ifc"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 // --- stub engine implementations ---
 
 type allowEngine struct{}
 
-func (allowEngine) Evaluate(_ context.Context, _ aegis.CheckRequest) aegis.CheckResponse {
-	return aegis.CheckResponse{
-		Decision:       aegis.Decision{Action: aegis.ActionAllow},
-		EnforcingLayer: aegis.EnforcingLayerAdapter,
+func (allowEngine) Evaluate(_ context.Context, _ nixis.CheckRequest) nixis.CheckResponse {
+	return nixis.CheckResponse{
+		Decision:       nixis.Decision{Action: nixis.ActionAllow},
+		EnforcingLayer: nixis.EnforcingLayerAdapter,
 	}
 }
-func (allowEngine) Reload(_ context.Context, _ *aegis.CompiledBundle) error { return nil }
+func (allowEngine) Reload(_ context.Context, _ *nixis.CompiledBundle) error { return nil }
 
 type denyEngine struct{ reason string }
 
-func (e denyEngine) Evaluate(_ context.Context, _ aegis.CheckRequest) aegis.CheckResponse {
-	return aegis.CheckResponse{
-		Decision:       aegis.Decision{Action: aegis.ActionDeny, Reason: e.reason},
-		EnforcingLayer: aegis.EnforcingLayerAdapter,
+func (e denyEngine) Evaluate(_ context.Context, _ nixis.CheckRequest) nixis.CheckResponse {
+	return nixis.CheckResponse{
+		Decision:       nixis.Decision{Action: nixis.ActionDeny, Reason: e.reason},
+		EnforcingLayer: nixis.EnforcingLayerAdapter,
 	}
 }
-func (e denyEngine) Reload(_ context.Context, _ *aegis.CompiledBundle) error { return nil }
+func (e denyEngine) Reload(_ context.Context, _ *nixis.CompiledBundle) error { return nil }
 
 // nilSnapshotEngine simulates a PolicyEngine whose snapshot has not been loaded yet.
 type nilSnapshotEngine struct{}
 
-func (nilSnapshotEngine) Evaluate(_ context.Context, _ aegis.CheckRequest) aegis.CheckResponse {
-	return aegis.CheckResponse{
-		Decision:       aegis.Decision{Action: aegis.ActionDeny, Reason: "policy engine not initialized"},
-		EnforcingLayer: aegis.EnforcingLayerAdapter,
+func (nilSnapshotEngine) Evaluate(_ context.Context, _ nixis.CheckRequest) nixis.CheckResponse {
+	return nixis.CheckResponse{
+		Decision:       nixis.Decision{Action: nixis.ActionDeny, Reason: "policy engine not initialized"},
+		EnforcingLayer: nixis.EnforcingLayerAdapter,
 	}
 }
-func (nilSnapshotEngine) Reload(_ context.Context, _ *aegis.CompiledBundle) error { return nil }
+func (nilSnapshotEngine) Reload(_ context.Context, _ *nixis.CompiledBundle) error { return nil }
 
 // slowEngine sleeps for the given duration before returning, simulating a slow evaluation.
 type slowEngine struct{ delay time.Duration }
 
-func (e slowEngine) Evaluate(_ context.Context, _ aegis.CheckRequest) aegis.CheckResponse {
+func (e slowEngine) Evaluate(_ context.Context, _ nixis.CheckRequest) nixis.CheckResponse {
 	time.Sleep(e.delay)
-	return aegis.CheckResponse{
-		Decision:       aegis.Decision{Action: aegis.ActionAllow},
-		EnforcingLayer: aegis.EnforcingLayerAdapter,
+	return nixis.CheckResponse{
+		Decision:       nixis.Decision{Action: nixis.ActionAllow},
+		EnforcingLayer: nixis.EnforcingLayerAdapter,
 	}
 }
-func (e slowEngine) Reload(_ context.Context, _ *aegis.CompiledBundle) error { return nil }
+func (e slowEngine) Reload(_ context.Context, _ *nixis.CompiledBundle) error { return nil }
 
 // --- helpers ---
 
@@ -101,7 +101,7 @@ func newTestAuditWriter(t *testing.T) (*audit.Writer, context.CancelFunc, <-chan
 // startDaemon creates, wires, and runs a Daemon in a background goroutine.
 // Returns the daemon and a channel closed once the listener is bound and ready.
 // The daemon is stopped and fully drained in t.Cleanup before TempDir cleanup.
-func startDaemon(t *testing.T, engine aegis.Engine) (*Daemon, <-chan struct{}) {
+func startDaemon(t *testing.T, engine nixis.Engine) (*Daemon, <-chan struct{}) {
 	t.Helper()
 	socketPath := testSocketPath()
 	t.Cleanup(func() { _ = os.Remove(socketPath) })
@@ -134,7 +134,7 @@ func startDaemon(t *testing.T, engine aegis.Engine) (*Daemon, <-chan struct{}) {
 }
 
 // sendRequest dials the daemon socket and performs one framed request/response exchange.
-func sendRequest(t *testing.T, socketPath string, req aegis.CheckRequest) aegis.CheckResponse {
+func sendRequest(t *testing.T, socketPath string, req nixis.CheckRequest) nixis.CheckResponse {
 	t.Helper()
 	conn, err := net.Dial("unix", socketPath)
 	if err != nil {
@@ -152,12 +152,12 @@ func sendRequest(t *testing.T, socketPath string, req aegis.CheckRequest) aegis.
 		t.Fatalf("WriteMessage: %v", err)
 	}
 
-	raw, err := ReadMessage(conn, deadline, aegis.MaxMessageSize)
+	raw, err := ReadMessage(conn, deadline, nixis.MaxMessageSize)
 	if err != nil {
 		t.Fatalf("ReadMessage: %v", err)
 	}
 
-	var resp aegis.CheckResponse
+	var resp nixis.CheckResponse
 	if err := json.Unmarshal(raw, &resp); err != nil {
 		t.Fatalf("unmarshal response: %v", err)
 	}
@@ -193,12 +193,12 @@ func TestDaemon_HandleRequest_Allow(t *testing.T) {
 	d, ready := startDaemon(t, allowEngine{})
 	waitReady(t, ready)
 
-	resp := sendRequest(t, d.cfg.SocketPath, aegis.CheckRequest{
+	resp := sendRequest(t, d.cfg.SocketPath, nixis.CheckRequest{
 		Tool:      "ReadFile",
 		SessionID: "sess-allow-test",
 	})
 
-	if resp.Decision.Action != aegis.ActionAllow {
+	if resp.Decision.Action != nixis.ActionAllow {
 		t.Errorf("expected Allow, got %v (reason: %q)", resp.Decision.Action, resp.Decision.Reason)
 	}
 }
@@ -207,12 +207,12 @@ func TestDaemon_HandleRequest_Deny(t *testing.T) {
 	d, ready := startDaemon(t, denyEngine{reason: "blocked tool"})
 	waitReady(t, ready)
 
-	resp := sendRequest(t, d.cfg.SocketPath, aegis.CheckRequest{
+	resp := sendRequest(t, d.cfg.SocketPath, nixis.CheckRequest{
 		Tool:      "Shell",
 		SessionID: "sess-deny-test",
 	})
 
-	if resp.Decision.Action != aegis.ActionDeny {
+	if resp.Decision.Action != nixis.ActionDeny {
 		t.Errorf("expected Deny, got %v", resp.Decision.Action)
 	}
 	if resp.Decision.Reason != "blocked tool" {
@@ -232,21 +232,21 @@ func TestDaemon_MaxMessageSize(t *testing.T) {
 
 	// Send a payload that exceeds MaxMessageSize — the daemon must either respond
 	// with a Deny or close the connection (both are acceptable fail-secure responses).
-	oversized := make([]byte, aegis.MaxMessageSize+1)
+	oversized := make([]byte, nixis.MaxMessageSize+1)
 	deadline := time.Now().Add(500 * time.Millisecond)
 	_ = WriteMessage(conn, oversized, deadline)
 
-	raw, err := ReadMessage(conn, deadline, aegis.MaxMessageSize*2)
+	raw, err := ReadMessage(conn, deadline, nixis.MaxMessageSize*2)
 	if err != nil {
 		// Connection closed by daemon — acceptable fail-secure response.
 		return
 	}
 
-	var resp aegis.CheckResponse
+	var resp nixis.CheckResponse
 	if err := json.Unmarshal(raw, &resp); err != nil {
 		t.Fatalf("unmarshal response: %v", err)
 	}
-	if resp.Decision.Action != aegis.ActionDeny {
+	if resp.Decision.Action != nixis.ActionDeny {
 		t.Errorf("expected Deny for oversized message, got %v", resp.Decision.Action)
 	}
 }
@@ -256,12 +256,12 @@ func TestDaemon_FailOpenReconcile(t *testing.T) {
 	d, ready := startDaemon(t, nilSnapshotEngine{})
 	waitReady(t, ready)
 
-	resp := sendRequest(t, d.cfg.SocketPath, aegis.CheckRequest{
+	resp := sendRequest(t, d.cfg.SocketPath, nixis.CheckRequest{
 		Tool:      "AnyTool",
 		SessionID: "sess-nil-snap",
 	})
 
-	if resp.Decision.Action != aegis.ActionDeny {
+	if resp.Decision.Action != nixis.ActionDeny {
 		t.Errorf("expected Deny when snapshot is nil, got %v", resp.Decision.Action)
 	}
 }
@@ -299,10 +299,10 @@ func TestDaemon_GracefulShutdown(t *testing.T) {
 			return
 		}
 		defer func() { _ = conn.Close() }()
-		payload, _ := json.Marshal(aegis.CheckRequest{Tool: "SlowTool", SessionID: "sess-shutdown"})
+		payload, _ := json.Marshal(nixis.CheckRequest{Tool: "SlowTool", SessionID: "sess-shutdown"})
 		deadline := time.Now().Add(2 * time.Second)
 		_ = WriteMessage(conn, payload, deadline)
-		_, _ = ReadMessage(conn, deadline, aegis.MaxMessageSize)
+		_, _ = ReadMessage(conn, deadline, nixis.MaxMessageSize)
 	}()
 
 	// Wait briefly so the request goroutine is inside handleConnection.
@@ -326,10 +326,10 @@ func TestDaemon_GracefulShutdown(t *testing.T) {
 // mockStreamTap records the events it receives via Emit.
 type mockStreamTap struct {
 	mu     sync.Mutex
-	events []aegis.StreamEvent
+	events []nixis.StreamEvent
 }
 
-func (m *mockStreamTap) Emit(_ context.Context, evt aegis.StreamEvent) {
+func (m *mockStreamTap) Emit(_ context.Context, evt nixis.StreamEvent) {
 	m.mu.Lock()
 	m.events = append(m.events, evt)
 	m.mu.Unlock()
@@ -343,7 +343,7 @@ func (m *mockStreamTap) count() int {
 
 // startDaemonWithTap creates a Daemon wired with the given StreamTap (can be nil).
 // Returns the daemon, ready channel, and the healthz address (e.g., "127.0.0.1:19092").
-func startDaemonWithTap(t *testing.T, engine aegis.Engine, tap aegis.StreamTap, sessions *ifc.SessionLabels) (*Daemon, <-chan struct{}, string) {
+func startDaemonWithTap(t *testing.T, engine nixis.Engine, tap nixis.StreamTap, sessions *ifc.SessionLabels) (*Daemon, <-chan struct{}, string) {
 	t.Helper()
 	socketPath := testSocketPath()
 	healthzAddr := testHealthzAddr()
@@ -387,7 +387,7 @@ func TestDaemon_StreamEmit(t *testing.T) {
 	d, ready, _ := startDaemonWithTap(t, allowEngine{}, tap, nil)
 	waitReady(t, ready)
 
-	_ = sendRequest(t, d.cfg.SocketPath, aegis.CheckRequest{
+	_ = sendRequest(t, d.cfg.SocketPath, nixis.CheckRequest{
 		Tool:      "ReadFile",
 		SessionID: "sess-stream-test",
 	})
@@ -570,11 +570,11 @@ func TestDaemon_EvalCounter_Increments(t *testing.T) {
 
 	initialCount := d.Evaluations()
 
-	_ = sendRequest(t, d.cfg.SocketPath, aegis.CheckRequest{
+	_ = sendRequest(t, d.cfg.SocketPath, nixis.CheckRequest{
 		Tool:      "ReadFile",
 		SessionID: "sess-counter-1",
 	})
-	_ = sendRequest(t, d.cfg.SocketPath, aegis.CheckRequest{
+	_ = sendRequest(t, d.cfg.SocketPath, nixis.CheckRequest{
 		Tool:      "WriteFile",
 		SessionID: "sess-counter-2",
 	})
@@ -590,11 +590,11 @@ func TestDaemon_ModeDenyAll_DeniesRequests(t *testing.T) {
 	waitReady(t, ready)
 
 	// First verify normal mode allows requests
-	resp := sendRequest(t, d.cfg.SocketPath, aegis.CheckRequest{
+	resp := sendRequest(t, d.cfg.SocketPath, nixis.CheckRequest{
 		Tool:      "ReadFile",
 		SessionID: "sess-mode-test-1",
 	})
-	if resp.Decision.Action != aegis.ActionAllow {
+	if resp.Decision.Action != nixis.ActionAllow {
 		t.Fatalf("expected Allow in normal mode, got %v", resp.Decision.Action)
 	}
 
@@ -602,11 +602,11 @@ func TestDaemon_ModeDenyAll_DeniesRequests(t *testing.T) {
 	d.SetMode(ModeDenyAll, "test deny all")
 
 	// Now requests should be denied
-	resp = sendRequest(t, d.cfg.SocketPath, aegis.CheckRequest{
+	resp = sendRequest(t, d.cfg.SocketPath, nixis.CheckRequest{
 		Tool:      "ReadFile",
 		SessionID: "sess-mode-test-2",
 	})
-	if resp.Decision.Action != aegis.ActionDeny {
+	if resp.Decision.Action != nixis.ActionDeny {
 		t.Errorf("expected Deny in ModeDenyAll, got %v", resp.Decision.Action)
 	}
 	if resp.Decision.Reason != "daemon in deny_all mode" {
@@ -620,11 +620,11 @@ func TestDaemon_ModeReadOnly_DeniesRequests(t *testing.T) {
 
 	d.SetMode(ModeReadOnly, "sqlite write failure")
 
-	resp := sendRequest(t, d.cfg.SocketPath, aegis.CheckRequest{
+	resp := sendRequest(t, d.cfg.SocketPath, nixis.CheckRequest{
 		Tool:      "WriteFile",
 		SessionID: "sess-readonly-test",
 	})
-	if resp.Decision.Action != aegis.ActionDeny {
+	if resp.Decision.Action != nixis.ActionDeny {
 		t.Errorf("expected Deny in ModeReadOnly, got %v", resp.Decision.Action)
 	}
 	if resp.Decision.Reason != "daemon in read_only mode" {

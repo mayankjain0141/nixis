@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Package ifc implements the Information Flow Control lattice for Aegis.
+// Package ifc implements the Information Flow Control lattice for Nixis.
 //
 // Two operations sound similar but are semantically distinct:
 //
@@ -15,7 +15,7 @@
 package ifc
 
 import (
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 // Category bit allocation (uint32):
@@ -28,7 +28,7 @@ import (
 // bit 31 = TaintBit         — tainted_by_secret sentinel (monotone, never cleared)
 // bits 5-29: reserved for future use
 
-// Category bit constants for aegis.SecurityLabel.Category.
+// Category bit constants for nixis.SecurityLabel.Category.
 const (
 	CatCredentials  uint32 = 1 << 0  // bit 0 — passwords, API keys, tokens
 	CatFinance      uint32 = 1 << 1  // bit 1 — financial data
@@ -51,13 +51,13 @@ const (
 
 // packLabel packs a SecurityLabel into a uint64 for atomic operations.
 // Layout: [Confidentiality:16][Integrity:16][Category:32]
-func packLabel(l aegis.SecurityLabel) uint64 {
+func packLabel(l nixis.SecurityLabel) uint64 {
 	return uint64(l.Confidentiality)<<48 | uint64(l.Integrity)<<32 | uint64(l.Category)
 }
 
 // unpackLabel unpacks a uint64 into a SecurityLabel.
-func unpackLabel(v uint64) aegis.SecurityLabel {
-	return aegis.SecurityLabel{
+func unpackLabel(v uint64) nixis.SecurityLabel {
+	return nixis.SecurityLabel{
 		Confidentiality: uint16(v >> 48),
 		Integrity:       uint16(v >> 32),
 		Category:        uint32(v),
@@ -80,7 +80,7 @@ func unpackLabel(v uint64) aegis.SecurityLabel {
 // Use for: policy evaluation, delegation capability reasoning.
 //
 //go:nosplit
-func Join(a, b aegis.SecurityLabel) aegis.SecurityLabel {
+func Join(a, b nixis.SecurityLabel) nixis.SecurityLabel {
 	c := a.Confidentiality
 	if b.Confidentiality > c {
 		c = b.Confidentiality
@@ -89,7 +89,7 @@ func Join(a, b aegis.SecurityLabel) aegis.SecurityLabel {
 	if b.Integrity < i {
 		i = b.Integrity
 	}
-	return aegis.SecurityLabel{
+	return nixis.SecurityLabel{
 		Confidentiality: c,
 		Integrity:       i,
 		Category:        a.Category | b.Category,
@@ -106,7 +106,7 @@ func Join(a, b aegis.SecurityLabel) aegis.SecurityLabel {
 // Use for: delegation capability intersection.
 //
 //go:nosplit
-func Meet(a, b aegis.SecurityLabel) aegis.SecurityLabel {
+func Meet(a, b nixis.SecurityLabel) nixis.SecurityLabel {
 	c := a.Confidentiality
 	if b.Confidentiality < c {
 		c = b.Confidentiality
@@ -115,7 +115,7 @@ func Meet(a, b aegis.SecurityLabel) aegis.SecurityLabel {
 	if b.Integrity > i {
 		i = b.Integrity
 	}
-	return aegis.SecurityLabel{
+	return nixis.SecurityLabel{
 		Confidentiality: c,
 		Integrity:       i,
 		Category:        a.Category & b.Category,
@@ -134,7 +134,7 @@ func Meet(a, b aegis.SecurityLabel) aegis.SecurityLabel {
 //	subject must be a superset of the object's required categories.
 //
 //go:nosplit
-func Dominates(subject, object aegis.SecurityLabel) bool {
+func Dominates(subject, object nixis.SecurityLabel) bool {
 	return subject.Confidentiality >= object.Confidentiality &&
 		subject.Integrity >= object.Integrity &&
 		(subject.Category&object.Category) == object.Category
@@ -143,7 +143,7 @@ func Dominates(subject, object aegis.SecurityLabel) bool {
 // Equal compares two labels for equality.
 //
 //go:nosplit
-func Equal(a, b aegis.SecurityLabel) bool {
+func Equal(a, b nixis.SecurityLabel) bool {
 	return a.Confidentiality == b.Confidentiality &&
 		a.Integrity == b.Integrity &&
 		a.Category == b.Category
@@ -159,7 +159,7 @@ func Equal(a, b aegis.SecurityLabel) bool {
 //   - Confidentiality: max(session, resource)
 //   - Integrity:       max(session, resource)  ← GOES UP (unlike Join)
 //   - Category:        session.Category | resource.Category
-func elevateLabel(session, resource aegis.SecurityLabel) aegis.SecurityLabel {
+func elevateLabel(session, resource nixis.SecurityLabel) nixis.SecurityLabel {
 	c := session.Confidentiality
 	if resource.Confidentiality > c {
 		c = resource.Confidentiality
@@ -168,7 +168,7 @@ func elevateLabel(session, resource aegis.SecurityLabel) aegis.SecurityLabel {
 	if resource.Integrity > i {
 		i = resource.Integrity
 	}
-	return aegis.SecurityLabel{
+	return nixis.SecurityLabel{
 		Confidentiality: c,
 		Integrity:       i,
 		Category:        session.Category | resource.Category,
@@ -180,7 +180,7 @@ func elevateLabel(session, resource aegis.SecurityLabel) aegis.SecurityLabel {
 type DeclassificationAnnotation struct {
 	SessionID string
 	AuditRef  string
-	Label     aegis.SecurityLabel // label at time of declassification request
+	Label     nixis.SecurityLabel // label at time of declassification request
 }
 
 // DeclassificationGate records a declassification annotation.

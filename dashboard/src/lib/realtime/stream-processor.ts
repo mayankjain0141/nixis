@@ -1,6 +1,6 @@
 // WS-20: Stream Processing Layer
 // Windowed aggregations (5s/30s/5min/1hr), latency percentiles, OrderedEventList
-// (binary-search insertion by aegissequence), and event correlation.
+// (binary-search insertion by nixissequence), and event correlation.
 
 import type { ValidatedEvent } from './ingestion-pipeline';
 import type { ProcessedBatch } from './backpressure';
@@ -99,8 +99,8 @@ export interface CorrelatedEventGroup {
 }
 
 // ── OrderedEventList ──────────────────────────────────────────────────────────
-// Maintains strictly increasing order by aegissequence via binary-search insertion.
-// Invariant: no two events share the same aegissequence (deduplicated on insert).
+// Maintains strictly increasing order by nixissequence via binary-search insertion.
+// Invariant: no two events share the same nixissequence (deduplicated on insert).
 // O(log n) per insert; the audit trail NEVER shows events out of order.
 
 const MAX_ORDERED = 10_000;
@@ -109,11 +109,11 @@ export class OrderedEventList {
   private readonly events: ValidatedEvent[] = [];
 
   insert(event: ValidatedEvent): void {
-    const seq = event.envelope.aegissequence;
+    const seq = event.envelope.nixissequence;
     let lo = 0, hi = this.events.length;
     while (lo < hi) {
       const mid = (lo + hi) >>> 1;
-      const midSeq = this.events[mid].envelope.aegissequence;
+      const midSeq = this.events[mid].envelope.nixissequence;
       if (midSeq === seq) return; // duplicate — drop silently
       if (midSeq < seq) lo = mid + 1;
       else hi = mid;
@@ -124,7 +124,7 @@ export class OrderedEventList {
     }
   }
 
-  // Returns the full ordered snapshot (oldest first by aegissequence).
+  // Returns the full ordered snapshot (oldest first by nixissequence).
   toArray(): ReadonlyArray<ValidatedEvent> {
     return this.events;
   }
@@ -292,7 +292,7 @@ function buildCorrelationIndex(events: ReadonlyArray<ValidatedEvent>): Map<strin
 
   for (const e of events) {
     if (e.type === 'policy.evaluated' || e.type === 'policy.denied') {
-      const id = e.envelope.id ?? String(e.envelope.aegissequence);
+      const id = e.envelope.id ?? String(e.envelope.nixissequence);
       if (!index.has(id)) {
         index.set(id, { primaryEventId: id, delegationEvents: [], policyEvents: [e] });
       }
@@ -307,8 +307,8 @@ function buildCorrelationIndex(events: ReadonlyArray<ValidatedEvent>): Map<strin
     for (const [gid, group] of index) {
       for (const pe of group.policyEvents) {
         const peSessionId = (pe.data as { session_id?: string }).session_id ?? '';
-        const peSeq = pe.envelope.aegissequence;
-        if (peSessionId === sessionId && peSeq < e.envelope.aegissequence && peSeq > bestSeq) {
+        const peSeq = pe.envelope.nixissequence;
+        if (peSessionId === sessionId && peSeq < e.envelope.nixissequence && peSeq > bestSeq) {
           bestId = gid;
           bestSeq = peSeq;
         }
@@ -337,7 +337,7 @@ export interface IStreamProcessor {
   getCorrelatedEvents(eventId: string): CorrelatedEventGroup | null;
   onMetricsUpdate(handler: (metrics: DerivedMetrics) => void): () => void;
   reset(): void;
-  // Ordered audit trail (insertion-sorted by aegissequence)
+  // Ordered audit trail (insertion-sorted by nixissequence)
   getOrderedEvents(): ReadonlyArray<ValidatedEvent>;
 }
 
@@ -366,7 +366,7 @@ export function createStreamProcessor(): IStreamProcessor {
         latencyNs: d.latency_ns,
         sessionId: d.session_id,
         policyId: d.decision.policy_id,
-        eventId: event.envelope.id ?? String(event.envelope.aegissequence),
+        eventId: event.envelope.id ?? String(event.envelope.nixissequence),
       };
     }
     return null;

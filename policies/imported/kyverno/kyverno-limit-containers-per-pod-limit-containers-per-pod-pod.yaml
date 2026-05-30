@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-limit-containers-per-pod-limit-containers-per-pod-pod
     annotations:
-        aegis.io/imported-from: aegis-import-3496021612.yaml
-        aegis.io/severity: low
+        nixis.io/imported-from: nixis-import-3496021612.yaml
+        nixis.io/severity: low
         kyverno.io/category: Sample
 spec:
     description: Pods can have many different containers which are tightly coupled. It may be desirable to limit the amount of containers that can be in a single Pod to control best practice application or so policy can be applied consistently. This policy checks all Pods to ensure they have no more than four containers.

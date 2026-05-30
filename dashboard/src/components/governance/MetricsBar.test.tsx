@@ -17,7 +17,7 @@ function makeEvent(verdict: GovernanceEvent['verdict'], n: number): GovernanceEv
     label: { confidentiality: 0, integrity: 0, categories: 0 },
     labelState: 'fresh',
     latencyNs: 1_000_000,
-    aegisSequence: n,
+    nixisSequence: n,
     timestamp: Date.now() * 1_000_000,
   };
 }

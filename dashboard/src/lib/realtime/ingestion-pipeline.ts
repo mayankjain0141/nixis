@@ -31,7 +31,7 @@ const CloudEventEnvelopeSchema = z.object({
   source: z.string().optional(),
   id: z.string().optional(),
   time: z.string().optional(),
-  aegissequence: z.number().int().nonnegative(),
+  nixissequence: z.number().int().nonnegative(),
   data: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -234,7 +234,7 @@ function createSequenceTracker(
 
   return {
     submit(event: ValidatedEvent): void {
-      const seq = event.envelope.aegissequence;
+      const seq = event.envelope.nixissequence;
 
       if (nextExpected === 0) { nextExpected = seq + 1; onOrdered(event); return; }
       if (seq === nextExpected) { nextExpected++; onOrdered(event); drain(); return; }
@@ -292,7 +292,7 @@ export function createEventIngestionPipeline(
   });
 
   function dedupKey(envelope: Envelope): string {
-    return envelope.id ?? String(envelope.aegissequence);
+    return envelope.id ?? String(envelope.nixissequence);
   }
 
   return {

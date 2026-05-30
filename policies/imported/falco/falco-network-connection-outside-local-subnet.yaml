@@ -1,14 +1,14 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-network-connection-outside-local-subnet
     annotations:
-        aegis.io/falco-tags: maturity_incubating,container,network,mitre_discovery,T1046,PCI_DSS_6.4.2
-        aegis.io/imported-from: aegis-import-2621062960.yaml
-        aegis.io/severity: medium
-        aegis.io/llm-confidence: medium
-        aegis.io/source-rule: Network Connection outside Local Subnet
+        nixis.io/falco-tags: maturity_incubating,container,network,mitre_discovery,T1046,PCI_DSS_6.4.2
+        nixis.io/imported-from: nixis-import-2621062960.yaml
+        nixis.io/severity: medium
+        nixis.io/llm-confidence: medium
+        nixis.io/source-rule: Network Connection outside Local Subnet
 spec:
     description: |
         Detect network traffic (inbound or outbound) from a container to a destination outside the local subnet. To operationalize this rule, profile your environment and update the template macro namespace_scope_network_only_subnet. Customizing network-related rules usually demands substantial engineering effort to ensure their functionality.

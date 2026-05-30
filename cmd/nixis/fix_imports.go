@@ -19,18 +19,18 @@ var fixImportsDryRun bool
 var fixImportsCmd = &cobra.Command{
 	Use:   "fix-imports <directory>",
 	Short: "LLM in-place repair of IMPORT_TODO policies",
-	Long: `Walk a directory of imported Aegis PolicyTemplate YAML files and attempt to
+	Long: `Walk a directory of imported Nixis PolicyTemplate YAML files and attempt to
 repair entries that contain expression: "false" and an IMPORT_TODO comment.
 
 For each fixable file, the original condition is extracted and sent to the
 Claude API to generate a CEL expression. On success the file is rewritten
 in-place with the CEL expression, the IMPORT_TODO comment removed, and an
-aegis.io/llm-confidence: medium annotation added.
+nixis.io/llm-confidence: medium annotation added.
 
 Examples:
-  aegis policy fix-imports policies/imported/falco/
-  aegis policy fix-imports policies/imported/ --dry-run
-  aegis policy fix-imports policies/imported/ --llm-model claude-opus-4-7`,
+  nixis policy fix-imports policies/imported/falco/
+  nixis policy fix-imports policies/imported/ --dry-run
+  nixis policy fix-imports policies/imported/ --llm-model claude-opus-4-7`,
 	Args: cobra.ExactArgs(1),
 	RunE: runFixImports,
 }
@@ -187,7 +187,7 @@ func extractPolicyInfo(content string, doc *yaml.Node) policyInfo {
 		root := doc.Content[0]
 		info.name = yamlMappingValue(root, "metadata", "name")
 		info.description = yamlMappingValue(root, "spec", "description")
-		info.sourceRule = yamlMappingAnnotation(root, "aegis.io/source-rule")
+		info.sourceRule = yamlMappingAnnotation(root, "nixis.io/source-rule")
 		// Pull message from spec.validations[0].message
 		info.message = yamlFirstValidationMessage(root)
 	}
@@ -246,7 +246,7 @@ func inferSourceFormat(path string) string {
 // rewriteFile produces the updated file content:
 // - removes all "# IMPORT_TODO:" comment lines from the top header
 // - replaces expression: "false" with the CEL expression
-// - adds aegis.io/llm-confidence: medium annotation
+// - adds nixis.io/llm-confidence: medium annotation
 // - adds an IMPORT_REVIEW comment at the top
 func rewriteFile(content string, doc *yaml.Node, celExpr string, attempts int, sourceFormat string) (string, error) {
 	lines := strings.Split(content, "\n")
@@ -266,10 +266,10 @@ func rewriteFile(content string, doc *yaml.Node, celExpr string, attempts int, s
 	// Only replace the first occurrence (the one in spec.validations).
 	result = strings.Replace(result, `expression: "false"`, fmt.Sprintf("expression: %q", celExpr), 1)
 
-	// 3. Add aegis.io/llm-confidence annotation.
+	// 3. Add nixis.io/llm-confidence annotation.
 	// Find the annotations block and append after the last annotation line before
 	// the next non-annotation line. We do a targeted string insert for reliability.
-	result = injectAnnotation(result, "aegis.io/llm-confidence: medium")
+	result = injectAnnotation(result, "nixis.io/llm-confidence: medium")
 
 	// 4. Prepend an IMPORT_REVIEW comment at the top of the file (after any leading
 	//    comment lines that are NOT IMPORT_TODO).
@@ -280,7 +280,7 @@ func rewriteFile(content string, doc *yaml.Node, celExpr string, attempts int, s
 }
 
 // injectAnnotation inserts a YAML annotation key into the annotations map.
-// It finds the last "    aegis.io/" prefixed line (4-space indent) and appends
+// It finds the last "    nixis.io/" prefixed line (4-space indent) and appends
 // the new annotation on the next line with matching indentation.
 func injectAnnotation(content, annotation string) string {
 	lines := strings.Split(content, "\n")
@@ -294,11 +294,11 @@ func injectAnnotation(content, annotation string) string {
 	}
 
 	// Find insertion point: last line inside the annotations block.
-	// Annotations lines look like: "        aegis.io/something: value" (8-space indent)
+	// Annotations lines look like: "        nixis.io/something: value" (8-space indent)
 	lastAnnotIdx := -1
 	for i, l := range lines {
 		trimmed := strings.TrimLeft(l, " ")
-		if strings.HasPrefix(trimmed, "aegis.io/") {
+		if strings.HasPrefix(trimmed, "nixis.io/") {
 			lastAnnotIdx = i
 		}
 	}

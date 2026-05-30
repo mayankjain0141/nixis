@@ -10,9 +10,9 @@ import (
 	"net"
 	"time"
 
-	"github.com/mayjain/aegis/internal/audit"
-	"github.com/mayjain/aegis/internal/otel"
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/internal/audit"
+	"github.com/mayjain/nixis/internal/otel"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 // headerSize is the byte length of the 4-byte big-endian length prefix.
@@ -24,7 +24,7 @@ const headerSize = 4
 //
 // Returns an error if:
 //   - The 4-byte header cannot be read.
-//   - The declared length exceeds aegis.MaxMessageSize.
+//   - The declared length exceeds nixis.MaxMessageSize.
 //   - The payload cannot be fully read.
 //
 // The deadline parameter is used to set a read deadline on the connection when
@@ -105,7 +105,7 @@ func (d *Daemon) handleConnection(conn net.Conn) {
 
 	deadline := time.Now().Add(evaluationDeadline)
 
-	raw, err := ReadMessage(conn, deadline, aegis.MaxMessageSize)
+	raw, err := ReadMessage(conn, deadline, nixis.MaxMessageSize)
 	if err != nil {
 		if errors.Is(err, errMessageTooLarge) {
 			d.writeErrorResponse(conn, deadline, "message exceeds MaxMessageSize")
@@ -115,7 +115,7 @@ func (d *Daemon) handleConnection(conn net.Conn) {
 		return
 	}
 
-	var req aegis.CheckRequest
+	var req nixis.CheckRequest
 	if err := json.Unmarshal(raw, &req); err != nil {
 		d.writeErrorResponse(conn, deadline, "malformed JSON request")
 		return
@@ -141,11 +141,11 @@ func (d *Daemon) handleConnection(conn net.Conn) {
 		actionString(resp.Decision.Action),
 		string(resp.EnforcingLayer),
 		resp.LatencyNs,
-		resp.Decision.Action == aegis.ActionDeny,
+		resp.Decision.Action == nixis.ActionDeny,
 	)
 
 	// Persist session label change when the decision is not a deny.
-	if d.sessions != nil && resp.Decision.Action != aegis.ActionDeny {
+	if d.sessions != nil && resp.Decision.Action != nixis.ActionDeny {
 		d.sessions.Elevate(req.SessionID, req.SecurityLabel)
 		newLabel := d.sessions.Current(req.SessionID)
 		newState := d.sessions.LabelState(req.SessionID)
@@ -169,13 +169,13 @@ func (d *Daemon) handleConnection(conn net.Conn) {
 
 	// Emit to streaming server (non-blocking, nil-safe).
 	if d.streamSrv != nil {
-		eventType := aegis.EventTypeDecision
-		if resp.Decision.Action == aegis.ActionDeny {
+		eventType := nixis.EventTypeDecision
+		if resp.Decision.Action == nixis.ActionDeny {
 			eventType = "policy.denied"
 		}
-		d.streamSrv.Emit(ctx, aegis.StreamEvent{
+		d.streamSrv.Emit(ctx, nixis.StreamEvent{
 			Type:           eventType,
-			AegisSequence:  0, // assigned in fan-out goroutine
+			NixisSequence:  0, // assigned in fan-out goroutine
 			SessionID:      req.SessionID,
 			Tool:           req.Tool,
 			Action:         resp.Decision.Action,
@@ -194,12 +194,12 @@ func (d *Daemon) handleConnection(conn net.Conn) {
 // Never returns an error to the caller — used in error paths where the
 // primary goal is to signal denial before closing.
 func (d *Daemon) writeErrorResponse(conn net.Conn, deadline time.Time, reason string) {
-	resp := aegis.CheckResponse{
-		Decision: aegis.Decision{
-			Action: aegis.ActionDeny,
+	resp := nixis.CheckResponse{
+		Decision: nixis.Decision{
+			Action: nixis.ActionDeny,
 			Reason: reason,
 		},
-		EnforcingLayer: aegis.EnforcingLayerAdapter,
+		EnforcingLayer: nixis.EnforcingLayerAdapter,
 	}
 	b, err := json.Marshal(resp)
 	if err != nil {
@@ -209,15 +209,15 @@ func (d *Daemon) writeErrorResponse(conn net.Conn, deadline time.Time, reason st
 }
 
 // actionString converts an Action to its wire-format string, matching MarshalJSON.
-func actionString(a aegis.Action) string {
+func actionString(a nixis.Action) string {
 	switch a {
-	case aegis.ActionDeny:
+	case nixis.ActionDeny:
 		return "deny"
-	case aegis.ActionAllow:
+	case nixis.ActionAllow:
 		return "allow"
-	case aegis.ActionRequireApproval:
+	case nixis.ActionRequireApproval:
 		return "require_approval"
-	case aegis.ActionAudit:
+	case nixis.ActionAudit:
 		return "audit"
 	default:
 		return "deny"
@@ -228,12 +228,12 @@ func actionString(a aegis.Action) string {
 // Called when the daemon is in ModeDenyAll or ModeReadOnly and must reject
 // all incoming requests without evaluation.
 func (d *Daemon) writeModeResponse(conn net.Conn, deadline time.Time, mode DaemonMode) {
-	resp := aegis.CheckResponse{
-		Decision: aegis.Decision{
-			Action: aegis.ActionDeny,
+	resp := nixis.CheckResponse{
+		Decision: nixis.Decision{
+			Action: nixis.ActionDeny,
 			Reason: "daemon in " + mode.String() + " mode",
 		},
-		EnforcingLayer: aegis.EnforcingLayerAdapter,
+		EnforcingLayer: nixis.EnforcingLayerAdapter,
 	}
 	b, err := json.Marshal(resp)
 	if err != nil {

@@ -1,12 +1,12 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-require-authorizationpolicies-check-authz-pol-namespace
     annotations:
-        aegis.io/imported-from: aegis-import-2673448083.yaml
-        aegis.io/severity: medium
-        aegis.io/llm-confidence: low
+        nixis.io/imported-from: nixis-import-2673448083.yaml
+        nixis.io/severity: medium
+        nixis.io/llm-confidence: low
         kyverno.io/category: Istio
 spec:
     description: An AuthorizationPolicy is used to provide access controls for traffic in the mesh and can be defined at multiple levels. For the Namespace level, all Namespaces should have at least one AuthorizationPolicy. This policy, designed to run in background mode for reporting purposes, ensures every Namespace has at least one AuthorizationPolicy.

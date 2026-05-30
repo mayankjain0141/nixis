@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mayjain/aegis/internal/bundle"
-	"github.com/mayjain/aegis/pkg/aegis"
-	policy_types "github.com/mayjain/aegis/pkg/policy/types"
+	"github.com/mayjain/nixis/internal/bundle"
+	"github.com/mayjain/nixis/pkg/nixis"
+	policy_types "github.com/mayjain/nixis/pkg/policy/types"
 )
 
 // makeSignedBundle creates a tar.gz containing bundle.yaml with policyYAML,
@@ -56,11 +56,11 @@ func makeSignedBundle(t *testing.T, priv ed25519.PrivateKey, policyYAML string) 
 type mockEngine struct {
 	reloadCalls int
 	reloadErr   error
-	lastBundle  *aegis.CompiledBundle
-	reloadFn    func(*aegis.CompiledBundle) // optional callback invoked on each Reload
+	lastBundle  *nixis.CompiledBundle
+	reloadFn    func(*nixis.CompiledBundle) // optional callback invoked on each Reload
 }
 
-func (m *mockEngine) Reload(_ context.Context, b *aegis.CompiledBundle) error {
+func (m *mockEngine) Reload(_ context.Context, b *nixis.CompiledBundle) error {
 	if m.reloadErr != nil {
 		return m.reloadErr
 	}
@@ -73,7 +73,7 @@ func (m *mockEngine) Reload(_ context.Context, b *aegis.CompiledBundle) error {
 }
 
 // goodYAML is a minimal valid PolicyTemplate YAML.
-const goodYAML = `apiVersion: aegis.io/v1
+const goodYAML = `apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: test-policy
@@ -224,13 +224,13 @@ func TestBundle_HealthGate_Rollback(t *testing.T) {
 
 	failingVectors := []bundle.TestVector{
 		{
-			Request:        aegis.CheckRequest{Tool: "Bash"},
-			ExpectedAction: aegis.ActionAllow, // will never match deny-all default
+			Request:        nixis.CheckRequest{Tool: "Bash"},
+			ExpectedAction: nixis.ActionAllow, // will never match deny-all default
 		},
 	}
 	bundle.SetTestVectors(bl, failingVectors)
-	bundle.SetEvalFn(bl, func(_ *aegis.CompiledBundle, _ aegis.CheckRequest) aegis.Action {
-		return aegis.ActionDeny // always returns deny, expected is allow → mismatch
+	bundle.SetEvalFn(bl, func(_ *nixis.CompiledBundle, _ nixis.CheckRequest) nixis.Action {
+		return nixis.ActionDeny // always returns deny, expected is allow → mismatch
 	})
 
 	bundle.RunOnce(bl, ctx)
@@ -267,8 +267,8 @@ func TestBundle_FirstActivation_DenyAll(t *testing.T) {
 
 	failingVectors := []bundle.TestVector{
 		{
-			Request:        aegis.CheckRequest{Tool: "Bash"},
-			ExpectedAction: aegis.ActionAllow,
+			Request:        nixis.CheckRequest{Tool: "Bash"},
+			ExpectedAction: nixis.ActionAllow,
 		},
 	}
 
@@ -285,8 +285,8 @@ func TestBundle_FirstActivation_DenyAll(t *testing.T) {
 		t.Fatalf("NewBundleLoader: %v", err)
 	}
 
-	bundle.SetEvalFn(bl, func(_ *aegis.CompiledBundle, _ aegis.CheckRequest) aegis.Action {
-		return aegis.ActionDeny
+	bundle.SetEvalFn(bl, func(_ *nixis.CompiledBundle, _ nixis.CheckRequest) nixis.Action {
+		return nixis.ActionDeny
 	})
 
 	ctx := context.Background()
@@ -541,7 +541,7 @@ func makeSignedMultiBundle(t *testing.T, priv ed25519.PrivateKey, files map[stri
 // TestBundle_Parse_LayerField verifies that spec.layer in policy YAML is mapped
 // to PolicyBinding.Layer when parsing.
 func TestBundle_Parse_LayerField(t *testing.T) {
-	ceilingYAML := `apiVersion: aegis.io/v1
+	ceilingYAML := `apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: ceiling-policy
@@ -572,7 +572,7 @@ spec:
 	}
 
 	// Unknown layer falls back to "cel".
-	unknownYAML := `apiVersion: aegis.io/v1
+	unknownYAML := `apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: unknown-layer-policy
@@ -608,7 +608,7 @@ func TestBundle_LayerPriorityOrder(t *testing.T) {
 	pub := priv.Public().(ed25519.PublicKey)
 
 	// Build a bundle with policies in deliberately wrong order: cel, project, team, ceiling.
-	celYAML := `apiVersion: aegis.io/v1
+	celYAML := `apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: cel-policy
@@ -620,7 +620,7 @@ spec:
     - expression: 'false'
       action: DENY
 `
-	projectYAML := `apiVersion: aegis.io/v1
+	projectYAML := `apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: project-policy
@@ -633,7 +633,7 @@ spec:
     - expression: 'false'
       action: DENY
 `
-	teamYAML := `apiVersion: aegis.io/v1
+	teamYAML := `apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: team-policy
@@ -646,7 +646,7 @@ spec:
     - expression: 'false'
       action: DENY
 `
-	ceilingYAML := `apiVersion: aegis.io/v1
+	ceilingYAML := `apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: ceiling-policy
@@ -677,9 +677,9 @@ spec:
 		t.Fatal(err)
 	}
 
-	var capturedBundle *aegis.CompiledBundle
+	var capturedBundle *nixis.CompiledBundle
 	eng := &mockEngine{
-		reloadFn: func(b *aegis.CompiledBundle) {
+		reloadFn: func(b *nixis.CompiledBundle) {
 			capturedBundle = b
 		},
 	}

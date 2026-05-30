@@ -7,8 +7,8 @@ import (
 	"crypto/sha256"
 	"time"
 
-	"github.com/mayjain/aegis/pkg/aegis"
-	policy_types "github.com/mayjain/aegis/pkg/policy/types"
+	"github.com/mayjain/nixis/pkg/nixis"
+	policy_types "github.com/mayjain/nixis/pkg/policy/types"
 )
 
 // SetParseDirFn injects a custom parseDirFn into a BundleLoader for testing.
@@ -17,7 +17,7 @@ func SetParseDirFn(bl *BundleLoader, fn func(string) ([]policy_types.PolicyTempl
 }
 
 // SetEvalFn injects a custom evalFn into a BundleLoader for testing.
-func SetEvalFn(bl *BundleLoader, fn func(*aegis.CompiledBundle, aegis.CheckRequest) aegis.Action) {
+func SetEvalFn(bl *BundleLoader, fn func(*nixis.CompiledBundle, nixis.CheckRequest) nixis.Action) {
 	bl.testEvalFn = fn
 }
 

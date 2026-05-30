@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-block-images-with-volumes-block-images-with-vols-pod
     annotations:
-        aegis.io/imported-from: aegis-import-4092897958.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-4092897958.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Other
 spec:
     description: OCI images may optionally be built with VOLUME statements which, if run in read-only mode, would still result in write access to the specified location. This may be unexpected and undesirable. This policy checks the contents of every container image and inspects them for such VOLUME statements, then blocks if found.

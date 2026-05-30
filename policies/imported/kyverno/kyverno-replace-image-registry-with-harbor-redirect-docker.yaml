@@ -1,18 +1,18 @@
 # CEL_LIMITATION (class: mutate/generate): Kyverno mutate rules run server-side inside the
 # Kubernetes admission webhook and can modify the resource object before it is persisted.
-# Aegis CEL runs client-side at agent tool-call time and has no mechanism to rewrite manifest
+# Nixis CEL runs client-side at agent tool-call time and has no mechanism to rewrite manifest
 # content or inject fields. All Kyverno mutate/generate policies in this batch are therefore
 # translated to false + AUDIT. The stub loads and appears in governance output but never blocks.
-# MUTATE policy: translated to false + AUDIT (Aegis cannot redirect docker.io pulls to Harbor at runtime)
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# MUTATE policy: translated to false + AUDIT (Nixis cannot redirect docker.io pulls to Harbor at runtime)
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-replace-image-registry-with-harbor-redirect-docker
     annotations:
-        aegis.io/imported-from: aegis-import-1521143862.yaml
-        aegis.io/severity: medium
-        aegis.io/llm-confidence: medium
+        nixis.io/imported-from: nixis-import-1521143862.yaml
+        nixis.io/severity: medium
+        nixis.io/llm-confidence: medium
         kyverno.io/category: Sample
 spec:
     description: Some registries like Harbor offer pull-through caches for images from certain registries. Images can be re-written to be pulled from the redirected registry instead of the original and the registry will proxy pull the image, adding it to its internal cache. The imageData context variable in this policy provides a normalized view of the container image, allowing the policy to make decisions based on various "live" image details. As a result, it requires access to the source registry and the existence of the target image to verify those details.
@@ -22,6 +22,6 @@ spec:
             - Edit
     validations:
         - expression: 'false'
-          message: 'Mutation policy translated to audit-only — Aegis cannot rewrite image references to redirect docker.io pulls through Harbor at runtime'
+          message: 'Mutation policy translated to audit-only — Nixis cannot rewrite image references to redirect docker.io pulls through Harbor at runtime'
           action: AUDIT
     defaultAction: ALLOW

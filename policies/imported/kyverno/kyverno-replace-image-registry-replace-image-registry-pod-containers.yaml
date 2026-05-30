@@ -1,18 +1,18 @@
 # CEL_LIMITATION (class: mutate/generate): Kyverno mutate rules run server-side inside the
 # Kubernetes admission webhook and can modify the resource object before it is persisted.
-# Aegis CEL runs client-side at agent tool-call time and has no mechanism to rewrite manifest
+# Nixis CEL runs client-side at agent tool-call time and has no mechanism to rewrite manifest
 # content or inject fields. All Kyverno mutate/generate policies in this batch are therefore
 # translated to false + AUDIT. The stub loads and appears in governance output but never blocks.
-# MUTATE policy: translated to false + AUDIT (Aegis cannot rewrite image registry references at runtime)
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# MUTATE policy: translated to false + AUDIT (Nixis cannot rewrite image registry references at runtime)
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-replace-image-registry-replace-image-registry-pod-containers
     annotations:
-        aegis.io/imported-from: aegis-import-247483270.yaml
-        aegis.io/severity: medium
-        aegis.io/llm-confidence: medium
+        nixis.io/imported-from: nixis-import-247483270.yaml
+        nixis.io/severity: medium
+        nixis.io/llm-confidence: medium
         kyverno.io/category: Sample
 spec:
     description: 'Rather than blocking Pods which come from outside registries, it is also possible to mutate them so the pulls are directed to approved registries. In some cases, those registries may function as pull-through proxies and can fetch the image if not cached. This policy mutates all images either in the form ''image:tag'' or ''registry.corp.com/image:tag'' to be `myregistry.corp.com/`. Any path in the image name will be preserved. Note that this mutates Pods directly and not their controllers. It can be changed if desired but if so may need to not match on Pods. '
@@ -22,6 +22,6 @@ spec:
             - Edit
     validations:
         - expression: 'false'
-          message: 'Mutation policy translated to audit-only — Aegis cannot rewrite container image registry references at runtime'
+          message: 'Mutation policy translated to audit-only — Nixis cannot rewrite container image registry references at runtime'
           action: AUDIT
     defaultAction: ALLOW

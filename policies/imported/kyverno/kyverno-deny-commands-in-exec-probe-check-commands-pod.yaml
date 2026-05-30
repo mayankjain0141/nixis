@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-deny-commands-in-exec-probe-check-commands-pod
     annotations:
-        aegis.io/imported-from: aegis-import-1641623585.yaml
-        aegis.io/severity: low
+        nixis.io/imported-from: nixis-import-1641623585.yaml
+        nixis.io/severity: low
         kyverno.io/category: Other in CEL
 spec:
     description: Developers may feel compelled to use simple shell commands as a workaround to creating "proper" liveness or readiness probes for a Pod. Such a practice can be discouraged via detection of those commands. This policy prevents the use of certain commands `jcmd`, `ps`, or `ls` if found in a Pod's liveness exec probe.

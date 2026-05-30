@@ -9,12 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mayjain/aegis/internal/cel"
-	"github.com/mayjain/aegis/internal/classify"
-	"github.com/mayjain/aegis/internal/ifc"
-	"github.com/mayjain/aegis/pkg/adapters"
-	"github.com/mayjain/aegis/pkg/aegis"
-	policy_types "github.com/mayjain/aegis/pkg/policy/types"
+	"github.com/mayjain/nixis/internal/cel"
+	"github.com/mayjain/nixis/internal/classify"
+	"github.com/mayjain/nixis/internal/ifc"
+	"github.com/mayjain/nixis/pkg/adapters"
+	"github.com/mayjain/nixis/pkg/nixis"
+	policy_types "github.com/mayjain/nixis/pkg/policy/types"
 )
 
 func TestPolicyEngine_NilSnapshot_ReturnsDeny(t *testing.T) {
@@ -26,14 +26,14 @@ func TestPolicyEngine_NilSnapshot_ReturnsDeny(t *testing.T) {
 
 	engine := NewPolicyEngine(sessions, celEnv)
 
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "TestTool",
 		SessionID: "test-session",
 	}
 
 	resp := engine.Evaluate(context.Background(), req)
 
-	if resp.Decision.Action != aegis.ActionDeny {
+	if resp.Decision.Action != nixis.ActionDeny {
 		t.Errorf("expected ActionDeny, got %v", resp.Decision.Action)
 	}
 	if resp.Decision.Reason == "" {
@@ -59,7 +59,7 @@ func TestPolicyEngine_Reload_SingleWriter(t *testing.T) {
 	for i := 0; i < numGoroutines; i++ {
 		go func(n int) {
 			defer wg.Done()
-			bundle := &aegis.CompiledBundle{
+			bundle := &nixis.CompiledBundle{
 				Version: uint64(n),
 			}
 			err := engine.Reload(context.Background(), bundle)
@@ -112,7 +112,7 @@ func TestPolicyEngine_Evaluate_Pipeline_AdapterLayer(t *testing.T) {
 	classifier := classify.NewClassifier(catalog)
 
 	snap := &engineSnapshot{
-		public: aegis.EngineSnapshot{
+		public: nixis.EngineSnapshot{
 			Version: 1,
 		},
 		classifier: classifier,
@@ -121,17 +121,17 @@ func TestPolicyEngine_Evaluate_Pipeline_AdapterLayer(t *testing.T) {
 	}
 	engine.applySnapshot(snap)
 
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "CriticalTool",
 		SessionID: "test-session",
 	}
 
 	resp := engine.Evaluate(context.Background(), req)
 
-	if resp.Decision.Action != aegis.ActionDeny {
+	if resp.Decision.Action != nixis.ActionDeny {
 		t.Errorf("expected ActionDeny for critical tool, got %v", resp.Decision.Action)
 	}
-	if resp.EnforcingLayer != aegis.EnforcingLayerAdapter {
+	if resp.EnforcingLayer != nixis.EnforcingLayerAdapter {
 		t.Errorf("expected EnforcingLayerAdapter, got %v", resp.EnforcingLayer)
 	}
 	if resp.ThreatSeverity != "critical" {
@@ -160,7 +160,7 @@ func TestPolicyEngine_Evaluate_Pipeline_IFCLayer(t *testing.T) {
 	classifier := classify.NewClassifier(catalog)
 
 	snap := &engineSnapshot{
-		public: aegis.EngineSnapshot{
+		public: nixis.EngineSnapshot{
 			Version: 1,
 		},
 		classifier: classifier,
@@ -170,15 +170,15 @@ func TestPolicyEngine_Evaluate_Pipeline_IFCLayer(t *testing.T) {
 	engine.applySnapshot(snap)
 
 	sessionID := "low-priv-session"
-	sessions.Elevate(sessionID, aegis.SecurityLabel{
+	sessions.Elevate(sessionID, nixis.SecurityLabel{
 		Confidentiality: 1000,
 		Integrity:       1000,
 	})
 
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "ReadTool",
 		SessionID: sessionID,
-		SecurityLabel: aegis.SecurityLabel{
+		SecurityLabel: nixis.SecurityLabel{
 			Confidentiality: 50000,
 			Integrity:       50000,
 		},
@@ -186,10 +186,10 @@ func TestPolicyEngine_Evaluate_Pipeline_IFCLayer(t *testing.T) {
 
 	resp := engine.Evaluate(context.Background(), req)
 
-	if resp.Decision.Action != aegis.ActionDeny {
+	if resp.Decision.Action != nixis.ActionDeny {
 		t.Errorf("expected ActionDeny for IFC violation, got %v", resp.Decision.Action)
 	}
-	if resp.EnforcingLayer != aegis.EnforcingLayerIFC {
+	if resp.EnforcingLayer != nixis.EnforcingLayerIFC {
 		t.Errorf("expected EnforcingLayerIFC, got %v", resp.EnforcingLayer)
 	}
 }
@@ -246,7 +246,7 @@ func TestPolicyEngine_Evaluate_Pipeline_CELLayer(t *testing.T) {
 	}
 
 	snap := &engineSnapshot{
-		public: aegis.EngineSnapshot{
+		public: nixis.EngineSnapshot{
 			Version: 1,
 		},
 		classifier: classifier,
@@ -258,7 +258,7 @@ func TestPolicyEngine_Evaluate_Pipeline_CELLayer(t *testing.T) {
 	}
 	engine.applySnapshot(snap)
 
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "Bash",
 		Args:      []byte(`{"command":"ls -la"}`),
 		SessionID: "test-session",
@@ -266,10 +266,10 @@ func TestPolicyEngine_Evaluate_Pipeline_CELLayer(t *testing.T) {
 
 	resp := engine.Evaluate(context.Background(), req)
 
-	if resp.Decision.Action != aegis.ActionDeny {
+	if resp.Decision.Action != nixis.ActionDeny {
 		t.Errorf("expected ActionDeny from CEL, got %v", resp.Decision.Action)
 	}
-	if resp.EnforcingLayer != aegis.EnforcingLayerCEL {
+	if resp.EnforcingLayer != nixis.EnforcingLayerCEL {
 		t.Errorf("expected EnforcingLayerCEL, got %v", resp.EnforcingLayer)
 	}
 	if resp.PolicySourceLocation != "test.yaml:10" {
@@ -298,7 +298,7 @@ func TestPolicyEngine_Evaluate_NoPolicies_ReturnsAllow(t *testing.T) {
 	classifier := classify.NewClassifier(catalog)
 
 	snap := &engineSnapshot{
-		public: aegis.EngineSnapshot{
+		public: nixis.EngineSnapshot{
 			Version: 1,
 		},
 		classifier: classifier,
@@ -307,14 +307,14 @@ func TestPolicyEngine_Evaluate_NoPolicies_ReturnsAllow(t *testing.T) {
 	}
 	engine.applySnapshot(snap)
 
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "SafeTool",
 		SessionID: "test-session",
 	}
 
 	resp := engine.Evaluate(context.Background(), req)
 
-	if resp.Decision.Action != aegis.ActionAllow {
+	if resp.Decision.Action != nixis.ActionAllow {
 		t.Errorf("expected ActionAllow when no policies match, got %v", resp.Decision.Action)
 	}
 }
@@ -340,7 +340,7 @@ func TestPolicyEngine_Evaluate_FailSecure(t *testing.T) {
 	engine := NewPolicyEngine(sessions, celEnv)
 
 	snap := &engineSnapshot{
-		public: aegis.EngineSnapshot{
+		public: nixis.EngineSnapshot{
 			Version: 1,
 		},
 		classifierIntf: &panicClassifier{},
@@ -349,14 +349,14 @@ func TestPolicyEngine_Evaluate_FailSecure(t *testing.T) {
 	}
 	engine.applySnapshot(snap)
 
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "AnyTool",
 		SessionID: "test-session",
 	}
 
 	resp := engine.Evaluate(context.Background(), req)
 
-	if resp.Decision.Action != aegis.ActionDeny {
+	if resp.Decision.Action != nixis.ActionDeny {
 		t.Errorf("expected ActionDeny on panic (fail-secure), got %v", resp.Decision.Action)
 	}
 	if resp.Decision.Reason != "internal evaluation panic" {
@@ -385,7 +385,7 @@ func TestEvaluate_EnforcingLayer_Adapter(t *testing.T) {
 	classifier := classify.NewClassifier(catalog)
 
 	snap := &engineSnapshot{
-		public: aegis.EngineSnapshot{
+		public: nixis.EngineSnapshot{
 			Version: 1,
 		},
 		classifier: classifier,
@@ -394,14 +394,14 @@ func TestEvaluate_EnforcingLayer_Adapter(t *testing.T) {
 	}
 	engine.applySnapshot(snap)
 
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "DangerousTool",
 		SessionID: "test-session",
 	}
 
 	resp := engine.Evaluate(context.Background(), req)
 
-	if resp.EnforcingLayer != aegis.EnforcingLayerAdapter {
+	if resp.EnforcingLayer != nixis.EnforcingLayerAdapter {
 		t.Errorf("expected EnforcingLayerAdapter, got %v", resp.EnforcingLayer)
 	}
 }
@@ -415,7 +415,7 @@ func TestPolicyEngine_Reload_FailedReloadKeepsOld(t *testing.T) {
 
 	engine := NewPolicyEngine(sessions, celEnv)
 
-	firstBundle := &aegis.CompiledBundle{
+	firstBundle := &nixis.CompiledBundle{
 		Version: 1,
 	}
 	err = engine.Reload(context.Background(), firstBundle)
@@ -430,11 +430,11 @@ func TestPolicyEngine_Reload_FailedReloadKeepsOld(t *testing.T) {
 	version1 := snap1.public.Version
 
 	buildErr := errors.New("intentional build failure for test")
-	engine.buildSnapshotFunc = func(_ context.Context, _ *aegis.CompiledBundle, _ uint64) (*engineSnapshot, []string, error) {
+	engine.buildSnapshotFunc = func(_ context.Context, _ *nixis.CompiledBundle, _ uint64) (*engineSnapshot, []string, error) {
 		return nil, nil, buildErr
 	}
 
-	secondBundle := &aegis.CompiledBundle{
+	secondBundle := &nixis.CompiledBundle{
 		Version: 2,
 	}
 	err = engine.Reload(context.Background(), secondBundle)
@@ -514,7 +514,7 @@ func TestPolicyEngine_Evaluate_AllowsValidRequest(t *testing.T) {
 	classifier := classify.NewClassifier(catalog)
 
 	snap := &engineSnapshot{
-		public: aegis.EngineSnapshot{
+		public: nixis.EngineSnapshot{
 			Version: 1,
 		},
 		classifier: classifier,
@@ -524,15 +524,15 @@ func TestPolicyEngine_Evaluate_AllowsValidRequest(t *testing.T) {
 	engine.applySnapshot(snap)
 
 	sessionID := "valid-session"
-	sessions.Elevate(sessionID, aegis.SecurityLabel{
+	sessions.Elevate(sessionID, nixis.SecurityLabel{
 		Confidentiality: 50000,
 		Integrity:       50000,
 	})
 
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "ReadTool",
 		SessionID: sessionID,
-		SecurityLabel: aegis.SecurityLabel{
+		SecurityLabel: nixis.SecurityLabel{
 			Confidentiality: 1000,
 			Integrity:       1000,
 		},
@@ -540,7 +540,7 @@ func TestPolicyEngine_Evaluate_AllowsValidRequest(t *testing.T) {
 
 	resp := engine.Evaluate(context.Background(), req)
 
-	if resp.Decision.Action != aegis.ActionAllow {
+	if resp.Decision.Action != nixis.ActionAllow {
 		t.Errorf("expected ActionAllow, got %v (reason: %s)", resp.Decision.Action, resp.Decision.Reason)
 	}
 }
@@ -566,7 +566,7 @@ func TestPolicyEngine_Evaluate_DelegationCeilingExceeded(t *testing.T) {
 	classifier := classify.NewClassifier(catalog)
 
 	snap := &engineSnapshot{
-		public: aegis.EngineSnapshot{
+		public: nixis.EngineSnapshot{
 			Version: 1,
 		},
 		classifier: classifier,
@@ -575,22 +575,22 @@ func TestPolicyEngine_Evaluate_DelegationCeilingExceeded(t *testing.T) {
 	}
 	engine.applySnapshot(snap)
 
-	parentLabel := aegis.SecurityLabel{
+	parentLabel := nixis.SecurityLabel{
 		Confidentiality: 10000,
 		Integrity:       10000,
 	}
 	childSessionID := "child-session"
 	sessions.InitWithCeiling(childSessionID, parentLabel)
 
-	sessions.Elevate(childSessionID, aegis.SecurityLabel{
+	sessions.Elevate(childSessionID, nixis.SecurityLabel{
 		Confidentiality: 50000,
 		Integrity:       50000,
 	})
 
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "ReadTool",
 		SessionID: childSessionID,
-		SecurityLabel: aegis.SecurityLabel{
+		SecurityLabel: nixis.SecurityLabel{
 			Confidentiality: 1000,
 			Integrity:       1000,
 		},
@@ -598,10 +598,10 @@ func TestPolicyEngine_Evaluate_DelegationCeilingExceeded(t *testing.T) {
 
 	resp := engine.Evaluate(context.Background(), req)
 
-	if resp.Decision.Action != aegis.ActionDeny {
+	if resp.Decision.Action != nixis.ActionDeny {
 		t.Errorf("expected ActionDeny for ceiling violation, got %v", resp.Decision.Action)
 	}
-	if resp.EnforcingLayer != aegis.EnforcingLayerDelegation {
+	if resp.EnforcingLayer != nixis.EnforcingLayerDelegation {
 		t.Errorf("expected EnforcingLayerDelegation, got %v", resp.EnforcingLayer)
 	}
 }
@@ -627,7 +627,7 @@ func TestPolicyEngine_Evaluate_ContextTimeout(t *testing.T) {
 	classifier := classify.NewClassifier(catalog)
 
 	snap := &engineSnapshot{
-		public: aegis.EngineSnapshot{
+		public: nixis.EngineSnapshot{
 			Version: 1,
 		},
 		classifier: classifier,
@@ -641,14 +641,14 @@ func TestPolicyEngine_Evaluate_ContextTimeout(t *testing.T) {
 
 	time.Sleep(1 * time.Millisecond)
 
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "SlowTool",
 		SessionID: "test-session",
 	}
 
 	resp := engine.Evaluate(ctx, req)
 
-	if resp.Decision.Action != aegis.ActionAllow {
+	if resp.Decision.Action != nixis.ActionAllow {
 		t.Logf("Note: got %v (context was already cancelled, but pipeline completed)", resp.Decision.Action)
 	}
 }
@@ -675,7 +675,7 @@ func TestPolicyEngine_Evaluate_WithBashCommandText(t *testing.T) {
 	classifier := classify.NewClassifier(catalog)
 
 	snap := &engineSnapshot{
-		public: aegis.EngineSnapshot{
+		public: nixis.EngineSnapshot{
 			Version: 1,
 		},
 		classifier: classifier,
@@ -689,7 +689,7 @@ func TestPolicyEngine_Evaluate_WithBashCommandText(t *testing.T) {
 	}
 	argsJSON, _ := json.Marshal(args)
 
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "Bash",
 		Args:      argsJSON,
 		SessionID: "test-session",
@@ -697,7 +697,7 @@ func TestPolicyEngine_Evaluate_WithBashCommandText(t *testing.T) {
 
 	resp := engine.Evaluate(context.Background(), req)
 
-	if resp.Decision.Action != aegis.ActionAllow {
+	if resp.Decision.Action != nixis.ActionAllow {
 		t.Errorf("expected ActionAllow for simple bash command, got %v", resp.Decision.Action)
 	}
 }
@@ -719,7 +719,7 @@ func BenchmarkPolicyEngine_Evaluate(b *testing.B) {
 	classifier := classify.NewClassifier(catalog)
 
 	snap := &engineSnapshot{
-		public: aegis.EngineSnapshot{
+		public: nixis.EngineSnapshot{
 			Version: 1,
 		},
 		classifier: classifier,
@@ -728,7 +728,7 @@ func BenchmarkPolicyEngine_Evaluate(b *testing.B) {
 	}
 	engine.applySnapshot(snap)
 
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "ReadTool",
 		SessionID: "bench-session",
 	}
@@ -769,7 +769,7 @@ func TestPolicyEngine_Reload_WithBuiltinPolicies(t *testing.T) {
 		},
 	}
 
-	bundle := &aegis.CompiledBundle{
+	bundle := &nixis.CompiledBundle{
 		Version:   1,
 		Templates: templates,
 		Bindings:  bindings,
@@ -852,7 +852,7 @@ func TestPolicyEngine_ParamsFlowToCEL(t *testing.T) {
 			Layer:      "cel",
 		},
 	}
-	bundle := &aegis.CompiledBundle{
+	bundle := &nixis.CompiledBundle{
 		Version:   1,
 		Templates: templates,
 		Bindings:  bindings,
@@ -861,9 +861,9 @@ func TestPolicyEngine_ParamsFlowToCEL(t *testing.T) {
 		t.Fatalf("Reload: %v", err)
 	}
 
-	makeReq := func(cmd string) aegis.CheckRequest {
+	makeReq := func(cmd string) nixis.CheckRequest {
 		args, _ := json.Marshal(map[string]any{"command": cmd})
-		return aegis.CheckRequest{
+		return nixis.CheckRequest{
 			Tool:      "Bash",
 			Args:      args,
 			SessionID: "test-session",
@@ -872,25 +872,25 @@ func TestPolicyEngine_ParamsFlowToCEL(t *testing.T) {
 
 	// Port in devPorts → expression false → ALLOW.
 	resp := engine.Evaluate(context.Background(), makeReq("lsof -ti:7474 | xargs kill -9"))
-	if resp.Decision.Action != aegis.ActionAllow {
+	if resp.Decision.Action != nixis.ActionAllow {
 		t.Errorf("port 7474 in devPorts: expected Allow, got %v (reason: %s)", resp.Decision.Action, resp.Decision.Reason)
 	}
 
 	// Port not in devPorts → expression true → DENY.
 	resp = engine.Evaluate(context.Background(), makeReq("lsof -ti:443 | xargs kill -9"))
-	if resp.Decision.Action != aegis.ActionDeny {
+	if resp.Decision.Action != nixis.ActionDeny {
 		t.Errorf("port 443 not in devPorts: expected Deny, got %v", resp.Decision.Action)
 	}
 
 	// No port pattern → targetPort=0 → && 0 > 0 is false → ALLOW.
 	resp = engine.Evaluate(context.Background(), makeReq("kill -9 12345"))
-	if resp.Decision.Action != aegis.ActionAllow {
+	if resp.Decision.Action != nixis.ActionAllow {
 		t.Errorf("no port pattern: expected Allow, got %v", resp.Decision.Action)
 	}
 
 	// Another devPort (fuser pattern).
 	resp = engine.Evaluate(context.Background(), makeReq("fuser -k 3000/tcp"))
-	if resp.Decision.Action != aegis.ActionAllow {
+	if resp.Decision.Action != nixis.ActionAllow {
 		t.Errorf("port 3000 in devPorts (fuser): expected Allow, got %v", resp.Decision.Action)
 	}
 }
@@ -926,7 +926,7 @@ func TestPolicyEngine_DevPortCleanup_NotSkipped(t *testing.T) {
 			Layer:      "cel",
 		},
 	}
-	bundle := &aegis.CompiledBundle{
+	bundle := &nixis.CompiledBundle{
 		Version:   1,
 		Templates: templates,
 		Bindings:  bindings,

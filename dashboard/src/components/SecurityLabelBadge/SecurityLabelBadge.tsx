@@ -1,4 +1,4 @@
-import type { SecurityLabel } from '../../types/aegis';
+import type { SecurityLabel } from '../../types/nixis';
 import { confidentialityToLevel, categoriesToStrings } from '../../lib/label-display';
 import styles from './SecurityLabelBadge.module.css';
 

@@ -4,15 +4,15 @@ package resource
 import (
 	"strings"
 
-	"github.com/mayjain/aegis/internal/ifc"
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/internal/ifc"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 // pathRule maps a file path pattern to a SecurityLabel.
 type pathRule struct {
 	pattern  string // glob-style: "*" = any chars, prefix/suffix matching
 	matchFn  func(path, pattern string) bool
-	label    aegis.SecurityLabel
+	label    nixis.SecurityLabel
 	category string // human-readable category for debugging
 }
 
@@ -24,7 +24,7 @@ func (r *pathRule) matches(path string) bool {
 type domainRule struct {
 	pattern  string
 	matchFn  func(domain, pattern string) bool
-	label    aegis.SecurityLabel
+	label    nixis.SecurityLabel
 	category string
 }
 
@@ -53,8 +53,8 @@ func matchContains(path, pattern string) bool {
 }
 
 // highCredentialLabel is for high-sensitivity credential files.
-func highCredentialLabel() aegis.SecurityLabel {
-	return aegis.SecurityLabel{
+func highCredentialLabel() nixis.SecurityLabel {
+	return nixis.SecurityLabel{
 		Confidentiality: 1000,
 		Integrity:       500,
 		Category:        ifc.CatCredentials,
@@ -62,8 +62,8 @@ func highCredentialLabel() aegis.SecurityLabel {
 }
 
 // highSecurityKeyLabel is for cryptographic key material.
-func highSecurityKeyLabel() aegis.SecurityLabel {
-	return aegis.SecurityLabel{
+func highSecurityKeyLabel() nixis.SecurityLabel {
+	return nixis.SecurityLabel{
 		Confidentiality: 1000,
 		Integrity:       500,
 		Category:        ifc.CatCredentials | ifc.CatSecurityKey,
@@ -71,8 +71,8 @@ func highSecurityKeyLabel() aegis.SecurityLabel {
 }
 
 // mediumCredentialLabel is for moderate-sensitivity credential files.
-func mediumCredentialLabel() aegis.SecurityLabel {
-	return aegis.SecurityLabel{
+func mediumCredentialLabel() nixis.SecurityLabel {
+	return nixis.SecurityLabel{
 		Confidentiality: 800,
 		Integrity:       400,
 		Category:        ifc.CatCredentials,
@@ -80,8 +80,8 @@ func mediumCredentialLabel() aegis.SecurityLabel {
 }
 
 // internalLabel is for internal-only resources.
-func internalLabel() aegis.SecurityLabel {
-	return aegis.SecurityLabel{
+func internalLabel() nixis.SecurityLabel {
+	return nixis.SecurityLabel{
 		Confidentiality: 300,
 		Integrity:       300,
 		Category:        ifc.CatInternal,

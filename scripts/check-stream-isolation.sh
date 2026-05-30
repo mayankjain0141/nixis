@@ -2,7 +2,7 @@
 # check-stream-isolation.sh — Enforce the stream isolation invariant.
 #
 # internal/stream/ must not import internal/audit or internal/policy.
-# These packages are injected via pkg/aegis.StreamTap and pkg/aegis.SnapshotReader.
+# These packages are injected via pkg/nixis.StreamTap and pkg/nixis.SnapshotReader.
 #
 # This script replaces a broken golangci-lint v2 depguard files-scoped deny rule:
 # golangci-lint v2.12.2's files-scoped deny rules are silently ignored.
@@ -17,8 +17,8 @@ set -euo pipefail
 
 STREAM_DIR="internal/stream"
 FORBIDDEN=(
-    "github.com/mayjain/aegis/internal/audit"
-    "github.com/mayjain/aegis/internal/policy"
+    "github.com/mayjain/nixis/internal/audit"
+    "github.com/mayjain/nixis/internal/policy"
 )
 
 if [[ ! -d "$STREAM_DIR" ]]; then
@@ -31,7 +31,7 @@ for pkg in "${FORBIDDEN[@]}"; do
     matches=$(grep -rn "\"${pkg}\"" "$STREAM_DIR" --include="*.go" 2>/dev/null || true)
     if [[ -n "$matches" ]]; then
         echo "VIOLATION: internal/stream imports ${pkg}"
-        echo "  Inject via pkg/aegis interfaces instead (StreamTap, SnapshotReader)"
+        echo "  Inject via pkg/nixis interfaces instead (StreamTap, SnapshotReader)"
         echo "$matches"
         VIOLATIONS=$((VIOLATIONS + 1))
     fi

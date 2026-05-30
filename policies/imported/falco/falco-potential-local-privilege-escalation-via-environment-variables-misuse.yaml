@@ -1,14 +1,14 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-potential-local-privilege-escalation-via-environment-variables-misuse
     annotations:
-        aegis.io/falco-tags: maturity_incubating,host,container,users,mitre_privilege_escalation,TA0004
-        aegis.io/imported-from: aegis-import-2621062960.yaml
-        aegis.io/severity: low
-        aegis.io/llm-confidence: medium
-        aegis.io/source-rule: Potential Local Privilege Escalation via Environment Variables Misuse
+        nixis.io/falco-tags: maturity_incubating,host,container,users,mitre_privilege_escalation,TA0004
+        nixis.io/imported-from: nixis-import-2621062960.yaml
+        nixis.io/severity: low
+        nixis.io/llm-confidence: medium
+        nixis.io/source-rule: Potential Local Privilege Escalation via Environment Variables Misuse
 spec:
     description: |
         Process run with suspect environment variable that could be attempting privilege escalation. One use case is detecting the use of the GLIBC_TUNABLES environment variable, which could be used for privilege escalation on systems running vulnerable glibc versions. Only known and carefully profiled processes that legitimately exhibit this behavior should be excluded from this rule. This rule is expected to trigger on every attempt, even failed ones.

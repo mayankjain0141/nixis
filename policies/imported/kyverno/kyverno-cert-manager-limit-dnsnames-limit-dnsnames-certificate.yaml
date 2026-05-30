@@ -1,14 +1,14 @@
 # CEL_LIMITATION: cannot count YAML list items — cannot enforce "at most 1 dnsNames entry".
 # Expression set to false (pass-through) to avoid firing on every valid cert with dnsNames.
 # Requires structural YAML parsing at engine level to enforce count limit.
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-cert-manager-limit-dnsnames-limit-dnsnames-certificate
     annotations:
-        aegis.io/imported-from: aegis-import-3623682750.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-3623682750.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Cert-Manager
 spec:
     description: Some applications will not accept certificates containing more than a single name. This policy ensures that each certificate request contains only one DNS name entry.

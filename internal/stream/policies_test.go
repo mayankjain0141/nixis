@@ -6,15 +6,15 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
-// mockPolicyLister is a test implementation of aegis.PolicyLister.
+// mockPolicyLister is a test implementation of nixis.PolicyLister.
 type mockPolicyLister struct {
-	policies []aegis.PolicySummary
+	policies []nixis.PolicySummary
 }
 
-func (m *mockPolicyLister) ListPolicies() []aegis.PolicySummary {
+func (m *mockPolicyLister) ListPolicies() []nixis.PolicySummary {
 	return m.policies
 }
 
@@ -33,7 +33,7 @@ func TestHandlePoliciesNilLister(t *testing.T) {
 
 func TestHandlePoliciesGET(t *testing.T) {
 	s := NewStreamServer(nil, nullReader{}, WithPolicyLister(&mockPolicyLister{
-		policies: []aegis.PolicySummary{
+		policies: []nixis.PolicySummary{
 			{ID: "p1", Name: "Policy One", Layer: "cel", Enabled: true, CelExpression: "true", Description: "desc1"},
 			{ID: "p2", Name: "Policy Two", Layer: "ifc", Enabled: true},
 		},
@@ -101,7 +101,7 @@ func TestHandlePoliciesOPTIONS(t *testing.T) {
 
 func TestHandlePoliciesCORSNonLocalhost(t *testing.T) {
 	s := NewStreamServer(nil, nullReader{}, WithPolicyLister(&mockPolicyLister{
-		policies: []aegis.PolicySummary{{ID: "p1", Name: "P1", Layer: "cel", Enabled: true}},
+		policies: []nixis.PolicySummary{{ID: "p1", Name: "P1", Layer: "cel", Enabled: true}},
 	}))
 
 	req := httptest.NewRequest(http.MethodGet, "/policies", nil)

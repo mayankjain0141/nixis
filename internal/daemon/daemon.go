@@ -17,12 +17,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/mayjain/aegis/internal/audit"
-	"github.com/mayjain/aegis/internal/delegation"
-	"github.com/mayjain/aegis/internal/ifc"
-	"github.com/mayjain/aegis/internal/otel"
-	"github.com/mayjain/aegis/internal/stream"
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/internal/audit"
+	"github.com/mayjain/nixis/internal/delegation"
+	"github.com/mayjain/nixis/internal/ifc"
+	"github.com/mayjain/nixis/internal/otel"
+	"github.com/mayjain/nixis/internal/stream"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 // Lifecycle state machine:
@@ -30,10 +30,10 @@ import (
 //	INITIALIZING → LISTENING → DRAINING → FLUSHING → STOPPED
 type Daemon struct {
 	cfg         Config
-	engine      aegis.Engine
+	engine      nixis.Engine
 	auditWriter *audit.Writer
 	listener    net.Listener
-	streamSrv    aegis.StreamTap    // nil disables streaming
+	streamSrv    nixis.StreamTap    // nil disables streaming
 	sessions     *ifc.SessionLabels // nil disables session label persistence
 	delegAPI     *DelegationAPI     // nil disables delegation HTTP endpoints
 	taintHistory *ifc.TaintHistory  // nil disables taint history pruning
@@ -60,7 +60,7 @@ type Daemon struct {
 // New constructs a Daemon from the provided config, engine, audit writer, and optional
 // stream server. Pass nil for streamSrv to disable streaming. Pass nil for sessions to
 // disable session label persistence.
-func New(cfg Config, engine aegis.Engine, aw *audit.Writer, streamSrv *stream.StreamServer, sessions *ifc.SessionLabels) *Daemon {
+func New(cfg Config, engine nixis.Engine, aw *audit.Writer, streamSrv *stream.StreamServer, sessions *ifc.SessionLabels) *Daemon {
 	cfg.applyDefaults()
 	d := &Daemon{
 		cfg:         cfg,
@@ -114,7 +114,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 
 	if err := d.reconcileFailOpenLog(); err != nil {
 		// Non-fatal: log but continue.
-		fmt.Fprintf(os.Stderr, "aegis-daemon: fail-open log reconciliation error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "nixis-daemon: fail-open log reconciliation error: %v\n", err)
 	}
 
 	if err := d.listen(); err != nil {
@@ -222,7 +222,7 @@ func (d *Daemon) shutdown() {
 
 	// The audit writer's Start() goroutine watches auditCtx for cancellation.
 	// We trigger shutdown by cancelling the context that was passed to Start().
-	// The caller (cmd/aegis-daemon/main.go) owns auditCtx and cancels it here.
+	// The caller (cmd/nixis-daemon/main.go) owns auditCtx and cancels it here.
 	// However, we cannot directly cancel it from here without coupling — instead
 	// we signal via the daemon's auditCancel if set.
 	if d.auditCancel != nil {
@@ -404,7 +404,7 @@ func (d *Daemon) reconcileFailOpenLog() error {
 			continue
 		}
 		fmt.Fprintf(os.Stderr,
-			"aegis-daemon: WARN fail-open entry reconciled: session=%s tool=%s reason=%s ts=%s\n",
+			"nixis-daemon: WARN fail-open entry reconciled: session=%s tool=%s reason=%s ts=%s\n",
 			entry.SessionID, entry.Tool, entry.Reason, entry.Ts.Format(time.RFC3339),
 		)
 		count++
@@ -412,7 +412,7 @@ func (d *Daemon) reconcileFailOpenLog() error {
 
 	if count > 0 {
 		fmt.Fprintf(os.Stderr,
-			"aegis-daemon: WARN aegis_failopen_total=%d — governance was bypassed during daemon downtime\n",
+			"nixis-daemon: WARN nixis_failopen_total=%d — governance was bypassed during daemon downtime\n",
 			count,
 		)
 	}

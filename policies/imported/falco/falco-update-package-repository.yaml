@@ -1,14 +1,14 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-update-package-repository
     annotations:
-        aegis.io/falco-tags: maturity_sandbox,host,container,filesystem,mitre_execution,T1072
-        aegis.io/imported-from: aegis-import-1470842712.yaml
-        aegis.io/severity: low
-        aegis.io/llm-confidence: medium
-        aegis.io/source-rule: Update Package Repository
+        nixis.io/falco-tags: maturity_sandbox,host,container,filesystem,mitre_execution,T1072
+        nixis.io/imported-from: nixis-import-1470842712.yaml
+        nixis.io/severity: low
+        nixis.io/llm-confidence: medium
+        nixis.io/source-rule: Update Package Repository
 spec:
     description: |
         This rule generically detects updates to package repositories and can be seen as an auditing measure. Recommend evaluating its relevance for your specific environment.

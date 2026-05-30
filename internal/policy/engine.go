@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-// Package policy implements the top-level governance evaluation pipeline for Aegis.
+// Package policy implements the top-level governance evaluation pipeline for Nixis.
 //
-// PolicyEngine implements aegis.Engine with a 5-layer evaluation pipeline:
+// PolicyEngine implements nixis.Engine with a 5-layer evaluation pipeline:
 //  1. Adapter layer:    classify.Classify() → VerdictEntry
 //  2. IFC layer:        ifc.Dominates() → deny if session cannot access resource
 //  3. CEL layer:        evaluate matching PolicyBindings → first DENY wins
@@ -33,13 +33,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/mayjain/aegis/internal/cel"
-	"github.com/mayjain/aegis/internal/classify"
-	"github.com/mayjain/aegis/internal/ifc"
-	"github.com/mayjain/aegis/internal/label"
-	"github.com/mayjain/aegis/internal/sink"
-	"github.com/mayjain/aegis/pkg/aegis"
-	policy_types "github.com/mayjain/aegis/pkg/policy/types"
+	"github.com/mayjain/nixis/internal/cel"
+	"github.com/mayjain/nixis/internal/classify"
+	"github.com/mayjain/nixis/internal/ifc"
+	"github.com/mayjain/nixis/internal/label"
+	"github.com/mayjain/nixis/internal/sink"
+	"github.com/mayjain/nixis/pkg/nixis"
+	policy_types "github.com/mayjain/nixis/pkg/policy/types"
 )
 
 // BoundaryType identifies the trust boundary for secret scanning.
@@ -64,14 +64,14 @@ type Finding struct {
 // SecretScanner is the interface for secret detection.
 // MVP-1 uses a stub implementation that always returns no findings.
 type SecretScanner interface {
-	ScanBoundary(ctx context.Context, content string, boundary BoundaryType) ([]Finding, aegis.SecurityLabel)
+	ScanBoundary(ctx context.Context, content string, boundary BoundaryType) ([]Finding, nixis.SecurityLabel)
 	ShouldScan(effects []string, boundary BoundaryType) bool
 }
 
 // DelegationValidator is the interface for delegation chain validation.
 // MVP-1 uses a stub implementation that always succeeds.
 type DelegationValidator interface {
-	Validate(chain []aegis.DelegationRef, now time.Time) error
+	Validate(chain []nixis.DelegationRef, now time.Time) error
 }
 
 // classifierInterface abstracts the Classifier for testing (panic injection).
@@ -80,10 +80,10 @@ type classifierInterface interface {
 	ClassifyBash(toolName, commandText string) classify.VerdictEntry
 }
 
-// engineSnapshot extends the public aegis.EngineSnapshot with internal evaluation state.
+// engineSnapshot extends the public nixis.EngineSnapshot with internal evaluation state.
 // internal/policy/ owns this type entirely.
 type engineSnapshot struct {
-	public     aegis.EngineSnapshot
+	public     nixis.EngineSnapshot
 	bindings   []compiledBinding
 	programs   *cel.ProgramCache
 	classifier *classify.Classifier
@@ -117,7 +117,7 @@ type bindingIndex struct {
 }
 
 // snapshotBuilder is the signature for buildSnapshot (injectable for testing).
-type snapshotBuilder func(ctx context.Context, bundle *aegis.CompiledBundle, version uint64) (*engineSnapshot, []string, error)
+type snapshotBuilder func(ctx context.Context, bundle *nixis.CompiledBundle, version uint64) (*engineSnapshot, []string, error)
 
 // pendingSpawn stores info about a spawn token awaiting child session claim.
 type pendingSpawn struct {
@@ -127,7 +127,7 @@ type pendingSpawn struct {
 
 const spawnTokenTTL = 30 * time.Second
 
-// PolicyEngine is the top-level governance evaluator implementing aegis.Engine.
+// PolicyEngine is the top-level governance evaluator implementing nixis.Engine.
 type PolicyEngine struct {
 	snapshot            atomic.Pointer[engineSnapshot]
 	reloadMu            sync.Mutex
@@ -211,12 +211,12 @@ func NewPolicyEngine(
 //   - If snapshot is nil OR any internal error occurs, returns Decision{Action: ActionDeny}.
 //   - On first DENY from any layer, short-circuits and returns immediately.
 //   - Never returns an error — failures encode as Deny decisions.
-func (e *PolicyEngine) Evaluate(ctx context.Context, req aegis.CheckRequest) aegis.CheckResponse {
+func (e *PolicyEngine) Evaluate(ctx context.Context, req nixis.CheckRequest) nixis.CheckResponse {
 	startNs := time.Now().UnixNano()
 
 	if e.selfProtect != nil {
 		if decision := e.selfProtect.Check(req); decision != nil {
-			return aegis.CheckResponse{
+			return nixis.CheckResponse{
 				Decision:  *decision,
 				LatencyNs: time.Now().UnixNano() - startNs,
 			}
@@ -225,7 +225,7 @@ func (e *PolicyEngine) Evaluate(ctx context.Context, req aegis.CheckRequest) aeg
 
 	snap := e.snapshot.Load()
 	if snap == nil {
-		return denyResponse("policy engine not initialized", aegis.EnforcingLayerAdapter, startNs)
+		return denyResponse("policy engine not initialized", nixis.EnforcingLayerAdapter, startNs)
 	}
 
 	return e.evaluateWithSnapshot(ctx, req, snap, startNs)
@@ -250,13 +250,13 @@ func (e *PolicyEngine) Evaluate(ctx context.Context, req aegis.CheckRequest) aeg
 // 14. Allow response
 func (e *PolicyEngine) evaluateWithSnapshot(
 	ctx context.Context,
-	req aegis.CheckRequest,
+	req nixis.CheckRequest,
 	snap *engineSnapshot,
 	startNs int64,
-) (resp aegis.CheckResponse) {
+) (resp nixis.CheckResponse) {
 	defer func() {
 		if r := recover(); r != nil {
-			resp = denyResponse("internal evaluation panic", aegis.EnforcingLayerAdapter, startNs)
+			resp = denyResponse("internal evaluation panic", nixis.EnforcingLayerAdapter, startNs)
 		}
 	}()
 
@@ -297,7 +297,7 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 	if verdict.RiskLevel == classify.RiskCritical {
 		return denyResponseWithVerdict(
 			"tool classified as critical risk",
-			aegis.EnforcingLayerAdapter,
+			nixis.EnforcingLayerAdapter,
 			startNs,
 			verdict,
 		)
@@ -315,14 +315,14 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 	// required fields to be present in a missing payload.
 	schemaResult := classify.CheckArgSchema(req.Tool, decodedArgs)
 	if decodedArgs != nil && schemaResult.Err != nil {
-		return aegis.CheckResponse{
-			Decision: aegis.Decision{
-				Action:   aegis.ActionDeny,
+		return nixis.CheckResponse{
+			Decision: nixis.Decision{
+				Action:   nixis.ActionDeny,
 				Reason:   schemaResult.Err.Error(),
 				PolicyID: "builtin:arg-schema",
 			},
 			LatencyNs:      time.Now().UnixNano() - startNs,
-			EnforcingLayer: aegis.EnforcingLayerArgSchema,
+			EnforcingLayer: nixis.EnforcingLayerArgSchema,
 			ThreatSeverity: "medium",
 		}
 	}
@@ -334,7 +334,7 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 	labeled.UnknownTool = schemaResult.UnknownTool
 
 	resourceLabel := labeled.ResourceLabel
-	if resourceLabel == (aegis.SecurityLabel{}) {
+	if resourceLabel == (nixis.SecurityLabel{}) {
 		resourceLabel = req.SecurityLabel
 	}
 
@@ -346,7 +346,7 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 	}
 	e.maybeTaint(req.SessionID, resourceLabel, resourcePath)
 
-	var sessionLabel aegis.SecurityLabel
+	var sessionLabel nixis.SecurityLabel
 	var sessionProjectRoot string
 	if e.sessions != nil {
 		sessionLabel = e.sessions.Current(req.SessionID)
@@ -356,20 +356,20 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 	if !ifc.Dominates(sessionLabel, resourceLabel) {
 		return denyResponseWithVerdict(
 			"IFC dominance check failed: session label does not dominate resource label",
-			aegis.EnforcingLayerIFC,
+			nixis.EnforcingLayerIFC,
 			startNs,
 			verdict,
 		)
 	}
 
-	var ceiling aegis.SecurityLabel
+	var ceiling nixis.SecurityLabel
 	if e.sessions != nil {
 		ceiling = e.sessions.Ceiling(req.SessionID)
 	}
 	if !ifc.Dominates(ceiling, sessionLabel) {
 		return denyResponseWithVerdict(
 			"delegation ceiling exceeded",
-			aegis.EnforcingLayerDelegation,
+			nixis.EnforcingLayerDelegation,
 			startNs,
 			verdict,
 		)
@@ -391,17 +391,17 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 		}
 
 		sinkAction := sink.Decision(sinkSnap, verdict.Effects, resources, containsNetworkCmd)
-		if sinkAction != aegis.ActionAllow {
+		if sinkAction != nixis.ActionAllow {
 			effectName := findRestrictedEffect(verdict.Effects, containsNetworkCmd)
-			return aegis.CheckResponse{
-				Decision: aegis.Decision{
+			return nixis.CheckResponse{
+				Decision: nixis.Decision{
 					Action:   sinkAction,
 					Reason:   "tainted session requires approval for " + effectName,
 					PolicyID: "sink:taint-enforcement",
 					Labels:   sinkSnap.Label,
 				},
-				EnforcingLayer: aegis.EnforcingLayerSink,
-				Annotations: []aegis.Annotation{
+				EnforcingLayer: nixis.EnforcingLayerSink,
+				Annotations: []nixis.Annotation{
 					{Key: "sink.resources", Value: strings.Join(resources, ",")},
 					{Key: "sink.effect", Value: effectName},
 					{Key: "session.approval_state", Value: approvalStateString(sinkSnap.ApprovalState)},
@@ -427,31 +427,31 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 		val, err := e.activationBuilder.Evaluate(ctx, prog, req, verdict, decodedArgs, labeled, policyParams, sessionProjectRoot)
 		if err != nil {
 			if cb.binding.DefaultAction == "DENY" {
-				return denyResponse("policy eval error — fail-secure: "+cb.binding.TemplateID, aegis.EnforcingLayerCEL, startNs)
+				return denyResponse("policy eval error — fail-secure: "+cb.binding.TemplateID, nixis.EnforcingLayerCEL, startNs)
 			}
 			log.Printf("WARN: policy %s eval error (skipping): %v", cb.binding.TemplateID, err)
 			continue
 		}
 
 		if b, ok := val.Value().(bool); ok && !b {
-			action := aegis.ActionDeny
+			action := nixis.ActionDeny
 			if cb.binding.RequireApproval {
-				action = aegis.ActionRequireApproval
+				action = nixis.ActionRequireApproval
 			}
 			reason := cb.binding.Message
 			if reason == "" {
 				reason = "CEL policy evaluation returned false"
 			}
 			sourceLocation := snap.programs.SourceLocation(cb.binding.TemplateID)
-			return aegis.CheckResponse{
-				Decision: aegis.Decision{
+			return nixis.CheckResponse{
+				Decision: nixis.Decision{
 					Action:   action,
 					Reason:   reason,
 					PolicyID: cb.binding.TemplateID,
 					Labels:   sessionLabel,
 				},
 				LatencyNs:            time.Now().UnixNano() - startNs,
-				EnforcingLayer:       aegis.EnforcingLayerCEL,
+				EnforcingLayer:       nixis.EnforcingLayerCEL,
 				PolicySourceLocation: sourceLocation,
 			}
 		}
@@ -464,7 +464,7 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 			if commandText != "" {
 				content = commandText
 			} else if len(req.Args) > 0 {
-				content = string(aegis.ExtractScanTarget(req.Tool, req.Args))
+				content = string(nixis.ExtractScanTarget(req.Tool, req.Args))
 			}
 
 			if content != "" {
@@ -481,27 +481,27 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 					if e.sessions != nil {
 						e.sessions.TaintWithSecret(req.SessionID)
 					}
-					return aegis.CheckResponse{
-						Decision: aegis.Decision{
-							Action:   aegis.ActionRequireApproval,
+					return nixis.CheckResponse{
+						Decision: nixis.Decision{
+							Action:   nixis.ActionRequireApproval,
 							Reason:   "secret pattern detected in content — human approval required",
 							PolicyID: "builtin:secret-scan",
 							Labels:   elevatedLabel,
 						},
 						LatencyNs:      time.Now().UnixNano() - startNs,
-						EnforcingLayer: aegis.EnforcingLayerSecretScan,
+						EnforcingLayer: nixis.EnforcingLayerSecretScan,
 						ThreatSeverity: "high",
 					}
 				}
 				if partialScan {
-					return aegis.CheckResponse{
-						Decision: aegis.Decision{
-							Action:   aegis.ActionRequireApproval,
+					return nixis.CheckResponse{
+						Decision: nixis.Decision{
+							Action:   nixis.ActionRequireApproval,
 							Reason:   "content exceeds 1MB scan limit — remainder unverified for secrets",
 							PolicyID: "builtin:secret-scan-partial",
 						},
 						LatencyNs:      time.Now().UnixNano() - startNs,
-						EnforcingLayer: aegis.EnforcingLayerSecretScan,
+						EnforcingLayer: nixis.EnforcingLayerSecretScan,
 						ThreatSeverity: "medium",
 					}
 				}
@@ -513,7 +513,7 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 		if err := e.delegationValidator.Validate(req.AuthorityChain, time.Now()); err != nil {
 			return denyResponseWithVerdict(
 				"delegation chain validation failed",
-				aegis.EnforcingLayerDelegation,
+				nixis.EnforcingLayerDelegation,
 				startNs,
 				verdict,
 			)
@@ -526,23 +526,23 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 		sessionLabel = e.sessions.Current(req.SessionID)
 	}
 
-	var annotations []aegis.Annotation
+	var annotations []nixis.Annotation
 	if req.Tool == "Agent" && e.sessions != nil && e.sessions.IsTainted(req.SessionID) {
 		token := e.generateSpawnToken(req.SessionID)
-		annotations = append(annotations, aegis.Annotation{
-			Key:   "aegis.spawn_token",
+		annotations = append(annotations, nixis.Annotation{
+			Key:   "nixis.spawn_token",
 			Value: token,
 		})
 	}
 
-	return aegis.CheckResponse{
-		Decision: aegis.Decision{
-			Action: aegis.ActionAllow,
+	return nixis.CheckResponse{
+		Decision: nixis.Decision{
+			Action: nixis.ActionAllow,
 			Labels: sessionLabel,
 		},
 		Annotations:    annotations,
 		LatencyNs:      time.Now().UnixNano() - startNs,
-		EnforcingLayer: aegis.EnforcingLayerAdapter,
+		EnforcingLayer: nixis.EnforcingLayerAdapter,
 	}
 }
 
@@ -550,7 +550,7 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 // This is the ONLY method that calls atomic.Pointer.Store() — via applySnapshot().
 // reloadMu serializes concurrent Reload() calls but is never held during Evaluate().
 // If any step fails, the existing snapshot continues serving.
-func (e *PolicyEngine) Reload(ctx context.Context, bundle *aegis.CompiledBundle) error {
+func (e *PolicyEngine) Reload(ctx context.Context, bundle *nixis.CompiledBundle) error {
 	e.reloadMu.Lock()
 	defer e.reloadMu.Unlock()
 
@@ -587,7 +587,7 @@ func (e *PolicyEngine) applySnapshot(snap *engineSnapshot) {
 
 func (e *PolicyEngine) buildSnapshot(
 	ctx context.Context,
-	bundle *aegis.CompiledBundle,
+	bundle *nixis.CompiledBundle,
 	version uint64,
 ) (*engineSnapshot, []string, error) {
 	programs, skippedPolicies, err := cel.CompileAll(e.celEnv, bundle.Templates)
@@ -636,7 +636,7 @@ func (e *PolicyEngine) buildSnapshot(
 	idx := buildBindingIndex(compiled)
 
 	snap := &engineSnapshot{
-		public: aegis.EngineSnapshot{
+		public: nixis.EngineSnapshot{
 			Version: version,
 		},
 		bindings:       compiled,
@@ -664,8 +664,8 @@ func buildBindingIndex(bindings []compiledBinding) bindingIndex {
 	return idx
 }
 
-// ListPolicies implements aegis.PolicyLister.
-func (e *PolicyEngine) ListPolicies() []aegis.PolicySummary {
+// ListPolicies implements nixis.PolicyLister.
+func (e *PolicyEngine) ListPolicies() []nixis.PolicySummary {
 	snap := e.snapshot.Load()
 	if snap == nil {
 		return nil
@@ -678,13 +678,13 @@ func (e *PolicyEngine) ListPolicies() []aegis.PolicySummary {
 		}
 	}
 
-	result := make([]aegis.PolicySummary, 0, len(snap.templates))
+	result := make([]nixis.PolicySummary, 0, len(snap.templates))
 	for _, t := range snap.templates {
 		layer := layerByTemplateID[t.ID]
 		if layer == "" {
 			layer = "cel"
 		}
-		result = append(result, aegis.PolicySummary{
+		result = append(result, nixis.PolicySummary{
 			ID:            t.ID,
 			Name:          t.Name,
 			Layer:         layer,
@@ -735,10 +735,10 @@ func matchesScope(scope scopeKey, tool, session string) bool {
 	return true
 }
 
-func denyResponse(reason string, layer aegis.EnforcingLayer, startNs int64) aegis.CheckResponse {
-	return aegis.CheckResponse{
-		Decision: aegis.Decision{
-			Action: aegis.ActionDeny,
+func denyResponse(reason string, layer nixis.EnforcingLayer, startNs int64) nixis.CheckResponse {
+	return nixis.CheckResponse{
+		Decision: nixis.Decision{
+			Action: nixis.ActionDeny,
 			Reason: reason,
 		},
 		LatencyNs:      time.Now().UnixNano() - startNs,
@@ -748,10 +748,10 @@ func denyResponse(reason string, layer aegis.EnforcingLayer, startNs int64) aegi
 
 func denyResponseWithVerdict(
 	reason string,
-	layer aegis.EnforcingLayer,
+	layer nixis.EnforcingLayer,
 	startNs int64,
 	verdict classify.VerdictEntry,
-) aegis.CheckResponse {
+) nixis.CheckResponse {
 	var severity string
 	switch verdict.RiskLevel {
 	case classify.RiskCritical:
@@ -765,9 +765,9 @@ func denyResponseWithVerdict(
 	case classify.RiskNone:
 		severity = ""
 	}
-	return aegis.CheckResponse{
-		Decision: aegis.Decision{
-			Action: aegis.ActionDeny,
+	return nixis.CheckResponse{
+		Decision: nixis.Decision{
+			Action: nixis.ActionDeny,
 			Reason: reason,
 		},
 		LatencyNs:      time.Now().UnixNano() - startNs,
@@ -826,13 +826,13 @@ func extractCommandText(args json.RawMessage) (string, bool) {
 
 // WARNING: The following implementations are MVP stubs — they always return success.
 // Secret scanning and delegation validation are NOT active in this build.
-// See: https://github.com/mayjain/aegis/issues (track implementation progress)
+// See: https://github.com/mayjain/nixis/issues (track implementation progress)
 // Do NOT deploy in environments where these checks are expected to be enforced.
 
 type noopSecretScanner struct{}
 
-func (n *noopSecretScanner) ScanBoundary(_ context.Context, _ string, _ BoundaryType) ([]Finding, aegis.SecurityLabel) {
-	return nil, aegis.SecurityLabel{}
+func (n *noopSecretScanner) ScanBoundary(_ context.Context, _ string, _ BoundaryType) ([]Finding, nixis.SecurityLabel) {
+	return nil, nixis.SecurityLabel{}
 }
 
 func (n *noopSecretScanner) ShouldScan(_ []string, _ BoundaryType) bool {
@@ -841,7 +841,7 @@ func (n *noopSecretScanner) ShouldScan(_ []string, _ BoundaryType) bool {
 
 type noopDelegationValidator struct{}
 
-func (n *noopDelegationValidator) Validate(_ []aegis.DelegationRef, _ time.Time) error {
+func (n *noopDelegationValidator) Validate(_ []nixis.DelegationRef, _ time.Time) error {
 	return nil
 }
 
@@ -878,7 +878,7 @@ func hasAllEffects(actual, required []string) bool {
 // NOTE: maybeTaint does NOT elevate the session to the resource's confidentiality level.
 // Session elevation happens AFTER the IFC dominance check passes (in the Allow path).
 // Setting taint BEFORE IFC check captures INTENT even if access is denied.
-func (e *PolicyEngine) maybeTaint(sessionID string, resourceLabel aegis.SecurityLabel, resourcePath string) {
+func (e *PolicyEngine) maybeTaint(sessionID string, resourceLabel nixis.SecurityLabel, resourcePath string) {
 	if e.sessions == nil {
 		return
 	}
@@ -949,7 +949,7 @@ func (e *PolicyEngine) propagateParentState(childID, parentID string) {
 
 	// Child's ceiling = parent's current label
 	parentLabel := e.sessions.Current(parentID)
-	if parentLabel != (aegis.SecurityLabel{}) {
+	if parentLabel != (nixis.SecurityLabel{}) {
 		e.sessions.InitWithCeiling(childID, parentLabel)
 	}
 }
@@ -1064,4 +1064,4 @@ func findRestrictedEffect(effects []string, containsNetworkCmd bool) string {
 }
 
 // compile-time interface assertion
-var _ aegis.Engine = (*PolicyEngine)(nil)
+var _ nixis.Engine = (*PolicyEngine)(nil)

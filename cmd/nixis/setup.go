@@ -24,7 +24,7 @@ var (
 
 var setupCmd = &cobra.Command{
 	Use:   "setup",
-	Short: "Install and configure Aegis on this machine",
+	Short: "Install and configure Nixis on this machine",
 	Long: `Interactive setup wizard that deploys binaries, installs policies,
 configures the daemon service, and patches Claude Code settings.json.`,
 	RunE: runSetup,
@@ -32,7 +32,7 @@ configures the daemon service, and patches Claude Code settings.json.`,
 
 func init() {
 	setupCmd.Flags().BoolVarP(&setupYes, "yes", "y", false, "Skip all confirmation prompts")
-	setupCmd.Flags().BoolVar(&setupUninstall, "uninstall", false, "Remove Aegis installation")
+	setupCmd.Flags().BoolVar(&setupUninstall, "uninstall", false, "Remove Nixis installation")
 	setupCmd.Flags().BoolVar(&setupDryRun, "dry-run", false, "Show what would be done without making changes")
 	setupCmd.Flags().StringVar(&setupPolicyDir, "policy-dir", "", "Source policy directory (default: ./policies)")
 }
@@ -42,7 +42,7 @@ func runSetup(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("resolve home directory: %w", err)
 	}
-	aegisDir := filepath.Join(homeDir, ".aegis")
+	aegisDir := filepath.Join(homeDir, ".nixis")
 
 	if setupUninstall {
 		return runUninstall(cmd, homeDir, aegisDir)
@@ -53,13 +53,13 @@ func runSetup(cmd *cobra.Command, _ []string) error {
 func runInstall(cmd *cobra.Command, homeDir, aegisDir string) error {
 	w := cmd.OutOrStdout()
 
-	fmt.Fprintln(w, "Aegis Setup")
+	fmt.Fprintln(w, "Nixis Setup")
 	fmt.Fprintln(w, "===========")
 	fmt.Fprintln(w)
 
 	// Step 1: Detect binaries
 	fmt.Fprintln(w, "[1/8] Detecting binaries...")
-	binaries := []string{"aegis", "aegis-hook", "aegis-daemon"}
+	binaries := []string{"nixis", "nixis-hook", "nixis-daemon"}
 	binSources := make(map[string]string, len(binaries))
 	for _, name := range binaries {
 		path := findBinary(name)
@@ -70,7 +70,7 @@ func runInstall(cmd *cobra.Command, homeDir, aegisDir string) error {
 		fmt.Fprintf(w, "  Found: %s → %s\n", name, path)
 	}
 
-	// Step 2: Deploy binaries to ~/.aegis/
+	// Step 2: Deploy binaries to ~/.nixis/
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "[2/8] Deploying binaries to", aegisDir)
 	if err := os.MkdirAll(aegisDir, 0o755); err != nil && !setupDryRun {
@@ -127,7 +127,7 @@ func runInstall(cmd *cobra.Command, homeDir, aegisDir string) error {
 	// Step 6: Patch settings.json
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "[6/8] Patching Claude Code settings.json...")
-	hookPath := filepath.Join(aegisDir, "aegis-hook")
+	hookPath := filepath.Join(aegisDir, "nixis-hook")
 	if err := patchSettingsJSON(w, homeDir, hookPath); err != nil {
 		return fmt.Errorf("patch settings.json: %w", err)
 	}
@@ -149,7 +149,7 @@ func runInstall(cmd *cobra.Command, homeDir, aegisDir string) error {
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "[8/8] Cleaning up stale artifacts...")
 	staleFiles := []string{
-		filepath.Join(aegisDir, "aegis-hook-wrapper.sh"),
+		filepath.Join(aegisDir, "nixis-hook-wrapper.sh"),
 		filepath.Join(aegisDir, "audit.log"),
 	}
 	for _, f := range staleFiles {
@@ -162,14 +162,14 @@ func runInstall(cmd *cobra.Command, homeDir, aegisDir string) error {
 	}
 
 	fmt.Fprintln(w)
-	fmt.Fprintln(w, "✓ Aegis setup complete!")
-	fmt.Fprintf(w, "  Run 'aegis doctor' to verify installation health.\n")
+	fmt.Fprintln(w, "✓ Nixis setup complete!")
+	fmt.Fprintf(w, "  Run 'nixis doctor' to verify installation health.\n")
 	return nil
 }
 
 func runUninstall(cmd *cobra.Command, homeDir, aegisDir string) error {
 	w := cmd.OutOrStdout()
-	fmt.Fprintln(w, "Aegis Uninstall")
+	fmt.Fprintln(w, "Nixis Uninstall")
 	fmt.Fprintln(w, "===============")
 	fmt.Fprintln(w)
 
@@ -190,7 +190,7 @@ func runUninstall(cmd *cobra.Command, homeDir, aegisDir string) error {
 		fmt.Fprintf(w, "  Warning: %v\n", err)
 	}
 
-	// Step 3: Remove ~/.aegis directory
+	// Step 3: Remove ~/.nixis directory
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "[3/4] Removing", aegisDir)
 	if !setupDryRun {
@@ -209,7 +209,7 @@ func runUninstall(cmd *cobra.Command, homeDir, aegisDir string) error {
 	// Step 4: Done
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "[4/4] Done")
-	fmt.Fprintln(w, "✓ Aegis uninstalled")
+	fmt.Fprintln(w, "✓ Nixis uninstalled")
 	return nil
 }
 
@@ -418,7 +418,7 @@ func unpatchSettingsJSON(w io.Writer, homeDir string) error {
 }
 
 func runSmokeTest(w io.Writer, aegisDir string) error {
-	hookBin := filepath.Join(aegisDir, "aegis-hook")
+	hookBin := filepath.Join(aegisDir, "nixis-hook")
 	cmd := exec.Command(hookBin, "--version")
 	output, err := cmd.CombinedOutput()
 	if err != nil {

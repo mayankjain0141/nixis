@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-no-localhost-service-no-localhost-service-service
     annotations:
-        aegis.io/imported-from: aegis-import-1469448754.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-1469448754.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Sample
 spec:
     description: A Service of type ExternalName which points back to localhost can potentially be used to exploit vulnerabilities in some Ingress controllers. This policy audits Services of type ExternalName if the externalName field refers to localhost.

@@ -1,4 +1,4 @@
-module github.com/mayjain/aegis
+module github.com/mayjain/nixis
 
 go 1.25.0
 

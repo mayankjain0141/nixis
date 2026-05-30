@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
-// aegis-daemon is the Aegis governance daemon binary.
+// nixis-daemon is the Nixis governance daemon binary.
 //
 // It listens on a Unix domain socket, evaluates incoming CheckRequests from the
 // hook binary against the loaded policy set, and writes audit records to SQLite.
 //
 // Usage:
 //
-//	aegis-daemon [-socket PATH] [-policy-dir DIR] [-audit-db PATH] [-failopen-log PATH]
+//	nixis-daemon [-socket PATH] [-policy-dir DIR] [-audit-db PATH] [-failopen-log PATH]
 //
-// The gRPC ext_authz listener address is configured via the AEGIS_GRPC_ADDR environment
+// The gRPC ext_authz listener address is configured via the NIXIS_GRPC_ADDR environment
 // variable. The stream/WebSocket server address defaults to :9090 and can be overridden
-// with AEGIS_DASHBOARD_ADDR.
+// with NIXIS_DASHBOARD_ADDR.
 package main
 
 import (
@@ -23,20 +23,20 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/mayjain/aegis/internal/audit"
-	"github.com/mayjain/aegis/internal/bundle"
-	"github.com/mayjain/aegis/internal/cel"
-	"github.com/mayjain/aegis/internal/daemon"
-	"github.com/mayjain/aegis/internal/delegation"
-	grpcauthz "github.com/mayjain/aegis/internal/grpc"
-	"github.com/mayjain/aegis/internal/ifc"
-	"github.com/mayjain/aegis/internal/label"
-	"github.com/mayjain/aegis/internal/otel"
-	"github.com/mayjain/aegis/internal/policy"
-	"github.com/mayjain/aegis/internal/reload"
-	"github.com/mayjain/aegis/internal/secret"
-	"github.com/mayjain/aegis/internal/stream"
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/internal/audit"
+	"github.com/mayjain/nixis/internal/bundle"
+	"github.com/mayjain/nixis/internal/cel"
+	"github.com/mayjain/nixis/internal/daemon"
+	"github.com/mayjain/nixis/internal/delegation"
+	grpcauthz "github.com/mayjain/nixis/internal/grpc"
+	"github.com/mayjain/nixis/internal/ifc"
+	"github.com/mayjain/nixis/internal/label"
+	"github.com/mayjain/nixis/internal/otel"
+	"github.com/mayjain/nixis/internal/policy"
+	"github.com/mayjain/nixis/internal/reload"
+	"github.com/mayjain/nixis/internal/secret"
+	"github.com/mayjain/nixis/internal/stream"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 const (
@@ -48,16 +48,16 @@ const (
 
 func main() {
 	var (
-		socketPath  = flag.String("socket", "", "Unix socket path (default: $AEGIS_SOCKET_PATH or /tmp/aegis.sock)")
+		socketPath  = flag.String("socket", "", "Unix socket path (default: $NIXIS_SOCKET_PATH or /tmp/nixis.sock)")
 		policyDir   = flag.String("policy-dir", "policies", "Policy YAML directory (recursively loads all subdirectories)")
-		auditDB     = flag.String("audit-db", "~/.aegis/audit.db", "Audit SQLite database path")
-		failOpenLog = flag.String("failopen-log", "", "Fail-open log path (default: $AEGIS_FAILOPEN_LOG or ~/.aegis/failopen.log)")
+		auditDB     = flag.String("audit-db", "~/.nixis/audit.db", "Audit SQLite database path")
+		failOpenLog = flag.String("failopen-log", "", "Fail-open log path (default: $NIXIS_FAILOPEN_LOG or ~/.nixis/failopen.log)")
 	)
 	flag.Parse()
 
-	pidLock, err := daemon.AcquirePIDLock(filepath.Join(expandHome("~/.aegis"), "daemon.pid"))
+	pidLock, err := daemon.AcquirePIDLock(filepath.Join(expandHome("~/.nixis"), "daemon.pid"))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "aegis-daemon: %v\n", err)
+		fmt.Fprintf(os.Stderr, "nixis-daemon: %v\n", err)
 		os.Exit(exitStartupFailure)
 	}
 	defer pidLock.Unlock()
@@ -70,36 +70,36 @@ func main() {
 	}
 
 	otelCfg := otel.Config{
-		Enabled:     os.Getenv("AEGIS_OTEL_ENDPOINT") != "",
-		Endpoint:    os.Getenv("AEGIS_OTEL_ENDPOINT"),
-		ServiceName: "aegis-daemon",
+		Enabled:     os.Getenv("NIXIS_OTEL_ENDPOINT") != "",
+		Endpoint:    os.Getenv("NIXIS_OTEL_ENDPOINT"),
+		ServiceName: "nixis-daemon",
 	}
 	otelShutdown, err := otel.Initialize(otelCfg)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "aegis-daemon: OTel init failed: %v\n", err)
+		fmt.Fprintf(os.Stderr, "nixis-daemon: OTel init failed: %v\n", err)
 		os.Exit(exitStartupFailure)
 	}
 	defer func() {
 		shutCtx, shutCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer shutCancel()
 		if shutErr := otelShutdown(shutCtx); shutErr != nil {
-			fmt.Fprintf(os.Stderr, "aegis-daemon: OTel shutdown error: %v\n", shutErr)
+			fmt.Fprintf(os.Stderr, "nixis-daemon: OTel shutdown error: %v\n", shutErr)
 		}
 	}()
 	if otelCfg.Enabled {
-		fmt.Fprintf(os.Stderr, "aegis-daemon: OTel enabled → %s\n", otelCfg.Endpoint)
+		fmt.Fprintf(os.Stderr, "nixis-daemon: OTel enabled → %s\n", otelCfg.Endpoint)
 	}
 
 	auditWriter, err := audit.NewWriter(cfg.AuditDBPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "aegis-daemon: failed to open audit database %q: %v\n", cfg.AuditDBPath, err)
+		fmt.Fprintf(os.Stderr, "nixis-daemon: failed to open audit database %q: %v\n", cfg.AuditDBPath, err)
 		os.Exit(exitStartupFailure)
 	}
 
 	sessions := &ifc.SessionLabels{}
 	celEnv, err := cel.NewCELEnvironment()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "aegis-daemon: failed to create CEL environment: %v\n", err)
+		fmt.Fprintf(os.Stderr, "nixis-daemon: failed to create CEL environment: %v\n", err)
 		os.Exit(exitStartupFailure)
 	}
 
@@ -117,45 +117,45 @@ func main() {
 	var initialPolicyCount int
 	templates, bindings, err := bundle.ParsePolicyDir(cfg.PolicyDir)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "aegis-daemon: failed to parse policies from %q: %v\n", cfg.PolicyDir, err)
-		fmt.Fprintf(os.Stderr, "aegis-daemon: starting with no policies (all requests will be denied)\n")
+		fmt.Fprintf(os.Stderr, "nixis-daemon: failed to parse policies from %q: %v\n", cfg.PolicyDir, err)
+		fmt.Fprintf(os.Stderr, "nixis-daemon: starting with no policies (all requests will be denied)\n")
 	} else {
-		compiled := &aegis.CompiledBundle{
+		compiled := &nixis.CompiledBundle{
 			Version:   1,
 			Templates: templates,
 			Bindings:  bindings,
 		}
 		if err := engine.Reload(ctx, compiled); err != nil {
-			fmt.Fprintf(os.Stderr, "aegis-daemon: failed to load initial policies: %v\n", err)
+			fmt.Fprintf(os.Stderr, "nixis-daemon: failed to load initial policies: %v\n", err)
 		} else {
 			initialPolicyCount = len(templates)
 			// engine.Reload calls cel.CompileAll internally; skipped policies are
 			// logged at WARN level by CompileAll itself. Emit a startup summary here
 			// so operators see the active count without reading through log lines.
 			if skipped := engine.SkippedPolicies(); len(skipped) > 0 {
-				fmt.Fprintf(os.Stderr, "aegis-daemon: WARNING: %d polic(ies) inactive — undeclared CEL variables: %v\n", len(skipped), skipped)
-				fmt.Fprintf(os.Stderr, "aegis-daemon: Active policies: %d of %d loaded\n", initialPolicyCount-len(skipped), initialPolicyCount)
+				fmt.Fprintf(os.Stderr, "nixis-daemon: WARNING: %d polic(ies) inactive — undeclared CEL variables: %v\n", len(skipped), skipped)
+				fmt.Fprintf(os.Stderr, "nixis-daemon: Active policies: %d of %d loaded\n", initialPolicyCount-len(skipped), initialPolicyCount)
 			} else {
-				fmt.Fprintf(os.Stderr, "aegis-daemon: loaded %d policies from %s\n", initialPolicyCount, cfg.PolicyDir)
+				fmt.Fprintf(os.Stderr, "nixis-daemon: loaded %d policies from %s\n", initialPolicyCount, cfg.PolicyDir)
 			}
 		}
 	}
-	if grpcAddr := os.Getenv("AEGIS_GRPC_ADDR"); grpcAddr != "" {
+	if grpcAddr := os.Getenv("NIXIS_GRPC_ADDR"); grpcAddr != "" {
 		grpcSrv, err := grpcauthz.NewServer(grpcauthz.Config{
 			ListenAddr: grpcAddr,
 			Engine:     engine,
 			Timeout:    50 * time.Millisecond,
 		})
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "aegis-daemon: failed to create gRPC server: %v\n", err)
+			fmt.Fprintf(os.Stderr, "nixis-daemon: failed to create gRPC server: %v\n", err)
 			os.Exit(exitStartupFailure)
 		}
 		go func() {
 			if err := grpcSrv.Start(ctx); err != nil && ctx.Err() == nil {
-				fmt.Fprintf(os.Stderr, "aegis-daemon: gRPC server error: %v\n", err)
+				fmt.Fprintf(os.Stderr, "nixis-daemon: gRPC server error: %v\n", err)
 			}
 		}()
-		fmt.Fprintf(os.Stderr, "aegis-daemon: gRPC ext_authz listening on %s\n", grpcAddr)
+		fmt.Fprintf(os.Stderr, "nixis-daemon: gRPC ext_authz listening on %s\n", grpcAddr)
 	}
 
 	// Start reload watcher after initial policy load (spec: started AFTER initial compile).
@@ -165,11 +165,11 @@ func main() {
 		ctx:       ctx,
 	})
 	if rwErr != nil {
-		fmt.Fprintf(os.Stderr, "aegis-daemon: failed to create reload watcher: %v\n", rwErr)
+		fmt.Fprintf(os.Stderr, "nixis-daemon: failed to create reload watcher: %v\n", rwErr)
 	} else {
 		go func() {
 			if err := reloadWatcher.Start(ctx); err != nil && ctx.Err() == nil {
-				fmt.Fprintf(os.Stderr, "aegis-daemon: reload watcher error: %v\n", err)
+				fmt.Fprintf(os.Stderr, "nixis-daemon: reload watcher error: %v\n", err)
 			}
 		}()
 	}
@@ -185,12 +185,12 @@ func main() {
 	streamDone := make(chan struct{})
 	go func() {
 		defer close(streamDone)
-		addr := os.Getenv("AEGIS_DASHBOARD_ADDR")
+		addr := os.Getenv("NIXIS_DASHBOARD_ADDR")
 		if addr == "" {
 			addr = "127.0.0.1:9090"
 		}
 		if err := streamSrv.Start(streamCtx, addr); err != nil && streamCtx.Err() == nil {
-			fmt.Fprintf(os.Stderr, "aegis-daemon: stream server error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "nixis-daemon: stream server error: %v\n", err)
 		}
 	}()
 	// Wire audit checkpoint → stream event so the dashboard Forensic Review shows live data.
@@ -213,7 +213,7 @@ func main() {
 		select {
 		case <-streamDone:
 		case <-time.After(6 * time.Second): // stream server has 5s shutdown timeout
-			fmt.Fprintf(os.Stderr, "aegis-daemon: stream server drain timed out\n")
+			fmt.Fprintf(os.Stderr, "nixis-daemon: stream server drain timed out\n")
 		}
 	}()
 
@@ -230,17 +230,17 @@ func main() {
 	// (it is never used to sign or verify tokens in this context).
 	delegPub, _, err := ed25519.GenerateKey(nil)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "aegis-daemon: failed to generate ephemeral delegation key: %v\n", err)
+		fmt.Fprintf(os.Stderr, "nixis-daemon: failed to generate ephemeral delegation key: %v\n", err)
 		os.Exit(exitStartupFailure)
 	}
 	delegEngine, err := delegation.New(delegPub)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "aegis-daemon: failed to create delegation engine: %v\n", err)
+		fmt.Fprintf(os.Stderr, "nixis-daemon: failed to create delegation engine: %v\n", err)
 		os.Exit(exitStartupFailure)
 	}
 
 	delegEngine.SetEmitFn(func(eventType, chainID, reason string) {
-		streamSrv.Emit(ctx, aegis.StreamEvent{
+		streamSrv.Emit(ctx, nixis.StreamEvent{
 			Type:      eventType,
 			SessionID: chainID,
 			Reason:    reason,
@@ -253,7 +253,7 @@ func main() {
 	d.SetAuditContext(cancel, auditDone)
 
 	if err := d.Run(ctx); err != nil {
-		fmt.Fprintf(os.Stderr, "aegis-daemon: %v\n", err)
+		fmt.Fprintf(os.Stderr, "nixis-daemon: %v\n", err)
 		os.Exit(exitRuntimeFailure)
 	}
 }
@@ -271,7 +271,7 @@ func (r *policyReloader) Reload() error {
 	if err != nil {
 		return err
 	}
-	compiled := &aegis.CompiledBundle{
+	compiled := &nixis.CompiledBundle{
 		Version:   1,
 		Templates: templates,
 		Bindings:  bindings,

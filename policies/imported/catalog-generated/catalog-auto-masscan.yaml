@@ -1,13 +1,13 @@
-# auto-generated from pkg/adapters/catalog.json via aegis policy generate-from-catalog
-apiVersion: aegis.io/v1
+# auto-generated from pkg/adapters/catalog.json via nixis policy generate-from-catalog
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: catalog-auto-masscan
     annotations:
-        aegis.io/family: bash
-        aegis.io/risk-level: critical
-        aegis.io/severity: critical
-        aegis.io/source: pkg/adapters/catalog.json
+        nixis.io/family: bash
+        nixis.io/risk-level: critical
+        nixis.io/severity: critical
+        nixis.io/source: pkg/adapters/catalog.json
 spec:
     description: Deny critically-risky masscan (bash)
     matchConstraints:

@@ -3,7 +3,7 @@ package classify
 import (
 	"testing"
 
-	"github.com/mayjain/aegis/pkg/adapters"
+	"github.com/mayjain/nixis/pkg/adapters"
 )
 
 // loadCatalog is a test helper that panics if the embedded catalog fails to load.

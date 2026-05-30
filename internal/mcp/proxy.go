@@ -7,13 +7,13 @@ import (
 	"log"
 	"sync"
 
-	"github.com/mayjain/aegis/internal/policy"
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/internal/policy"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
-// GovernancePipeline evaluates a tool call through Aegis policy.
+// GovernancePipeline evaluates a tool call through Nixis policy.
 type GovernancePipeline interface {
-	Evaluate(ctx context.Context, req aegis.CheckRequest) aegis.CheckResponse
+	Evaluate(ctx context.Context, req nixis.CheckRequest) nixis.CheckResponse
 }
 
 // MCPProxy is the bidirectional MCP proxy with governance.
@@ -88,7 +88,7 @@ func (p *MCPProxy) handleToolCall(ctx context.Context, req JSONRPCRequest) JSONR
 		return errorResponse(req.ID, -32603, "tool definition has drifted — approval required")
 	}
 
-	checkReq := aegis.CheckRequest{
+	checkReq := nixis.CheckRequest{
 		Tool:      toolName,
 		Args:      argsJSON,
 		SessionID: p.sessionID,
@@ -97,7 +97,7 @@ func (p *MCPProxy) handleToolCall(ctx context.Context, req JSONRPCRequest) JSONR
 	resp := p.pipeline.Evaluate(ctx, checkReq)
 
 	switch resp.Decision.Action {
-	case aegis.ActionAllow, aegis.ActionAudit:
+	case nixis.ActionAllow, nixis.ActionAudit:
 		// Forward to upstream.
 		result, callErr := p.upstream.Call(ctx, req.Method, req.Params)
 		if callErr != nil {
@@ -120,10 +120,10 @@ func (p *MCPProxy) handleToolCall(ctx context.Context, req JSONRPCRequest) JSONR
 		}
 		return JSONRPCResponse{JSONRPC: "2.0", ID: req.ID, Result: result}
 
-	case aegis.ActionRequireApproval:
+	case nixis.ActionRequireApproval:
 		return errorResponse(req.ID, -32603, "approval required: "+resp.Decision.Reason)
 
-	case aegis.ActionDeny:
+	case nixis.ActionDeny:
 		reason := resp.Decision.Reason
 		if reason == "" {
 			reason = "denied by policy"

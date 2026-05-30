@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-clusterrole-mutating-validating-admission-webhooks-restrict-clusterrole-clusterrole
     annotations:
-        aegis.io/imported-from: aegis-import-735230310.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-735230310.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Other
 spec:
     description: ClusterRoles that grant write permissions over admission webhook should be minimized to reduce powerful identities in the cluster. This policy checks to ensure write permissions are not provided to admission webhooks.

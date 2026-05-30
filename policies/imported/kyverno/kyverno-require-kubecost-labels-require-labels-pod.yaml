@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-require-kubecost-labels-require-labels-pod
     annotations:
-        aegis.io/imported-from: aegis-import-2951944517.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-2951944517.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Kubecost
 spec:
     description: Kubecost can use labels assigned to Pods in order to track and display cost allocation in a granular way. These labels, which can be customized, can be used to organize and group workloads in different ways. This policy requires that the labels `owner`, `team`, `department`, `app`, and `env` are all defined on Pods. With Kyverno autogen enabled (absence of the annotation `pod-policies.kyverno.io/autogen-controllers=none`), these labels will also be required for all Pod controllers.

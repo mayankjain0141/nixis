@@ -105,7 +105,7 @@ function EventRow({ event, isSelected, openInspector }: {
 
       {/* Policy */}
       <div style={{ width: 120, flexShrink: 0, fontSize: 11, color: '#8b949e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', alignSelf: 'center' }}>
-        {(event.policyId ?? '').replace(/^aegis\/|^gatekeeper\/|^falco\/|^kyverno\/|^agentwall\/|^sigma\/|^catalog\//, '')}
+        {(event.policyId ?? '').replace(/^nixis\/|^gatekeeper\/|^falco\/|^kyverno\/|^agentwall\/|^sigma\/|^catalog\//, '')}
       </div>
 
       {/* Latency */}
@@ -175,8 +175,8 @@ export function EventStreamList() {
 
   useEffect(() => {
     function handleScrollToBottom() { scrollToBottom(); }
-    window.addEventListener('aegis:scroll-to-bottom', handleScrollToBottom);
-    return () => window.removeEventListener('aegis:scroll-to-bottom', handleScrollToBottom);
+    window.addEventListener('nixis:scroll-to-bottom', handleScrollToBottom);
+    return () => window.removeEventListener('nixis:scroll-to-bottom', handleScrollToBottom);
   }, [scrollToBottom]);
 
   if (filtered.length === 0) {
@@ -203,7 +203,7 @@ export function EventStreamList() {
       )}
       {filterPolicy && (
         <div style={{ padding: '4px 12px', background: 'rgba(88,166,255,0.1)', borderBottom: '1px solid rgba(88,166,255,0.2)', fontSize: 11, color: 'var(--info-blue)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span>Policy: {filterPolicy.replace(/^aegis\/|^gatekeeper\/|^falco\/|^kyverno\/|^agentwall\/|^sigma\/|^catalog\//, '')} — {filtered.length} events</span>
+          <span>Policy: {filterPolicy.replace(/^nixis\/|^gatekeeper\/|^falco\/|^kyverno\/|^agentwall\/|^sigma\/|^catalog\//, '')} — {filtered.length} events</span>
           <button onClick={() => useGovernanceStore.getState().setFilterPolicy(null)} style={{ background: 'none', border: 'none', color: 'var(--info-blue)', cursor: 'pointer', fontSize: 11 }}>✕ clear</button>
         </div>
       )}

@@ -13,7 +13,7 @@ vi.mock('react-dom', () => ({
 function makeDeniedEvent(seq = 1): ValidatedEvent {
   return {
     type: 'policy.denied',
-    envelope: { type: 'policy.denied', aegissequence: seq, id: `evt-${seq}` },
+    envelope: { type: 'policy.denied', nixissequence: seq, id: `evt-${seq}` },
     data: {
       tool: 'Shell',
       session_id: 'sess-1',
@@ -33,7 +33,7 @@ function makeDeniedEvent(seq = 1): ValidatedEvent {
 function makeAllowedEvent(seq = 1): ValidatedEvent {
   return {
     type: 'policy.evaluated',
-    envelope: { type: 'policy.evaluated', aegissequence: seq, id: `evt-${seq}` },
+    envelope: { type: 'policy.evaluated', nixissequence: seq, id: `evt-${seq}` },
     data: {
       tool: 'Read',
       session_id: 'sess-1',

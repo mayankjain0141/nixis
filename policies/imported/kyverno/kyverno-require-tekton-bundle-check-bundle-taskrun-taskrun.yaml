@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-require-tekton-bundle-check-bundle-taskrun-taskrun
     annotations:
-        aegis.io/imported-from: aegis-import-987989071.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-987989071.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Tekton
 spec:
     description: PipelineRun and TaskRun resources must be executed from a bundle

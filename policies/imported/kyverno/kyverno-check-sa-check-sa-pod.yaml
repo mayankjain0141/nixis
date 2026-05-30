@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-check-sa-check-sa-pod
     annotations:
-        aegis.io/imported-from: aegis-import-148468191.yaml
-        aegis.io/severity: low
+        nixis.io/imported-from: nixis-import-148468191.yaml
+        nixis.io/severity: low
         kyverno.io/category: Sample
 spec:
     description: ServiceAccounts with privileges to create Pods may be able to do so and name a ServiceAccount other than the one used to create it. This policy checks the Pod, if created by a ServiceAccount, and ensures the `serviceAccountName` field matches the actual ServiceAccount.

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Package otel provides 4-signal OpenTelemetry observability for Aegis:
+// Package otel provides 4-signal OpenTelemetry observability for Nixis:
 // traces, span events, structured logs, and metrics.
 //
 // Zero-alloc invariant (INV-006): when OTel is disabled, noop providers are
@@ -30,7 +30,7 @@ import (
 type Config struct {
 	Enabled      bool
 	Endpoint     string        // OTLP gRPC endpoint; default "localhost:4317"
-	ServiceName  string        // default "aegis-daemon"
+	ServiceName  string        // default "nixis-daemon"
 	BatchTimeout time.Duration // default 5s
 }
 
@@ -43,7 +43,7 @@ func (c *Config) endpoint() string {
 
 func (c *Config) serviceName() string {
 	if c.ServiceName == "" {
-		return "aegis-daemon"
+		return "nixis-daemon"
 	}
 	return c.ServiceName
 }
@@ -58,8 +58,8 @@ func (c *Config) batchTimeout() time.Duration {
 // Package-level providers and instruments — noop by default (INV-006: zero alloc when disabled).
 // resetToNoop() must keep these in sync with the noop meter below.
 var (
-	globalTracer trace.Tracer = tracenoop.NewTracerProvider().Tracer("aegis")
-	globalMeter  metric.Meter = noop.NewMeterProvider().Meter("aegis")
+	globalTracer trace.Tracer = tracenoop.NewTracerProvider().Tracer("nixis")
+	globalMeter  metric.Meter = noop.NewMeterProvider().Meter("nixis")
 	globalLogger *slog.Logger = slog.Default()
 )
 
@@ -89,12 +89,12 @@ func Initialize(cfg Config) (shutdown func(context.Context) error, err error) {
 		return nil, err
 	}
 
-	globalTracer = tp.Tracer("aegis")
-	globalMeter = mp.Meter("aegis")
+	globalTracer = tp.Tracer("nixis")
+	globalMeter = mp.Meter("nixis")
 	otelEnabled = true
 
 	// Signal 3: route slog to OTel OTLP logs.
-	globalLogger = slog.New(otelslog.NewHandler("aegis"))
+	globalLogger = slog.New(otelslog.NewHandler("nixis"))
 
 	if err := initMetrics(); err != nil {
 		_ = tp.Shutdown(context.Background())
@@ -115,8 +115,8 @@ func Initialize(cfg Config) (shutdown func(context.Context) error, err error) {
 // InitializeWithProviders wires externally-constructed SDK providers.
 // Used by tests to inject in-memory exporters without network dependencies.
 func InitializeWithProviders(tp *sdktrace.TracerProvider, mp *sdkmetric.MeterProvider) (func(context.Context) error, error) {
-	globalTracer = tp.Tracer("aegis")
-	globalMeter = mp.Meter("aegis")
+	globalTracer = tp.Tracer("nixis")
+	globalMeter = mp.Meter("nixis")
 	otelEnabled = true
 
 	if err := initMetrics(); err != nil {
@@ -152,20 +152,20 @@ func RecordEvaluation(ctx context.Context, tool, sessionID, decision, layer stri
 	if !otelEnabled {
 		return
 	}
-	ctx, span := globalTracer.Start(ctx, "aegis.evaluate",
+	ctx, span := globalTracer.Start(ctx, "nixis.evaluate",
 		trace.WithAttributes(
-			attribute.String("aegis.tool", tool),
-			attribute.String("aegis.session_id", sessionID),
-			attribute.String("aegis.decision", decision),
-			attribute.String("aegis.enforcing_layer", layer),
-			attribute.Int64("aegis.latency_ns", latencyNs),
+			attribute.String("nixis.tool", tool),
+			attribute.String("nixis.session_id", sessionID),
+			attribute.String("nixis.decision", decision),
+			attribute.String("nixis.enforcing_layer", layer),
+			attribute.Int64("nixis.latency_ns", latencyNs),
 		),
 	)
 	defer span.End()
 
 	if denied {
-		span.AddEvent("aegis.deny", trace.WithAttributes(
-			attribute.String("aegis.decision", decision),
+		span.AddEvent("nixis.deny", trace.WithAttributes(
+			attribute.String("nixis.decision", decision),
 		))
 	}
 
@@ -240,18 +240,18 @@ func buildResource(cfg Config) (*sdkresource.Resource, error) {
 // Called when Initialize is invoked with Enabled=false so that any previous
 // real providers (e.g., set by tests) do not leave live instruments behind.
 func resetToNoop() {
-	noopMeter := noop.NewMeterProvider().Meter("aegis")
-	globalTracer = tracenoop.NewTracerProvider().Tracer("aegis")
+	noopMeter := noop.NewMeterProvider().Meter("nixis")
+	globalTracer = tracenoop.NewTracerProvider().Tracer("nixis")
 	globalMeter = noopMeter
 	globalLogger = slog.Default()
 	// Reset metric instruments so RecordEvaluation skips the nil check fast path.
-	evalDuration, _ = noopMeter.Float64Histogram("aegis_evaluation_duration_seconds")
-	auditBufferUtil, _ = noopMeter.Float64ObservableGauge("aegis_audit_buffer_utilization")
-	policyReloadTotal, _ = noopMeter.Int64Counter("aegis_policy_reload_total")
-	auditDropped, _ = noopMeter.Int64Counter("aegis_audit_events_dropped_total")
-	daemonConns, _ = noopMeter.Int64UpDownCounter("aegis_daemon_active_connections")
-	streamClients, _ = noopMeter.Int64UpDownCounter("aegis_stream_clients_connected")
-	streamDropped, _ = noopMeter.Int64Counter("aegis_stream_tap_dropped_total")
-	failOpenTotal, _ = noopMeter.Int64Counter("aegis_failopen_total")
-	gitleaksMemory, _ = noopMeter.Int64ObservableGauge("aegis_gitleaks_memory_bytes")
+	evalDuration, _ = noopMeter.Float64Histogram("nixis_evaluation_duration_seconds")
+	auditBufferUtil, _ = noopMeter.Float64ObservableGauge("nixis_audit_buffer_utilization")
+	policyReloadTotal, _ = noopMeter.Int64Counter("nixis_policy_reload_total")
+	auditDropped, _ = noopMeter.Int64Counter("nixis_audit_events_dropped_total")
+	daemonConns, _ = noopMeter.Int64UpDownCounter("nixis_daemon_active_connections")
+	streamClients, _ = noopMeter.Int64UpDownCounter("nixis_stream_clients_connected")
+	streamDropped, _ = noopMeter.Int64Counter("nixis_stream_tap_dropped_total")
+	failOpenTotal, _ = noopMeter.Int64Counter("nixis_failopen_total")
+	gitleaksMemory, _ = noopMeter.Int64ObservableGauge("nixis_gitleaks_memory_bytes")
 }

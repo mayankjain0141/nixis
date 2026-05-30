@@ -1,11 +1,11 @@
-# imported from: agentwall via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: agentwall via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: agentwall-query-database-options-limit
     annotations:
-        aegis.io/imported-from: aegis-import-1966544447.yaml
-        aegis.io/severity: low
+        nixis.io/imported-from: nixis-import-1966544447.yaml
+        nixis.io/severity: low
 spec:
     description: 'AgentWall constraint: query_database.options.limit'
     matchConstraints:

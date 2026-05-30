@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { enableMapSet } from 'immer';
-import type { SecurityLabel } from '../types/aegis';
+import type { SecurityLabel } from '../types/nixis';
 import type { Verdict, LabelState } from '../types/events';
 
 enableMapSet();
@@ -44,7 +44,7 @@ export interface GovernanceEvent {
   label: SecurityLabel;
   labelState: LabelState;
   latencyNs: number;
-  aegisSequence: number;
+  nixisSequence: number;
   timestamp: number;
   // Optional fields populated by policy.evaluated / policy.denied events
   securityLabel?: SecurityLabel;

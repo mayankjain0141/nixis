@@ -16,7 +16,7 @@ function makeEvent(overrides: Partial<GovernanceEvent> = {}): GovernanceEvent {
     label: { confidentiality: 0, integrity: 0, categories: 0 },
     labelState: 'fresh',
     latencyNs: 1_500_000,
-    aegisSequence: 1,
+    nixisSequence: 1,
     timestamp: 1_700_000_000_000_000_000,
     ...overrides,
   };
@@ -77,7 +77,7 @@ describe('Inspector', () => {
   });
 
   it('shows sequence number in header', () => {
-    const event = makeEvent({ id: 'evt-seq', aegisSequence: 42 });
+    const event = makeEvent({ id: 'evt-seq', nixisSequence: 42 });
     useGovernanceStore.getState().appendEvent(event);
     useUIStore.getState().openInspector('evt-seq');
 

@@ -1,14 +1,14 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-wrong-mitre-rule
     annotations:
-        aegis.io/falco-tags: container,mitre_lateral_movement,T1610
-        aegis.io/imported-from: aegis-import-1844418014.yaml
-        aegis.io/severity: medium
-        aegis.io/llm-confidence: medium
-        aegis.io/source-rule: wrong mitre rule
+        nixis.io/falco-tags: container,mitre_lateral_movement,T1610
+        nixis.io/imported-from: nixis-import-1844418014.yaml
+        nixis.io/severity: medium
+        nixis.io/llm-confidence: medium
+        nixis.io/source-rule: wrong mitre rule
 spec:
     description: |
         Detect the initial process started by a container that is not in a list of allowed containers.

@@ -2,13 +2,13 @@
 # Catches bash -c, python -c, pipe-to-interpreter, and BASH_ENV injection.
 # $( and backtick excluded — FP rate unacceptable (make -j$(nproc), GOFLAGS=$(git describe)).
 ---
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: bash-interpreter-exec-any
   annotations:
-    aegis.io/default-enabled: "true"
-    aegis.io/bundle: builtin
+    nixis.io/default-enabled: "true"
+    nixis.io/bundle: builtin
 spec:
   description: "Require approval for any sub-interpreter execution"
   matchConstraints:
@@ -19,13 +19,13 @@ spec:
       action: REQUIRE_APPROVAL
   defaultAction: ALLOW
 ---
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: bash-interpreter-exec-network
   annotations:
-    aegis.io/default-enabled: "true"
-    aegis.io/bundle: builtin
+    nixis.io/default-enabled: "true"
+    nixis.io/bundle: builtin
 spec:
   description: "Require approval when sub-interpreter wraps a network command — excludes standalone git commands"
   matchConstraints:
@@ -40,13 +40,13 @@ spec:
       action: REQUIRE_APPROVAL
   defaultAction: ALLOW
 ---
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: bash-interpreter-exec-tainted
   annotations:
-    aegis.io/default-enabled: "true"
-    aegis.io/bundle: builtin
+    nixis.io/default-enabled: "true"
+    nixis.io/bundle: builtin
 spec:
   description: "Require approval for sub-interpreter execution in a tainted session"
   matchConstraints:

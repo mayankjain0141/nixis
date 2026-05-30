@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppShell, AppHeader, AppMetricsBar } from './components/shell/AppShell';
 import { PolicySidebar } from './components/shell/PolicySidebar';
+import { PolicyPlayground } from './components/shell/PolicyPlayground';
 import { CommandPalette } from './components/shell/CommandPalette';
 import { Inspector } from './components/shell/Inspector';
 import { SessionCards } from './components/shell/SessionCards';
@@ -27,7 +28,7 @@ import { GovernanceInvariantChecker } from './services/invariants';
 import type { ValidatedEvent } from './lib/realtime/ingestion-pipeline';
 import type { GovernanceEvent } from './stores/governance-store';
 import type { BundleStatus } from './stores/policy-store';
-import type { SecurityLabel } from './types/aegis';
+import type { SecurityLabel } from './types/nixis';
 import type { LabelState, ConnectionState } from './types/events';
 
 const DAEMON_WS_URL = (() => {
@@ -83,7 +84,7 @@ function buildPolicyUpdate(
   ) ? (d.label_state as LabelState) : 'fresh';
 
   const govEvent: GovernanceEvent = {
-    id: event.envelope.id ?? `evt-${event.envelope.aegissequence}`,
+    id: event.envelope.id ?? `evt-${event.envelope.nixissequence}`,
     sessionId: d.session_id,
     tool: d.tool,
     verdict: d.decision.action,
@@ -93,7 +94,7 @@ function buildPolicyUpdate(
     label: d.decision.labels,
     labelState,
     latencyNs: d.latency_ns,
-    aegisSequence: event.envelope.aegissequence,
+    nixisSequence: event.envelope.nixissequence,
     timestamp: event.envelope.time
       ? new Date(event.envelope.time).getTime() * 1_000_000
       : Date.now() * 1_000_000,
@@ -111,7 +112,7 @@ function buildPolicyUpdate(
       recordEvent(Date.now());
     },
     () => updateLabel(d.session_id, d.decision.labels, labelState),
-    () => updateLastSequence(event.envelope.aegissequence),
+    () => updateLastSequence(event.envelope.nixissequence),
   );
 }
 
@@ -164,7 +165,7 @@ function routeEvents(
             // and any policies not mentioned in this bundle event (e.g. pre-seeded demo policies).
             const incoming: import('./stores/policy-store').PolicySummary[] = rawBundle.policies.map((p) => ({
               id: p.id,
-              name: p.id.replace(/^aegis\//, ''),
+              name: p.id.replace(/^nixis\//, ''),
               layer: (p.layer ?? 'cel') as 'cel' | 'ifc' | 'adapter' | 'delegation' | 'secret-scan',
               enabled: p.enabled ?? true,
               bundleVersion: b.version,
@@ -172,7 +173,7 @@ function routeEvents(
             }));
             usePolicyStore.getState().mergePolicies(incoming);
           }
-          updateLastSequence(event.envelope.aegissequence);
+          updateLastSequence(event.envelope.nixissequence);
         }));
         break;
       }
@@ -185,7 +186,7 @@ function routeEvents(
             d.label,
             (d.label_state ?? 'escalated') as LabelState,
           );
-          updateLastSequence(event.envelope.aegissequence);
+          updateLastSequence(event.envelope.nixissequence);
         }));
         break;
       }
@@ -201,13 +202,13 @@ function routeEvents(
         const relatedSessionName = useGovernanceStore.getState().sessionDisplayNames.get(sessionId) ?? 'Unknown Session';
         orchestrator.dispatchUpdate(atomicUpdate('IMMEDIATE', event.type, () => {
           useThreatStore.getState().appendThreat({
-            id: `threat-${event.envelope.aegissequence}`,
+            id: `threat-${event.envelope.nixissequence}`,
             type: 'secret.found',
             sessionId,
             tool,
             severity: 'critical',
             description: event.type,
-            aegisSequence: event.envelope.aegissequence,
+            nixisSequence: event.envelope.nixissequence,
             timestamp: event.envelope.time
               ? new Date(event.envelope.time).getTime()
               : Date.now(),
@@ -216,14 +217,14 @@ function routeEvents(
             impact,
             relatedSessionName,
           });
-          updateLastSequence(event.envelope.aegissequence);
+          updateLastSequence(event.envelope.nixissequence);
         }));
         break;
       }
 
       case 'audit.checkpoint': {
         const d = event.data;
-        const seq = d.sequence ?? event.envelope.aegissequence;
+        const seq = d.sequence ?? event.envelope.nixissequence;
         const hash = d.hash;
         const prevHash = d.prev_hash ?? d.prevHash ?? null;
         const eventCount = d.events_since_prev ?? d.eventCount ?? 0;
@@ -239,7 +240,7 @@ function routeEvents(
             timestamp: checkpointTimestamp,
           });
           appendEvent({
-            id: event.envelope.id ?? `audit-${event.envelope.aegissequence}`,
+            id: event.envelope.id ?? `audit-${event.envelope.nixissequence}`,
             sessionId: 'audit',
             tool: 'audit',
             verdict: 'audit',
@@ -249,11 +250,11 @@ function routeEvents(
             label: { confidentiality: 0, integrity: 0, categories: 0 },
             labelState: 'fresh',
             latencyNs: 0,
-            aegisSequence: event.envelope.aegissequence,
+            nixisSequence: event.envelope.nixissequence,
             timestamp: checkpointTimestamp * 1_000_000,
             celExpression: `hash:${hash.slice(0, 16)} prev:${(prevHash ?? '').slice(0, 16)}`,
           });
-          updateLastSequence(event.envelope.aegissequence);
+          updateLastSequence(event.envelope.nixissequence);
         }));
         break;
       }
@@ -264,7 +265,7 @@ function routeEvents(
             setConnectionState('DISCONNECTED');
           }));
         } else {
-          updateLastSequence(event.envelope.aegissequence);
+          updateLastSequence(event.envelope.nixissequence);
         }
         break;
 
@@ -300,10 +301,10 @@ function routeEvents(
               reason,
               capabilities,
             }]);
-            updateLastSequence(event.envelope.aegissequence);
+            updateLastSequence(event.envelope.nixissequence);
           }));
         } else {
-          updateLastSequence(event.envelope.aegissequence);
+          updateLastSequence(event.envelope.nixissequence);
         }
         break;
       }
@@ -314,20 +315,20 @@ function routeEvents(
         if (d.session_id) {
           orchestrator.dispatchUpdate(atomicUpdate('FRAME', event.type, () => {
             useGovernanceStore.getState().updateDelegationChain(d.session_id!, []);
-            updateLastSequence(event.envelope.aegissequence);
+            updateLastSequence(event.envelope.nixissequence);
           }));
         } else {
-          updateLastSequence(event.envelope.aegissequence);
+          updateLastSequence(event.envelope.nixissequence);
         }
         break;
       }
 
       case 'stream.heartbeat':
-        updateLastSequence(event.envelope.aegissequence);
+        updateLastSequence(event.envelope.nixissequence);
         break;
 
       default:
-        updateLastSequence((event as { envelope: { aegissequence: number } }).envelope.aegissequence);
+        updateLastSequence((event as { envelope: { nixissequence: number } }).envelope.nixissequence);
         break;
     }
   }
@@ -358,6 +359,7 @@ export default function App() {
   const setConnectionState = useStreamStore((s) => s.setConnectionState);
   const updateLastSequence = useStreamStore((s) => s.updateLastSequence);
   const connectionState = useStreamStore((s) => s.connectionState);
+  const [playgroundOpen, setPlaygroundOpen] = useState(false);
   const coalescedCount = useStreamStore((s) => s.coalescedCount);
   const setBundleStatus = usePolicyStore((s) => s.setBundleStatus);
   const setCommandPaletteOpen = useUIStore((s) => s.setCommandPaletteOpen);
@@ -376,14 +378,13 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [setCommandPaletteOpen]);
 
-  // Handle aegis:navigate events dispatched by CommandPalette
+  // Handle nixis:navigate events dispatched by CommandPalette
   useEffect(() => {
     function handleNavigate(e: Event) {
       const panel = (e as CustomEvent<{ panel: string }>).detail?.panel;
       // Tab panels — switch the secondary tab
       const tabMap: Record<string, MainTab> = {
         dag: 'dag',
-        playground: 'playground',
         agents: 'agents',
         threats: 'threats',
         lattice: 'lattice',
@@ -395,17 +396,9 @@ export default function App() {
         activeTabRef.setTab(tabMap[panel]);
         return;
       }
-      // Scroll targets
-      if (panel === 'events') {
-        document.querySelector('[aria-label="Live event stream"]')?.scrollIntoView({ behavior: 'smooth' });
-      } else if (panel === 'inspector') {
-        document.querySelector('[aria-label="Inspector panel"]')?.scrollIntoView({ behavior: 'smooth' });
-      } else if (panel === 'metrics') {
-        activeTabRef.setTab('dag'); // metrics are in the DAG tab area
-      }
     }
-    window.addEventListener('aegis:navigate', handleNavigate);
-    return () => window.removeEventListener('aegis:navigate', handleNavigate);
+    window.addEventListener('nixis:navigate', handleNavigate);
+    return () => window.removeEventListener('nixis:navigate', handleNavigate);
   }, []);
 
   // Watch for command palette mock requests and activate/deactivate mock mode
@@ -418,7 +411,7 @@ export default function App() {
           if (import.meta.env.DEV) {
             import('./mocks/demoScenario').then(({ runDemoScenario }) => {
               const cancelDemo = runDemoScenario((json) => {
-                window.dispatchEvent(new CustomEvent('aegis:mock-event', { detail: json }));
+                window.dispatchEvent(new CustomEvent('nixis:mock-event', { detail: json }));
               });
               mockGenRef.current = { stop: cancelDemo } as { stop: () => void };
             });
@@ -438,7 +431,7 @@ export default function App() {
     const checker = new GovernanceInvariantChecker({
       getGovernanceEvents: () => useGovernanceStore.getState().events.map(e => ({
         id: e.id,
-        aegisSequence: e.aegisSequence,
+        nixisSequence: e.nixisSequence,
         verdict: e.verdict,
       })),
       getSessionLabels: () => {
@@ -522,14 +515,14 @@ export default function App() {
       const raw = (e as CustomEvent<string>).detail;
       pipeline.ingest(raw, { receivedAt: performance.now() });
     }
-    window.addEventListener('aegis:mock-event', handleMockEvent);
+    window.addEventListener('nixis:mock-event', handleMockEvent);
 
     function handleReconnect() {
       wsManager.disconnect();
       setConnectionState('CONNECTING');
       setTimeout(() => wsManager.connect(), 300);
     }
-    window.addEventListener('aegis:reconnect', handleReconnect);
+    window.addEventListener('nixis:reconnect', handleReconnect);
 
     stateCheckInterval = setInterval(() => {
       setConnectionState(wsManager.getState());
@@ -567,8 +560,8 @@ export default function App() {
       streamProcessor.reset();
       mockGenRef.current?.stop();
       mockGenRef.current = null;
-      window.removeEventListener('aegis:mock-event', handleMockEvent);
-      window.removeEventListener('aegis:reconnect', handleReconnect);
+      window.removeEventListener('nixis:mock-event', handleMockEvent);
+      window.removeEventListener('nixis:reconnect', handleReconnect);
     };
   }, [appendEvent, updateLabel, recordLatency, recordEvent, setConnectionState, updateLastSequence, setBundleStatus]);
 
@@ -591,7 +584,7 @@ export default function App() {
         })
         .catch(() => {
           // Daemon not reachable — fall back to offline mock
-          console.warn('aegis-daemon not reachable — running offline demo');
+          console.warn('nixis-daemon not reachable — running offline demo');
           useStreamStore.getState().setConnectionState('MOCK');
           useStreamStore.getState().setRequestMockMode(false);
           setTimeout(() => useStreamStore.getState().setRequestMockMode(true), 100);
@@ -630,10 +623,54 @@ export default function App() {
             fontWeight: 700, fontSize: 14, letterSpacing: '0.01em',
           }}
         >
-          Daemon unreachable — governance is NOT being enforced. Start the Aegis daemon.
+          Daemon unreachable — governance is NOT being enforced. Start the Nixis daemon.
         </div>
       )}
       <CommandPalette />
+
+      {/* Playground drawer — slides in from top-right */}
+      {playgroundOpen && (
+        <div
+          onClick={() => setPlaygroundOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 200,
+            background: 'rgba(0,0,0,0.4)',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              position: 'absolute', top: 44, right: 0,
+              width: 560, maxHeight: 'calc(100vh - 44px)',
+              background: 'var(--bg-surface)',
+              borderLeft: '1px solid var(--border)',
+              borderBottom: '1px solid var(--border)',
+              overflow: 'auto',
+              boxShadow: '-8px 0 24px rgba(0,0,0,0.4)',
+            }}
+          >
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '10px 16px', borderBottom: '1px solid var(--border)',
+              background: 'var(--bg-base)',
+            }}>
+              <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
+                ⚡ Policy Playground
+              </span>
+              <button
+                onClick={() => setPlaygroundOpen(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 16, lineHeight: 1, padding: '2px 4px' }}
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ padding: 16 }}>
+              <PolicyPlayground />
+            </div>
+          </div>
+        </div>
+      )}
+
       <AppShell
         header={
           <AppHeader
@@ -641,6 +678,7 @@ export default function App() {
             onStartDemo={handleStartDemo}
             onStopDemo={handleStopDemo}
             onOpenPalette={() => useUIStore.getState().setCommandPaletteOpen(true)}
+            onOpenPlayground={() => setPlaygroundOpen(true)}
           />
         }
         metricsBar={

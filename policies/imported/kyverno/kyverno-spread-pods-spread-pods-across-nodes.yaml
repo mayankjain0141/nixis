@@ -3,15 +3,15 @@
 # The translation below approximates as a validate rule but cannot check the label selector —
 # it will REQUIRE_APPROVAL on all Deployments/StatefulSets lacking topologySpreadConstraints,
 # including those that legitimately lack the distributed=required label. This is an over-trigger.
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-spread-pods-spread-pods-across-nodes
     annotations:
-        aegis.io/imported-from: aegis-import-1382216373.yaml
-        aegis.io/severity: low
-        aegis.io/llm-confidence: medium
+        nixis.io/imported-from: nixis-import-1382216373.yaml
+        nixis.io/severity: low
+        nixis.io/llm-confidence: medium
         kyverno.io/category: Sample
 spec:
     description: Deployments to a Kubernetes cluster with multiple availability zones often need to distribute those replicas to align with those zones to ensure site-level failures do not impact availability. This policy matches Deployments with the label `distributed=required` and mutates them to spread Pods across zones.

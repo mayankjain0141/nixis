@@ -21,20 +21,20 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/mayjain/aegis/pkg/aegis"
-	policy_types "github.com/mayjain/aegis/pkg/policy/types"
+	"github.com/mayjain/nixis/pkg/nixis"
+	policy_types "github.com/mayjain/nixis/pkg/policy/types"
 )
 
 // PolicyReloader is the interface that BundleLoader uses to push compiled bundles
 // into the policy engine. Defined here to avoid a circular import with internal/policy.
 type PolicyReloader interface {
-	Reload(ctx context.Context, bundle *aegis.CompiledBundle) error
+	Reload(ctx context.Context, bundle *nixis.CompiledBundle) error
 }
 
 // TestVector is a request/expected-action pair used as a health gate before activation.
 type TestVector struct {
-	Request        aegis.CheckRequest
-	ExpectedAction aegis.Action
+	Request        nixis.CheckRequest
+	ExpectedAction nixis.Action
 }
 
 // BundleConfig configures a BundleLoader.
@@ -52,7 +52,7 @@ type parseDirFunc func(dir string) ([]policy_types.PolicyTemplate, []policy_type
 
 // evalFunc evaluates a single request against a compiled bundle and returns the action.
 // Injected for testing; real health gate uses the compile-and-eval mini path.
-type evalFn func(bundle *aegis.CompiledBundle, req aegis.CheckRequest) aegis.Action
+type evalFn func(bundle *nixis.CompiledBundle, req nixis.CheckRequest) nixis.Action
 
 // BundleLoader fetches, verifies, compiles, and activates policy bundles.
 // It runs a polling loop in Start() and manages the 9-state activation FSM.
@@ -66,7 +66,7 @@ type BundleLoader struct {
 	// current holds the active manifest (nil until first successful activation).
 	current atomic.Pointer[BundleManifest]
 	// prevBundle holds the previous compiled bundle for rollback context.
-	prevBundle atomic.Pointer[aegis.CompiledBundle]
+	prevBundle atomic.Pointer[nixis.CompiledBundle]
 
 	// lastEtag is the ETag from the last successful HTTP fetch (conditional GET).
 	lastEtag string
@@ -363,7 +363,7 @@ func (b *BundleLoader) fetchHTTP(ctx context.Context) (content, sig []byte, chan
 }
 
 // compile parses the extracted bundle directory and builds a CompiledBundle.
-func (b *BundleLoader) compile(dir string, digest [32]byte) (*aegis.CompiledBundle, int, error) {
+func (b *BundleLoader) compile(dir string, digest [32]byte) (*nixis.CompiledBundle, int, error) {
 	parseFn := b.parseDirFn
 	if parseFn == nil {
 		parseFn = ParsePolicyDir
@@ -395,7 +395,7 @@ func (b *BundleLoader) compile(dir string, digest [32]byte) (*aegis.CompiledBund
 		version = prev.Version + 1
 	}
 
-	compiled := &aegis.CompiledBundle{
+	compiled := &nixis.CompiledBundle{
 		Version:   version,
 		Hash:      digest,
 		Templates: templates,
@@ -406,7 +406,7 @@ func (b *BundleLoader) compile(dir string, digest [32]byte) (*aegis.CompiledBund
 
 // healthCheck runs each TestVector against the compiled bundle.
 // Returns an error if any vector's actual action differs from expected.
-func (b *BundleLoader) healthCheck(compiled *aegis.CompiledBundle) error {
+func (b *BundleLoader) healthCheck(compiled *nixis.CompiledBundle) error {
 	if len(b.cfg.TestVectors) == 0 {
 		return nil
 	}
@@ -441,7 +441,7 @@ func (b *BundleLoader) rollback() {
 // extractBundle extracts a tar.gz archive from content into a temp directory.
 // Returns the path of the temp directory. Caller must remove it when done.
 func extractBundle(content []byte) (string, error) {
-	dir, err := os.MkdirTemp("", "aegis-bundle-*")
+	dir, err := os.MkdirTemp("", "nixis-bundle-*")
 	if err != nil {
 		return "", fmt.Errorf("extract: mkdtemp: %w", err)
 	}

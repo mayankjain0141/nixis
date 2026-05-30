@@ -13,13 +13,13 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 // nullReader implements SnapshotReader returning nil.
 type nullReader struct{}
 
-func (nullReader) LoadSnapshot() *aegis.EngineSnapshot { return nil }
+func (nullReader) LoadSnapshot() *nixis.EngineSnapshot { return nil }
 
 // newTestServer creates a StreamServer with a loopback listener for testing.
 // Returns the server and the ws:// base URL.
@@ -103,7 +103,7 @@ func TestStream_TapChannelContract(t *testing.T) {
 	go func() {
 		defer close(done)
 		for i := 0; i < 10; i++ {
-			s.Emit(context.Background(), aegis.StreamEvent{
+			s.Emit(context.Background(), nixis.StreamEvent{
 				Type:      "policy.evaluated",
 				SessionID: "sess_test",
 			})
@@ -139,7 +139,7 @@ func TestStream_FanOut_AllClients(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 
-	s.Emit(context.Background(), aegis.StreamEvent{
+	s.Emit(context.Background(), nixis.StreamEvent{
 		Type:      "policy.denied",
 		SessionID: "sess_fan",
 		Tool:      "Shell",
@@ -186,7 +186,7 @@ func TestStream_SlowClientDrop(t *testing.T) {
 	beforeDrop := droppedTotal.Load()
 
 	// Emit an event — slow client will drop, fast client should receive it.
-	s.Emit(context.Background(), aegis.StreamEvent{
+	s.Emit(context.Background(), nixis.StreamEvent{
 		Type:      "policy.evaluated",
 		SessionID: "sess_drop",
 	})
@@ -204,9 +204,9 @@ func TestStream_SlowClientDrop(t *testing.T) {
 	}
 }
 
-// TestStream_AegisSequence_Monotonic verifies sequence numbers are strictly
+// TestStream_NixisSequence_Monotonic verifies sequence numbers are strictly
 // monotonic across concurrent Emit() calls.
-func TestStream_AegisSequence_Monotonic(t *testing.T) {
+func TestStream_NixisSequence_Monotonic(t *testing.T) {
 	s, baseURL := newTestServer(t)
 	conn := dialWS(t, baseURL)
 	_ = readMsg(t, conn) // consume snapshot
@@ -226,7 +226,7 @@ func TestStream_AegisSequence_Monotonic(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			s.Emit(context.Background(), aegis.StreamEvent{
+			s.Emit(context.Background(), nixis.StreamEvent{
 				Type:      "policy.evaluated",
 				SessionID: "sess_seq",
 			})
@@ -246,7 +246,7 @@ func TestStream_AegisSequence_Monotonic(t *testing.T) {
 		if json.Unmarshal(data, &m) != nil {
 			continue
 		}
-		if seqRaw, ok := m["aegissequence"]; ok {
+		if seqRaw, ok := m["nixissequence"]; ok {
 			switch v := seqRaw.(type) {
 			case float64:
 				seqs = append(seqs, uint64(v))
@@ -284,7 +284,7 @@ func TestStream_InvalidEventType_Rejected(t *testing.T) {
 	beforeSeq := s.seq.n.Load()
 
 	// Emit with invalid type — should be rejected at Emit() entry.
-	s.Emit(context.Background(), aegis.StreamEvent{
+	s.Emit(context.Background(), nixis.StreamEvent{
 		Type:      "not.a.real.type",
 		SessionID: "sess_inv",
 	})
@@ -320,7 +320,7 @@ func TestStream_RejectsXSiteOrigin(t *testing.T) {
 	}
 }
 
-// TestStream_PortConfigurable verifies AEGIS_DASHBOARD_ADDR controls listen port.
+// TestStream_PortConfigurable verifies NIXIS_DASHBOARD_ADDR controls listen port.
 func TestStream_PortConfigurable(t *testing.T) {
 	// Find a free port.
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -333,7 +333,7 @@ func TestStream_PortConfigurable(t *testing.T) {
 	addr := ":" + strings.TrimPrefix(ln.Addr().String(), "127.0.0.1:")
 	_ = port
 
-	t.Setenv("AEGIS_DASHBOARD_ADDR", addr)
+	t.Setenv("NIXIS_DASHBOARD_ADDR", addr)
 
 	s := NewStreamServer(nil, nullReader{})
 	if s.addr != addr {
@@ -466,17 +466,17 @@ func TestStream_PolicyEvent_MatchesDashboardSchema(t *testing.T) {
 		time.Sleep(5 * time.Millisecond)
 	}
 
-	s.Emit(context.Background(), aegis.StreamEvent{
+	s.Emit(context.Background(), nixis.StreamEvent{
 		Type:           "policy.evaluated",
 		SessionID:      "sess-schema-test",
 		Tool:           "Bash",
-		Action:         aegis.ActionDeny,
+		Action:         nixis.ActionDeny,
 		Reason:         "git branch -D main is not permitted",
 		PolicyID:       "git-branch-protection",
 		EnforcingLayer: "cel",
 		LabelState:     "fresh",
 		LatencyNs:      140000,
-		Label:          aegis.SecurityLabel{Confidentiality: 1, Integrity: 2, Category: 3},
+		Label:          nixis.SecurityLabel{Confidentiality: 1, Integrity: 2, Category: 3},
 	})
 
 	msg := readMsg(t, conn)

@@ -98,7 +98,7 @@ export function EventStreamCanvas() {
   }, []);
 
   const topSeq =
-    eventsRef.current[eventsRef.current.length - 1]?.aegisSequence ?? 0;
+    eventsRef.current[eventsRef.current.length - 1]?.nixisSequence ?? 0;
   const lastEvent = eventsRef.current[eventsRef.current.length - 1];
 
   return (

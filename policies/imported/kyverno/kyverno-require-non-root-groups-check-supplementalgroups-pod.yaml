@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-require-non-root-groups-check-supplementalgroups-pod
     annotations:
-        aegis.io/imported-from: aegis-import-3096147677.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-3096147677.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Sample, EKS Best Practices
 spec:
     description: Containers should be forbidden from running with a root primary or supplementary GID. This policy ensures the `runAsGroup`, `supplementalGroups`, and `fsGroup` fields are set to a number greater than zero (i.e., non root). A known issue prevents a policy such as this using `anyPattern` from being persisted properly in Kubernetes 1.23.0-1.23.2.

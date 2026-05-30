@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-external-ips-check-ips-service
     annotations:
-        aegis.io/imported-from: aegis-import-265043470.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-265043470.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Best Practices
 spec:
     description: 'Service externalIPs can be used for a MITM attack (CVE-2020-8554). Restrict externalIPs or limit to a known set of addresses. See: https://github.com/kyverno/kyverno/issues/1367. This policy validates that the `externalIPs` field is not set on a Service.'

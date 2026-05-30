@@ -1,15 +1,15 @@
-# imported from: policies via aegis policy import
+# imported from: policies via nixis policy import
 # Gap: the Kyverno policy checks via namespaceSelector whether the namespace a Kasten Policy
 # *targets* carries appPriority=critical — a cross-resource lookup CEL cannot perform.
 # The expression below fires when the Kasten Policy manifest itself lists appPriority: critical
 # in its namespaceSelector block, which is the closest approximation possible.
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-kasten-hourly-rpo-kasten-hourly-rpo-config-kio-kasten-io-v1alpha1-policy
     annotations:
-        aegis.io/imported-from: aegis-import-2188782845.yaml
-        aegis.io/severity: low
+        nixis.io/imported-from: nixis-import-2188782845.yaml
+        nixis.io/severity: low
         kyverno.io/category: Veeam Kasten
 spec:
     description: Kasten Policy resources can be required to adhere to common Recovery Point Objective (RPO) best practices. This example policy validates that the Policy is set to run hourly if it explicitly protects any namespaces containing the `appPriority=critical` label. This policy can be adapted to enforce any Kasten Policy requirements based on a namespace label.

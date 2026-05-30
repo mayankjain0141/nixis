@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	policy_types "github.com/mayjain/aegis/pkg/policy/types"
+	policy_types "github.com/mayjain/nixis/pkg/policy/types"
 	"gopkg.in/yaml.v3"
 )
 
@@ -88,7 +88,7 @@ func ParsePolicyFileAll(path string) ([]policy_types.PolicyTemplate, []policy_ty
 			return nil, nil, err
 		}
 
-		if manifest.Kind != "PolicyTemplate" || manifest.APIVersion != "aegis.io/v1" {
+		if manifest.Kind != "PolicyTemplate" || manifest.APIVersion != "nixis.io/v1" {
 			continue
 		}
 

@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 // maxUint64Label is the packed representation of the unconstrained ceiling.
@@ -58,7 +58,7 @@ type StandingRule struct {
 // accepted limitation: the NEXT request from the same session will see the granted
 // approval. This is a UX imperfection, not a security flaw.
 type SessionSnapshot struct {
-	Label         aegis.SecurityLabel
+	Label         nixis.SecurityLabel
 	IsTainted     bool
 	ApprovalState ApprovalState
 	StandingRules []StandingRule // defensive copy
@@ -133,10 +133,10 @@ func advanceState(entry *sessionData, next uint32) {
 // a stale lower one, silently downgrading the session.
 //
 // Returns the new (post-elevation) label.
-func (s *SessionLabels) Elevate(sessionID string, resource aegis.SecurityLabel) aegis.SecurityLabel {
+func (s *SessionLabels) Elevate(sessionID string, resource nixis.SecurityLabel) nixis.SecurityLabel {
 	entry := s.getOrCreate(sessionID)
 
-	var result aegis.SecurityLabel
+	var result nixis.SecurityLabel
 	for {
 		old := entry.label.Load()
 		current := unpackLabel(old)
@@ -168,10 +168,10 @@ func (s *SessionLabels) Elevate(sessionID string, resource aegis.SecurityLabel) 
 
 // Current returns the current label for sessionID.
 // Returns the zero SecurityLabel (minimum privilege) for unknown sessions.
-func (s *SessionLabels) Current(sessionID string) aegis.SecurityLabel {
+func (s *SessionLabels) Current(sessionID string) nixis.SecurityLabel {
 	v, ok := s.entries.Load(sessionID)
 	if !ok {
-		return aegis.SecurityLabel{}
+		return nixis.SecurityLabel{}
 	}
 	return unpackLabel(v.(*sessionData).label.Load())
 }
@@ -202,15 +202,15 @@ func (s *SessionLabels) LabelState(sessionID string) LabelState {
 
 // TaintWithSecret sets TaintBit in the session category and transitions state
 // to tainted_by_secret. Uses the CAS loop in Elevate.
-func (s *SessionLabels) TaintWithSecret(sessionID string) aegis.SecurityLabel {
-	return s.Elevate(sessionID, aegis.SecurityLabel{Category: TaintBit})
+func (s *SessionLabels) TaintWithSecret(sessionID string) nixis.SecurityLabel {
+	return s.Elevate(sessionID, nixis.SecurityLabel{Category: TaintBit})
 }
 
 // InitWithCeiling initialises a new child session with label=zero and ceiling=parentLabel.
 // Concurrent calls for the same sessionID are safe: the ceiling is written once
 // via a CAS that only fires on a zero (unset) ceiling.
 // If parentLabel is zero (unconstrained), the ceiling is set to maxUint64Label.
-func (s *SessionLabels) InitWithCeiling(sessionID string, parentLabel aegis.SecurityLabel) {
+func (s *SessionLabels) InitWithCeiling(sessionID string, parentLabel nixis.SecurityLabel) {
 	entry := s.getOrCreate(sessionID)
 
 	packed := packLabel(parentLabel)
@@ -226,7 +226,7 @@ func (s *SessionLabels) InitWithCeiling(sessionID string, parentLabel aegis.Secu
 
 // Ceiling returns the label ceiling for sessionID.
 // Returns the maximum SecurityLabel (unconstrained) when no ceiling is set.
-func (s *SessionLabels) Ceiling(sessionID string) aegis.SecurityLabel {
+func (s *SessionLabels) Ceiling(sessionID string) nixis.SecurityLabel {
 	v, ok := s.entries.Load(sessionID)
 	if !ok {
 		return unpackLabel(maxUint64Label)
@@ -239,7 +239,7 @@ func (s *SessionLabels) Ceiling(sessionID string) aegis.SecurityLabel {
 }
 
 // CheckCeiling returns true if proposed is within the session ceiling.
-func (s *SessionLabels) CheckCeiling(sessionID string, proposed aegis.SecurityLabel) bool {
+func (s *SessionLabels) CheckCeiling(sessionID string, proposed nixis.SecurityLabel) bool {
 	return Dominates(s.Ceiling(sessionID), proposed)
 }
 
@@ -278,7 +278,7 @@ func (s *SessionLabels) Snapshot(sessionID string) SessionSnapshot {
 	v, ok := s.entries.Load(sessionID)
 	if !ok {
 		return SessionSnapshot{
-			Label:         aegis.SecurityLabel{},
+			Label:         nixis.SecurityLabel{},
 			IsTainted:     false,
 			ApprovalState: ApprovalNone,
 			StandingRules: nil,

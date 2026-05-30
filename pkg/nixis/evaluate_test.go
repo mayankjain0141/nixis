@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-package aegis
+package nixis
 
 import (
 	"context"

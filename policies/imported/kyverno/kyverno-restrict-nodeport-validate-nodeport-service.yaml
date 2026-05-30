@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-nodeport-validate-nodeport-service
     annotations:
-        aegis.io/imported-from: aegis-import-1114742723.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-1114742723.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Best Practices
 spec:
     description: A Kubernetes Service of type NodePort uses a host port to receive traffic from any source. A NetworkPolicy cannot be used to control traffic to host ports. Although NodePort Services can be useful, their use must be limited to Services with additional upstream security checks. This policy validates that any new Services do not use the `NodePort` type.

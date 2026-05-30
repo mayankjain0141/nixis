@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mayjain/aegis/internal/classify"
-	"github.com/mayjain/aegis/internal/ifc"
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/internal/classify"
+	"github.com/mayjain/nixis/internal/ifc"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 // restrictedEffects are the effect types that require human approval when a
@@ -85,24 +85,24 @@ func isExternalResource(resources []string) bool {
 //
 //	ActionAllow — session not tainted, not a restricted sink, or internal resource
 //	ActionDeny  — tainted session attempting external network egress without approval
-func Decision(snap ifc.SessionSnapshot, effects []string, resources []string, containsNetworkCmd bool) aegis.Action {
+func Decision(snap ifc.SessionSnapshot, effects []string, resources []string, containsNetworkCmd bool) nixis.Action {
 	// INV-SINK-1: untainted session bypasses all sink enforcement
 	if !snap.IsTainted {
-		return aegis.ActionAllow
+		return nixis.ActionAllow
 	}
 
 	// INV-SINK-2: check if this operation requires gating
 	if !isRestrictedSink(effects, containsNetworkCmd) {
-		return aegis.ActionAllow
+		return nixis.ActionAllow
 	}
 
 	// INV-SINK-3: tainted session + restricted effect → check approval state
 	switch snap.ApprovalState {
 	case ifc.ApprovalSessionGranted:
-		return aegis.ActionAllow
+		return nixis.ActionAllow
 	case ifc.ApprovalStandingRule:
 		if allResourcesCovered(snap.StandingRules, effects, resources) {
-			return aegis.ActionAllow
+			return nixis.ActionAllow
 		}
 	case ifc.ApprovalPending:
 		// Already waiting for user response — do not re-prompt.
@@ -114,9 +114,9 @@ func Decision(snap ifc.SessionSnapshot, effects []string, resources []string, co
 	// Internal/localhost → allow (preserves legitimate local service access).
 	// Unknown destination with network cmd → deny (conservative).
 	if isExternalResource(resources) || (containsNetworkCmd && len(resources) == 0) {
-		return aegis.ActionDeny
+		return nixis.ActionDeny
 	}
-	return aegis.ActionAllow
+	return nixis.ActionAllow
 }
 
 // isRestrictedSink returns true if any effect in the list is a restricted sink,

@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-require-image-source-check-source-pod
     annotations:
-        aegis.io/imported-from: aegis-import-3464093786.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-3464093786.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Other
 spec:
     description: Images can be built from a variety of source control locations and the name does not necessarily indicate this mapping. Ensuring that known good repositories are the source of images helps ensure supply chain security. This policy checks the container images and ensures that they specify the source in either a label `org.opencontainers.image.source` or a newer annotation in the manifest of the same name.

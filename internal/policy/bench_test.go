@@ -4,12 +4,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/mayjain/aegis/internal/cel"
-	"github.com/mayjain/aegis/internal/classify"
-	"github.com/mayjain/aegis/internal/ifc"
-	"github.com/mayjain/aegis/pkg/adapters"
-	"github.com/mayjain/aegis/pkg/aegis"
-	policy_types "github.com/mayjain/aegis/pkg/policy/types"
+	"github.com/mayjain/nixis/internal/cel"
+	"github.com/mayjain/nixis/internal/classify"
+	"github.com/mayjain/nixis/internal/ifc"
+	"github.com/mayjain/nixis/pkg/adapters"
+	"github.com/mayjain/nixis/pkg/nixis"
+	policy_types "github.com/mayjain/nixis/pkg/policy/types"
 )
 
 // BenchmarkEvaluate_CachedProgram measures evaluation latency with cached CEL programs.
@@ -62,7 +62,7 @@ func BenchmarkEvaluate_CachedProgram(b *testing.B) {
 	}
 
 	snap := &engineSnapshot{
-		public: aegis.EngineSnapshot{
+		public: nixis.EngineSnapshot{
 			Version: 1,
 		},
 		classifier: classifier,
@@ -74,7 +74,7 @@ func BenchmarkEvaluate_CachedProgram(b *testing.B) {
 	}
 	engine.applySnapshot(snap)
 
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "ReadTool",
 		SessionID: "bench-session",
 	}
@@ -112,7 +112,7 @@ func BenchmarkEvaluate_DefaultDeny(b *testing.B) {
 	classifier := classify.NewClassifier(catalog)
 
 	snap := &engineSnapshot{
-		public: aegis.EngineSnapshot{
+		public: nixis.EngineSnapshot{
 			Version: 1,
 		},
 		classifier: classifier,
@@ -121,7 +121,7 @@ func BenchmarkEvaluate_DefaultDeny(b *testing.B) {
 	}
 	engine.applySnapshot(snap)
 
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "UnknownTool",
 		SessionID: "bench-session",
 	}
@@ -158,7 +158,7 @@ func BenchmarkEvaluate_IFCCheck(b *testing.B) {
 	classifier := classify.NewClassifier(catalog)
 
 	snap := &engineSnapshot{
-		public: aegis.EngineSnapshot{
+		public: nixis.EngineSnapshot{
 			Version: 1,
 		},
 		classifier: classifier,
@@ -168,15 +168,15 @@ func BenchmarkEvaluate_IFCCheck(b *testing.B) {
 	engine.applySnapshot(snap)
 
 	sessionID := "bench-session"
-	sessions.Elevate(sessionID, aegis.SecurityLabel{
+	sessions.Elevate(sessionID, nixis.SecurityLabel{
 		Confidentiality: 50000,
 		Integrity:       50000,
 	})
 
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "ReadTool",
 		SessionID: sessionID,
-		SecurityLabel: aegis.SecurityLabel{
+		SecurityLabel: nixis.SecurityLabel{
 			Confidentiality: 1000,
 			Integrity:       1000,
 		},
@@ -202,7 +202,7 @@ func BenchmarkEvaluate_NilSnapshot(b *testing.B) {
 
 	engine := NewPolicyEngine(sessions, celEnv)
 
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "TestTool",
 		SessionID: "bench-session",
 	}
@@ -227,7 +227,7 @@ func BenchmarkReload(b *testing.B) {
 
 	engine := NewPolicyEngine(sessions, celEnv)
 
-	bundle := &aegis.CompiledBundle{
+	bundle := &nixis.CompiledBundle{
 		Version: 1,
 	}
 

@@ -1,5 +1,5 @@
 // Package workflow_test contains end-to-end workflow integration tests for the
-// Aegis governance pipeline. Each test exercises the full stack:
+// Nixis governance pipeline. Each test exercises the full stack:
 // Unix socket → daemon handler → policy engine → audit writer → SQLite.
 package workflow_test
 
@@ -17,16 +17,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mayjain/aegis/internal/audit"
-	"github.com/mayjain/aegis/internal/bundle"
-	"github.com/mayjain/aegis/internal/cel"
-	"github.com/mayjain/aegis/internal/daemon"
-	"github.com/mayjain/aegis/internal/delegation"
-	"github.com/mayjain/aegis/internal/ifc"
-	"github.com/mayjain/aegis/internal/policy"
-	"github.com/mayjain/aegis/internal/secret"
-	"github.com/mayjain/aegis/pkg/aegis"
-	policy_types "github.com/mayjain/aegis/pkg/policy/types"
+	"github.com/mayjain/nixis/internal/audit"
+	"github.com/mayjain/nixis/internal/bundle"
+	"github.com/mayjain/nixis/internal/cel"
+	"github.com/mayjain/nixis/internal/daemon"
+	"github.com/mayjain/nixis/internal/delegation"
+	"github.com/mayjain/nixis/internal/ifc"
+	"github.com/mayjain/nixis/internal/policy"
+	"github.com/mayjain/nixis/internal/secret"
+	"github.com/mayjain/nixis/pkg/nixis"
+	policy_types "github.com/mayjain/nixis/pkg/policy/types"
 	_ "modernc.org/sqlite"
 )
 
@@ -114,7 +114,7 @@ func startWorkflowDaemon(
 		if err != nil {
 			t.Fatalf("ParsePolicyDir(%s): %v", policyDir, err)
 		}
-		compiled := &aegis.CompiledBundle{Version: 1, Templates: templates, Bindings: bindings}
+		compiled := &nixis.CompiledBundle{Version: 1, Templates: templates, Bindings: bindings}
 		if err := eng.Reload(context.Background(), compiled); err != nil {
 			t.Fatalf("engine.Reload: %v", err)
 		}
@@ -144,7 +144,7 @@ func startWorkflowDaemon(
 }
 
 // sendWorkflowRequest dials the socket, sends a request, and returns the response.
-func sendWorkflowRequest(t *testing.T, socketPath string, req aegis.CheckRequest) aegis.CheckResponse {
+func sendWorkflowRequest(t *testing.T, socketPath string, req nixis.CheckRequest) nixis.CheckResponse {
 	t.Helper()
 	conn, err := net.Dial("unix", socketPath)
 	if err != nil {
@@ -158,12 +158,12 @@ func sendWorkflowRequest(t *testing.T, socketPath string, req aegis.CheckRequest
 		t.Fatalf("WriteMessage: %v", err)
 	}
 
-	raw, err := daemon.ReadMessage(conn, deadline, aegis.MaxMessageSize)
+	raw, err := daemon.ReadMessage(conn, deadline, nixis.MaxMessageSize)
 	if err != nil {
 		t.Fatalf("ReadMessage: %v", err)
 	}
 
-	var resp aegis.CheckResponse
+	var resp nixis.CheckResponse
 	if err := json.Unmarshal(raw, &resp); err != nil {
 		t.Fatalf("unmarshal response: %v", err)
 	}
@@ -181,13 +181,13 @@ func TestWorkflow_HookAllow_ExitZero(t *testing.T) {
 	socketPath, _ := startWorkflowDaemon(t, policyDir, nil)
 	waitSocketReady(t, socketPath)
 
-	resp := sendWorkflowRequest(t, socketPath, aegis.CheckRequest{
+	resp := sendWorkflowRequest(t, socketPath, nixis.CheckRequest{
 		Tool:      "Bash",
 		Args:      json.RawMessage(`{"command":"ls -la"}`),
 		SessionID: "wf-allow-test-001",
 	})
 
-	if resp.Decision.Action != aegis.ActionAllow {
+	if resp.Decision.Action != nixis.ActionAllow {
 		t.Errorf("expected Allow for 'ls -la', got %v (reason: %q, layer: %q)",
 			resp.Decision.Action, resp.Decision.Reason, resp.EnforcingLayer)
 	}
@@ -205,13 +205,13 @@ func TestWorkflow_HookDeny_ExitTwo(t *testing.T) {
 	socketPath, _ := startWorkflowDaemon(t, policyDir, nil)
 	waitSocketReady(t, socketPath)
 
-	resp := sendWorkflowRequest(t, socketPath, aegis.CheckRequest{
+	resp := sendWorkflowRequest(t, socketPath, nixis.CheckRequest{
 		Tool:      "Bash",
 		Args:      json.RawMessage(`{"command":"git branch -D main"}`),
 		SessionID: "wf-deny-test-001",
 	})
 
-	if resp.Decision.Action != aegis.ActionDeny {
+	if resp.Decision.Action != nixis.ActionDeny {
 		t.Errorf("expected Deny for 'git branch -D main', got %v (reason: %q)",
 			resp.Decision.Action, resp.Decision.Reason)
 	}
@@ -227,33 +227,33 @@ func TestWorkflow_PolicyReload_WhileServing(t *testing.T) {
 	waitSocketReady(t, socketPath)
 
 	// Phase 1: engine has no snapshot → deny (fail-secure).
-	resp1 := sendWorkflowRequest(t, socketPath, aegis.CheckRequest{
+	resp1 := sendWorkflowRequest(t, socketPath, nixis.CheckRequest{
 		Tool:      "Bash",
 		Args:      json.RawMessage(`{"command":"ls -la"}`),
 		SessionID: "wf-reload-test-001",
 	})
-	if resp1.Decision.Action != aegis.ActionDeny {
+	if resp1.Decision.Action != nixis.ActionDeny {
 		t.Errorf("pre-reload: expected Deny (uninitialized engine), got %v", resp1.Decision.Action)
 	}
 
 	// Phase 2: reload empty bundle → allow-all (no DENY policies present).
-	emptyBundle := &aegis.CompiledBundle{Version: 1}
+	emptyBundle := &nixis.CompiledBundle{Version: 1}
 	if err := eng.Reload(context.Background(), emptyBundle); err != nil {
 		t.Fatalf("Reload (empty bundle): %v", err)
 	}
 
-	resp2 := sendWorkflowRequest(t, socketPath, aegis.CheckRequest{
+	resp2 := sendWorkflowRequest(t, socketPath, nixis.CheckRequest{
 		Tool:      "Bash",
 		Args:      json.RawMessage(`{"command":"ls -la"}`),
 		SessionID: "wf-reload-test-002",
 	})
-	if resp2.Decision.Action != aegis.ActionAllow {
+	if resp2.Decision.Action != nixis.ActionAllow {
 		t.Errorf("post-reload (empty bundle): expected Allow, got %v (reason: %q)",
 			resp2.Decision.Action, resp2.Decision.Reason)
 	}
 
 	// Phase 3: reload deny-all bundle → deny.
-	denyBundle := &aegis.CompiledBundle{
+	denyBundle := &nixis.CompiledBundle{
 		Version: 2,
 		Templates: []policy_types.PolicyTemplate{
 			{
@@ -277,12 +277,12 @@ func TestWorkflow_PolicyReload_WhileServing(t *testing.T) {
 		t.Fatalf("Reload (deny-all): %v", err)
 	}
 
-	resp3 := sendWorkflowRequest(t, socketPath, aegis.CheckRequest{
+	resp3 := sendWorkflowRequest(t, socketPath, nixis.CheckRequest{
 		Tool:      "Bash",
 		Args:      json.RawMessage(`{"command":"ls -la"}`),
 		SessionID: "wf-reload-test-003",
 	})
-	if resp3.Decision.Action != aegis.ActionDeny {
+	if resp3.Decision.Action != nixis.ActionDeny {
 		t.Errorf("post-reload (deny-all): expected Deny, got %v", resp3.Decision.Action)
 	}
 }
@@ -300,7 +300,7 @@ func TestWorkflow_IFC_LabelEscalation(t *testing.T) {
 	const sid = "wf-ifc-taint-001"
 
 	// Issue a request so the session is known to the daemon handler.
-	_ = sendWorkflowRequest(t, socketPath, aegis.CheckRequest{
+	_ = sendWorkflowRequest(t, socketPath, nixis.CheckRequest{
 		Tool:      "ReadFile",
 		SessionID: sid,
 	})
@@ -336,7 +336,7 @@ func TestWorkflow_AuditRecord_Persistence(t *testing.T) {
 	}
 	sessions := &ifc.SessionLabels{}
 	eng := policy.NewPolicyEngine(sessions, celEnv)
-	if err := eng.Reload(context.Background(), &aegis.CompiledBundle{Version: 1}); err != nil {
+	if err := eng.Reload(context.Background(), &nixis.CompiledBundle{Version: 1}); err != nil {
 		t.Fatalf("Reload: %v", err)
 	}
 
@@ -373,7 +373,7 @@ func TestWorkflow_AuditRecord_Persistence(t *testing.T) {
 	waitSocketReady(t, socketPath)
 
 	const sessionID = "wf-audit-persist-001"
-	reqs := []aegis.CheckRequest{
+	reqs := []nixis.CheckRequest{
 		{Tool: "Bash", Args: json.RawMessage(`{"command":"ls -la"}`), SessionID: sessionID},
 		{Tool: "ReadFile", Args: json.RawMessage(`{"file_path":"/tmp/x"}`), SessionID: sessionID},
 		{Tool: "WriteFile", Args: json.RawMessage(`{"file_path":"/tmp/y"}`), SessionID: sessionID},
@@ -483,8 +483,8 @@ func TestWorkflow_DelegationChain_Validate(t *testing.T) {
 		t.Fatalf("marshal token: %v", err)
 	}
 
-	ref := aegis.DelegationRef{TokenID: string(raw), Issuer: tok.Issuer}
-	chain, err := eng.ValidateChain([]aegis.DelegationRef{ref}, time.Now())
+	ref := nixis.DelegationRef{TokenID: string(raw), Issuer: tok.Issuer}
+	chain, err := eng.ValidateChain([]nixis.DelegationRef{ref}, time.Now())
 	if err != nil {
 		t.Fatalf("ValidateChain: %v", err)
 	}
@@ -547,12 +547,12 @@ func TestWorkflow_CELPolicy_GitBranchProtection(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			args, _ := json.Marshal(map[string]string{"command": tc.cmd})
-			resp := sendWorkflowRequest(t, socketPath, aegis.CheckRequest{
+			resp := sendWorkflowRequest(t, socketPath, nixis.CheckRequest{
 				Tool:      "Bash",
 				Args:      args,
 				SessionID: "wf-git-" + tc.name,
 			})
-			isDeny := resp.Decision.Action == aegis.ActionDeny
+			isDeny := resp.Decision.Action == nixis.ActionDeny
 			if isDeny != tc.wantDeny {
 				t.Errorf("cmd=%q: wantDeny=%v, got action=%v (reason: %q)",
 					tc.cmd, tc.wantDeny, resp.Decision.Action, resp.Decision.Reason)
@@ -606,7 +606,7 @@ func TestWorkflow_SecretScan_PipelineDenies(t *testing.T) {
 	s := secret.NewScanner()
 	eng := policy.NewPolicyEngine(sessions, celEnv, policy.WithSecretScanner(s))
 
-	if err := eng.Reload(context.Background(), &aegis.CompiledBundle{Version: 1}); err != nil {
+	if err := eng.Reload(context.Background(), &nixis.CompiledBundle{Version: 1}); err != nil {
 		t.Fatalf("Reload: %v", err)
 	}
 
@@ -614,15 +614,15 @@ func TestWorkflow_SecretScan_PipelineDenies(t *testing.T) {
 	args, _ := json.Marshal(map[string]string{"command": fmt.Sprintf("echo %s", fakeToken)})
 
 	const sid = "wf-secret-scan-001"
-	resp := eng.Evaluate(context.Background(), aegis.CheckRequest{
+	resp := eng.Evaluate(context.Background(), nixis.CheckRequest{
 		Tool:      "Bash",
 		Args:      args,
 		SessionID: sid,
 	})
 
-	if resp.Decision.Action == aegis.ActionDeny {
+	if resp.Decision.Action == nixis.ActionDeny {
 		// If detection fired, enforcing layer must be secret-scan.
-		if resp.EnforcingLayer != aegis.EnforcingLayerSecretScan {
+		if resp.EnforcingLayer != nixis.EnforcingLayerSecretScan {
 			t.Errorf("expected EnforcingLayerSecretScan, got %q", resp.EnforcingLayer)
 		}
 		// Session must be tainted after a secret-scan deny.
@@ -660,9 +660,9 @@ func TestWorkflow_DelegationChain_ExpiredToken(t *testing.T) {
 	tok.Signature = ed25519.Sign(priv, tok.CanonicalBytes())
 
 	raw, _ := json.Marshal(tok)
-	ref := aegis.DelegationRef{TokenID: string(raw), Issuer: tok.Issuer}
+	ref := nixis.DelegationRef{TokenID: string(raw), Issuer: tok.Issuer}
 
-	chain, err := eng.ValidateChain([]aegis.DelegationRef{ref}, time.Now())
+	chain, err := eng.ValidateChain([]nixis.DelegationRef{ref}, time.Now())
 	if err == nil {
 		t.Errorf("expected error for expired token, got chain=%v", chain)
 	}
@@ -678,12 +678,12 @@ func TestWorkflow_ConcurrentRequests(t *testing.T) {
 	waitSocketReady(t, socketPath)
 
 	const n = 10
-	type result struct{ action aegis.Action }
+	type result struct{ action nixis.Action }
 	results := make(chan result, n)
 
 	for i := range n {
 		go func(i int) {
-			resp := sendWorkflowRequest(t, socketPath, aegis.CheckRequest{
+			resp := sendWorkflowRequest(t, socketPath, nixis.CheckRequest{
 				Tool:      "Bash",
 				Args:      json.RawMessage(`{"command":"ls -la"}`),
 				SessionID: fmt.Sprintf("wf-concurrent-%d", i),
@@ -694,7 +694,7 @@ func TestWorkflow_ConcurrentRequests(t *testing.T) {
 
 	for range n {
 		r := <-results
-		if r.action != aegis.ActionAllow && r.action != aegis.ActionDeny {
+		if r.action != nixis.ActionAllow && r.action != nixis.ActionDeny {
 			t.Errorf("unexpected action from concurrent request: %v", r.action)
 		}
 	}
@@ -712,7 +712,7 @@ func TestWorkflow_PolicyEngine_ReloadDoesNotDropRequests(t *testing.T) {
 	sessions := &ifc.SessionLabels{}
 	eng := policy.NewPolicyEngine(sessions, celEnv)
 
-	if err := eng.Reload(context.Background(), &aegis.CompiledBundle{Version: 1}); err != nil {
+	if err := eng.Reload(context.Background(), &nixis.CompiledBundle{Version: 1}); err != nil {
 		t.Fatalf("initial Reload: %v", err)
 	}
 
@@ -730,12 +730,12 @@ func TestWorkflow_PolicyEngine_ReloadDoesNotDropRequests(t *testing.T) {
 				return
 			default:
 			}
-			resp := eng.Evaluate(ctx, aegis.CheckRequest{
+			resp := eng.Evaluate(ctx, nixis.CheckRequest{
 				Tool:      "Bash",
 				Args:      json.RawMessage(`{"command":"ls"}`),
 				SessionID: fmt.Sprintf("wf-race-%d", i),
 			})
-			if resp.Decision.Action != aegis.ActionAllow && resp.Decision.Action != aegis.ActionDeny {
+			if resp.Decision.Action != nixis.ActionAllow && resp.Decision.Action != nixis.ActionDeny {
 				evalErrors.Add(1)
 			}
 		}
@@ -745,7 +745,7 @@ func TestWorkflow_PolicyEngine_ReloadDoesNotDropRequests(t *testing.T) {
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			break
 		}
-		if err := eng.Reload(ctx, &aegis.CompiledBundle{Version: uint64(v + 2)}); err != nil {
+		if err := eng.Reload(ctx, &nixis.CompiledBundle{Version: uint64(v + 2)}); err != nil {
 			t.Errorf("concurrent Reload v%d: %v", v+2, err)
 		}
 		time.Sleep(2 * time.Millisecond)

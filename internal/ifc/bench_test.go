@@ -3,17 +3,17 @@ package ifc
 import (
 	"testing"
 
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 var (
 	sinkBool  bool
-	sinkLabel aegis.SecurityLabel
+	sinkLabel nixis.SecurityLabel
 )
 
 func BenchmarkIFC_Dominates(b *testing.B) {
-	subject := aegis.SecurityLabel{Confidentiality: 100, Integrity: 100, Category: CatCredentials | CatFinance}
-	object := aegis.SecurityLabel{Confidentiality: 50, Integrity: 50, Category: CatCredentials}
+	subject := nixis.SecurityLabel{Confidentiality: 100, Integrity: 100, Category: CatCredentials | CatFinance}
+	object := nixis.SecurityLabel{Confidentiality: 50, Integrity: 50, Category: CatCredentials}
 	b.ResetTimer()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
@@ -22,8 +22,8 @@ func BenchmarkIFC_Dominates(b *testing.B) {
 }
 
 func BenchmarkIFC_Join(b *testing.B) {
-	a := aegis.SecurityLabel{Confidentiality: 100, Integrity: 80, Category: CatCredentials}
-	bLabel := aegis.SecurityLabel{Confidentiality: 50, Integrity: 100, Category: CatFinance}
+	a := nixis.SecurityLabel{Confidentiality: 100, Integrity: 80, Category: CatCredentials}
+	bLabel := nixis.SecurityLabel{Confidentiality: 50, Integrity: 100, Category: CatFinance}
 	b.ResetTimer()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
@@ -32,8 +32,8 @@ func BenchmarkIFC_Join(b *testing.B) {
 }
 
 func BenchmarkIFC_Meet(b *testing.B) {
-	a := aegis.SecurityLabel{Confidentiality: 100, Integrity: 80, Category: CatCredentials}
-	bLabel := aegis.SecurityLabel{Confidentiality: 50, Integrity: 100, Category: CatFinance}
+	a := nixis.SecurityLabel{Confidentiality: 100, Integrity: 80, Category: CatCredentials}
+	bLabel := nixis.SecurityLabel{Confidentiality: 50, Integrity: 100, Category: CatFinance}
 	b.ResetTimer()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
@@ -43,7 +43,7 @@ func BenchmarkIFC_Meet(b *testing.B) {
 
 func BenchmarkIFC_Elevate(b *testing.B) {
 	s := &SessionLabels{}
-	resource := aegis.SecurityLabel{Confidentiality: 50, Integrity: 50, Category: CatCredentials}
+	resource := nixis.SecurityLabel{Confidentiality: 50, Integrity: 50, Category: CatCredentials}
 	// Pre-create session so getOrCreate doesn't dominate timing.
 	s.getOrCreate("bench-sess")
 	b.ResetTimer()

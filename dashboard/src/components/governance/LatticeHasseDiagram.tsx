@@ -80,7 +80,7 @@ interface SessionEntry {
 
 export function LatticeHasseDiagram() {
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
-  const [showHelp, setShowHelp] = useState(false);
+  const [showHelp, setShowHelp] = useState(true);
   const previousCountsRef = useRef<Map<string, number>>(new Map());
   const animatingBadgesRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const animatingCirclesRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());

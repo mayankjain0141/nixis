@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/mayjain/aegis/pkg/adapters"
+	"github.com/mayjain/nixis/pkg/adapters"
 )
 
 // Classification describes the nature of a tool call. NOT a final governance decision.

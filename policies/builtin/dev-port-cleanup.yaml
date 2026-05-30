@@ -12,12 +12,12 @@
 #   Ports 0–1023 (well-known ports) are rejected at policy validation time with:
 #   "devPorts contains well-known port: use explicit policy for ports < 1024"
 
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: dev-port-cleanup
   annotations:
-    aegis.io/bundle: builtin
+    nixis.io/bundle: builtin
 spec:
   description: "Allow killing processes on known dev ports without approval; flag well-known ports"
   matchConstraints:

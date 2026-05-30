@@ -1,12 +1,12 @@
-# imported from: policies via aegis policy import
+# imported from: policies via nixis policy import
 # Gap: update-detection — CEL cannot distinguish a create from an update; flags all writes to ArgoCD Application manifests that reference a project field for human review
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-application-prevent-updates-project-project-updates-application
     annotations:
-        aegis.io/imported-from: aegis-import-3993945863.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-3993945863.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Argo
 spec:
     description: This policy prevents updates to the project field after an Application is created.

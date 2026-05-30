@@ -8,9 +8,9 @@ import (
 	celgo "github.com/google/cel-go/cel"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
-	"github.com/mayjain/aegis/internal/classify"
-	"github.com/mayjain/aegis/internal/label"
-	aegis "github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/internal/classify"
+	"github.com/mayjain/nixis/internal/label"
+	nixis "github.com/mayjain/nixis/pkg/nixis"
 )
 
 // activationPool pools plain map[string]any values to avoid heap allocation on the hot path.
@@ -67,7 +67,7 @@ var emptyParams = map[string]any{}
 func (a *ActivationBuilder) Evaluate(
 	ctx context.Context,
 	prog *celgo.Program,
-	req aegis.CheckRequest,
+	req nixis.CheckRequest,
 	verdictEntry classify.VerdictEntry,
 	decodedArgs map[string]any,
 	labeled label.LabeledRequest,
@@ -127,9 +127,9 @@ func (a *ActivationBuilder) Evaluate(
 func Eval(
 	ctx context.Context,
 	prog *celgo.Program,
-	req aegis.CheckRequest,
+	req nixis.CheckRequest,
 	verdictEntry classify.VerdictEntry,
-	snap *aegis.EngineSnapshot,
+	snap *nixis.EngineSnapshot,
 	decodedArgs map[string]any,
 	labeled label.LabeledRequest,
 	params map[string]any,

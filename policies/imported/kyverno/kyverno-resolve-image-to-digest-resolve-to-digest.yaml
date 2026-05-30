@@ -1,12 +1,12 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-resolve-image-to-digest-resolve-to-digest
     annotations:
-        aegis.io/imported-from: aegis-import-538652899.yaml
-        aegis.io/severity: medium
-        aegis.io/llm-confidence: medium
+        nixis.io/imported-from: nixis-import-538652899.yaml
+        nixis.io/severity: medium
+        nixis.io/llm-confidence: medium
         kyverno.io/category: Other
 spec:
     description: Image tags are mutable and the change of an image can result in the same tag. This policy resolves the image digest of each image in a container and replaces the image with the fully resolved reference which includes the digest rather than tag.
@@ -16,6 +16,6 @@ spec:
             - Edit
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("image:")'
-          message: 'Images should be pinned to digest rather than mutable tags — Aegis cannot auto-mutate; resolve image digests manually before applying'
+          message: 'Images should be pinned to digest rather than mutable tags — Nixis cannot auto-mutate; resolve image digests manually before applying'
           action: AUDIT
     defaultAction: ALLOW

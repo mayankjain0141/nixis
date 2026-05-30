@@ -11,7 +11,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 
-	aegisotel "github.com/mayjain/aegis/internal/otel"
+	nixisotel "github.com/mayjain/nixis/internal/otel"
 )
 
 // TestOTel_FullWire verifies that after InitializeWithProviders, a RecordEvaluation
@@ -26,7 +26,7 @@ func TestOTel_FullWire(t *testing.T) {
 	reader := sdkmetric.NewManualReader()
 	mp := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
 
-	shutdown, err := aegisotel.InitializeWithProviders(tp, mp)
+	shutdown, err := nixisotel.InitializeWithProviders(tp, mp)
 	if err != nil {
 		t.Fatalf("InitializeWithProviders: %v", err)
 	}
@@ -36,7 +36,7 @@ func TestOTel_FullWire(t *testing.T) {
 		_ = shutdown(ctx)
 	}()
 
-	aegisotel.RecordEvaluation(context.Background(), "Bash", "test-sess-001", "deny", "cel", 150_000, true)
+	nixisotel.RecordEvaluation(context.Background(), "Bash", "test-sess-001", "deny", "cel", 150_000, true)
 
 	spans := spanExporter.GetSpans()
 	if len(spans) == 0 {
@@ -44,13 +44,13 @@ func TestOTel_FullWire(t *testing.T) {
 	}
 	found := false
 	for _, s := range spans {
-		if s.Name == "aegis.evaluate" {
+		if s.Name == "nixis.evaluate" {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Errorf("no 'aegis.evaluate' span found in %d spans: %v", len(spans), spans)
+		t.Errorf("no 'nixis.evaluate' span found in %d spans: %v", len(spans), spans)
 	}
 
 	var rm metricdata.ResourceMetrics
@@ -60,7 +60,7 @@ func TestOTel_FullWire(t *testing.T) {
 	foundMetric := false
 	for _, sm := range rm.ScopeMetrics {
 		for _, m := range sm.Metrics {
-			if m.Name == "aegis_evaluation_duration_seconds" {
+			if m.Name == "nixis_evaluation_duration_seconds" {
 				foundMetric = true
 			}
 		}
@@ -72,7 +72,7 @@ func TestOTel_FullWire(t *testing.T) {
 				t.Logf("  %s", m.Name)
 			}
 		}
-		t.Error("aegis_evaluation_duration_seconds not found — metric was not emitted after RecordEvaluation")
+		t.Error("nixis_evaluation_duration_seconds not found — metric was not emitted after RecordEvaluation")
 	}
 }
 
@@ -85,7 +85,7 @@ func TestOTel_InstrumentDaemonConns_NotNoop(t *testing.T) {
 	spanExporter := tracetest.NewInMemoryExporter()
 	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(spanExporter))
 
-	shutdown, err := aegisotel.InitializeWithProviders(tp, mp)
+	shutdown, err := nixisotel.InitializeWithProviders(tp, mp)
 	if err != nil {
 		t.Fatalf("InitializeWithProviders: %v", err)
 	}
@@ -95,8 +95,8 @@ func TestOTel_InstrumentDaemonConns_NotNoop(t *testing.T) {
 		_ = shutdown(ctx)
 	}()
 
-	aegisotel.InstrumentDaemonConns().Add(context.Background(), 1)
-	aegisotel.InstrumentDaemonConns().Add(context.Background(), -1)
+	nixisotel.InstrumentDaemonConns().Add(context.Background(), 1)
+	nixisotel.InstrumentDaemonConns().Add(context.Background(), -1)
 
 	var rm metricdata.ResourceMetrics
 	if err := reader.Collect(context.Background(), &rm); err != nil {
@@ -106,7 +106,7 @@ func TestOTel_InstrumentDaemonConns_NotNoop(t *testing.T) {
 	found := false
 	for _, sm := range rm.ScopeMetrics {
 		for _, m := range sm.Metrics {
-			if m.Name == "aegis_daemon_active_connections" {
+			if m.Name == "nixis_daemon_active_connections" {
 				found = true
 			}
 		}
@@ -118,6 +118,6 @@ func TestOTel_InstrumentDaemonConns_NotNoop(t *testing.T) {
 				t.Logf("  %s", m.Name)
 			}
 		}
-		t.Error("aegis_daemon_active_connections not found — noop provider still active")
+		t.Error("nixis_daemon_active_connections not found — noop provider still active")
 	}
 }

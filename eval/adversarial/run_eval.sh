@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Aegis Adversarial Eval Runner
+# Nixis Adversarial Eval Runner
 # Sends test cases to daemon and compares actual vs expected decisions
 
-DAEMON_SOCKET="/tmp/aegis.sock"
+DAEMON_SOCKET="/tmp/nixis.sock"
 CASES_DIR="./eval/adversarial"
 OUTPUT_DIR="./eval/results"
 FILTER=""
@@ -14,10 +14,10 @@ usage() {
     cat <<EOF
 Usage: $(basename "$0") [OPTIONS]
 
-Run adversarial evaluation against Aegis daemon.
+Run adversarial evaluation against Nixis daemon.
 
 Options:
-    --daemon-socket PATH   Unix socket path (default: /tmp/aegis.sock)
+    --daemon-socket PATH   Unix socket path (default: /tmp/nixis.sock)
     --cases-dir DIR        Directory containing JSONL test files (default: ./eval/adversarial)
     --output-dir DIR       Directory for results output (default: ./eval/results)
     --filter CATEGORY      Only run cases matching this category
@@ -62,7 +62,7 @@ fi
 
 if [[ ! -S "$DAEMON_SOCKET" ]]; then
     echo -e "${RED}Error: Daemon socket not found at $DAEMON_SOCKET${RESET}" >&2
-    echo "Is the Aegis daemon running?" >&2
+    echo "Is the Nixis daemon running?" >&2
     exit 2
 fi
 
@@ -328,7 +328,7 @@ process_results() {
     echo "  Precision: ${cat_precision}, Recall: ${cat_recall}"
 }
 
-echo -e "${BOLD}=== Aegis Adversarial Evaluation ===${RESET}"
+echo -e "${BOLD}=== Nixis Adversarial Evaluation ===${RESET}"
 echo "Socket: $DAEMON_SOCKET"
 echo "Cases dir: $CASES_DIR"
 echo "Timeout: ${TIMEOUT_MS}ms"

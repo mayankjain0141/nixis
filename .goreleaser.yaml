@@ -1,9 +1,9 @@
 version: 2
 
 builds:
-  - id: aegis
-    main: ./cmd/aegis
-    binary: aegis
+  - id: nixis
+    main: ./cmd/nixis
+    binary: nixis
     env:
       - CGO_ENABLED=0
     goos:
@@ -17,9 +17,9 @@ builds:
     flags:
       - -trimpath
 
-  - id: aegis-hook
-    main: ./cmd/aegis-hook
-    binary: aegis-hook
+  - id: nixis-hook
+    main: ./cmd/nixis-hook
+    binary: nixis-hook
     env:
       - CGO_ENABLED=0
     goos:
@@ -36,8 +36,8 @@ builds:
 archives:
   - id: default
     builds:
-      - aegis
-      - aegis-hook
+      - nixis
+      - nixis-hook
     format: tar.gz
     name_template: "aegis_{{ .Os }}_{{ .Arch }}"
 
@@ -46,18 +46,18 @@ checksum:
   algorithm: sha256
 
 brews:
-  - name: aegis
+  - name: nixis
     repository:
       owner: mayjain
       name: homebrew-tap
     directory: Formula
-    homepage: https://github.com/mayjain/aegis
+    homepage: https://github.com/mayjain/nixis
     description: "Real-time governance engine for AI coding agents"
     install: |
-      bin.install "aegis"
-      bin.install "aegis-hook"
+      bin.install "nixis"
+      bin.install "nixis-hook"
     test: |
-      system "#{bin}/aegis", "version"
+      system "#{bin}/nixis", "version"
 
 changelog:
   sort: asc
@@ -69,17 +69,17 @@ changelog:
 release:
   github:
     owner: mayjain
-    name: aegis
+    name: nixis
   header: |
     ## Install
 
     ```bash
     # Homebrew (macOS)
-    brew install mayjain/tap/aegis
+    brew install mayjain/tap/nixis
 
     # Or curl one-liner
-    curl -sSfL https://raw.githubusercontent.com/mayjain/aegis/main/install.sh | sh
+    curl -sSfL https://raw.githubusercontent.com/mayjain/nixis/main/install.sh | sh
 
     # Then configure
-    aegis setup
+    nixis setup
     ```

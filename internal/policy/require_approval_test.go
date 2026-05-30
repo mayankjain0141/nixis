@@ -5,12 +5,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/mayjain/aegis/internal/cel"
-	"github.com/mayjain/aegis/internal/classify"
-	"github.com/mayjain/aegis/internal/ifc"
-	"github.com/mayjain/aegis/pkg/adapters"
-	"github.com/mayjain/aegis/pkg/aegis"
-	policy_types "github.com/mayjain/aegis/pkg/policy/types"
+	"github.com/mayjain/nixis/internal/cel"
+	"github.com/mayjain/nixis/internal/classify"
+	"github.com/mayjain/nixis/internal/ifc"
+	"github.com/mayjain/nixis/pkg/adapters"
+	"github.com/mayjain/nixis/pkg/nixis"
+	policy_types "github.com/mayjain/nixis/pkg/policy/types"
 )
 
 func makeEngineWithCELBinding(t *testing.T, templateID, expression string, binding policy_types.PolicyBinding) *PolicyEngine {
@@ -43,7 +43,7 @@ func makeEngineWithCELBinding(t *testing.T, templateID, expression string, bindi
 	}
 
 	snap := &engineSnapshot{
-		public:     aegis.EngineSnapshot{Version: 1},
+		public:     nixis.EngineSnapshot{Version: 1},
 		classifier: classifier,
 		programs:   programs,
 		bindings:   bindings,
@@ -59,12 +59,12 @@ func TestEngine_RequireApprovalPolicy_ReturnsActionRequireApproval(t *testing.T)
 		Message:         "requires approval",
 	})
 
-	resp := engine.Evaluate(context.Background(), aegis.CheckRequest{Tool: "Bash", Args: []byte(`{"command":"ls"}`), SessionID: "s1"})
+	resp := engine.Evaluate(context.Background(), nixis.CheckRequest{Tool: "Bash", Args: []byte(`{"command":"ls"}`), SessionID: "s1"})
 
-	if resp.Decision.Action != aegis.ActionRequireApproval {
+	if resp.Decision.Action != nixis.ActionRequireApproval {
 		t.Errorf("Action = %v, want ActionRequireApproval", resp.Decision.Action)
 	}
-	if resp.EnforcingLayer != aegis.EnforcingLayerCEL {
+	if resp.EnforcingLayer != nixis.EnforcingLayerCEL {
 		t.Errorf("EnforcingLayer = %v, want EnforcingLayerCEL", resp.EnforcingLayer)
 	}
 }
@@ -74,9 +74,9 @@ func TestEngine_DenyPolicy_StillReturnsDeny(t *testing.T) {
 		RequireApproval: false,
 	})
 
-	resp := engine.Evaluate(context.Background(), aegis.CheckRequest{Tool: "Bash", Args: []byte(`{"command":"ls"}`), SessionID: "s1"})
+	resp := engine.Evaluate(context.Background(), nixis.CheckRequest{Tool: "Bash", Args: []byte(`{"command":"ls"}`), SessionID: "s1"})
 
-	if resp.Decision.Action != aegis.ActionDeny {
+	if resp.Decision.Action != nixis.ActionDeny {
 		t.Errorf("Action = %v, want ActionDeny", resp.Decision.Action)
 	}
 }
@@ -87,7 +87,7 @@ func TestEngine_PolicyMessage_UsedAsReason(t *testing.T) {
 		Message:         "human readable message",
 	})
 
-	resp := engine.Evaluate(context.Background(), aegis.CheckRequest{Tool: "Bash", Args: []byte(`{"command":"ls"}`), SessionID: "s1"})
+	resp := engine.Evaluate(context.Background(), nixis.CheckRequest{Tool: "Bash", Args: []byte(`{"command":"ls"}`), SessionID: "s1"})
 
 	if resp.Decision.Reason != "human readable message" {
 		t.Errorf("Reason = %q, want %q", resp.Decision.Reason, "human readable message")
@@ -100,7 +100,7 @@ func TestEngine_PolicyNoMessage_FallbackReason(t *testing.T) {
 		Message:         "",
 	})
 
-	resp := engine.Evaluate(context.Background(), aegis.CheckRequest{Tool: "Bash", Args: []byte(`{"command":"ls"}`), SessionID: "s1"})
+	resp := engine.Evaluate(context.Background(), nixis.CheckRequest{Tool: "Bash", Args: []byte(`{"command":"ls"}`), SessionID: "s1"})
 
 	if resp.Decision.Reason != "CEL policy evaluation returned false" {
 		t.Errorf("Reason = %q, want fallback string", resp.Decision.Reason)

@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-unique-ingress-host-and-path-check-host-path-combo-ingress
     annotations:
-        aegis.io/imported-from: aegis-import-2628231260.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-2628231260.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Sample
 spec:
     description: Similar to the ability to check the uniqueness of hosts and paths independently, it is possible to check for uniqueness of them both together across a cluster. This policy ensures that no Ingress can be created or updated unless it is globally unique with respect to host plus path combination.

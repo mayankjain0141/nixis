@@ -1,12 +1,12 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-add-pod-priorityclassname-add-priorityclass-controllers
     annotations:
-        aegis.io/imported-from: aegis-import-3096560306.yaml
-        aegis.io/severity: medium
-        aegis.io/llm-confidence: medium
+        nixis.io/imported-from: nixis-import-3096560306.yaml
+        nixis.io/severity: medium
+        nixis.io/llm-confidence: medium
         kyverno.io/category: Other
 spec:
     description: A Pod PriorityClass is used to provide a guarantee on the scheduling of a Pod relative to others. This policy adds the priorityClassName of `non-production` to any Pod controller deployed into a Namespace that does not have the label env=production.
@@ -14,6 +14,6 @@ spec:
         tools: []
     validations:
         - expression: 'false'
-          message: 'Mutate rule (priority class injection) — Aegis cannot mutate requests; verify pod controllers in non-production namespaces set priorityClassName to non-production'
+          message: 'Mutate rule (priority class injection) — Nixis cannot mutate requests; verify pod controllers in non-production namespaces set priorityClassName to non-production'
           action: AUDIT
     defaultAction: ALLOW

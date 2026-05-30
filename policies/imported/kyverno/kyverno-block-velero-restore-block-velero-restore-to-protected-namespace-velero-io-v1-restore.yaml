@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-block-velero-restore-block-velero-restore-to-protected-namespace-velero-io-v1-restore
     annotations:
-        aegis.io/imported-from: aegis-import-911460776.yaml
-        aegis.io/severity: low
+        nixis.io/imported-from: nixis-import-911460776.yaml
+        nixis.io/severity: low
         kyverno.io/category: Velero in CEL
 spec:
     description: Velero allows on backup and restore operations and is designed to be run with full cluster admin permissions. It allows on cross namespace restore operations, which means you can restore backup of namespace A to namespace B. This policy protect restore operation into system or any protected namespaces, listed in deny condition section.  It checks the Restore CRD object and its namespaceMapping field. If destination match protected namespace then operation fails and warning message is throw.

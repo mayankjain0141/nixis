@@ -191,8 +191,8 @@ export function createWebSocketManager(wsUrl: string): IWebSocketManager {
           lastHeartbeatAt = Date.now();
           scheduleHeartbeatCheck();
         }
-        if (typeof parsed.aegissequence === 'number') {
-          lastSequenceId = Math.max(lastSequenceId, parsed.aegissequence);
+        if (typeof parsed.nixissequence === 'number') {
+          lastSequenceId = Math.max(lastSequenceId, parsed.nixissequence);
         }
       } catch {
         // Non-JSON messages are allowed (e.g. pong); ignore parse failure here.

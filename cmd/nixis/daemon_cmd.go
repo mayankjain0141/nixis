@@ -15,7 +15,7 @@ import (
 
 var daemonCmd = &cobra.Command{
 	Use:   "daemon",
-	Short: "Manage the Aegis daemon lifecycle",
+	Short: "Manage the Nixis daemon lifecycle",
 }
 
 var daemonStatusCmd = &cobra.Command{
@@ -193,7 +193,7 @@ func runDaemonLogs(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("resolve home directory: %w", err)
 	}
-	logPath := filepath.Join(homeDir, ".aegis", "daemon.log")
+	logPath := filepath.Join(homeDir, ".nixis", "daemon.log")
 
 	f, err := os.Open(logPath)
 	if err != nil {

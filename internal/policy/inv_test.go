@@ -10,9 +10,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/mayjain/aegis/internal/cel"
-	"github.com/mayjain/aegis/internal/ifc"
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/internal/cel"
+	"github.com/mayjain/nixis/internal/ifc"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 // TestINV_005_SingleStoreCallSite verifies engine.go has exactly one atomic .Store( call.
@@ -54,12 +54,12 @@ func TestINV_006_ReloadMuNotHeldDuringEvaluate(t *testing.T) {
 	}
 	engine := NewPolicyEngine(sessions, celEnv)
 
-	bundle := &aegis.CompiledBundle{Version: 1}
+	bundle := &nixis.CompiledBundle{Version: 1}
 	if err := engine.Reload(context.Background(), bundle); err != nil {
 		t.Fatalf("initial Reload: %v", err)
 	}
 
-	req := aegis.CheckRequest{Tool: "ReadTool", SessionID: "inv006-sess"}
+	req := nixis.CheckRequest{Tool: "ReadTool", SessionID: "inv006-sess"}
 
 	var wg sync.WaitGroup
 	done := make(chan struct{})
@@ -86,7 +86,7 @@ func TestINV_006_ReloadMuNotHeldDuringEvaluate(t *testing.T) {
 		go func(n int) {
 			defer wg.Done()
 			for j := 0; j < 3; j++ {
-				_ = engine.Reload(context.Background(), &aegis.CompiledBundle{Version: uint64(n*10 + j)})
+				_ = engine.Reload(context.Background(), &nixis.CompiledBundle{Version: uint64(n*10 + j)})
 			}
 		}(i)
 	}
@@ -106,7 +106,7 @@ func TestINV_006_ReloadMuNotHeldDuringEvaluate(t *testing.T) {
 		defer close(reloadsDone)
 		// Count reloads: 5 goroutines * 3 each = 15. After they finish, stop evaluators.
 		for i := 0; i < 15; i++ {
-			_ = engine.Reload(context.Background(), &aegis.CompiledBundle{Version: uint64(100 + i)})
+			_ = engine.Reload(context.Background(), &nixis.CompiledBundle{Version: uint64(100 + i)})
 		}
 		close(done)
 	}()
@@ -183,7 +183,7 @@ func TestEngineSnapshot_Copy_IsIndependent(t *testing.T) {
 	}
 	engine := NewPolicyEngine(sessions, celEnv)
 
-	bundle1 := &aegis.CompiledBundle{Version: 1}
+	bundle1 := &nixis.CompiledBundle{Version: 1}
 	if err := engine.Reload(context.Background(), bundle1); err != nil {
 		t.Fatalf("first Reload: %v", err)
 	}
@@ -193,7 +193,7 @@ func TestEngineSnapshot_Copy_IsIndependent(t *testing.T) {
 	}
 	ptr1 := snap1
 
-	bundle2 := &aegis.CompiledBundle{Version: 2}
+	bundle2 := &nixis.CompiledBundle{Version: 2}
 	if err := engine.Reload(context.Background(), bundle2); err != nil {
 		t.Fatalf("second Reload: %v", err)
 	}
@@ -222,10 +222,10 @@ func TestEngineSnapshot_Copy_IsIndependent(t *testing.T) {
 
 	// A failed third reload must not replace snap2.
 	buildErr := errors.New("intentional failure")
-	engine.buildSnapshotFunc = func(_ context.Context, _ *aegis.CompiledBundle, _ uint64) (*engineSnapshot, []string, error) {
+	engine.buildSnapshotFunc = func(_ context.Context, _ *nixis.CompiledBundle, _ uint64) (*engineSnapshot, []string, error) {
 		return nil, nil, buildErr
 	}
-	if err := engine.Reload(context.Background(), &aegis.CompiledBundle{Version: 99}); err == nil {
+	if err := engine.Reload(context.Background(), &nixis.CompiledBundle{Version: 99}); err == nil {
 		t.Fatal("expected error from injected failure")
 	}
 	snap3 := engine.snapshot.Load()

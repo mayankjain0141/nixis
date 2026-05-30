@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 // ClaudeCodeAdapter handles the Claude Code hook protocol.
@@ -33,22 +33,22 @@ func (a *ClaudeCodeAdapter) Detect(raw json.RawMessage) bool {
 	return probe.HookEventName != ""
 }
 
-func (a *ClaudeCodeAdapter) ParseInput(raw json.RawMessage) (aegis.CheckRequest, error) {
+func (a *ClaudeCodeAdapter) ParseInput(raw json.RawMessage) (nixis.CheckRequest, error) {
 	var inp claudeCodeInput
 	if err := json.Unmarshal(raw, &inp); err != nil {
-		return aegis.CheckRequest{}, fmt.Errorf("parse claude code input: %w", err)
+		return nixis.CheckRequest{}, fmt.Errorf("parse claude code input: %w", err)
 	}
-	return aegis.CheckRequest{
+	return nixis.CheckRequest{
 		Tool:            inp.ToolName,
 		Args:            inp.ToolInput,
 		SessionID:       inp.SessionID,
-		SpawnToken:      os.Getenv("AEGIS_SPAWN_TOKEN"),
-		ParentSessionID: os.Getenv("AEGIS_PARENT_SESSION_ID"),
-		ProjectRoot:     os.Getenv("AEGIS_PROJECT_ROOT"),
+		SpawnToken:      os.Getenv("NIXIS_SPAWN_TOKEN"),
+		ParentSessionID: os.Getenv("NIXIS_PARENT_SESSION_ID"),
+		ProjectRoot:     os.Getenv("NIXIS_PROJECT_ROOT"),
 	}, nil
 }
 
-func (a *ClaudeCodeAdapter) FormatOutput(resp aegis.CheckResponse, rawInput json.RawMessage) ([]byte, int) {
+func (a *ClaudeCodeAdapter) FormatOutput(resp nixis.CheckResponse, rawInput json.RawMessage) ([]byte, int) {
 	var inp struct {
 		HookEventName string `json:"hook_event_name"`
 	}
@@ -58,15 +58,15 @@ func (a *ClaudeCodeAdapter) FormatOutput(resp aegis.CheckResponse, rawInput json
 		HookEventName: inp.HookEventName,
 	}
 	switch resp.Decision.Action {
-	case aegis.ActionAllow:
+	case nixis.ActionAllow:
 		specific.PermissionDecision = "allow"
-	case aegis.ActionDeny:
+	case nixis.ActionDeny:
 		specific.PermissionDecision = "deny"
 		specific.PermissionDecisionReason = resp.Decision.Reason
-	case aegis.ActionRequireApproval:
+	case nixis.ActionRequireApproval:
 		specific.PermissionDecision = "ask"
 		specific.PermissionDecisionReason = resp.Decision.Reason
-	case aegis.ActionAudit:
+	case nixis.ActionAudit:
 		specific.PermissionDecision = "allow"
 	default:
 		specific.PermissionDecision = "deny"

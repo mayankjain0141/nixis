@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mayjain/aegis/internal/delegation"
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/internal/delegation"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 // helpers
@@ -50,13 +50,13 @@ func makeToken(
 }
 
 // tokenRef encodes a DelegationToken as a DelegationRef.
-func tokenRef(t *testing.T, tok delegation.DelegationToken) aegis.DelegationRef {
+func tokenRef(t *testing.T, tok delegation.DelegationToken) nixis.DelegationRef {
 	t.Helper()
 	b, err := json.Marshal(tok)
 	if err != nil {
 		t.Fatalf("failed to marshal token: %v", err)
 	}
-	return aegis.DelegationRef{
+	return nixis.DelegationRef{
 		TokenID: string(b),
 		Issuer:  tok.Issuer,
 	}
@@ -98,7 +98,7 @@ func TestDelegation_CeilingIsIntersection(t *testing.T) {
 	parent := makeToken(t, priv, "root", "child", validParentCaps, exp, nil)
 	child := makeToken(t, priv, "child", "leaf", validChildCaps, exp, &parent)
 
-	chain := []aegis.DelegationRef{tokenRef(t, parent), tokenRef(t, child)}
+	chain := []nixis.DelegationRef{tokenRef(t, parent), tokenRef(t, child)}
 	if err := eng.Validate(chain, now); err != nil {
 		t.Fatalf("unexpected Validate error: %v", err)
 	}
@@ -139,7 +139,7 @@ func TestDelegation_CannotExpand(t *testing.T) {
 	parent := makeToken(t, priv, "root", "child", parentCaps, exp, nil)
 	child := makeToken(t, priv, "child", "leaf", childCaps, exp, &parent)
 
-	chain := []aegis.DelegationRef{tokenRef(t, parent), tokenRef(t, child)}
+	chain := []nixis.DelegationRef{tokenRef(t, parent), tokenRef(t, child)}
 	err = eng.Validate(chain, now)
 	if err == nil {
 		t.Fatal("expected error for capability expansion, got nil")
@@ -168,7 +168,7 @@ func TestDelegation_DeepRestriction(t *testing.T) {
 	tok1 := makeToken(t, priv, "a", "b", fullCaps, exp, &tok0)
 	tok2 := makeToken(t, priv, "b", "c", fullCaps, exp, &tok1)
 
-	chain := []aegis.DelegationRef{tokenRef(t, tok0), tokenRef(t, tok1), tokenRef(t, tok2)}
+	chain := []nixis.DelegationRef{tokenRef(t, tok0), tokenRef(t, tok1), tokenRef(t, tok2)}
 	if err := eng.Validate(chain, now); err != nil {
 		t.Fatalf("unexpected Validate error: %v", err)
 	}
@@ -281,7 +281,7 @@ func TestDelegation_SignatureVerification_ForgedRejected(t *testing.T) {
 	// Flip a bit in the signature to forge it.
 	tok.Signature[0] ^= 0xFF
 
-	chain := []aegis.DelegationRef{tokenRef(t, tok)}
+	chain := []nixis.DelegationRef{tokenRef(t, tok)}
 	err = eng.Validate(chain, now)
 	if err == nil {
 		t.Fatal("expected error for forged signature, got nil")
@@ -314,7 +314,7 @@ func TestChain_BrokenHashChain_Rejected(t *testing.T) {
 	msg := child.CanonicalBytesForTest()
 	child.Signature = ed25519.Sign(priv, msg)
 
-	chain := []aegis.DelegationRef{tokenRef(t, parent), tokenRef(t, child)}
+	chain := []nixis.DelegationRef{tokenRef(t, parent), tokenRef(t, child)}
 	err = eng.Validate(chain, now)
 	if err == nil {
 		t.Fatal("expected error for broken hash chain, got nil")
@@ -342,7 +342,7 @@ func TestDelegation_MultiKey_RotationAccepted(t *testing.T) {
 
 	tok := makeToken(t, priv2, "root", "leaf", caps, exp, nil)
 
-	chain := []aegis.DelegationRef{tokenRef(t, tok)}
+	chain := []nixis.DelegationRef{tokenRef(t, tok)}
 	if err := eng.Validate(chain, now); err != nil {
 		t.Fatalf("unexpected Validate error with key2-signed token: %v", err)
 	}
@@ -389,7 +389,7 @@ func TestDelegation_DeclassificationGate_RequiresAuditRef(t *testing.T) {
 	}
 
 	// Token with DeclassificationGate but no AuditRef must be rejected.
-	chain := []aegis.DelegationRef{
+	chain := []nixis.DelegationRef{
 		{
 			TokenID:              `{}`,
 			Issuer:               "test-issuer",
@@ -415,7 +415,7 @@ func TestDelegation_DeclassificationGate_WithAuditRef_PassesGate(t *testing.T) {
 
 	// DeclassificationGate with a valid AuditRef passes the gate check (may still
 	// fail signature verification — but it must NOT be rejected for missing AuditRef).
-	chain := []aegis.DelegationRef{
+	chain := []nixis.DelegationRef{
 		{
 			TokenID:              `{}`,
 			Issuer:               "test-issuer",

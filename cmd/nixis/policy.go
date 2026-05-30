@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 
 	"github.com/google/cel-go/checker"
-	"github.com/mayjain/aegis/internal/bundle"
-	"github.com/mayjain/aegis/internal/cel"
+	"github.com/mayjain/nixis/internal/bundle"
+	"github.com/mayjain/nixis/internal/cel"
 	"github.com/spf13/cobra"
 )
 

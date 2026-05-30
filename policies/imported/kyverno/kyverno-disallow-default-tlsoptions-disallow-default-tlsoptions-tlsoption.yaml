@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-disallow-default-tlsoptions-disallow-default-tlsoptions-tlsoption
     annotations:
-        aegis.io/imported-from: aegis-import-321666114.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-321666114.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Traefik
 spec:
     description: The TLSOption CustomResource sets cluster-wide TLS configuration options for Traefik when  none are specified in a TLS router. Since this can take effect for all Ingress resources, creating the `default` TLSOption is a restricted operation. This policy ensures that only a cluster-admin can create the `default` TLSOption resource.

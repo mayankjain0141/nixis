@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-const plistLabel = "com.aegis.daemon"
+const plistLabel = "com.nixis.daemon"
 
 func plistPath() string {
 	homeDir, _ := os.UserHomeDir()
@@ -20,10 +20,10 @@ func plistPath() string {
 }
 
 func installDaemonService(homeDir, policyDir string, yes bool) error {
-	aegisDir := filepath.Join(homeDir, ".aegis")
-	daemonBin := filepath.Join(aegisDir, "aegis-daemon")
+	aegisDir := filepath.Join(homeDir, ".nixis")
+	daemonBin := filepath.Join(aegisDir, "nixis-daemon")
 	logPath := filepath.Join(aegisDir, "daemon.log")
-	socketPath := "/tmp/aegis.sock"
+	socketPath := "/tmp/nixis.sock"
 
 	plist := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -49,7 +49,7 @@ func installDaemonService(homeDir, policyDir string, yes bool) error {
     <string>%s</string>
     <key>EnvironmentVariables</key>
     <dict>
-        <key>AEGIS_DASHBOARD_ADDR</key>
+        <key>NIXIS_DASHBOARD_ADDR</key>
         <string>127.0.0.1:9090</string>
     </dict>
 </dict>
@@ -152,7 +152,7 @@ func daemonServiceStatus() (running bool, pid int, err error) {
 func startDaemon() error {
 	dest := plistPath()
 	if _, err := os.Stat(dest); os.IsNotExist(err) {
-		return fmt.Errorf("plist not found at %s; run 'aegis setup' first", dest)
+		return fmt.Errorf("plist not found at %s; run 'nixis setup' first", dest)
 	}
 	cmd := exec.Command("launchctl", "bootstrap", fmt.Sprintf("gui/%d", os.Getuid()), dest)
 	if output, err := cmd.CombinedOutput(); err != nil {

@@ -23,7 +23,7 @@ What actually happened. Include error messages and stack traces.
 ## Environment
 - OS:
 - Go version (`go version`):
-- Aegis version / commit:
+- Nixis version / commit:
 - Daemon mode (standalone / with dashboard):
 
 ## Logs

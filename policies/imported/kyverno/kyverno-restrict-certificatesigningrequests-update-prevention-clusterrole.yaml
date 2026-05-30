@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-certificatesigningrequests-update-prevention-clusterrole
     annotations:
-        aegis.io/imported-from: aegis-import-restrict-csr-update.yaml
-        aegis.io/severity: high
+        nixis.io/imported-from: nixis-import-restrict-csr-update.yaml
+        nixis.io/severity: high
         kyverno.io/category: Security
 spec:
     description: This policy prevents update operations on CertificateSigningRequests via kubectl. Updating CertificateSigningRequests can modify the conditions of pending certificate requests, potentially enabling privilege escalation.

@@ -1,12 +1,12 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-copy-namespace-labels-all-label-deployment-from-ns
     annotations:
-        aegis.io/imported-from: aegis-import-184284637.yaml
-        aegis.io/severity: medium
-        aegis.io/llm-confidence: medium
+        nixis.io/imported-from: nixis-import-184284637.yaml
+        nixis.io/severity: medium
+        nixis.io/llm-confidence: medium
         kyverno.io/category: Other
 spec:
     description: It is common for Namespaced resources to need access to labels which have been assigned to the Namespace in which they reside. This policy demonstrates two different ways of assigning Namespace labels to a Deployment. The first method copies only the `owner` label while the second copies all labels except for `kubernetes.io/metadata.name`.
@@ -14,6 +14,6 @@ spec:
         tools: []
     validations:
         - expression: 'false'
-          message: 'Mutate rule (copy all namespace labels to Deployment) — Aegis cannot mutate requests; verify Deployments that need namespace labels access them via the downward API or explicitly set matching labels'
+          message: 'Mutate rule (copy all namespace labels to Deployment) — Nixis cannot mutate requests; verify Deployments that need namespace labels access them via the downward API or explicitly set matching labels'
           action: AUDIT
     defaultAction: ALLOW

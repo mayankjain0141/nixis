@@ -12,17 +12,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mayjain/aegis/internal/audit"
-	"github.com/mayjain/aegis/internal/bundle"
-	"github.com/mayjain/aegis/internal/cel"
-	"github.com/mayjain/aegis/internal/daemon"
-	"github.com/mayjain/aegis/internal/delegation"
-	grpcauthz "github.com/mayjain/aegis/internal/grpc"
-	"github.com/mayjain/aegis/internal/ifc"
-	"github.com/mayjain/aegis/internal/policy"
-	"github.com/mayjain/aegis/internal/secret"
-	"github.com/mayjain/aegis/internal/stream"
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/internal/audit"
+	"github.com/mayjain/nixis/internal/bundle"
+	"github.com/mayjain/nixis/internal/cel"
+	"github.com/mayjain/nixis/internal/daemon"
+	"github.com/mayjain/nixis/internal/delegation"
+	grpcauthz "github.com/mayjain/nixis/internal/grpc"
+	"github.com/mayjain/nixis/internal/ifc"
+	"github.com/mayjain/nixis/internal/policy"
+	"github.com/mayjain/nixis/internal/secret"
+	"github.com/mayjain/nixis/internal/stream"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 // testDaemon holds the running in-process daemon and its configuration.
@@ -31,7 +31,7 @@ type testDaemon struct {
 	healthzAddr string
 	d           *daemon.Daemon
 	// engine is the real policy engine — exposed so tests can wire the gRPC server
-	// against the same engine as the daemon (mirrors main.go AEGIS_GRPC_ADDR wiring).
+	// against the same engine as the daemon (mirrors main.go NIXIS_GRPC_ADDR wiring).
 	engine grpcauthz.GovernanceEngine
 }
 
@@ -59,7 +59,7 @@ func startDaemon(t *testing.T) *testDaemon {
 	if parseErr != nil {
 		t.Logf("ParsePolicyDir skipped: %v", parseErr)
 	} else {
-		compiled := &aegis.CompiledBundle{Version: 1, Templates: templates, Bindings: bindings}
+		compiled := &nixis.CompiledBundle{Version: 1, Templates: templates, Bindings: bindings}
 		if reloadErr := engine.Reload(context.Background(), compiled); reloadErr != nil {
 			t.Fatalf("engine.Reload: %v", reloadErr)
 		}
@@ -154,9 +154,9 @@ func startDaemon(t *testing.T) *testDaemon {
 
 // sendRequestRetry retries sendRequest up to 5 times on EOF (may occur under race
 // detector due to the daemon's 50ms evaluation deadline being exceeded).
-func sendRequestRetry(t *testing.T, sockPath string, req aegis.CheckRequest) aegis.CheckResponse {
+func sendRequestRetry(t *testing.T, sockPath string, req nixis.CheckRequest) nixis.CheckResponse {
 	t.Helper()
-	var last aegis.CheckResponse
+	var last nixis.CheckResponse
 	for attempt := 0; attempt < 5; attempt++ {
 		conn, err := net.DialTimeout("unix", sockPath, 2*time.Second)
 		if err != nil {

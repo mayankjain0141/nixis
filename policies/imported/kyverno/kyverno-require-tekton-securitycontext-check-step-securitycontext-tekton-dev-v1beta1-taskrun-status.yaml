@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-require-tekton-securitycontext-check-step-securitycontext-tekton-dev-v1beta1-taskrun-status
     annotations:
-        aegis.io/imported-from: aegis-import-2881636191.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-2881636191.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Tekton
 spec:
     description: A securityContext is required for each TaskRun step.

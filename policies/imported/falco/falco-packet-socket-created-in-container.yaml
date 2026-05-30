@@ -1,13 +1,13 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-packet-socket-created-in-container
     annotations:
-        aegis.io/falco-tags: maturity_stable,container,network,mitre_credential_access,T1557.002
-        aegis.io/imported-from: aegis-import-999705196.yaml
-        aegis.io/severity: low
-        aegis.io/source-rule: Packet socket created in container
+        nixis.io/falco-tags: maturity_stable,container,network,mitre_credential_access,T1557.002
+        nixis.io/imported-from: nixis-import-999705196.yaml
+        nixis.io/severity: low
+        nixis.io/source-rule: Packet socket created in container
 spec:
     description: |
         Detect new packet socket at the device driver (OSI Layer 2) level in a container. Packet socket could be used for ARP Spoofing and privilege escalation (CVE-2020-14386) by an attacker. Noise can be reduced by using the user_known_packet_socket_binaries template list.

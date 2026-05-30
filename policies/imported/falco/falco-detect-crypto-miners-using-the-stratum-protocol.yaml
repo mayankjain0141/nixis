@@ -1,13 +1,13 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-detect-crypto-miners-using-the-stratum-protocol
     annotations:
-        aegis.io/falco-tags: maturity_sandbox,host,container,process,mitre_impact,T1496
-        aegis.io/imported-from: aegis-import-1470842712.yaml
-        aegis.io/severity: critical
-        aegis.io/source-rule: Detect crypto miners using the Stratum protocol
+        nixis.io/falco-tags: maturity_sandbox,host,container,process,mitre_impact,T1496
+        nixis.io/imported-from: nixis-import-1470842712.yaml
+        nixis.io/severity: critical
+        nixis.io/source-rule: Detect crypto miners using the Stratum protocol
 spec:
     description: |
         Miners commonly specify the mining pool to connect to using a URI that starts with "stratum+tcp". However, this rule is highly specific to this technique, and matching command-line arguments can generally be bypassed quite easily.

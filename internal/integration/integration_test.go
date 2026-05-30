@@ -18,10 +18,10 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 
-	grpcauthz "github.com/mayjain/aegis/internal/grpc"
-	"github.com/mayjain/aegis/internal/otel"
-	"github.com/mayjain/aegis/internal/reload"
-	"github.com/mayjain/aegis/pkg/aegis"
+	grpcauthz "github.com/mayjain/nixis/internal/grpc"
+	"github.com/mayjain/nixis/internal/otel"
+	"github.com/mayjain/nixis/internal/reload"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 // TestIntegration_HotReload verifies that the reload watcher fires when a YAML policy
@@ -222,7 +222,7 @@ func TestIntegration_OTel_RecordEvaluation(t *testing.T) {
 	// increments otel.InstrumentDaemonConns.
 	const N = 3
 	for i := 0; i < N; i++ {
-		sendRequestRetry(t, td.socketPath, aegis.CheckRequest{
+		sendRequestRetry(t, td.socketPath, nixis.CheckRequest{
 			Tool:      "Read",
 			SessionID: "sess-otel-eval",
 		})
@@ -236,11 +236,11 @@ func TestIntegration_OTel_RecordEvaluation(t *testing.T) {
 	// Collect from the in-memory reader (initialized in TestMain) and verify
 	// that RecordEvaluation produced data in the histogram.
 	found := collectMetrics(t)
-	if !found["aegis_evaluation_duration_seconds"] {
-		t.Errorf("aegis_evaluation_duration_seconds not found in metrics; collected: %v", found)
+	if !found["nixis_evaluation_duration_seconds"] {
+		t.Errorf("nixis_evaluation_duration_seconds not found in metrics; collected: %v", found)
 	}
-	if !found["aegis_daemon_active_connections"] {
-		t.Errorf("aegis_daemon_active_connections not found in metrics; collected: %v", found)
+	if !found["nixis_daemon_active_connections"] {
+		t.Errorf("nixis_daemon_active_connections not found in metrics; collected: %v", found)
 	}
 }
 
@@ -384,14 +384,14 @@ func TestIntegration_Healthz(t *testing.T) {
 
 // TestIntegration_GRPCExtAuthz verifies that the ext_authz gRPC server wired to the
 // real policy engine starts, accepts Envoy-style Check RPCs, and returns correct verdicts.
-// This mirrors how main.go wires AEGIS_GRPC_ADDR: same engine, same 50ms timeout.
+// This mirrors how main.go wires NIXIS_GRPC_ADDR: same engine, same 50ms timeout.
 func TestIntegration_GRPCExtAuthz(t *testing.T) {
 	td := startDaemon(t)
 
 	grpcAddr := freeAddr(t)
 	grpcSrv, err := grpcauthz.NewServer(grpcauthz.Config{
 		ListenAddr: grpcAddr,
-		Engine:     td.engine, // real policy engine — same as AEGIS_GRPC_ADDR path in main.go
+		Engine:     td.engine, // real policy engine — same as NIXIS_GRPC_ADDR path in main.go
 		Timeout:    50 * time.Millisecond,
 	})
 	if err != nil {

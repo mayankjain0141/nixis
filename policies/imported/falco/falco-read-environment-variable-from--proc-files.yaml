@@ -1,13 +1,13 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-read-environment-variable-from--proc-files
     annotations:
-        aegis.io/falco-tags: maturity_incubating,container,filesystem,process,mitre_discovery,T1083
-        aegis.io/imported-from: aegis-import-2621062960.yaml
-        aegis.io/severity: medium
-        aegis.io/source-rule: Read environment variable from /proc files
+        nixis.io/falco-tags: maturity_incubating,container,filesystem,process,mitre_discovery,T1083
+        nixis.io/imported-from: nixis-import-2621062960.yaml
+        nixis.io/severity: medium
+        nixis.io/source-rule: Read environment variable from /proc files
 spec:
     description: |
         An attempt to read process environment variables from /proc files. The consequences are akin to accessing traditional sensitive files, as sensitive data, including secrets, might be stored in environment variables. Understanding your environment, such as identifying critical namespaces, and incorporating extra filtering statements to alert exclusively for those, can enhance the rule's effectiveness.

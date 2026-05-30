@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-enforce-tls-hosts-host-subnets-destrule-destinationrule
     annotations:
-        aegis.io/imported-from: aegis-import-1516739852.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-1516739852.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Istio
 spec:
     description: Once a routing decision has been made, a DestinationRule can be used to define how traffic should be sent to another service. The trafficPolicy object can control how TLS is handled to the destination host. This policy enforces that the TLS mode cannot be set to a value of `DISABLE`.

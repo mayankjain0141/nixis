@@ -6,12 +6,12 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 // Evaluator is the interface the HTTP handler needs for policy evaluation.
 type Evaluator interface {
-	Evaluate(ctx context.Context, req aegis.CheckRequest) aegis.CheckResponse
+	Evaluate(ctx context.Context, req nixis.CheckRequest) nixis.CheckResponse
 }
 
 // checkRequestJSON is the REST wire format for incoming /v1/check requests.
@@ -46,7 +46,7 @@ type annotationJSON struct {
 // It enforces a 50ms evaluation deadline consistent with the daemon's socket handler.
 func RegisterCheckHandler(mux *http.ServeMux, engine Evaluator) {
 	mux.HandleFunc("POST /v1/check", func(w http.ResponseWriter, r *http.Request) {
-		r.Body = http.MaxBytesReader(w, r.Body, aegis.MaxMessageSize)
+		r.Body = http.MaxBytesReader(w, r.Body, nixis.MaxMessageSize)
 
 		var wire checkRequestJSON
 		if err := json.NewDecoder(r.Body).Decode(&wire); err != nil {
@@ -67,7 +67,7 @@ func RegisterCheckHandler(mux *http.ServeMux, engine Evaluator) {
 			return
 		}
 
-		req := aegis.CheckRequest{
+		req := nixis.CheckRequest{
 			Tool:      wire.Tool,
 			Args:      wire.Args,
 			SessionID: wire.SessionID,

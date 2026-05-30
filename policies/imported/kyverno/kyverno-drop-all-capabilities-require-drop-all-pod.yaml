@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-drop-all-capabilities-require-drop-all-pod
     annotations:
-        aegis.io/imported-from: aegis-import-2653774300.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-2653774300.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Best Practices
 spec:
     description: 'Capabilities permit privileged actions without giving full root access. All capabilities should be dropped from a Pod, with only those required added back. This policy ensures that all containers explicitly specify the `drop: ["ALL"]` ability. Note that this policy also illustrates how to cover drop entries in any case although this may not strictly conform to the Pod Security Standards.'

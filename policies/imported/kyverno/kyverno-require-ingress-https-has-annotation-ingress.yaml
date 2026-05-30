@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-require-ingress-https-has-annotation-ingress
     annotations:
-        aegis.io/imported-from: aegis-import-4272845450.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-4272845450.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Other
 spec:
     description: Ingress resources should only allow secure traffic by disabling HTTP and therefore only allowing HTTPS. This policy requires that all Ingress resources set the annotation `kubernetes.io/ingress.allow-http` to `"false"` and specify TLS in the spec.

@@ -1,13 +1,13 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-correct-mitre-rule-tactics-tags-with-multiple-techniques
     annotations:
-        aegis.io/falco-tags: host,container,filesystem,mitre_discovery,mitre_exfiltration,mitre_credential_access,T1555,T1212,T1020,T1552,T1083
-        aegis.io/imported-from: aegis-import-1844418014.yaml
-        aegis.io/severity: medium
-        aegis.io/source-rule: correct mitre rule tactics tags with multiple techniques
+        nixis.io/falco-tags: host,container,filesystem,mitre_discovery,mitre_exfiltration,mitre_credential_access,T1555,T1212,T1020,T1552,T1083
+        nixis.io/imported-from: nixis-import-1844418014.yaml
+        nixis.io/severity: medium
+        nixis.io/source-rule: correct mitre rule tactics tags with multiple techniques
 spec:
     description: |
         Directory traversal monitored file read - Web applications can be vulnerable to directory traversal attacks that allow accessing files outside of the web app's root directory (e.g. Arbitrary File Read bugs). System directories like /etc are typically accessed via absolute paths. Access patterns outside of this (here path traversal) can be regarded as suspicious. This rule includes failed file open attempts.

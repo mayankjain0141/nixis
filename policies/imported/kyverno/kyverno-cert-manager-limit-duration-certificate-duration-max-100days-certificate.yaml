@@ -1,12 +1,12 @@
 # AUDIT_ONLY: CEL cannot parse or compare duration strings in YAML content — cannot enforce the 2400h (100 day) limit. Flags all Certificate duration fields for manual review.
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-cert-manager-limit-duration-certificate-duration-max-100days-certificate
     annotations:
-        aegis.io/imported-from: aegis-import-183062296.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-183062296.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Cert-Manager
 spec:
     description: Kubernetes managed non-letsencrypt certificates have to be renewed in every 100 days.

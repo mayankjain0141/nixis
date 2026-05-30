@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-disallow-self-provisioner-binding-check-self-provisioner-binding-with-subject-clusterrolebinding
     annotations:
-        aegis.io/imported-from: aegis-import-1107828208.yaml
-        aegis.io/severity: high
+        nixis.io/imported-from: nixis-import-1107828208.yaml
+        nixis.io/severity: high
         kyverno.io/category: OpenShift
 spec:
     description: This policy prevents binding to the self-provisioners role for strict control of OpenShift project creation.

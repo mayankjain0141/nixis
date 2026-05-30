@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/mayjain/aegis/internal/otel"
+	"github.com/mayjain/nixis/internal/otel"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -63,13 +63,13 @@ func TestMetrics_AllREQ058Registered(t *testing.T) {
 
 	// REQ-058 required metrics
 	required := []string{
-		"aegis_evaluation_duration_seconds",
-		"aegis_policy_reload_total",
-		"aegis_audit_events_dropped_total",
-		"aegis_daemon_active_connections",
-		"aegis_stream_clients_connected",
-		"aegis_stream_tap_dropped_total",
-		"aegis_failopen_total",
+		"nixis_evaluation_duration_seconds",
+		"nixis_policy_reload_total",
+		"nixis_audit_events_dropped_total",
+		"nixis_daemon_active_connections",
+		"nixis_stream_clients_connected",
+		"nixis_stream_tap_dropped_total",
+		"nixis_failopen_total",
 	}
 
 	for _, name := range required {
@@ -78,7 +78,7 @@ func TestMetrics_AllREQ058Registered(t *testing.T) {
 		}
 	}
 
-	// Observable gauges (aegis_audit_buffer_utilization, aegis_gitleaks_memory_bytes)
+	// Observable gauges (nixis_audit_buffer_utilization, nixis_gitleaks_memory_bytes)
 	// are registered but only emit data when a callback is registered.
 	// Verify their instrument accessors return non-nil.
 	if otel.InstrumentAuditBufferUtil() == nil {

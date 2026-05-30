@@ -9,38 +9,38 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 // fakeEvaluator is a test double for the Evaluator interface.
 type fakeEvaluator struct {
-	resp aegis.CheckResponse
+	resp nixis.CheckResponse
 }
 
-func (f *fakeEvaluator) Evaluate(_ context.Context, _ aegis.CheckRequest) aegis.CheckResponse {
+func (f *fakeEvaluator) Evaluate(_ context.Context, _ nixis.CheckRequest) nixis.CheckResponse {
 	return f.resp
 }
 
 func TestSimulate_ReturnsDecisionAndEmitsEvent(t *testing.T) {
 	s := NewStreamServer(nil, nullReader{}, WithEvaluator(&fakeEvaluator{
-		resp: aegis.CheckResponse{
-			Decision: aegis.Decision{
-				Action: aegis.ActionDeny,
+		resp: nixis.CheckResponse{
+			Decision: nixis.Decision{
+				Action: nixis.ActionDeny,
 				Reason: "blocked by policy",
 			},
-			EnforcingLayer: aegis.EnforcingLayerCEL,
+			EnforcingLayer: nixis.EnforcingLayerCEL,
 			LatencyNs:      100,
 		},
 	}))
 
 	// Subscribe to emitted events before calling /simulate.
-	eventCh := make(chan aegis.StreamEvent, 1)
+	eventCh := make(chan nixis.StreamEvent, 1)
 	go func() {
 		ev := <-s.events
 		eventCh <- ev
 	}()
 
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "Bash",
 		SessionID: "test-session-1",
 		Timestamp: time.Now().UnixNano(),
@@ -61,11 +61,11 @@ func TestSimulate_ReturnsDecisionAndEmitsEvent(t *testing.T) {
 		t.Fatalf("expected 200, got %d", res.StatusCode)
 	}
 
-	var resp aegis.CheckResponse
+	var resp nixis.CheckResponse
 	if err := json.NewDecoder(res.Body).Decode(&resp); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if resp.Decision.Action != aegis.ActionDeny {
+	if resp.Decision.Action != nixis.ActionDeny {
 		t.Errorf("expected action=deny, got %v", resp.Decision.Action)
 	}
 	if resp.Decision.Reason != "blocked by policy" {
@@ -81,7 +81,7 @@ func TestSimulate_ReturnsDecisionAndEmitsEvent(t *testing.T) {
 		if ev.SessionID != "test-session-1" {
 			t.Errorf("expected session_id 'test-session-1', got %q", ev.SessionID)
 		}
-		if ev.Action != aegis.ActionDeny {
+		if ev.Action != nixis.ActionDeny {
 			t.Errorf("expected action deny in event, got %v", ev.Action)
 		}
 		if ev.Tool != "Bash" {
@@ -114,7 +114,7 @@ func TestSimulate_NoEvaluator(t *testing.T) {
 }
 
 func TestSimulate_FillsDefaultSessionIDAndTimestamp(t *testing.T) {
-	var capturedReq aegis.CheckRequest
+	var capturedReq nixis.CheckRequest
 	capture := &capturingEvaluator{captureReq: &capturedReq}
 	s := NewStreamServer(nil, nullReader{}, WithEvaluator(capture))
 	// drain one event so Emit doesn't block
@@ -153,17 +153,17 @@ func TestSimulate_CORSPreflight(t *testing.T) {
 
 func TestSimulate_AllowAction_EmitsPolicyEvaluated(t *testing.T) {
 	s := NewStreamServer(nil, nullReader{}, WithEvaluator(&fakeEvaluator{
-		resp: aegis.CheckResponse{
-			Decision: aegis.Decision{
-				Action: aegis.ActionAllow,
+		resp: nixis.CheckResponse{
+			Decision: nixis.Decision{
+				Action: nixis.ActionAllow,
 				Reason: "no policy matched",
 			},
-			EnforcingLayer: aegis.EnforcingLayerCEL,
+			EnforcingLayer: nixis.EnforcingLayerCEL,
 			LatencyNs:      50,
 		},
 	}))
 
-	eventCh := make(chan aegis.StreamEvent, 1)
+	eventCh := make(chan nixis.StreamEvent, 1)
 	go func() {
 		ev := <-s.events
 		eventCh <- ev
@@ -187,12 +187,12 @@ func TestSimulate_AllowAction_EmitsPolicyEvaluated(t *testing.T) {
 
 // capturingEvaluator records the CheckRequest it receives.
 type capturingEvaluator struct {
-	captureReq *aegis.CheckRequest
+	captureReq *nixis.CheckRequest
 }
 
-func (c *capturingEvaluator) Evaluate(_ context.Context, req aegis.CheckRequest) aegis.CheckResponse {
+func (c *capturingEvaluator) Evaluate(_ context.Context, req nixis.CheckRequest) nixis.CheckResponse {
 	*c.captureReq = req
-	return aegis.CheckResponse{
-		Decision: aegis.Decision{Action: aegis.ActionAllow},
+	return nixis.CheckResponse{
+		Decision: nixis.Decision{Action: nixis.ActionAllow},
 	}
 }

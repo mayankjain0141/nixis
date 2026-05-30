@@ -1,12 +1,12 @@
-# imported from: policies via aegis policy import
+# imported from: policies via nixis policy import
 # Gap: cross-resource existence — original policy checks whether a matching VPA exists for each DaemonSet; CEL cannot query cluster state; approximates by validating VPA manifests have targetRef: and auditing kubectl delete vpa
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-check-vpa-configuration-check-vpa-configuration-daemonset
     annotations:
-        aegis.io/imported-from: aegis-import-3101912360.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-3101912360.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Other
 spec:
     description: 'VerticalPodAutoscaler (VPA) is useful to automatically adjust the resources assigned to Pods.  It requires defining a specific target resource by kind and name. There are no built-in  validation checks by the VPA controller to ensure that the target resource is associated with it.  This policy ensures that the matching kind has a matching VPA. '

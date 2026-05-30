@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mayjain/aegis/internal/audit"
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/internal/audit"
+	"github.com/mayjain/nixis/pkg/nixis"
 	_ "modernc.org/sqlite"
 )
 
@@ -46,16 +46,16 @@ func TestAudit_WriteRecord_Roundtrip(t *testing.T) {
 		SessionID: "sess-abc",
 		Tool:      "bash",
 		Args:      json.RawMessage(`{"cmd":"ls"}`),
-		Decision: aegis.Decision{
-			Action:   aegis.ActionAllow,
+		Decision: nixis.Decision{
+			Action:   nixis.ActionAllow,
 			Reason:   "policy matched",
 			PolicyID: "pol-001",
 		},
 		LatencyNs:      12345,
 		PolicyID:       "pol-001",
-		EnforcingLayer: aegis.EnforcingLayerCEL,
-		LabelBefore:    aegis.SecurityLabel{Confidentiality: 1, Integrity: 2, Category: 3},
-		LabelAfter:     aegis.SecurityLabel{Confidentiality: 2, Integrity: 2, Category: 3},
+		EnforcingLayer: nixis.EnforcingLayerCEL,
+		LabelBefore:    nixis.SecurityLabel{Confidentiality: 1, Integrity: 2, Category: 3},
+		LabelAfter:     nixis.SecurityLabel{Confidentiality: 2, Integrity: 2, Category: 3},
 	}
 
 	w.WriteRecord(rec)
@@ -270,7 +270,7 @@ func TestAudit_SessionLabel_Write(t *testing.T) {
 	lrec := audit.SessionLabelRecord{
 		SessionID:  "sess-label-01",
 		LabelState: "escalated",
-		Label:      aegis.SecurityLabel{Confidentiality: 3, Integrity: 1, Category: 7},
+		Label:      nixis.SecurityLabel{Confidentiality: 3, Integrity: 1, Category: 7},
 		ChangedAt:  now,
 	}
 	w.WriteSessionLabel(lrec)

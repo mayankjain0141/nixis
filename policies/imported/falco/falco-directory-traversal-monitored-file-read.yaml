@@ -1,13 +1,13 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-directory-traversal-monitored-file-read
     annotations:
-        aegis.io/falco-tags: maturity_stable,host,container,filesystem,mitre_credential_access,T1555
-        aegis.io/imported-from: aegis-import-999705196.yaml
-        aegis.io/severity: medium
-        aegis.io/source-rule: Directory traversal monitored file read
+        nixis.io/falco-tags: maturity_stable,host,container,filesystem,mitre_credential_access,T1555
+        nixis.io/imported-from: nixis-import-999705196.yaml
+        nixis.io/severity: medium
+        nixis.io/source-rule: Directory traversal monitored file read
 spec:
     description: |
         Web applications can be vulnerable to directory traversal attacks that allow accessing files outside of the web app's root directory (e.g. Arbitrary File Read bugs). System directories like /etc are typically accessed via absolute paths. Access patterns outside of this (here path traversal) can be regarded as suspicious. This rule includes failed file open attempts.

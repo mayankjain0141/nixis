@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mayjain/aegis/internal/cel"
-	policy_types "github.com/mayjain/aegis/pkg/policy/types"
+	"github.com/mayjain/nixis/internal/cel"
+	policy_types "github.com/mayjain/nixis/pkg/policy/types"
 )
 
 // celCompileCheck is a helper that parses and type-checks a CEL expression,

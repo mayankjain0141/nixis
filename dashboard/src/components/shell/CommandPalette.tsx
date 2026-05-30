@@ -70,42 +70,12 @@ function buildStaticCommands(
       execute: async () => { setFilterVerdict(null); close(); },
     },
     {
-      id: 'panel-stream',
-      label: 'Go to: Event Stream',
-      category: 'navigation',
-      keywords: ['go', 'navigate', 'event', 'stream', 'panel', 'jump'],
-      execute: async () => {
-        window.dispatchEvent(new CustomEvent('aegis:navigate', { detail: { panel: 'events' } }));
-        setCommandPaletteOpen(false);
-      },
-    },
-    {
-      id: 'panel-inspector',
-      label: 'Go to: Inspector',
-      category: 'navigation',
-      keywords: ['go', 'navigate', 'inspector', 'panel', 'jump', 'detail'],
-      execute: async () => {
-        window.dispatchEvent(new CustomEvent('aegis:navigate', { detail: { panel: 'inspector' } }));
-        setCommandPaletteOpen(false);
-      },
-    },
-    {
       id: 'panel-lattice',
       label: 'Go to: IFC Lattice',
       category: 'navigation',
       keywords: ['lattice', 'ifc', 'label'],
       execute: async () => {
-        window.dispatchEvent(new CustomEvent('aegis:navigate', { detail: { panel: 'lattice' } }));
-        close();
-      },
-    },
-    {
-      id: 'panel-metrics',
-      label: 'Go to: Metrics',
-      category: 'navigation',
-      keywords: ['metrics', 'stats', 'throughput'],
-      execute: async () => {
-        window.dispatchEvent(new CustomEvent('aegis:navigate', { detail: { panel: 'metrics' } }));
+        window.dispatchEvent(new CustomEvent('nixis:navigate', { detail: { panel: 'lattice' } }));
         close();
       },
     },
@@ -115,7 +85,7 @@ function buildStaticCommands(
       category: 'navigation',
       keywords: ['threats', 'secrets', 'drift'],
       execute: async () => {
-        window.dispatchEvent(new CustomEvent('aegis:navigate', { detail: { panel: 'threats' } }));
+        window.dispatchEvent(new CustomEvent('nixis:navigate', { detail: { panel: 'threats' } }));
         close();
       },
     },
@@ -125,7 +95,7 @@ function buildStaticCommands(
       category: 'navigation',
       keywords: ['agents', 'sessions', 'delegation'],
       execute: async () => {
-        window.dispatchEvent(new CustomEvent('aegis:navigate', { detail: { panel: 'agents' } }));
+        window.dispatchEvent(new CustomEvent('nixis:navigate', { detail: { panel: 'agents' } }));
         close();
       },
     },
@@ -137,7 +107,7 @@ function buildStaticCommands(
       execute: async () => {
         const ui = useUIStore.getState() as { isPaused?: boolean; togglePause?: () => void };
         if (ui.isPaused) ui.togglePause?.();
-        window.dispatchEvent(new CustomEvent('aegis:scroll-to-bottom'));
+        window.dispatchEvent(new CustomEvent('nixis:scroll-to-bottom'));
         close();
       },
     },
@@ -162,7 +132,7 @@ function buildStaticCommands(
         if (connectionState === 'MOCK') {
           useStreamStore.getState().setRequestMockMode(false);
         }
-        window.dispatchEvent(new CustomEvent('aegis:reconnect'));
+        window.dispatchEvent(new CustomEvent('nixis:reconnect'));
         close();
       },
     },

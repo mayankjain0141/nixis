@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-disallow-host-process-host-process-containers-pod
     annotations:
-        aegis.io/imported-from: aegis-import-4250834475.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-4250834475.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Pod Security Standards (Baseline)
 spec:
     description: Windows pods offer the ability to run HostProcess containers which enables privileged access to the Windows node. Privileged access to the host is disallowed in the baseline policy. HostProcess pods are an alpha feature as of Kubernetes v1.22. This policy ensures the `hostProcess` field, if present, is set to `false`.

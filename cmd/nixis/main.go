@@ -11,8 +11,8 @@ import (
 var version = "dev"
 
 var rootCmd = &cobra.Command{
-	Use:     "aegis",
-	Short:   "Aegis governance CLI",
+	Use:     "nixis",
+	Short:   "Nixis governance CLI",
 	Version: version,
 }
 

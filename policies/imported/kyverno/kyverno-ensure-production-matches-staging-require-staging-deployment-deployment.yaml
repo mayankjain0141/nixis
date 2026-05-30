@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-ensure-production-matches-staging-require-staging-deployment-deployment
     annotations:
-        aegis.io/imported-from: aegis-import-1578639293.yaml
-        aegis.io/severity: low
+        nixis.io/imported-from: nixis-import-1578639293.yaml
+        nixis.io/severity: low
         kyverno.io/category: Other
 spec:
     description: It is common to have two separate Namespaces such as staging and production in order to test and promote app deployments in a controlled manner. In order to ensure that level of control, certain guardrails must be present so as to minimize regressions or unintended behavior. This policy has a set of three rules to try and provide some sane defaults for app promotion across these two environments (Namespaces) called staging and production. First, it makes sure that every Deployment in production has a corresponding Deployment in staging. Second, that a production Deployment uses same image name as its staging counterpart. Third, that a production Deployment uses an older or equal image version as its staging counterpart.

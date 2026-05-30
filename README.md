@@ -1,8 +1,8 @@
-# Aegis
+# Nixis
 
 **Real-time governance engine for AI coding agents.**
 
-Aegis intercepts every tool call your AI assistant makes — file writes, shell commands, network access — and evaluates it against security policies in under 200ms. If the action violates policy, Aegis blocks it before execution. No prompt engineering. No trust assumptions. External enforcement.
+Nixis intercepts every tool call your AI assistant makes — file writes, shell commands, network access — and evaluates it against security policies in under 200ms. If the action violates policy, Nixis blocks it before execution. No prompt engineering. No trust assumptions. External enforcement.
 
 ## The Problem
 
@@ -14,15 +14,15 @@ AI coding agents (Claude Code, Cursor, Copilot) have unrestricted tool access. T
 - Install malicious packages via typosquatting
 - Escalate privileges with `chmod 777` or `sudo`
 
-The only guardrail today is hoping the model says no. Aegis enforces externally — the model cannot bypass it because the hook intercepts at the tool-call boundary *before* execution.
+The only guardrail today is hoping the model says no. Nixis enforces externally — the model cannot bypass it because the hook intercepts at the tool-call boundary *before* execution.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
     Agent["AI Agent<br/>(Claude Code / Cursor)"]
-    Hook["aegis-hook<br/>(per tool call, &lt;200ms)"]
-    Daemon["aegis-daemon<br/>(long-lived)"]
+    Hook["nixis-hook<br/>(per tool call, &lt;200ms)"]
+    Daemon["nixis-daemon<br/>(long-lived)"]
 
     subgraph pipeline ["5-Layer Evaluation Pipeline"]
         Classify["Classify"]
@@ -47,9 +47,9 @@ flowchart LR
 
 | Binary | Role | Why separate? |
 |--------|------|---------------|
-| `aegis-hook` | Per-invocation, called by IDE on every tool call | Must be <200ms total. Can't afford daemon startup cost per call. |
-| `aegis-daemon` | Long-lived process, holds compiled policies in memory | Amortizes CEL compilation. Manages audit, streaming, state. |
-| `aegis` | CLI for offline operations (validate, simulate, scan, bundle) | No daemon dependency. Works in CI. |
+| `nixis-hook` | Per-invocation, called by IDE on every tool call | Must be <200ms total. Can't afford daemon startup cost per call. |
+| `nixis-daemon` | Long-lived process, holds compiled policies in memory | Amortizes CEL compilation. Manages audit, streaming, state. |
+| `nixis` | CLI for offline operations (validate, simulate, scan, bundle) | No daemon dependency. Works in CI. |
 
 ## Key Capabilities
 
@@ -65,7 +65,7 @@ flowchart LR
 
 | Alternative | Why it's insufficient |
 |---|---|
-| Prompt engineering | The model decides whether to obey. Aegis enforces externally — the model has no bypass path. |
+| Prompt engineering | The model decides whether to obey. Nixis enforces externally — the model has no bypass path. |
 | IDE permission dialogs | Per-click approval doesn't scale to hundreds of tool calls per session. No policy language, no audit trail. |
 | OPA / Gatekeeper | Designed for Kubernetes admission control. No session state, no IFC lattice, no sub-millisecond hook budget. |
 | File permissions (chmod) | Coarse-grained. Can't distinguish "read config.yaml" from "read .env and exfiltrate via curl" |
@@ -75,15 +75,15 @@ flowchart LR
 
 ```bash
 # Clone and build
-git clone https://github.com/mayjain/aegis.git
-cd aegis
+git clone https://github.com/mayjain/nixis.git
+cd nixis
 go build -o bin/ ./cmd/...
 
 # Start the daemon (uses built-in policies by default)
-./bin/aegis-daemon
+./bin/nixis-daemon
 
 # In another terminal — simulate a tool call
-./bin/aegis simulate Bash --args '{"command":"rm -rf /"}'
+./bin/nixis simulate Bash --args '{"command":"rm -rf /"}'
 # → action=deny policy=block-rm-rf layer=cel latency=1601000ns
 # → reason=Blocked: destructive rm -rf detected — potential prompt injection
 
@@ -99,7 +99,7 @@ For IDE integration (Claude Code / Cursor hook configuration), see the [Getting 
 A built-in policy blocking reverse shell creation:
 
 ```yaml
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: block-network-reverse-shell
@@ -132,7 +132,7 @@ Full evaluation pipeline P99: **<10μs.** Hook round-trip budget: **200ms** (dom
 
 ## Evaluation
 
-Aegis ships with a 784-case adversarial benchmark (`eval/`) covering 7 attack categories. Results against the current policy set:
+Nixis ships with a 784-case adversarial benchmark (`eval/`) covering 7 attack categories. Results against the current policy set:
 
 | Category | Recall | Notes |
 |----------|--------|-------|
@@ -152,7 +152,7 @@ The weakest categories (protocol attacks, label manipulation) require Go-level c
 | Guide | Audience |
 |-------|----------|
 | [Getting Started](docs/guide/getting-started.md) | Install, configure, integrate with your IDE |
-| [Policy Authoring](docs/guide/policy-authoring.md) | Write custom policies, test with `aegis simulate` |
+| [Policy Authoring](docs/guide/policy-authoring.md) | Write custom policies, test with `nixis simulate` |
 | [Architecture](docs/guide/architecture.md) | System design, concurrency model, performance |
 | [Security Model](docs/guide/security-model.md) | IFC lattice, delegation chains, audit integrity |
 

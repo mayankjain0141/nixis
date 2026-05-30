@@ -25,7 +25,7 @@ function makeEvent(overrides: Partial<GovernanceEvent> = {}): GovernanceEvent {
     label: { confidentiality: 0, integrity: 0, categories: 0 },
     labelState: 'fresh',
     latencyNs: 1_000_000,
-    aegisSequence: 1,
+    nixisSequence: 1,
     timestamp: Date.now() * 1_000_000,
     ...overrides,
   };
@@ -47,7 +47,7 @@ describe('EventStreamList', () => {
   it('renders with 1000 events without throwing (virtual scroll — no DOM cap)', () => {
     const store = useGovernanceStore.getState();
     for (let i = 0; i < 1000; i++) {
-      store.appendEvent(makeEvent({ id: `evt-${i}`, aegisSequence: i }));
+      store.appendEvent(makeEvent({ id: `evt-${i}`, nixisSequence: i }));
     }
     expect(() => render(<EventStreamList />)).not.toThrow();
     // List component mounts — aria-label is present

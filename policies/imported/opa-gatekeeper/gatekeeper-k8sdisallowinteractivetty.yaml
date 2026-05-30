@@ -1,14 +1,14 @@
-# imported from: gatekeeper-library via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: gatekeeper-library via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: gatekeeper-k8sdisallowinteractivetty
     annotations:
-        aegis.io/imported-from: aegis-import-3602303990.yaml
-        aegis.io/original-kind: K8sDisallowInteractiveTTY
-        aegis.io/severity: high
-        aegis.io/llm-confidence: medium
-        aegis.io/source: open-policy-agent/gatekeeper-library
+        nixis.io/imported-from: nixis-import-3602303990.yaml
+        nixis.io/original-kind: K8sDisallowInteractiveTTY
+        nixis.io/severity: high
+        nixis.io/llm-confidence: medium
+        nixis.io/source: open-policy-agent/gatekeeper-library
 spec:
     description: Requires that objects have the fields `spec.tty` and `spec.stdin` set to false or unset.
     matchConstraints:

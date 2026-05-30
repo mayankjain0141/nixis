@@ -1,12 +1,12 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-verify-slsa-provenance-keyless-check-slsa-keyless-pod
     annotations:
-        aegis.io/imported-from: aegis-import-2848090198.yaml
-        aegis.io/severity: medium
-        aegis.io/llm-confidence: low
+        nixis.io/imported-from: nixis-import-2848090198.yaml
+        nixis.io/severity: medium
+        nixis.io/llm-confidence: low
         kyverno.io/category: Software Supply Chain Security
 spec:
     description: Provenance is used to identify how an artifact was produced and from where it originated. SLSA provenance is an industry-standard method of representing that provenance. This policy verifies that an image has SLSA provenance and was signed by the expected subject and issuer when produced through GitHub Actions. It requires configuration based upon your own values.

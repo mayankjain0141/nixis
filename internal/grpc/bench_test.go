@@ -6,12 +6,12 @@ import (
 
 	authv3 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 
-	grpcpkg "github.com/mayjain/aegis/internal/grpc"
-	"github.com/mayjain/aegis/pkg/aegis"
+	grpcpkg "github.com/mayjain/nixis/internal/grpc"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 func BenchmarkGRPC_Check(b *testing.B) {
-	engine := &mockEngine{action: aegis.ActionAllow}
+	engine := &mockEngine{action: nixis.ActionAllow}
 	srv, err := grpcpkg.NewServer(grpcpkg.Config{
 		Engine: engine,
 	})

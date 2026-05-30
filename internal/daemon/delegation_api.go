@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/mayjain/aegis/internal/delegation"
+	"github.com/mayjain/nixis/internal/delegation"
 )
 
 type DelegationAPI struct {

@@ -1,12 +1,12 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-add-pod-proxies-add-pod-proxies
     annotations:
-        aegis.io/imported-from: aegis-import-2384842490.yaml
-        aegis.io/severity: low
-        aegis.io/llm-confidence: medium
+        nixis.io/imported-from: nixis-import-2384842490.yaml
+        nixis.io/severity: low
+        nixis.io/llm-confidence: medium
         kyverno.io/category: Sample
 spec:
     description: In restricted environments, Pods may not be allowed to egress directly to all destinations and some overrides to specific addresses may need to go through a corporate proxy. This policy adds proxy information to Pods in the form of environment variables. It will add the `env` array if not present. If any Pods have any of these env vars, they will be overwritten with the value(s) in this policy.
@@ -14,6 +14,6 @@ spec:
         tools: []
     validations:
         - expression: 'false'
-          message: 'Mutate rule (proxy env vars injection) — Aegis cannot mutate requests; verify pods in restricted environments define HTTP_PROXY, HTTPS_PROXY, and NO_PROXY env vars explicitly'
+          message: 'Mutate rule (proxy env vars injection) — Nixis cannot mutate requests; verify pods in restricted environments define HTTP_PROXY, HTTPS_PROXY, and NO_PROXY env vars explicitly'
           action: AUDIT
     defaultAction: ALLOW

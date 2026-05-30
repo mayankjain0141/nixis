@@ -1,12 +1,12 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-add-privileged-existing-namespaces-label-privileged-namespaces
     annotations:
-        aegis.io/imported-from: aegis-import-222370094.yaml
-        aegis.io/severity: medium
-        aegis.io/llm-confidence: medium
+        nixis.io/imported-from: nixis-import-222370094.yaml
+        nixis.io/severity: medium
+        nixis.io/llm-confidence: medium
         kyverno.io/category: Pod Security Admission
 spec:
     description: 'When Pod Security Admission is configured with a cluster-wide AdmissionConfiguration file which sets either baseline or restricted, for example in many PaaS CIS profiles, it may be necessary to relax this to privileged on a per-Namespace basis so that more granular control can be provided. This policy labels new and existing Namespaces, except that of kube-system, with the `pod-security.kubernetes.io/enforce: privileged` label.'
@@ -14,6 +14,6 @@ spec:
         tools: []
     validations:
         - expression: 'false'
-          message: 'Mutate rule (privileged PSA label on namespace) — Aegis cannot mutate requests; verify namespaces requiring privileged pod security have pod-security.kubernetes.io/enforce=privileged label'
+          message: 'Mutate rule (privileged PSA label on namespace) — Nixis cannot mutate requests; verify namespaces requiring privileged pod security have pod-security.kubernetes.io/enforce=privileged label'
           action: AUDIT
     defaultAction: ALLOW

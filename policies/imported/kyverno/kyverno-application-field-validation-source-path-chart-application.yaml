@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-application-field-validation-source-path-chart-application
     annotations:
-        aegis.io/imported-from: aegis-import-3515787645.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-3515787645.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Argo
 spec:
     description: This policy performs some best practices validation on Application fields. Path or chart must be specified but never both. And destination.name or destination.server must be specified but never both.

@@ -1,12 +1,12 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-add-nodeselector-add-nodeselector
     annotations:
-        aegis.io/imported-from: aegis-import-183069224.yaml
-        aegis.io/severity: low
-        aegis.io/llm-confidence: medium
+        nixis.io/imported-from: nixis-import-183069224.yaml
+        nixis.io/severity: low
+        nixis.io/llm-confidence: medium
         kyverno.io/category: Sample
 spec:
     description: The nodeSelector field uses labels to select the node on which a Pod can be scheduled. This can be useful when Pods have specific needs that only certain nodes in a cluster can provide. This policy adds the nodeSelector field to a Pod spec and configures it with labels `foo` and `color`.
@@ -14,6 +14,6 @@ spec:
         tools: []
     validations:
         - expression: 'false'
-          message: 'Mutate rule (nodeSelector injection) — Aegis cannot mutate requests; verify pods requiring specific node placement define nodeSelector explicitly'
+          message: 'Mutate rule (nodeSelector injection) — Nixis cannot mutate requests; verify pods requiring specific node placement define nodeSelector explicitly'
           action: AUDIT
     defaultAction: ALLOW

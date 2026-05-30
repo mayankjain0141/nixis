@@ -7,12 +7,12 @@ import (
 	"testing"
 
 	"github.com/google/cel-go/common/types"
-	"github.com/mayjain/aegis/internal/cel"
-	"github.com/mayjain/aegis/internal/classify"
-	"github.com/mayjain/aegis/internal/ifc"
-	"github.com/mayjain/aegis/internal/label"
-	aegis "github.com/mayjain/aegis/pkg/aegis"
-	policy_types "github.com/mayjain/aegis/pkg/policy/types"
+	"github.com/mayjain/nixis/internal/cel"
+	"github.com/mayjain/nixis/internal/classify"
+	"github.com/mayjain/nixis/internal/ifc"
+	"github.com/mayjain/nixis/internal/label"
+	nixis "github.com/mayjain/nixis/pkg/nixis"
+	policy_types "github.com/mayjain/nixis/pkg/policy/types"
 )
 
 // helpers
@@ -111,7 +111,7 @@ func TestCEL_Evaluate_AllowRule(t *testing.T) {
 	}
 
 	builder := cel.NewActivationBuilder()
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "Read",
 		Args:      argsJSON(t, map[string]any{"file_path": "/tmp/foo.txt"}),
 		SessionID: "sess-001",
@@ -135,7 +135,7 @@ func TestCEL_Evaluate_AllowRule_FalseForOtherTool(t *testing.T) {
 	cache := mustCompile(t, env, templates)
 	prog, _ := cache.Get("allow-read")
 	builder := cel.NewActivationBuilder()
-	req := aegis.CheckRequest{Tool: "Bash", Args: argsJSON(t, map[string]any{"command": "ls"}), SessionID: "s"}
+	req := nixis.CheckRequest{Tool: "Bash", Args: argsJSON(t, map[string]any{"command": "ls"}), SessionID: "s"}
 	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{RiskLevel: classify.RiskLow}, decodeArgs(t, req.Args), label.LabeledRequest{}, nil, "")
 	if err != nil {
 		t.Fatalf("Evaluate: %v", err)
@@ -156,7 +156,7 @@ func TestCEL_Evaluate_DenyRule(t *testing.T) {
 	prog, _ := cache.Get("deny-critical")
 
 	builder := cel.NewActivationBuilder()
-	req := aegis.CheckRequest{Tool: "Bash", Args: argsJSON(t, map[string]any{"command": "rm -rf /"}), SessionID: "s"}
+	req := nixis.CheckRequest{Tool: "Bash", Args: argsJSON(t, map[string]any{"command": "rm -rf /"}), SessionID: "s"}
 	verdict := classify.VerdictEntry{RiskLevel: classify.RiskCritical}
 
 	val, err := builder.Evaluate(context.Background(), prog, req, verdict, decodeArgs(t, req.Args), label.LabeledRequest{}, nil, "")
@@ -180,7 +180,7 @@ func TestCEL_Evaluate_CustomFunctions(t *testing.T) {
 		cache := mustCompile(t, env, templates)
 		prog, _ := cache.Get("dom-true")
 		builder := cel.NewActivationBuilder()
-		req := aegis.CheckRequest{Tool: "Read", SessionID: "s"}
+		req := nixis.CheckRequest{Tool: "Read", SessionID: "s"}
 		val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{}, nil, "")
 		if err != nil {
 			t.Fatalf("Evaluate: %v", err)
@@ -197,7 +197,7 @@ func TestCEL_Evaluate_CustomFunctions(t *testing.T) {
 		cache := mustCompile(t, env, templates)
 		prog, _ := cache.Get("dom-false")
 		builder := cel.NewActivationBuilder()
-		req := aegis.CheckRequest{Tool: "Read", SessionID: "s"}
+		req := nixis.CheckRequest{Tool: "Read", SessionID: "s"}
 		val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{}, nil, "")
 		if err != nil {
 			t.Fatalf("Evaluate: %v", err)
@@ -214,7 +214,7 @@ func TestCEL_Evaluate_CustomFunctions(t *testing.T) {
 		cache := mustCompile(t, env, templates)
 		prog, _ := cache.Get("join-list")
 		builder := cel.NewActivationBuilder()
-		req := aegis.CheckRequest{Tool: "Read", SessionID: "s"}
+		req := nixis.CheckRequest{Tool: "Read", SessionID: "s"}
 		val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{}, nil, "")
 		if err != nil {
 			t.Fatalf("Evaluate: %v", err)
@@ -342,7 +342,7 @@ func TestCEL_BashTargetPort_LsofPipe(t *testing.T) {
 	cache := mustCompile(t, env, templates)
 	prog, _ := cache.Get("port-test")
 	builder := cel.NewActivationBuilder()
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "Bash",
 		Args:      argsJSON(t, map[string]any{"command": "lsof -ti:7474 | xargs kill -9"}),
 		SessionID: "s",
@@ -364,7 +364,7 @@ func TestCEL_BashTargetPort_Subshell(t *testing.T) {
 	cache := mustCompile(t, env, templates)
 	prog, _ := cache.Get("port-sub")
 	builder := cel.NewActivationBuilder()
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "Bash",
 		Args:      argsJSON(t, map[string]any{"command": "kill -9 $(lsof -ti:5173)"}),
 		SessionID: "s",
@@ -386,7 +386,7 @@ func TestCEL_BashTargetPort_NoPatch(t *testing.T) {
 	cache := mustCompile(t, env, templates)
 	prog, _ := cache.Get("port-none")
 	builder := cel.NewActivationBuilder()
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "Bash",
 		Args:      argsJSON(t, map[string]any{"command": "kill -9 12345"}),
 		SessionID: "s",
@@ -408,7 +408,7 @@ func TestCEL_BashTargetUrl_CurlExtraction(t *testing.T) {
 	cache := mustCompile(t, env, templates)
 	prog, _ := cache.Get("url-test")
 	builder := cel.NewActivationBuilder()
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "Bash",
 		Args:      argsJSON(t, map[string]any{"command": `curl -H "Authorization: Bearer sk-abc" http://localhost:8000/health`}),
 		SessionID: "s",
@@ -430,7 +430,7 @@ func TestCEL_GitBranchTarget_BranchD(t *testing.T) {
 	cache := mustCompile(t, env, templates)
 	prog, _ := cache.Get("branch-d")
 	builder := cel.NewActivationBuilder()
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "Bash",
 		Args:      argsJSON(t, map[string]any{"command": "git branch -D feature-x"}),
 		SessionID: "s",
@@ -452,7 +452,7 @@ func TestCEL_GitBranchTarget_PushForce(t *testing.T) {
 	cache := mustCompile(t, env, templates)
 	prog, _ := cache.Get("push-force")
 	builder := cel.NewActivationBuilder()
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "Bash",
 		Args:      argsJSON(t, map[string]any{"command": "git push --force origin main"}),
 		SessionID: "s",
@@ -474,7 +474,7 @@ func TestCEL_GitBranchTarget_PlusRefspec(t *testing.T) {
 	cache := mustCompile(t, env, templates)
 	prog, _ := cache.Get("plus-ref")
 	builder := cel.NewActivationBuilder()
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "Bash",
 		Args:      argsJSON(t, map[string]any{"command": "git push origin +main"}),
 		SessionID: "s",
@@ -496,7 +496,7 @@ func TestCEL_GitBranchTarget_ColonDelete(t *testing.T) {
 	cache := mustCompile(t, env, templates)
 	prog, _ := cache.Get("colon-del")
 	builder := cel.NewActivationBuilder()
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "Bash",
 		Args:      argsJSON(t, map[string]any{"command": "git push origin :main"}),
 		SessionID: "s",
@@ -525,7 +525,7 @@ func TestCEL_GitBranchTarget_HeadRefspec(t *testing.T) {
 	}
 
 	for _, cmd := range testCases {
-		req := aegis.CheckRequest{
+		req := nixis.CheckRequest{
 			Tool:      "Bash",
 			Args:      argsJSON(t, map[string]any{"command": cmd}),
 			SessionID: "s",
@@ -557,7 +557,7 @@ func TestCEL_IsGitForcePush_AllForms(t *testing.T) {
 	}
 
 	for _, cmd := range forceForms {
-		req := aegis.CheckRequest{
+		req := nixis.CheckRequest{
 			Tool:      "Bash",
 			Args:      argsJSON(t, map[string]any{"command": cmd}),
 			SessionID: "s",
@@ -588,7 +588,7 @@ func TestCEL_IsGitBranchDelete_AllForms(t *testing.T) {
 	}
 
 	for _, cmd := range deleteForms {
-		req := aegis.CheckRequest{
+		req := nixis.CheckRequest{
 			Tool:      "Bash",
 			Args:      argsJSON(t, map[string]any{"command": cmd}),
 			SessionID: "s",
@@ -619,7 +619,7 @@ func TestCEL_BranchProtection_CaseInsensitive(t *testing.T) {
 	}
 
 	for _, cmd := range cmds {
-		req := aegis.CheckRequest{
+		req := nixis.CheckRequest{
 			Tool:      "Bash",
 			Args:      argsJSON(t, map[string]any{"command": cmd}),
 			SessionID: "s",
@@ -653,7 +653,7 @@ func TestCEL_FindSearchRoot_AbsolutePath(t *testing.T) {
 	cache := mustCompile(t, env, templates)
 	prog, _ := cache.Get("find-root")
 	builder := cel.NewActivationBuilder()
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "Bash",
 		Args:      argsJSON(t, map[string]any{"command": `find ` + searchPath + ` -name "*.env"`}),
 		SessionID: "s",
@@ -675,7 +675,7 @@ func TestCEL_PathIsWithinProject_True(t *testing.T) {
 	cache := mustCompile(t, env, templates)
 	prog, _ := cache.Get("within-project")
 	builder := cel.NewActivationBuilder()
-	req := aegis.CheckRequest{Tool: "Bash", SessionID: "s"}
+	req := nixis.CheckRequest{Tool: "Bash", SessionID: "s"}
 	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{}, nil, "")
 	if err != nil {
 		t.Fatalf("Evaluate: %v", err)
@@ -693,7 +693,7 @@ func TestCEL_PathIsWithinProject_False(t *testing.T) {
 	cache := mustCompile(t, env, templates)
 	prog, _ := cache.Get("not-within")
 	builder := cel.NewActivationBuilder()
-	req := aegis.CheckRequest{Tool: "Bash", SessionID: "s"}
+	req := nixis.CheckRequest{Tool: "Bash", SessionID: "s"}
 	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{}, nil, "")
 	if err != nil {
 		t.Fatalf("Evaluate: %v", err)
@@ -712,7 +712,7 @@ func TestCEL_PathIsWithinProject_Symlink_FailSecure(t *testing.T) {
 	cache := mustCompile(t, env, templates)
 	prog, _ := cache.Get("symlink-fail")
 	builder := cel.NewActivationBuilder()
-	req := aegis.CheckRequest{Tool: "Bash", SessionID: "s"}
+	req := nixis.CheckRequest{Tool: "Bash", SessionID: "s"}
 	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{}, nil, "")
 	if err != nil {
 		t.Fatalf("Evaluate: %v", err)
@@ -735,7 +735,7 @@ func TestCEL_BashIsSafeReadOnly(t *testing.T) {
 
 	readOnly := []string{"ls -la", "cat file.txt", "grep foo bar"}
 	for _, cmd := range readOnly {
-		req := aegis.CheckRequest{
+		req := nixis.CheckRequest{
 			Tool:      "Bash",
 			Args:      argsJSON(t, map[string]any{"command": cmd}),
 			SessionID: "s",
@@ -760,7 +760,7 @@ func TestCEL_BashExtractTool(t *testing.T) {
 	cache := mustCompile(t, env, templates)
 	prog, _ := cache.Get("extract-tool")
 	builder := cel.NewActivationBuilder()
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "Bash",
 		Args:      argsJSON(t, map[string]any{"command": "git push --force origin main"}),
 		SessionID: "s",
@@ -784,7 +784,7 @@ func TestCEL_BashHasFlag(t *testing.T) {
 	cache := mustCompile(t, env, templates)
 	prog, _ := cache.Get("has-flag")
 	builder := cel.NewActivationBuilder()
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "Bash",
 		Args:      argsJSON(t, map[string]any{"command": "git push --force origin main"}),
 		SessionID: "s",
@@ -808,7 +808,7 @@ func TestCEL_BashArgCount(t *testing.T) {
 	cache := mustCompile(t, env, templates)
 	prog, _ := cache.Get("arg-count")
 	builder := cel.NewActivationBuilder()
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "Bash",
 		Args:      argsJSON(t, map[string]any{"command": "git push origin main"}),
 		SessionID: "s",
@@ -833,7 +833,7 @@ func TestCEL_EvalDeterministic(t *testing.T) {
 	prog, _ := cache.Get("det-test")
 	builder := cel.NewActivationBuilder()
 
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "Read",
 		Args:      argsJSON(t, map[string]any{"file_path": "/tmp/x"}),
 		SessionID: "s",
@@ -924,7 +924,7 @@ func TestCEL_FindSearchRoot_NonExistentPath_FailSecure(t *testing.T) {
 	builder := cel.NewActivationBuilder()
 
 	// This path does not exist on disk — EvalSymlinks will fail.
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "Bash",
 		Args:      argsJSON(t, map[string]any{"command": `find /this/path/does/not/exist -name "*.env"`}),
 		SessionID: "s",
@@ -978,7 +978,7 @@ func TestCEL_LabelJoin_ReturnsCorrectValues(t *testing.T) {
 	}
 	cache := mustCompile(t, env, templates)
 	builder := cel.NewActivationBuilder()
-	req := aegis.CheckRequest{Tool: "Read", SessionID: "s"}
+	req := nixis.CheckRequest{Tool: "Read", SessionID: "s"}
 
 	for _, tmpl := range templates {
 		prog, ok := cache.Get(tmpl.ID)
@@ -1021,7 +1021,7 @@ func TestCEL_SetSessionLabels_ConcurrentSafe(t *testing.T) {
 	}()
 
 	// Reader goroutines: concurrently evaluate expressions that call ifc.highWaterMark.
-	req := aegis.CheckRequest{Tool: "Bash", SessionID: "concurrent-session"}
+	req := nixis.CheckRequest{Tool: "Bash", SessionID: "concurrent-session"}
 	for i := 0; i < 10; i++ {
 		go func() {
 			for j := 0; j < 20; j++ {
@@ -1051,7 +1051,7 @@ func TestCEL_GitBranchTarget_PushNoRefspec(t *testing.T) {
 		"git push -f origin",
 	}
 	for _, cmd := range cmds {
-		req := aegis.CheckRequest{
+		req := nixis.CheckRequest{
 			Tool:      "Bash",
 			Args:      argsJSON(t, map[string]any{"command": cmd}),
 			SessionID: "s",
@@ -1087,7 +1087,7 @@ func TestCEL_Params_DevPortInList(t *testing.T) {
 	}
 
 	// Port 7474 IS in devPorts: expression should be false (port in list).
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "Bash",
 		Args:      argsJSON(t, map[string]any{"command": "lsof -ti:7474 | xargs kill -9"}),
 		SessionID: "s",
@@ -1116,7 +1116,7 @@ func TestCEL_Params_DevPortNotInList(t *testing.T) {
 	}
 
 	// Port 443 is NOT in devPorts: expression should be true (needs approval).
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "Bash",
 		Args:      argsJSON(t, map[string]any{"command": "lsof -ti:443 | xargs kill -9"}),
 		SessionID: "s",
@@ -1146,7 +1146,7 @@ func TestCEL_Params_NoPort_ExpressionFalse(t *testing.T) {
 	}
 
 	// kill -9 12345 has no port pattern: targetPort returns 0 → && 0 > 0 is false.
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "Bash",
 		Args:      argsJSON(t, map[string]any{"command": "kill -9 12345"}),
 		SessionID: "s",
@@ -1171,7 +1171,7 @@ func TestCEL_Params_NilParams_NoPanic(t *testing.T) {
 	prog, _ := cache.Get("no-params-expr")
 	builder := cel.NewActivationBuilder()
 
-	req := aegis.CheckRequest{Tool: "Bash", SessionID: "s"}
+	req := nixis.CheckRequest{Tool: "Bash", SessionID: "s"}
 	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, nil, label.LabeledRequest{}, nil, "")
 	if err != nil {
 		t.Fatalf("Evaluate with nil params: %v", err)

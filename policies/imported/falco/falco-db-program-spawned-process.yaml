@@ -1,13 +1,13 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-db-program-spawned-process
     annotations:
-        aegis.io/falco-tags: maturity_incubating,host,container,process,database,mitre_execution,T1190
-        aegis.io/imported-from: aegis-import-2621062960.yaml
-        aegis.io/severity: low
-        aegis.io/source-rule: DB program spawned process
+        nixis.io/falco-tags: maturity_incubating,host,container,process,database,mitre_execution,T1190
+        nixis.io/imported-from: nixis-import-2621062960.yaml
+        nixis.io/severity: low
+        nixis.io/source-rule: DB program spawned process
 spec:
     description: |
         A program related to the database server creates an unexpected child process (other than itself). This is not supposed to happen and often follows SQL injection attacks. This behavioral detection could indicate potential unauthorized data extraction or tampering with the database.

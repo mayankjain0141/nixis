@@ -1,12 +1,12 @@
-# imported from: claude-guardrails via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: claude-guardrails via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: settings-deny-035
     annotations:
-        aegis.io/imported-from: aegis-import-3430838287.json
-        aegis.io/severity: medium
-        aegis.io/source-rule: Edit **/.env
+        nixis.io/imported-from: nixis-import-3430838287.json
+        nixis.io/severity: medium
+        nixis.io/source-rule: Edit **/.env
 spec:
     description: 'Deny rule imported from settings.json: Edit **/.env'
     matchConstraints:

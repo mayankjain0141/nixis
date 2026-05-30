@@ -1,12 +1,12 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-add-certificates-volume-add-ssl-certs
     annotations:
-        aegis.io/imported-from: aegis-import-1085826525.yaml
-        aegis.io/severity: low
-        aegis.io/llm-confidence: medium
+        nixis.io/imported-from: nixis-import-1085826525.yaml
+        nixis.io/severity: low
+        nixis.io/llm-confidence: medium
         kyverno.io/category: Sample
 spec:
     description: In some cases you would need to trust custom CA certificates for all the containers of a Pod. It makes sense to be in a ConfigMap so that you can automount them by only setting an annotation. This policy adds a volume to all containers in a Pod containing the certificate if the annotation called `inject-certs` with value `enabled` is found.
@@ -14,6 +14,6 @@ spec:
         tools: []
     validations:
         - expression: 'false'
-          message: 'Mutate rule (SSL certificate volume injection) — Aegis cannot mutate requests; verify pods with inject-certs=enabled annotation have the certificates volume mounted'
+          message: 'Mutate rule (SSL certificate volume injection) — Nixis cannot mutate requests; verify pods with inject-certs=enabled annotation have the certificates volume mounted'
           action: AUDIT
     defaultAction: ALLOW

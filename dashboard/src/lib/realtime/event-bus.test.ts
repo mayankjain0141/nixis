@@ -4,7 +4,7 @@ import type { ValidatedEvent } from './ingestion-pipeline';
 
 function makeEvent(seq: number, type: ValidatedEvent['type'] = 'policy.evaluated'): ValidatedEvent {
   const base = {
-    envelope: { type, id: `evt-${seq}`, aegissequence: seq, data: {} },
+    envelope: { type, id: `evt-${seq}`, nixissequence: seq, data: {} },
   };
   if (type === 'policy.evaluated') {
     return {

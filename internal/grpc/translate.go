@@ -10,10 +10,10 @@ import (
 	rpcstatus "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc/codes"
 
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
-func translateRequest(envoyReq *authv3.CheckRequest) aegis.CheckRequest {
+func translateRequest(envoyReq *authv3.CheckRequest) nixis.CheckRequest {
 	attrs := envoyReq.GetAttributes()
 	http := attrs.GetRequest().GetHttp()
 
@@ -23,7 +23,7 @@ func translateRequest(envoyReq *authv3.CheckRequest) aegis.CheckRequest {
 	}
 
 	headers := http.GetHeaders()
-	sessionID := headers["x-aegis-session"]
+	sessionID := headers["x-nixis-session"]
 	if sessionID == "" {
 		sessionID = headers["x-request-id"]
 	}
@@ -37,46 +37,46 @@ func translateRequest(envoyReq *authv3.CheckRequest) aegis.CheckRequest {
 		"headers": headers,
 	})
 
-	return aegis.CheckRequest{
+	return nixis.CheckRequest{
 		Tool:      toolName,
 		Args:      argsJSON,
 		SessionID: sessionID,
 	}
 }
 
-func translateResponse(resp aegis.CheckResponse) *authv3.CheckResponse {
+func translateResponse(resp nixis.CheckResponse) *authv3.CheckResponse {
 	switch resp.Decision.Action {
-	case aegis.ActionAllow:
+	case nixis.ActionAllow:
 		return &authv3.CheckResponse{
 			Status: &rpcstatus.Status{Code: int32(codes.OK)},
 			HttpResponse: &authv3.CheckResponse_OkResponse{
 				OkResponse: &authv3.OkHttpResponse{},
 			},
 		}
-	case aegis.ActionAudit:
+	case nixis.ActionAudit:
 		return &authv3.CheckResponse{
 			Status: &rpcstatus.Status{Code: int32(codes.OK)},
 			HttpResponse: &authv3.CheckResponse_OkResponse{
 				OkResponse: &authv3.OkHttpResponse{
 					Headers: []*corev3.HeaderValueOption{
-						{Header: &corev3.HeaderValue{Key: "x-aegis-audited", Value: "true"}},
+						{Header: &corev3.HeaderValue{Key: "x-nixis-audited", Value: "true"}},
 					},
 				},
 			},
 		}
-	case aegis.ActionRequireApproval:
+	case nixis.ActionRequireApproval:
 		return &authv3.CheckResponse{
 			Status: &rpcstatus.Status{Code: int32(codes.PermissionDenied)},
 			HttpResponse: &authv3.CheckResponse_DeniedResponse{
 				DeniedResponse: &authv3.DeniedHttpResponse{
 					Status: &typev3.HttpStatus{Code: typev3.StatusCode_Forbidden},
 					Headers: []*corev3.HeaderValueOption{
-						{Header: &corev3.HeaderValue{Key: "x-aegis-approval-required", Value: "true"}},
+						{Header: &corev3.HeaderValue{Key: "x-nixis-approval-required", Value: "true"}},
 					},
 				},
 			},
 		}
-	case aegis.ActionDeny:
+	case nixis.ActionDeny:
 		return denyResponse(resp.Decision.Reason)
 	default:
 		return denyResponse(resp.Decision.Reason)

@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-deny-privileged-profile-check-privileged-namespace
     annotations:
-        aegis.io/imported-from: aegis-import-2355058609.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-2355058609.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Pod Security Admission
 spec:
     description: When Pod Security Admission (PSA) is enforced at the cluster level via an AdmissionConfiguration file which defines a default level at baseline or restricted, setting of a label at the `privileged` profile will effectively cause unrestricted workloads in that Namespace, overriding the cluster default. This may effectively represent a circumvention attempt and should be closely controlled. This policy ensures that only those holding the cluster-admin ClusterRole may create Namespaces which assign the label `pod-security.kubernetes.io/enforce=privileged`.

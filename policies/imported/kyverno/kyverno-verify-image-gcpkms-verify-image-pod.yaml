@@ -1,12 +1,12 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-verify-image-gcpkms-verify-image-pod
     annotations:
-        aegis.io/imported-from: aegis-import-107445720.yaml
-        aegis.io/severity: medium
-        aegis.io/llm-confidence: low
+        nixis.io/imported-from: nixis-import-107445720.yaml
+        nixis.io/severity: medium
+        nixis.io/llm-confidence: low
         kyverno.io/category: Software Supply Chain Security
 spec:
     description: Using the Cosign project, OCI images may be signed to ensure supply chain security is maintained. Those signatures can be verified before pulling into a cluster. This policy checks the signature of an image repo called ghcr.io/kyverno/test-verify-image to ensure it has been signed by verifying its signature against the provided public key. This policy serves as an illustration for how to configure a similar rule and will require replacing with your image(s) and keys.

@@ -69,18 +69,18 @@ var auditTailCmd = &cobra.Command{
 func init() {
 	auditVerifyCmd.Flags().StringVar(&auditFrom, "from", "", "Start checkpoint (record ID)")
 	auditVerifyCmd.Flags().StringVar(&auditTo, "to", "", "End checkpoint (record ID)")
-	auditVerifyCmd.Flags().StringVar(&auditDB, "db", "", "Audit database path (default: $AEGIS_AUDIT_DB)")
+	auditVerifyCmd.Flags().StringVar(&auditDB, "db", "", "Audit database path (default: $NIXIS_AUDIT_DB)")
 	auditCmd.AddCommand(auditVerifyCmd)
 
 	auditExportCmd.Flags().StringVar(&auditExportFormat, "format", "jsonl", "Output format: jsonl or csv")
 	auditExportCmd.Flags().StringVar(&auditExportFrom, "from", "", "Start time (RFC3339 or unix timestamp)")
 	auditExportCmd.Flags().StringVar(&auditExportTo, "to", "", "End time (RFC3339 or unix timestamp)")
-	auditExportCmd.Flags().StringVar(&auditExportDB, "db", "", "Audit database path (default: $AEGIS_AUDIT_DB)")
+	auditExportCmd.Flags().StringVar(&auditExportDB, "db", "", "Audit database path (default: $NIXIS_AUDIT_DB)")
 	auditCmd.AddCommand(auditExportCmd)
 
 	auditTailCmd.Flags().IntVarP(&auditTailN, "lines", "n", 20, "Number of records to show")
 	auditTailCmd.Flags().BoolVarP(&auditTailFollow, "follow", "f", false, "Stream new records via WebSocket")
-	auditTailCmd.Flags().StringVar(&auditTailDB, "db", "", "Audit database path (default: $AEGIS_AUDIT_DB)")
+	auditTailCmd.Flags().StringVar(&auditTailDB, "db", "", "Audit database path (default: $NIXIS_AUDIT_DB)")
 	auditTailCmd.Flags().StringVar(&auditTailStreamAddr, "stream-addr", "ws://127.0.0.1:9090/ws", "Daemon WebSocket stream address for --follow")
 	auditCmd.AddCommand(auditTailCmd)
 }
@@ -89,7 +89,7 @@ func resolveAuditDB() string {
 	if auditDB != "" {
 		return auditDB
 	}
-	if v := os.Getenv("AEGIS_AUDIT_DB"); v != "" {
+	if v := os.Getenv("NIXIS_AUDIT_DB"); v != "" {
 		return v
 	}
 	return ""
@@ -98,7 +98,7 @@ func resolveAuditDB() string {
 func runAuditVerify(cmd *cobra.Command, _ []string) error {
 	dbPath := resolveAuditDB()
 	if dbPath == "" {
-		return fmt.Errorf("audit database path not set: use --db or $AEGIS_AUDIT_DB")
+		return fmt.Errorf("audit database path not set: use --db or $NIXIS_AUDIT_DB")
 	}
 
 	db, err := sql.Open("sqlite", dbPath+"?mode=ro")
@@ -331,7 +331,7 @@ func scanAuditRow(rows *sql.Rows) (auditRow, error) {
 func runAuditExport(cmd *cobra.Command, _ []string) error {
 	dbPath := resolveExportDB()
 	if dbPath == "" {
-		return fmt.Errorf("audit database path not set: use --db or $AEGIS_AUDIT_DB")
+		return fmt.Errorf("audit database path not set: use --db or $NIXIS_AUDIT_DB")
 	}
 
 	if auditExportFormat != "jsonl" && auditExportFormat != "csv" {
@@ -418,7 +418,7 @@ func runAuditTail(cmd *cobra.Command, _ []string) error {
 		dbPath = resolveAuditDB()
 	}
 	if dbPath == "" {
-		return fmt.Errorf("audit database path not set: use --db or $AEGIS_AUDIT_DB")
+		return fmt.Errorf("audit database path not set: use --db or $NIXIS_AUDIT_DB")
 	}
 
 	db, err := sql.Open("sqlite", dbPath+"?mode=ro")

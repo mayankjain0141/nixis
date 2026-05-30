@@ -3,13 +3,13 @@
 # Bundle: builtin — default-enabled.
 
 ---
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: block-path-traversal
   annotations:
-    aegis.io/default-enabled: "true"
-    aegis.io/bundle: builtin
+    nixis.io/default-enabled: "true"
+    nixis.io/bundle: builtin
 spec:
   description: "Block path traversal patterns in Read/Write/Edit/Bash"
   matchConstraints:
@@ -27,13 +27,13 @@ spec:
   defaultAction: ALLOW
 
 ---
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: block-kernel-special-access
   annotations:
-    aegis.io/default-enabled: "true"
-    aegis.io/bundle: builtin
+    nixis.io/default-enabled: "true"
+    nixis.io/bundle: builtin
 spec:
   description: "Block direct access to /proc/<pid>/ and kernel memory devices"
   matchConstraints:
@@ -65,13 +65,13 @@ spec:
   defaultAction: ALLOW
 
 ---
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: block-cloud-metadata-url
   annotations:
-    aegis.io/default-enabled: "true"
-    aegis.io/bundle: builtin
+    nixis.io/default-enabled: "true"
+    nixis.io/bundle: builtin
 spec:
   description: "Block Bash commands targeting cloud metadata endpoints"
   matchConstraints:
@@ -93,13 +93,13 @@ spec:
   defaultAction: ALLOW
 
 ---
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: block-system-dir-write
   annotations:
-    aegis.io/default-enabled: "true"
-    aegis.io/bundle: builtin
+    nixis.io/default-enabled: "true"
+    nixis.io/bundle: builtin
 spec:
   description: "Block Write/Edit to /etc/ or system binary directories"
   matchConstraints:
@@ -121,13 +121,13 @@ spec:
   defaultAction: ALLOW
 
 ---
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: bash-unmatched-credential-keywords
   annotations:
-    aegis.io/default-enabled: "true"
-    aegis.io/bundle: builtin
+    nixis.io/default-enabled: "true"
+    nixis.io/bundle: builtin
 spec:
   description: "Require approval for unmatched Bash commands containing credential-related keywords"
   matchConstraints:
@@ -148,13 +148,13 @@ spec:
   defaultAction: ALLOW
 
 ---
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: bash-base64-exec-pattern
   annotations:
-    aegis.io/default-enabled: "true"
-    aegis.io/bundle: builtin
+    nixis.io/default-enabled: "true"
+    nixis.io/bundle: builtin
 spec:
   description: "Require approval for Bash commands with base64 decode piped to execution"
   matchConstraints:
@@ -177,13 +177,13 @@ spec:
   defaultAction: ALLOW
 
 ---
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: block-webfetch-metadata
   annotations:
-    aegis.io/default-enabled: "true"
-    aegis.io/bundle: builtin
+    nixis.io/default-enabled: "true"
+    nixis.io/bundle: builtin
 spec:
   description: "Block WebFetch to cloud metadata IP ranges"
   matchConstraints:
@@ -206,13 +206,13 @@ spec:
 
 ---
 # P5: Unmatched Bash network command — isGitOnly guard prevents excessive git FP
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: bash-unmatched-network-cmd
   annotations:
-    aegis.io/default-enabled: "true"
-    aegis.io/bundle: builtin
+    nixis.io/default-enabled: "true"
+    nixis.io/bundle: builtin
 spec:
   description: "Require approval when unrecognized Bash command uses a network-capable binary (excludes plain git commands)"
   matchConstraints:
@@ -229,13 +229,13 @@ spec:
 
 ---
 # P5: Unmatched Read with credential file pattern — narrowed regex (no "token"/"secret"/"private")
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: read-unmatched-sensitive-path
   annotations:
-    aegis.io/default-enabled: "true"
-    aegis.io/bundle: builtin
+    nixis.io/default-enabled: "true"
+    nixis.io/bundle: builtin
 spec:
   description: "Require approval for Read on unrecognized paths matching credential file name patterns"
   matchConstraints:
@@ -255,13 +255,13 @@ spec:
 # P5: Unusually long unmatched Bash command — obfuscation/encoded payload signal
 # Threshold 1000 chars: base64-encoded meaningful payload typically exceeds this.
 # AUDIT action is NOT supported (compiles to always-allow stub) — using REQUIRE_APPROVAL.
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: bash-unmatched-long-command
   annotations:
-    aegis.io/default-enabled: "true"
-    aegis.io/bundle: builtin
+    nixis.io/default-enabled: "true"
+    nixis.io/bundle: builtin
 spec:
   description: "Require approval for unusually long unrecognized Bash commands — possible obfuscation"
   matchConstraints:

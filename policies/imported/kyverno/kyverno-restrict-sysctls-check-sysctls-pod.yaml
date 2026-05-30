@@ -6,14 +6,14 @@
 # net.ipv4.tcp_keepalive_probes). CEL cannot iterate a list of structs from raw content
 # to compare each name against an allowlist. The expression below covers CVE-2022-0811
 # only (+ and = in sysctl values) — all other out-of-allowlist sysctls are NOT caught.
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-sysctls-check-sysctls-pod
     annotations:
-        aegis.io/imported-from: aegis-import-3564782354.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-3564782354.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Pod Security Standards (Baseline)
 spec:
     description: Sysctls can disable security mechanisms or affect all containers on a host, and should be disallowed except for an allowed "safe" subset. A sysctl is considered safe if it is namespaced in the container or the Pod, and it is isolated from other Pods or processes on the same Node. This policy ensures that only those "safe" subsets can be specified in a Pod.

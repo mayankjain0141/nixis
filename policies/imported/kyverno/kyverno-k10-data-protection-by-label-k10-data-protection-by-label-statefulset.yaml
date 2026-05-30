@@ -1,15 +1,15 @@
-# imported from: policies via aegis policy import
+# imported from: policies via nixis policy import
 # Gap: Kyverno checks via namespaceSelector whether the *namespace* carries environment=production,
 # not the workload manifest itself. CEL cannot look up namespace labels at file-write time.
 # Expression fires when the StatefulSet manifest carries the label inline — will miss workloads
 # in production namespaces whose manifests do not repeat the environment label.
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-k10-data-protection-by-label-k10-data-protection-by-label-statefulset
     annotations:
-        aegis.io/imported-from: aegis-import-2129454564.yaml
-        aegis.io/severity: low
+        nixis.io/imported-from: nixis-import-2129454564.yaml
+        nixis.io/severity: low
         kyverno.io/category: Kasten K10 by Veeam in CEL
 spec:
     description: Check the 'dataprotection' label that production Deployments and StatefulSet have a named K10 Policy. Use in combination with 'generate' ClusterPolicy to 'generate' a specific K10 Policy by name.

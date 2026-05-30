@@ -7,7 +7,7 @@ import (
 
 	celgo "github.com/google/cel-go/cel"
 	"github.com/google/cel-go/checker"
-	policy_types "github.com/mayjain/aegis/pkg/policy/types"
+	policy_types "github.com/mayjain/nixis/pkg/policy/types"
 )
 
 // programMeta carries a pointer to a compiled program and source location metadata.

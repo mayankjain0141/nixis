@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Package audit provides append-only SQLite persistence for Aegis governance decisions.
+// Package audit provides append-only SQLite persistence for Nixis governance decisions.
 // A single goroutine writes to SQLite. The hot path enqueues via a buffered
 // channel and never blocks.
 package audit
@@ -9,20 +9,22 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"strings"
 	"sync/atomic"
 	"time"
 
-	"github.com/mayjain/aegis/internal/otel"
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/internal/otel"
+	"github.com/mayjain/nixis/pkg/nixis"
 	_ "modernc.org/sqlite"
 )
 
 const (
-	channelCap   = 1024
-	batchSize    = 64
-	batchTimeout = 100 * time.Millisecond
+	channelCap      = 1024
+	batchSize       = 64
+	batchTimeout    = 100 * time.Millisecond
+	checkpointEvery = 100 // emit audit.checkpoint stream event every N records
 )
 
 type AuditRecord struct {
@@ -31,18 +33,18 @@ type AuditRecord struct {
 	SessionID      string
 	Tool           string
 	Args           json.RawMessage
-	Decision       aegis.Decision
+	Decision       nixis.Decision
 	LatencyNs      int64
 	PolicyID       string
-	EnforcingLayer aegis.EnforcingLayer
-	LabelBefore    aegis.SecurityLabel
-	LabelAfter     aegis.SecurityLabel
+	EnforcingLayer nixis.EnforcingLayer
+	LabelBefore    nixis.SecurityLabel
+	LabelAfter     nixis.SecurityLabel
 }
 
 type SessionLabelRecord struct {
 	SessionID  string
 	LabelState string // "fresh", "escalated", "tainted_by_secret", "declassified"
-	Label      aegis.SecurityLabel
+	Label      nixis.SecurityLabel
 	ChangedAt  int64 // unix nanos
 }
 
@@ -51,10 +53,22 @@ type writeItem struct {
 	labelRecord *SessionLabelRecord
 }
 
+// CheckpointEmitFn is called after every checkpointEvery records with the
+// checkpoint sequence, current chain hash (hex), previous checkpoint hash (hex
+// or empty string for genesis), and the number of records since the previous
+// checkpoint.
+type CheckpointEmitFn func(sequence int64, hash, prevHash string, eventCount int)
+
 type Writer struct {
 	db      *sql.DB
 	ch      chan writeItem
 	dropped atomic.Int64
+	emitFn  CheckpointEmitFn // may be nil
+}
+
+// SetCheckpointEmitFn wires the stream-event callback. Call once before Start.
+func (w *Writer) SetCheckpointEmitFn(fn CheckpointEmitFn) {
+	w.emitFn = fn
 }
 
 func NewWriter(dbPath string) (*Writer, error) {
@@ -84,6 +98,16 @@ func (w *Writer) Start(ctx context.Context) {
 	// across Writer restarts. Zero hash is used for the very first record.
 	prevHash := loadLastChainHash(w.db)
 
+	// Checkpoint state: how many records since the last checkpoint, and the
+	// hash that was current at the previous checkpoint.
+	var (
+		recordsSinceCheckpoint int
+		checkpointSeq          int64
+		prevCheckpointHash     [32]byte
+	)
+	// Seed checkpointSeq from the DB so restarts don't reset the sequence counter.
+	checkpointSeq = loadCheckpointSeq(w.db)
+
 	batch := make([]writeItem, 0, batchSize)
 	timer := time.NewTimer(batchTimeout)
 	defer timer.Stop()
@@ -92,8 +116,33 @@ func (w *Writer) Start(ctx context.Context) {
 		if len(batch) == 0 {
 			return
 		}
-		prevHash = w.writeBatch(batch, prevHash)
+		recordsBefore := recordsSinceCheckpoint
+		newHash := w.writeBatch(batch, prevHash)
+
+		// Count only AuditRecord items (not label records) toward checkpoint threshold.
+		for _, item := range batch {
+			if item.record != nil {
+				recordsSinceCheckpoint++
+			}
+		}
+		prevHash = newHash
 		batch = batch[:0]
+
+		// Emit a checkpoint every checkpointEvery records.
+		if recordsSinceCheckpoint >= checkpointEvery && w.emitFn != nil {
+			emitted := recordsSinceCheckpoint - recordsBefore + recordsBefore
+			_ = emitted // total since genesis — not directly tracked per-checkpoint
+			checkpointSeq++
+			prevHex := ""
+			if checkpointSeq > 1 {
+				prevHex = fmt.Sprintf("%x", prevCheckpointHash)
+			}
+			currentHex := fmt.Sprintf("%x", newHash)
+			w.emitFn(checkpointSeq, currentHex, prevHex, recordsSinceCheckpoint)
+			prevCheckpointHash = newHash
+			recordsSinceCheckpoint = 0
+			saveCheckpointSeq(w.db, checkpointSeq)
+		}
 	}
 
 	for {
@@ -205,13 +254,13 @@ func (w *Writer) writeBatch(batch []writeItem, prevHash [32]byte) [32]byte {
 func chainHash(prev [32]byte, r *AuditRecord) [32]byte {
 	var action string
 	switch r.Decision.Action {
-	case aegis.ActionDeny:
+	case nixis.ActionDeny:
 		action = "deny"
-	case aegis.ActionAllow:
+	case nixis.ActionAllow:
 		action = "allow"
-	case aegis.ActionRequireApproval:
+	case nixis.ActionRequireApproval:
 		action = "require_approval"
-	case aegis.ActionAudit:
+	case nixis.ActionAudit:
 		action = "audit"
 	default:
 		action = "deny"
@@ -251,13 +300,13 @@ func appendInt64LE(buf []byte, n int64) []byte {
 func (w *Writer) insertRecord(tx *sql.Tx, r *AuditRecord, prev [32]byte) ([32]byte, error) {
 	var action string
 	switch r.Decision.Action {
-	case aegis.ActionDeny:
+	case nixis.ActionDeny:
 		action = "deny"
-	case aegis.ActionAllow:
+	case nixis.ActionAllow:
 		action = "allow"
-	case aegis.ActionRequireApproval:
+	case nixis.ActionRequireApproval:
 		action = "require_approval"
-	case aegis.ActionAudit:
+	case nixis.ActionAudit:
 		action = "audit"
 	default:
 		action = "deny"
@@ -366,6 +415,11 @@ CREATE TABLE IF NOT EXISTS session_labels (
     changed_at   INTEGER NOT NULL,
     PRIMARY KEY (session_id, changed_at)
 );
+
+CREATE TABLE IF NOT EXISTS audit_meta (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
 `)
 	if err != nil {
 		return err
@@ -375,6 +429,29 @@ CREATE TABLE IF NOT EXISTS session_labels (
 	// SQLite returns an error if the column already exists; ignore it.
 	_, _ = db.Exec(`ALTER TABLE audit_log ADD COLUMN chain_hash BLOB`)
 	return nil
+}
+
+// loadCheckpointSeq reads the last persisted checkpoint sequence number from
+// audit_meta so restarts don't reset the counter to zero.
+func loadCheckpointSeq(db *sql.DB) int64 {
+	var v int64
+	row := db.QueryRow(`SELECT value FROM audit_meta WHERE key='checkpoint_seq'`)
+	var s string
+	if err := row.Scan(&s); err != nil {
+		return 0
+	}
+	_, _ = fmt.Sscanf(s, "%d", &v)
+	return v
+}
+
+// saveCheckpointSeq persists the checkpoint sequence number across restarts.
+// Uses REPLACE INTO (SQLite: delete+insert on conflict) to avoid UPDATE on the
+// audit_log table — audit_log is append-only; audit_meta is mutable metadata.
+func saveCheckpointSeq(db *sql.DB, seq int64) {
+	_, _ = db.Exec(
+		`REPLACE INTO audit_meta(key,value) VALUES('checkpoint_seq',?)`,
+		fmt.Sprintf("%d", seq),
+	)
 }
 
 // SanitizeArgs removes secret values from JSON args before audit logging.
