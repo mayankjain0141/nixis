@@ -51,8 +51,16 @@ async function loadFromStatic(): Promise<PolicySummary[]> {
   }
 }
 
-export async function loadPolicies(): Promise<PolicySummary[]> {
+async function fetchPoliciesImpl(): Promise<PolicySummary[]> {
   const live = await loadFromDaemon();
   if (live !== null) return live;
   return loadFromStatic();
+}
+
+let _loadingPromise: Promise<PolicySummary[]> | null = null;
+
+export function loadPolicies(): Promise<PolicySummary[]> {
+  if (_loadingPromise) return _loadingPromise;
+  _loadingPromise = fetchPoliciesImpl().finally(() => { _loadingPromise = null; });
+  return _loadingPromise;
 }
