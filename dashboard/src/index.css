@@ -80,3 +80,9 @@ body {
 .react-flow__attribution {
   display: none !important;
 }
+
+@keyframes dagPulse {
+  0%   { box-shadow: 0 0 0 3px #fbbf24, 0 0 20px #fbbf24aa; }
+  50%  { box-shadow: 0 0 0 6px #fbbf24, 0 0 40px #fbbf24cc; }
+  100% { box-shadow: 0 0 0 3px #fbbf24, 0 0 20px #fbbf24aa; }
+}

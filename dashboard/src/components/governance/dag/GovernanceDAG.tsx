@@ -38,8 +38,8 @@ export const governanceNodeTypes: NodeTypes = {
 } as const;
 
 const STORAGE_KEY = 'nixis-dag-positions';
-const PIPELINE_Y = 160;
-const PIPELINE_GAP = 180;
+const PIPELINE_Y = 140;
+const PIPELINE_GAP = 200;
 
 interface PipelineStage {
   id: string;
@@ -99,8 +99,8 @@ function buildLayout(events: { tool: string; policyId?: string | null; decision?
     id: `tool-${tool}`,
     type: 'tool',
     position: savedPositions[`tool-${tool}`] ?? {
-      x: 1 * PIPELINE_GAP + (i % 3) * 120,
-      y: PIPELINE_Y + 80 + Math.floor(i / 3) * 60,
+      x: 1 * PIPELINE_GAP + (i % 3) * 140,
+      y: PIPELINE_Y + 100 + Math.floor(i / 3) * 70,
     },
     data: { label: tool },
     draggable: true,
@@ -115,8 +115,8 @@ function buildLayout(events: { tool: string; policyId?: string | null; decision?
     id: `policy-${policy}`,
     type: 'policy',
     position: savedPositions[`policy-${policy}`] ?? {
-      x: 4 * PIPELINE_GAP + (i % 4) * 130,
-      y: PIPELINE_Y + 80 + Math.floor(i / 4) * 55,
+      x: 4 * PIPELINE_GAP + (i % 4) * 150,
+      y: PIPELINE_Y + 100 + Math.floor(i / 4) * 65,
     },
     data: { label: policy, policyId: policy },
     draggable: true,
@@ -129,8 +129,8 @@ function buildLayout(events: { tool: string; policyId?: string | null; decision?
       id: summaryId,
       type: 'policy',
       position: savedPositions[summaryId] ?? {
-        x: 4 * PIPELINE_GAP + 200,
-        y: PIPELINE_Y + 80 + Math.ceil(showPolicies.length / 4) * 55,
+        x: 4 * PIPELINE_GAP + 250,
+        y: PIPELINE_Y + 100 + Math.ceil(showPolicies.length / 4) * 65,
       },
       data: { label: `+${hiddenCount} more policies` },
       draggable: true,
@@ -201,11 +201,15 @@ export function GovernanceDAG() {
 
   useEffect(() => {
     function handler(e: Event) {
-      const { tool } = (e as CustomEvent<{ nixisSequence?: number; tool?: string }>).detail;
+      const detail = (e as CustomEvent<{ nixisSequence?: number; tool?: string }>).detail;
       const ids = new Set<string>();
-      if (tool) ids.add(`tool-${tool}`);
+      if (detail.tool) {
+        ids.add(`tool-${detail.tool}`);
+        ids.add('pipeline-hook');
+        ids.add('pipeline-cel');
+      }
       setHighlightedIds(ids);
-      setTimeout(() => setHighlightedIds(new Set()), 3000);
+      setTimeout(() => setHighlightedIds(new Set()), 4000);
     }
     window.addEventListener('nixis:highlight-event', handler);
     return () => window.removeEventListener('nixis:highlight-event', handler);
@@ -215,7 +219,15 @@ export function GovernanceDAG() {
     () =>
       nodes.map((node) =>
         highlightedIds.has(node.id)
-          ? { ...node, style: { ...node.style, boxShadow: '0 0 0 3px #fbbf24, 0 0 12px #fbbf2466', borderRadius: 8 } }
+          ? {
+              ...node,
+              style: {
+                ...node.style,
+                boxShadow: '0 0 0 3px #fbbf24, 0 0 20px #fbbf24aa',
+                borderRadius: 8,
+                animation: 'dagPulse 1s ease-in-out 3',
+              },
+            }
           : node,
       ),
     [nodes, highlightedIds],
