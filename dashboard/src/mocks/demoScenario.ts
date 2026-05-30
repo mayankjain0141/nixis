@@ -703,9 +703,21 @@ export function buildDemoScenario(): DemoStep[] {
       }),
     },
 
+    // ── 20.0s: Audit checkpoint #1 (genesis → this) ──────────────────────────
+    {
+      delayMs: 600,
+      json: ce('audit.checkpoint', {
+        sequence: 20,
+        hash: 'sha256:aabbcc1122334455aabbcc1122334455aabbcc1122334455aabbcc1122334455',
+        prev_hash: 'sha256:genesis00000000000000000000000000000000000000000000000000000000',
+        events_since_prev: 20,
+        merkle_root: 'sha256:2a8c1e5b9d3f7a4c8e2b6d0f4a1e7c3b9f5d2a8c4e1b7d5f9a3c7e1b4d8f2a5',
+      }),
+    },
+
     // ── 20.2s: PRIVESC — insmod rootkit DENY ─────────────────────────────────
     {
-      delayMs: 800,
+      delayMs: 200,
       json: policyEval({
         tool: 'Bash',
         sessionId: SESS_MAIN,
@@ -873,14 +885,14 @@ export function buildDemoScenario(): DemoStep[] {
       }),
     },
 
-    // ── 31.2s: Audit checkpoint ───────────────────────────────────────────────
+    // ── 31.2s: Audit checkpoint #2 (20s → this) ──────────────────────────────
     {
       delayMs: 1000,
       json: ce('audit.checkpoint', {
         sequence: 31,
         hash: 'sha256:4a7f9b2c1e8d3f6a0b5c9d2e7f4a1b8c3d6e9f2a5b8c1d4e7f0a3b6c9d2e5f8a',
-        prev_hash: 'sha256:1b4e7a0d3f6c9b2e5a8d1f4c7a0e3b6d9f2c5a8e1b4d7f0c3e6a9b2d5f8c1e4',
-        events_since_prev: 31,
+        prev_hash: 'sha256:aabbcc1122334455aabbcc1122334455aabbcc1122334455aabbcc1122334455',
+        events_since_prev: 11,
         merkle_root: 'sha256:9f2c5a8e1b4d7f0c3e6a9b2d5f8c1e4a7b0d3f6c9e2a5b8c1d4f7a0e3b6c9d',
       }),
     },

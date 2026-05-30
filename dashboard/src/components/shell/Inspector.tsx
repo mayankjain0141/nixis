@@ -21,8 +21,8 @@ function KeyRow({ label, value, mono }: { label: string; value: string; mono?: b
   );
 }
 
-function CollapsibleSection({ title, children }: { title: string; children: React.ReactNode }) {
-  const [open, setOpen] = useState(false);
+function CollapsibleSection({ title, children, defaultOpen }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen ?? false);
   return (
     <div style={{ borderBottom: '1px solid var(--border)' }}>
       <button
@@ -41,18 +41,11 @@ function CollapsibleSection({ title, children }: { title: string; children: Reac
   );
 }
 
-const VERDICT_COLORS: Record<string, string> = {
-  deny:             'var(--deny)',
-  allow:            'var(--allow)',
-  require_approval: 'var(--escalate)',
-  audit:            'var(--audit-purple)',
-};
-
-const VERDICT_LABELS: Record<string, string> = {
-  deny:             'DENY',
-  allow:            'ALLOW',
-  require_approval: 'REQUIRE APPROVAL',
-  audit:            'AUDIT',
+const VERDICT_STYLES: Record<string, { bg: string; color: string; label: string }> = {
+  deny:             { bg: 'var(--deny)',         color: '#fff',    label: 'DENY' },
+  allow:            { bg: 'var(--allow)',         color: '#1a1a1a', label: 'ALLOW' },
+  require_approval: { bg: 'var(--escalate)',      color: '#1a1a1a', label: 'REQUIRE APPROVAL' },
+  audit:            { bg: 'var(--audit-purple)',  color: '#fff',    label: 'AUDIT' },
 };
 
 export function Inspector() {
@@ -80,8 +73,7 @@ export function Inspector() {
   }
 
   const policy = policies.find(p => p.id === event.policyId);
-  const verdictColor = VERDICT_COLORS[event.verdict] ?? 'var(--text-secondary)';
-  const verdictLabel = VERDICT_LABELS[event.verdict] ?? event.verdict.toUpperCase();
+  const verdictStyle = VERDICT_STYLES[event.verdict] ?? { bg: 'var(--text-secondary)', color: '#fff', label: event.verdict.toUpperCase() };
 
   const latencyFormatted = event.latencyNs >= 1_000_000
     ? `${(event.latencyNs / 1_000_000).toFixed(2)}ms`
@@ -122,15 +114,23 @@ export function Inspector() {
           borderBottom: event.verdict === 'deny' ? '3px solid var(--deny)' : '1px solid var(--border)',
           background: event.verdict === 'deny' ? 'rgba(207,34,46,0.06)' : 'transparent',
         }}>
-          <div
+          <span
             data-verdict={event.verdict}
             style={{
-              fontSize: 32, fontWeight: 800, letterSpacing: '-0.02em',
-              color: verdictColor, marginBottom: 10, lineHeight: 1,
+              display: 'inline-flex',
+              alignItems: 'center',
+              background: verdictStyle.bg,
+              color: verdictStyle.color,
+              borderRadius: 4,
+              fontSize: 13,
+              fontWeight: 700,
+              padding: '3px 10px',
+              letterSpacing: '0.04em',
+              marginBottom: 10,
             }}
           >
-            {verdictLabel}
-          </div>
+            {verdictStyle.label}
+          </span>
           {event.reason && (
             <div style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.5 }}>
               {event.reason}
@@ -202,8 +202,8 @@ export function Inspector() {
           </div>
         </div>
 
-        {/* Security Label — collapsible */}
-        <CollapsibleSection title="Security Label">
+        {/* Security Label — collapsible, open by default */}
+        <CollapsibleSection title="Security Label" defaultOpen>
           <KeyRow label="Confidentiality" value={confidentialityToLevel(event.label?.confidentiality ?? 0)} />
           <KeyRow label="Integrity"       value={confidentialityToLevel(event.label?.integrity ?? 0)} />
           <KeyRow label="State"           value={event.labelState ?? 'fresh'} />
