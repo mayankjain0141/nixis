@@ -89,13 +89,14 @@ func ParsePolicyFile(path string) (*policy_types.PolicyTemplate, *policy_types.P
 	}
 
 	template := &policy_types.PolicyTemplate{
-		ID:          manifest.Metadata.Name,
-		Name:        manifest.Metadata.Name,
-		Description: strings.TrimRight(manifest.Spec.Description, "\n\r "),
-		Expression:  expr,
-		Params:      params,
-		SourceFile:  path,
-		SourceLine:  1,
+		ID:            manifest.Metadata.Name,
+		Name:          manifest.Metadata.Name,
+		Description:   strings.TrimRight(manifest.Spec.Description, "\n\r "),
+		Expression:    expr,
+		Params:        params,
+		SourceFile:    path,
+		SourceLine:    1,
+		DefaultAction: manifest.Spec.DefaultAction,
 	}
 
 	layer := manifest.Spec.Layer
@@ -113,6 +114,7 @@ func ParsePolicyFile(path string) (*policy_types.PolicyTemplate, *policy_types.P
 		Layer:           layer,
 		RequireApproval: requireApproval,
 		Message:         message,
+		DefaultAction:   manifest.Spec.DefaultAction,
 	}
 
 	return template, binding, nil
