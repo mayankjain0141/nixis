@@ -120,6 +120,16 @@ function buildStaticCommands(
       },
     },
     {
+      id: 'nav-agents',
+      label: 'Go to: Agents',
+      category: 'navigation',
+      keywords: ['agents', 'sessions', 'delegation'],
+      execute: async () => {
+        window.dispatchEvent(new CustomEvent('aegis:navigate', { detail: { panel: 'agents' } }));
+        close();
+      },
+    },
+    {
       id: 'tt-live',
       label: 'Time travel: Return to live',
       category: 'time-travel',

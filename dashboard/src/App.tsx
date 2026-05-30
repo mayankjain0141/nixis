@@ -382,7 +382,14 @@ export default function App() {
       const panel = (e as CustomEvent<{ panel: string }>).detail?.panel;
       // Tab panels — switch the secondary tab
       const tabMap: Record<string, MainTab> = {
-        dag: 'dag', playground: 'playground', audit: 'audit', delegation: 'delegation', threats: 'threats', lattice: 'lattice',
+        dag: 'dag',
+        playground: 'playground',
+        agents: 'agents',
+        threats: 'threats',
+        lattice: 'lattice',
+        // Legacy aliases — CommandPalette may still emit these
+        audit: 'agents',
+        delegation: 'agents',
       };
       if (panel && tabMap[panel]) {
         activeTabRef.setTab(tabMap[panel]);
