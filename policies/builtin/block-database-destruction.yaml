@@ -1,0 +1,225 @@
+# Source: security research — accidental database destruction patterns in AI agents
+# Gate: G4 (CEL function tests)
+# Default: ENABLED
+#
+# Covers destructive database operations across SQL, NoSQL, ORM/migration CLIs,
+# Redis, MongoDB, Elasticsearch/OpenSearch, ClickHouse, and CockroachDB.
+# Agents frequently generate DROP, TRUNCATE, FLUSHALL, and WHERE-less DELETE/UPDATE
+# when asked to "clean up" or "reset" data.
+#
+# Behavior (REQUIRE_APPROVAL — not DENY):
+#   psql -c "DROP DATABASE mydb"                      → REQUIRE_APPROVAL
+#   psql postgresql://user:pass@host/db -c "DROP..."  → REQUIRE_APPROVAL
+#   mysql -e "DROP TABLE users"                        → REQUIRE_APPROVAL
+#   mysql -h host -u user -p -e "DROP TABLE..."       → REQUIRE_APPROVAL
+#   mysqldump --add-drop-database                      → REQUIRE_APPROVAL
+#   pgcli -c "DROP DATABASE mydb"                     → REQUIRE_APPROVAL
+#   sqlite3 app.db "DROP TABLE sessions"              → REQUIRE_APPROVAL
+#   rails db:drop                                      → REQUIRE_APPROVAL
+#   rails db:reset                                     → REQUIRE_APPROVAL
+#   bundle exec rake db:drop                           → REQUIRE_APPROVAL
+#   sequelize db:drop                                  → REQUIRE_APPROVAL
+#   knex migrate:rollback --all                        → REQUIRE_APPROVAL
+#   python manage.py flush                             → REQUIRE_APPROVAL
+#   python manage.py reset_db                          → REQUIRE_APPROVAL
+#   flask db downgrade base                            → REQUIRE_APPROVAL
+#   alembic downgrade base                             → REQUIRE_APPROVAL
+#   prisma migrate reset                               → REQUIRE_APPROVAL
+#   prisma db push --force-reset                       → REQUIRE_APPROVAL
+#   redis-cli FLUSHALL                                 → REQUIRE_APPROVAL
+#   redis-cli -h host -p port FLUSHALL                → REQUIRE_APPROVAL
+#   redis-cli -n 0 FLUSHDB                            → REQUIRE_APPROVAL
+#   redis-cli --no-auth-warning -a password FLUSHALL  → REQUIRE_APPROVAL
+#   mongosh --eval "db.dropDatabase()"                → REQUIRE_APPROVAL
+#   mongosh "mongodb://..." --eval "db.dropDatabase()" → REQUIRE_APPROVAL
+#   mongo --eval "db.runCommand({ dropDatabase: 1 })" → REQUIRE_APPROVAL
+#   db.collection.drop()                              → REQUIRE_APPROVAL
+#   curl -X DELETE http://localhost:9200/_all         → REQUIRE_APPROVAL
+#   curl -X DELETE http://localhost:9200/*            → REQUIRE_APPROVAL
+#   curl -X DELETE https://search-domain.es.amazonaws.com/index → REQUIRE_APPROVAL
+#   clickhouse-client --query "DROP DATABASE"         → REQUIRE_APPROVAL
+#   cockroach sql --execute "DROP DATABASE"           → REQUIRE_APPROVAL
+
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: block-database-destruction
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Require approval for destructive database operations: DROP, TRUNCATE, FLUSHALL, ORM resets, and WHERE-less DELETE/UPDATE"
+  matchConstraints:
+    tools: ["Bash"]
+  variables:
+    - name: isDropDatabase
+      # DROP DATABASE / DROP SCHEMA — destroys an entire database or schema
+      expression: >-
+        request.args.command.matches("(?i)\\bDROP\\s+(DATABASE|SCHEMA)\\b")
+    - name: isDropTable
+      # DROP TABLE — destroys a table and all its data
+      expression: >-
+        request.args.command.matches("(?i)\\bDROP\\s+TABLE\\b")
+    - name: isTruncateTable
+      # TRUNCATE TABLE — instantly deletes all rows, cannot be rolled back in many DBs
+      expression: >-
+        request.args.command.matches("(?i)\\bTRUNCATE\\s+(TABLE\\s+)?\\w+")
+    - name: isDeleteWithoutWhere
+      # DELETE FROM table without a WHERE clause — deletes all rows
+      expression: >-
+        request.args.command.matches("(?i)\\bDELETE\\s+FROM\\s+\\S+\\s*(;|$)") &&
+        !request.args.command.matches("(?i)\\bDELETE\\s+FROM\\s+.*\\bWHERE\\b")
+    - name: isUpdateWithoutWhere
+      # UPDATE table SET col=val without WHERE — modifies every row
+      expression: >-
+        request.args.command.matches("(?i)\\bUPDATE\\s+\\S+\\s+SET\\b") &&
+        !request.args.command.matches("(?i)\\bUPDATE\\s+.*\\bWHERE\\b")
+
+    # SQL clients — extended variants
+    - name: isMysqldumpDropDatabase
+      # mysqldump --add-drop-database emits DROP DATABASE into the dump file, can be replayed destructively
+      expression: >-
+        request.args.command.matches("(?i)\\bmysqldump\\b.*--add-drop-database\\b")
+    - name: isPgcliDestroy
+      # pgcli is a popular psql alternative; catch same -c "DROP..." pattern
+      expression: >-
+        request.args.command.matches("(?i)\\bpgcli\\b.*\\bDROP\\s+(DATABASE|SCHEMA|TABLE)\\b")
+
+    # Redis — all flag variants
+    - name: isRedisFlush
+      # redis-cli FLUSHALL / FLUSHDB with any combination of -h, -p, -n, -a, --no-auth-warning flags
+      expression: >-
+        request.args.command.matches("(?i)\\bredis-cli\\b.*\\bFLUSH(ALL|DB)(\\s+ASYNC)?\\b") ||
+        (request.args.command.matches("(?i)\\bFLUSH(ALL|DB)\\b") &&
+         request.args.command.matches("(?i)\\bredis"))
+
+    # MongoDB — extended connection string and legacy mongo client
+    - name: isMongoDestroy
+      # mongosh "mongodb://..." --eval "db.dropDatabase()" and legacy mongo --eval form
+      # Also: db.runCommand({ dropDatabase: 1 }) via either client
+      # Also: db.collection.drop() called through any mongo client
+      expression: >-
+        request.args.command.matches("(?i)\\bdropDatabase\\s*\\(") ||
+        request.args.command.matches("(?i)\\bdropDatabase\\b.*:\\s*1") ||
+        (request.args.command.matches("(?i)\\.drop\\s*\\(\\s*\\)") &&
+         request.args.command.matches("(?i)\\b(mongosh|mongo|mongodb)\\b"))
+
+    # Elasticsearch / OpenSearch — extended DELETE patterns
+    - name: isElasticsearchDeleteIndex
+      # curl -X DELETE to Elasticsearch/OpenSearch:
+      #   localhost:9200/<index>          — named index
+      #   localhost:9200/_all             — all indices alias
+      #   localhost:9200/*                — wildcard delete (all indices)
+      #   AWS search domain URL           — any *.es.amazonaws.com or *.aoss.amazonaws.com
+      expression: >-
+        request.args.command.matches("(?i)\\bcurl\\b.*-X\\s*DELETE.*localhost.*:[0-9]+/[a-zA-Z_*]") ||
+        request.args.command.matches("(?i)\\bcurl\\b.*-X\\s*DELETE.*\\b(elastic|es|9200|9243)\\b") ||
+        request.args.command.matches("(?i)\\bcurl\\b.*-X\\s*DELETE.*/_all\\b") ||
+        request.args.command.matches("(?i)\\bcurl\\b.*-X\\s*DELETE.*/\\*\\b") ||
+        request.args.command.matches("(?i)\\bcurl\\b.*-X\\s*DELETE.*\\.es\\.amazonaws\\.com") ||
+        request.args.command.matches("(?i)\\bcurl\\b.*-X\\s*DELETE.*\\.aoss\\.amazonaws\\.com")
+
+    # ORM / migration CLIs
+    - name: isRailsDbDrop
+      # rails db:drop and rails db:reset (drop + recreate)
+      # bundle exec rake db:drop is the Rake equivalent
+      expression: >-
+        request.args.command.matches("(?i)\\brails\\s+db:(drop|reset)\\b") ||
+        request.args.command.matches("(?i)\\brake\\s+db:(drop|reset)\\b") ||
+        (request.args.command.matches("(?i)\\bbundle\\s+exec\\b") &&
+         request.args.command.matches("(?i)\\brake\\s+db:(drop|reset)\\b"))
+    - name: isSequelizeDrop
+      # sequelize db:drop — Sequelize CLI drops the database
+      expression: >-
+        request.args.command.matches("(?i)\\bsequelize\\b.*\\bdb:drop\\b") ||
+        request.args.command.matches("(?i)\\bsequelize-cli\\b.*\\bdb:drop\\b")
+    - name: isKnexRollbackAll
+      # knex migrate:rollback --all — rolls back ALL migrations (fully destructive)
+      expression: >-
+        request.args.command.matches("(?i)\\bknex\\b.*\\bmigrate:rollback\\b.*--all\\b")
+    - name: isDjangoDbDestroy
+      # python manage.py flush — removes all data (keeps schema)
+      # python manage.py reset_db — drops and recreates the database
+      expression: >-
+        request.args.command.matches("(?i)\\bmanage\\.py\\s+(flush|reset_db)\\b")
+    - name: isFlaskAlembicDowngradeBase
+      # flask db downgrade base — Flask-Migrate downgrades all migrations to initial state
+      # alembic downgrade base  — Alembic equivalent (can also use revision 0 or -1)
+      expression: >-
+        request.args.command.matches("(?i)\\bflask\\s+db\\s+downgrade\\s+base\\b") ||
+        request.args.command.matches("(?i)\\balembic\\s+downgrade\\s+base\\b")
+    - name: isPrismaMigrateReset
+      # prisma migrate reset — drops and recreates the database
+      # prisma db push --force-reset — resets the database before pushing schema
+      expression: >-
+        request.args.command.matches("(?i)\\bprisma\\b.*\\bmigrate\\s+reset\\b") ||
+        request.args.command.matches("(?i)\\bprisma\\b.*\\bdb\\s+push\\b.*--force-reset\\b")
+
+    # ClickHouse
+    - name: isClickhouseDestroy
+      # clickhouse-client --query "DROP DATABASE ..."
+      expression: >-
+        request.args.command.matches("(?i)\\bclickhouse-client\\b.*\\bDROP\\s+(DATABASE|TABLE)\\b")
+
+    # CockroachDB
+    - name: isCockroachDestroy
+      # cockroach sql --execute "DROP DATABASE ..."
+      expression: >-
+        request.args.command.matches("(?i)\\bcockroach\\s+sql\\b.*\\bDROP\\s+(DATABASE|TABLE|SCHEMA)\\b")
+
+  validations:
+    - expression: 'isDropDatabase'
+      message: "DROP DATABASE/SCHEMA permanently destroys all data. Approval required."
+      action: REQUIRE_APPROVAL
+    - expression: 'isDropTable'
+      message: "DROP TABLE permanently destroys the table and all its data. Approval required."
+      action: REQUIRE_APPROVAL
+    - expression: 'isTruncateTable'
+      message: "TRUNCATE TABLE deletes all rows instantly and cannot be rolled back in most databases. Approval required."
+      action: REQUIRE_APPROVAL
+    - expression: 'isDeleteWithoutWhere'
+      message: "DELETE FROM without a WHERE clause deletes every row. Approval required."
+      action: REQUIRE_APPROVAL
+    - expression: 'isUpdateWithoutWhere'
+      message: "UPDATE without a WHERE clause modifies every row in the table. Approval required."
+      action: REQUIRE_APPROVAL
+    - expression: 'isMysqldumpDropDatabase'
+      message: "mysqldump --add-drop-database emits DROP DATABASE statements that can be replayed destructively. Approval required."
+      action: REQUIRE_APPROVAL
+    - expression: 'isPgcliDestroy'
+      message: "pgcli DROP DATABASE/SCHEMA/TABLE permanently destroys data. Approval required."
+      action: REQUIRE_APPROVAL
+    - expression: 'isRedisFlush'
+      message: "FLUSHALL/FLUSHDB wipes the entire Redis instance or selected database. Approval required."
+      action: REQUIRE_APPROVAL
+    - expression: 'isMongoDestroy'
+      message: "dropDatabase() or drop() permanently destroys MongoDB data. Approval required."
+      action: REQUIRE_APPROVAL
+    - expression: 'isElasticsearchDeleteIndex'
+      message: "DELETE request to Elasticsearch/OpenSearch index removes all indexed documents. Approval required."
+      action: REQUIRE_APPROVAL
+    - expression: 'isRailsDbDrop'
+      message: "rails db:drop / rails db:reset / rake db:drop permanently destroys the Rails database. Approval required."
+      action: REQUIRE_APPROVAL
+    - expression: 'isSequelizeDrop'
+      message: "sequelize db:drop permanently destroys the database. Approval required."
+      action: REQUIRE_APPROVAL
+    - expression: 'isKnexRollbackAll'
+      message: "knex migrate:rollback --all rolls back ALL migrations, destroying all schema and data state. Approval required."
+      action: REQUIRE_APPROVAL
+    - expression: 'isDjangoDbDestroy'
+      message: "manage.py flush/reset_db destroys all database content. Approval required."
+      action: REQUIRE_APPROVAL
+    - expression: 'isFlaskAlembicDowngradeBase'
+      message: "Downgrading to base removes all migration history and schema. Approval required."
+      action: REQUIRE_APPROVAL
+    - expression: 'isPrismaMigrateReset'
+      message: "prisma migrate reset / prisma db push --force-reset drops and recreates the database. Approval required."
+      action: REQUIRE_APPROVAL
+    - expression: 'isClickhouseDestroy'
+      message: "clickhouse-client DROP DATABASE/TABLE permanently destroys ClickHouse data. Approval required."
+      action: REQUIRE_APPROVAL
+    - expression: 'isCockroachDestroy'
+      message: "cockroach sql DROP DATABASE/TABLE/SCHEMA permanently destroys CockroachDB data. Approval required."
+      action: REQUIRE_APPROVAL
+  defaultAction: ALLOW

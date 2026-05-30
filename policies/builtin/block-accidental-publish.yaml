@@ -1,0 +1,302 @@
+# Source: Community research — accidental publish patterns by AI agents
+# Gate: G4 (CEL function tests)
+# Default: ENABLED — shipped as default-on in the built-in bundle
+#
+# Behavior:
+#   npm publish                           → DENY (publishes package to npm registry)
+#   npm publish --access public           → DENY (explicit public publish — most dangerous)
+#   npm publish --tag latest              → DENY (publishes to latest tag)
+#   yarn publish                          → DENY (Yarn v1 publish)
+#   yarn npm publish                      → DENY (Yarn Berry publish)
+#   pnpm publish                          → DENY (pnpm publish)
+#   npm deprecate pkg "message"           → DENY (permanent deprecation signal)
+#   npx semantic-release                  → DENY (automated release tool that publishes)
+#   npx release-it                        → DENY (release automation tool)
+#   npx np                                → DENY (popular publish helper)
+#   twine upload dist/*                   → DENY (publishes Python package to PyPI)
+#   poetry publish                        → DENY (Python Poetry publish)
+#   uv publish                            → DENY (uv fast pip replacement publish)
+#   hatch publish                         → DENY (Hatch build tool publish)
+#   pdm publish                           → DENY (PDM package manager publish)
+#   python setup.py upload                → DENY (legacy upload method)
+#   python setup.py sdist upload          → DENY (older sdist upload)
+#   cargo publish                         → DENY (publishes Rust crate to crates.io)
+#   cargo publish --no-verify             → DENY (most dangerous — skips verification)
+#   cargo release                         → DENY (cargo-release crate)
+#   cargo smart-release                   → DENY (smart-release crate)
+#   gem push pkg.gem                      → DENY (publishes Ruby gem)
+#   rake release                          → DENY (standard Bundler/Rake release task)
+#   bundle exec rake release              → DENY (same via bundle exec)
+#   docker push image:tag                 → DENY (pushes Docker image to registry)
+#   docker push --all-tags image          → DENY (pushes all tags)
+#   crane push                            → DENY (copies/pushes container images)
+#   crane copy                            → DENY (copies container images to remote)
+#   skopeo copy docker://... docker://... → DENY (copies OCI images to remote registry)
+#   vercel --prod                         → DENY (deploys to Vercel production)
+#   vercel deploy --prod                  → DENY (deploys to Vercel production)
+#   netlify deploy --prod                 → DENY (deploys to Netlify production)
+#   netlify deploy --production           → DENY (deploys to Netlify production)
+#   wrangler publish                      → DENY (Cloudflare Workers publish)
+#   wrangler deploy                       → DENY (Cloudflare Workers deploy)
+#   flyctl deploy                         → DENY (Fly.io deploy)
+#   fly deploy                            → DENY (Fly.io deploy, short alias)
+#   railway up                            → DENY (Railway.app deploy)
+#   render deploy                         → DENY (Render.com deploy)
+#   serverless deploy --stage prod        → DENY (Serverless Framework to prod)
+#   sst deploy --stage production         → DENY (SST deploy to production)
+#   amplify publish                       → DENY (AWS Amplify publish)
+#   eb deploy                             → DENY (AWS Elastic Beanstalk deploy)
+#   gh release create --latest            → DENY (marks as latest GitHub release)
+#   glab release create                   → DENY (GitLab CLI release create)
+#   git push --tags                       → DENY (pushes all tags — can trigger CI/CD release)
+#
+# Rationale:
+#   AI agents must never accidentally publish packages, artifacts, or production
+#   deployments. Once published to a registry (npm, PyPI, crates.io, Docker Hub)
+#   or deployed to production, these actions are permanent or hard to reverse.
+#   All publish/deploy operations require explicit human approval.
+
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: block-accidental-publish
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Block accidental package publishing, artifact upload, and production deployment by AI agents"
+  matchConstraints:
+    tools: ["Bash"]
+  variables:
+    # --- npm / Node.js ---
+    - name: isNpmPublish
+      # npm publish (any flags including --access public, --tag latest)
+      expression: >-
+        request.args.command.matches("(?i)\\bnpm\\s+publish\\b")
+    - name: isNpmDeprecate
+      # npm deprecate <pkg> <message> — permanent signal on a published package
+      expression: >-
+        request.args.command.matches("(?i)\\bnpm\\s+deprecate\\b")
+    - name: isYarnPublish
+      # yarn publish (Yarn v1) OR yarn npm publish (Yarn Berry)
+      expression: >-
+        request.args.command.matches("(?i)\\byarn\\s+publish\\b") ||
+        request.args.command.matches("(?i)\\byarn\\s+npm\\s+publish\\b")
+    - name: isPnpmPublish
+      # pnpm publish
+      expression: >-
+        request.args.command.matches("(?i)\\bpnpm\\s+publish\\b")
+    - name: isNpxReleaseAutomation
+      # npx semantic-release, npx release-it, npx np — automated publish tools
+      expression: >-
+        request.args.command.matches("(?i)\\bnpx\\s+semantic-release\\b") ||
+        request.args.command.matches("(?i)\\bnpx\\s+release-it\\b") ||
+        request.args.command.matches("(?i)\\bnpx\\s+np\\b")
+    # --- Python / PyPI ---
+    - name: isTwineUpload
+      # twine upload dist/* or twine upload <file>
+      expression: >-
+        request.args.command.matches("(?i)\\btwine\\s+upload\\b")
+    - name: isPoetryPublish
+      # poetry publish
+      expression: >-
+        request.args.command.matches("(?i)\\bpoetry\\s+publish\\b")
+    - name: isUvPublish
+      # uv publish (uv fast pip replacement)
+      expression: >-
+        request.args.command.matches("(?i)\\buv\\s+publish\\b")
+    - name: isHatchPublish
+      # hatch publish
+      expression: >-
+        request.args.command.matches("(?i)\\bhatch\\s+publish\\b")
+    - name: isPdmPublish
+      # pdm publish
+      expression: >-
+        request.args.command.matches("(?i)\\bpdm\\s+publish\\b")
+    - name: isSetupPyUpload
+      # python setup.py upload OR python setup.py sdist upload (legacy)
+      expression: >-
+        request.args.command.matches("(?i)\\bpython3?\\s+setup\\.py\\b.*\\bupload\\b")
+    # --- Rust / Cargo ---
+    - name: isCargoPublish
+      # cargo publish (any flags including --no-verify)
+      expression: >-
+        request.args.command.matches("(?i)\\bcargo\\s+publish\\b")
+    - name: isCargoRelease
+      # cargo release or cargo smart-release (release automation crates)
+      expression: >-
+        request.args.command.matches("(?i)\\bcargo\\s+release\\b") ||
+        request.args.command.matches("(?i)\\bcargo\\s+smart-release\\b")
+    # --- Ruby / RubyGems ---
+    - name: isGemPush
+      # gem push <file.gem>
+      expression: >-
+        request.args.command.matches("(?i)\\bgem\\s+push\\b")
+    - name: isRakeRelease
+      # rake release OR bundle exec rake release — standard Bundler release task
+      expression: >-
+        request.args.command.matches("(?i)\\brake\\s+release\\b") ||
+        request.args.command.matches("(?i)\\bbundle\\s+exec\\s+rake\\s+release\\b")
+    # --- Docker / OCI container images ---
+    - name: isDockerPush
+      # docker push <image> including --all-tags variant
+      expression: >-
+        request.args.command.matches("(?i)\\bdocker\\s+push\\b")
+    - name: isCranePushCopy
+      # crane push or crane copy — pushes/copies OCI images to remote registry
+      expression: >-
+        request.args.command.matches("(?i)\\bcrane\\s+(push|copy)\\b")
+    - name: isSkopeoCopyRemote
+      # skopeo copy to a remote docker:// or oci:// destination (not local dir)
+      expression: >-
+        request.args.command.matches("(?i)\\bskopeo\\s+copy\\b.*docker://")
+    # --- Platform deploys (production) ---
+    - name: isVercelProdDeploy
+      # vercel --prod or vercel deploy --prod
+      expression: >-
+        request.args.command.matches("(?i)\\bvercel\\b.*--prod\\b") ||
+        request.args.command.matches("(?i)\\bvercel\\s+deploy\\b.*--prod\\b")
+    - name: isNetlifyProdDeploy
+      # netlify deploy --prod or netlify deploy --production
+      expression: >-
+        request.args.command.matches("(?i)\\bnetlify\\s+deploy\\b.*--(prod|production)\\b")
+    - name: isWranglerDeploy
+      # wrangler publish or wrangler deploy (Cloudflare Workers)
+      expression: >-
+        request.args.command.matches("(?i)\\bwrangler\\s+(publish|deploy)\\b")
+    - name: isFlyDeploy
+      # flyctl deploy or fly deploy (Fly.io)
+      expression: >-
+        request.args.command.matches("(?i)\\b(flyctl|fly)\\s+deploy\\b")
+    - name: isRailwayDeploy
+      # railway up (Railway.app deploy)
+      expression: >-
+        request.args.command.matches("(?i)\\brailway\\s+up\\b")
+    - name: isRenderDeploy
+      # render deploy (Render.com)
+      expression: >-
+        request.args.command.matches("(?i)\\brender\\s+deploy\\b")
+    - name: isServerlessProdDeploy
+      # serverless deploy --stage prod (Serverless Framework to production stage)
+      expression: >-
+        request.args.command.matches("(?i)\\bserverless\\s+deploy\\b.*--stage\\s+(prod|production)\\b")
+    - name: isSstProdDeploy
+      # sst deploy --stage production or --stage prod
+      expression: >-
+        request.args.command.matches("(?i)\\bsst\\s+deploy\\b.*--stage\\s+(prod|production)\\b")
+    - name: isAmplifPublish
+      # amplify publish (AWS Amplify)
+      expression: >-
+        request.args.command.matches("(?i)\\bamplify\\s+publish\\b")
+    - name: isEbDeploy
+      # eb deploy (AWS Elastic Beanstalk)
+      expression: >-
+        request.args.command.matches("(?i)\\beb\\s+deploy\\b")
+    # --- GitHub / GitLab releases and tag push ---
+    - name: isGhReleaseLatest
+      # gh release create --latest (marks as latest GitHub release)
+      expression: >-
+        request.args.command.matches("(?i)\\bgh\\s+release\\s+create\\b.*--latest\\b")
+    - name: isGlabReleaseCreate
+      # glab release create (GitLab CLI release)
+      expression: >-
+        request.args.command.matches("(?i)\\bglab\\s+release\\s+create\\b")
+    - name: isGitPushAllTags
+      # git push --tags (pushes all tags — can trigger CI/CD release pipelines)
+      expression: >-
+        request.args.command.matches("(?i)\\bgit\\s+push\\b.*--tags\\b")
+  validations:
+    - expression: 'isNpmPublish'
+      message: 'npm publish is blocked — publishing to npm registry requires explicit human approval'
+      action: REQUIRE_APPROVAL
+    - expression: 'isNpmDeprecate'
+      message: 'npm deprecate is blocked — deprecating a package is a permanent action requiring human approval'
+      action: REQUIRE_APPROVAL
+    - expression: 'isYarnPublish'
+      message: 'yarn publish is blocked — publishing to npm registry requires explicit human approval'
+      action: REQUIRE_APPROVAL
+    - expression: 'isPnpmPublish'
+      message: 'pnpm publish is blocked — publishing to npm registry requires explicit human approval'
+      action: REQUIRE_APPROVAL
+    - expression: 'isNpxReleaseAutomation'
+      message: 'Automated release tools (semantic-release, release-it, np) are blocked — these publish packages without confirmation'
+      action: REQUIRE_APPROVAL
+    - expression: 'isTwineUpload'
+      message: 'twine upload is blocked — publishing to PyPI requires explicit human approval'
+      action: REQUIRE_APPROVAL
+    - expression: 'isPoetryPublish'
+      message: 'poetry publish is blocked — publishing to PyPI requires explicit human approval'
+      action: REQUIRE_APPROVAL
+    - expression: 'isUvPublish'
+      message: 'uv publish is blocked — publishing to PyPI requires explicit human approval'
+      action: REQUIRE_APPROVAL
+    - expression: 'isHatchPublish'
+      message: 'hatch publish is blocked — publishing to PyPI requires explicit human approval'
+      action: REQUIRE_APPROVAL
+    - expression: 'isPdmPublish'
+      message: 'pdm publish is blocked — publishing to PyPI requires explicit human approval'
+      action: REQUIRE_APPROVAL
+    - expression: 'isSetupPyUpload'
+      message: 'python setup.py upload is blocked — publishing to PyPI requires explicit human approval'
+      action: REQUIRE_APPROVAL
+    - expression: 'isCargoPublish'
+      message: 'cargo publish is blocked — publishing to crates.io requires explicit human approval'
+      action: REQUIRE_APPROVAL
+    - expression: 'isCargoRelease'
+      message: 'cargo release/smart-release is blocked — automated crate release requires explicit human approval'
+      action: REQUIRE_APPROVAL
+    - expression: 'isGemPush'
+      message: 'gem push is blocked — publishing to RubyGems requires explicit human approval'
+      action: REQUIRE_APPROVAL
+    - expression: 'isRakeRelease'
+      message: 'rake release is blocked — this pushes a gem to RubyGems and creates a git tag'
+      action: REQUIRE_APPROVAL
+    - expression: 'isDockerPush'
+      message: 'docker push is blocked — pushing container images to a registry requires explicit human approval'
+      action: REQUIRE_APPROVAL
+    - expression: 'isCranePushCopy'
+      message: 'crane push/copy is blocked — pushing OCI images to a remote registry requires explicit human approval'
+      action: REQUIRE_APPROVAL
+    - expression: 'isSkopeoCopyRemote'
+      message: 'skopeo copy to remote registry is blocked — requires explicit human approval'
+      action: REQUIRE_APPROVAL
+    - expression: 'isVercelProdDeploy'
+      message: 'Vercel production deploy is blocked — deploying to production requires explicit human approval'
+      action: REQUIRE_APPROVAL
+    - expression: 'isNetlifyProdDeploy'
+      message: 'Netlify production deploy is blocked — deploying to production requires explicit human approval'
+      action: REQUIRE_APPROVAL
+    - expression: 'isWranglerDeploy'
+      message: 'Cloudflare Workers deploy is blocked — wrangler publish/deploy requires explicit human approval'
+      action: REQUIRE_APPROVAL
+    - expression: 'isFlyDeploy'
+      message: 'Fly.io deploy is blocked — flyctl/fly deploy requires explicit human approval'
+      action: REQUIRE_APPROVAL
+    - expression: 'isRailwayDeploy'
+      message: 'Railway deploy is blocked — railway up requires explicit human approval'
+      action: REQUIRE_APPROVAL
+    - expression: 'isRenderDeploy'
+      message: 'Render deploy is blocked — render deploy requires explicit human approval'
+      action: REQUIRE_APPROVAL
+    - expression: 'isServerlessProdDeploy'
+      message: 'Serverless Framework production deploy is blocked — requires explicit human approval'
+      action: REQUIRE_APPROVAL
+    - expression: 'isSstProdDeploy'
+      message: 'SST production deploy is blocked — requires explicit human approval'
+      action: REQUIRE_APPROVAL
+    - expression: 'isAmplifPublish'
+      message: 'AWS Amplify publish is blocked — requires explicit human approval'
+      action: REQUIRE_APPROVAL
+    - expression: 'isEbDeploy'
+      message: 'AWS Elastic Beanstalk deploy is blocked — eb deploy requires explicit human approval'
+      action: REQUIRE_APPROVAL
+    - expression: 'isGhReleaseLatest'
+      message: 'gh release create --latest is blocked — marking a release as latest requires explicit human approval'
+      action: REQUIRE_APPROVAL
+    - expression: 'isGlabReleaseCreate'
+      message: 'glab release create is blocked — creating a GitLab release requires explicit human approval'
+      action: REQUIRE_APPROVAL
+    - expression: 'isGitPushAllTags'
+      message: 'git push --tags is blocked — pushing all tags can trigger CI/CD release pipelines; requires explicit human approval'
+      action: REQUIRE_APPROVAL
+  defaultAction: ALLOW

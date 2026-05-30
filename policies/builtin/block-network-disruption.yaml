@@ -1,0 +1,255 @@
+# Gate: G4 (CEL function tests)
+# Default: ENABLED — shipped as default-on in the built-in bundle
+#
+# Behavior:
+#   iptables -F                                    → DENY (flush all rules)
+#   iptables -P INPUT ACCEPT && iptables -F        → DENY (open then flush)
+#   iptables -P INPUT DROP                         → DENY (lock out SSH)
+#   iptables -X                                    → DENY (delete user chains)
+#   iptables-restore < /dev/null                   → DENY (restore empty ruleset)
+#   ip6tables -F                                   → DENY (IPv6 flush)
+#   nft flush ruleset                              → DENY (flush all nftables)
+#   nft delete table ip filter                     → DENY (delete specific table)
+#   pfctl -F all                                   → DENY (macOS: flush all rules)
+#   pfctl -d                                       → DENY (macOS: disable pf)
+#   launchctl unload ...pfctl.plist                → DENY (macOS: stop pf service)
+#   ufw reset                                      → DENY (reset UFW rules)
+#   firewall-cmd --set-default-zone=trusted        → DENY (open everything)
+#   firewall-cmd --permanent --remove-service=ssh  → DENY (remove SSH from firewall)
+#   nmcli networking off                           → DENY (disable all networking)
+#   ip route del default                           → DENY (delete default gateway)
+#   route del default                              → DENY (delete default gateway)
+#   systemctl stop systemd-resolved                → DENY (stop DNS resolver)
+#
+# Rationale:
+#   These commands can cut off network access, disable host firewalls, or
+#   remove critical routing — actions that lock out operators and are almost
+#   never appropriate for an AI agent to perform autonomously.
+
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: block-network-disruption
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Block commands that flush firewalls, drop routing, or disable network interfaces"
+  matchConstraints:
+    tools: ["Bash"]
+  variables:
+
+    # ─── iptables / ip6tables ──────────────────────────────────────────────
+
+    - name: isIptablesFlush
+      # iptables -F, --flush (all chains or named chain)
+      # iptables -X, --delete-chain (deletes user-defined chains)
+      # iptables -Z, --zero (zeroes counters — low severity but flag it)
+      expression: >-
+        request.args.command.matches("(?i)\\bip6?tables\\b.*\\s(-F|--flush|--delete-chain|-X|-Z|--zero)\\b")
+
+    - name: isIptablesPolicyOpen
+      # iptables -P INPUT ACCEPT / iptables -P FORWARD ACCEPT / iptables -P OUTPUT ACCEPT
+      # Combined with -F is the "open everything then flush rules" pattern
+      expression: >-
+        request.args.command.matches("(?i)\\bip6?tables\\b.*-P\\s+(INPUT|FORWARD|OUTPUT)\\s+ACCEPT")
+
+    - name: isIptablesPolicyDrop
+      # iptables -P INPUT DROP — sets a default-drop policy; if rules are
+      # subsequently flushed this locks out SSH immediately
+      expression: >-
+        request.args.command.matches("(?i)\\bip6?tables\\b.*-P\\s+(INPUT|FORWARD)\\s+DROP")
+
+    - name: isIptablesRestoreEmpty
+      # iptables-restore < /dev/null  — restores an empty ruleset (equivalent to flush)
+      expression: >-
+        request.args.command.matches("(?i)\\biptables-restore\\b.*<\\s*/dev/null")
+
+    # ─── nftables ─────────────────────────────────────────────────────────
+
+    - name: isNftablesFlushAll
+      # nft flush ruleset — destroys the entire nftables configuration
+      expression: >-
+        request.args.command.matches("(?i)\\bnft\\b.*\\bflush\\s+ruleset\\b")
+
+    - name: isNftablesDeleteTable
+      # nft delete table ip filter / nft delete table inet filter / etc.
+      expression: >-
+        request.args.command.matches("(?i)\\bnft\\b.*\\bdelete\\s+table\\b")
+
+    - name: isNftablesFlushTable
+      # nft flush table ip filter — flushes all chains in a specific table
+      expression: >-
+        request.args.command.matches("(?i)\\bnft\\b.*\\bflush\\s+table\\b")
+
+    # ─── macOS pf firewall ────────────────────────────────────────────────
+
+    - name: isPfctlFlush
+      # pfctl -F all / pfctl -F rules / pfctl -F nat / pfctl -F queue
+      expression: >-
+        request.args.command.matches("(?i)\\bpfctl\\b.*-F\\b")
+
+    - name: isPfctlDisable
+      # pfctl -d — disables pf entirely on macOS
+      expression: >-
+        request.args.command.matches("(?i)\\bpfctl\\b.*\\b-d\\b")
+
+    - name: isPfctlServiceStop
+      # launchctl unload .../com.apple.pfctl.plist — stops the pf launch daemon
+      expression: >-
+        request.args.command.matches("(?i)\\blaunchctl\\b.*unload.*pfctl\\.plist")
+
+    # ─── UFW ──────────────────────────────────────────────────────────────
+
+    - name: isUfwReset
+      # ufw reset — removes all UFW rules and disables UFW
+      # ufw reset --force — non-interactive variant
+      expression: >-
+        request.args.command.matches("(?i)\\bufw\\s+reset\\b")
+
+    - name: isUfwDisable
+      # ufw disable — turns off UFW entirely (leaves host unprotected)
+      expression: >-
+        request.args.command.matches("(?i)\\bufw\\s+disable\\b")
+
+    # ─── firewalld ────────────────────────────────────────────────────────
+
+    - name: isFirewalldOpenAll
+      # firewall-cmd --set-default-zone=trusted — opens all traffic
+      expression: >-
+        request.args.command.matches("(?i)\\bfirewall-cmd\\b.*--set-default-zone=trusted\\b")
+
+    - name: isFirewalldRemoveSsh
+      # firewall-cmd --permanent --remove-service=ssh (locks out SSH)
+      # firewall-cmd --permanent --zone=public --remove-port=22/tcp
+      expression: >-
+        request.args.command.matches("(?i)\\bfirewall-cmd\\b.*--remove-service=ssh\\b") ||
+        request.args.command.matches("(?i)\\bfirewall-cmd\\b.*--remove-port=22/tcp\\b")
+
+    # ─── NetworkManager / nmcli ───────────────────────────────────────────
+
+    - name: isNmcliNetworkingOff
+      # nmcli networking off — disables all networking via NetworkManager
+      expression: >-
+        request.args.command.matches("(?i)\\bnmcli\\b.*\\bnetworking\\s+off\\b")
+
+    - name: isNmcliConnectionDown
+      # nmcli connection down <name> — brings down a specific connection
+      expression: >-
+        request.args.command.matches("(?i)\\bnmcli\\b.*\\bconnection\\s+down\\b")
+
+    # ─── macOS networksetup ───────────────────────────────────────────────
+
+    - name: isNetworkSetupDisable
+      # networksetup -setnetworkserviceenabled <service> off
+      expression: >-
+        request.args.command.matches("(?i)\\bnetworksetup\\b.*-setnetworkserviceenabled\\b.*\\boff\\b")
+
+    # ─── Windows netsh ────────────────────────────────────────────────────
+
+    - name: isNetshInterfaceDisabled
+      # netsh interface set interface <name> disabled
+      expression: >-
+        request.args.command.matches("(?i)\\bnetsh\\b.*\\binterface\\s+set\\s+interface\\b.*\\bdisabled\\b")
+
+    # ─── Routing ──────────────────────────────────────────────────────────
+
+    - name: isRouteDeleteDefault
+      # ip route del default / ip route del 0.0.0.0/0 — removes default gateway
+      # route del default (Linux) / route delete default (macOS/BSD)
+      expression: >-
+        request.args.command.matches("(?i)\\bip\\s+route\\s+(del|delete)\\s+(default|0\\.0\\.0\\.0)") ||
+        request.args.command.matches("(?i)\\broute\\s+(del|delete)\\s+default\\b")
+
+    # ─── DNS resolver services ────────────────────────────────────────────
+
+    - name: isDnsResolverStop
+      # systemctl stop systemd-resolved / dnsmasq — stops the DNS resolver
+      # (flush operations like resolvectl flush-caches are intentionally excluded
+      # as they are routine maintenance on macOS/Linux dev machines)
+      expression: >-
+        request.args.command.matches("(?i)\\bsystemctl\\s+(stop|disable)\\s+(systemd-resolved|dnsmasq)\\b")
+
+  validations:
+
+    - expression: 'isIptablesFlush'
+      message: 'Blocked: iptables -F/-X flushes firewall rules and can leave the host unprotected'
+      action: REQUIRE_APPROVAL
+
+    - expression: 'isIptablesPolicyOpen'
+      message: 'Blocked: setting iptables default policy to ACCEPT opens all traffic — combine with -F to fully disable the firewall'
+      action: REQUIRE_APPROVAL
+
+    - expression: 'isIptablesPolicyDrop'
+      message: 'Blocked: setting iptables default policy to DROP on INPUT/FORWARD without corresponding allow rules locks out SSH'
+      action: REQUIRE_APPROVAL
+
+    - expression: 'isIptablesRestoreEmpty'
+      message: 'Blocked: iptables-restore < /dev/null wipes the entire ruleset (equivalent to iptables -F)'
+      action: REQUIRE_APPROVAL
+
+    - expression: 'isNftablesFlushAll'
+      message: 'Blocked: nft flush ruleset destroys the entire nftables configuration'
+      action: REQUIRE_APPROVAL
+
+    - expression: 'isNftablesDeleteTable'
+      message: 'Blocked: nft delete table removes a firewall table and all its chains'
+      action: REQUIRE_APPROVAL
+
+    - expression: 'isNftablesFlushTable'
+      message: 'Blocked: nft flush table removes all rules from a firewall table'
+      action: REQUIRE_APPROVAL
+
+    - expression: 'isPfctlFlush'
+      message: 'Blocked: pfctl -F flushes macOS pf firewall rules'
+      action: REQUIRE_APPROVAL
+
+    - expression: 'isPfctlDisable'
+      message: 'Blocked: pfctl -d disables the macOS pf firewall entirely'
+      action: REQUIRE_APPROVAL
+
+    - expression: 'isPfctlServiceStop'
+      message: 'Blocked: unloading the pfctl launch daemon stops the macOS firewall service'
+      action: REQUIRE_APPROVAL
+
+    - expression: 'isUfwReset'
+      message: 'Blocked: ufw reset removes all rules and disables UFW'
+      action: REQUIRE_APPROVAL
+
+    - expression: 'isUfwDisable'
+      message: 'Blocked: ufw disable turns off the UFW firewall leaving the host unprotected'
+      action: REQUIRE_APPROVAL
+
+    - expression: 'isFirewalldOpenAll'
+      message: 'Blocked: setting firewalld default zone to trusted allows all traffic'
+      action: REQUIRE_APPROVAL
+
+    - expression: 'isFirewalldRemoveSsh'
+      message: 'Blocked: removing SSH from firewalld rules will lock out remote access'
+      action: REQUIRE_APPROVAL
+
+    - expression: 'isNmcliNetworkingOff'
+      message: 'Blocked: nmcli networking off disables all NetworkManager-managed connections'
+      action: REQUIRE_APPROVAL
+
+    - expression: 'isNmcliConnectionDown'
+      message: 'Blocked: nmcli connection down disconnects a network interface'
+      action: REQUIRE_APPROVAL
+
+    - expression: 'isNetworkSetupDisable'
+      message: 'Blocked: networksetup -setnetworkserviceenabled off disables a macOS network service'
+      action: REQUIRE_APPROVAL
+
+    - expression: 'isNetshInterfaceDisabled'
+      message: 'Blocked: netsh interface set interface disabled disables a Windows network adapter'
+      action: REQUIRE_APPROVAL
+
+    - expression: 'isRouteDeleteDefault'
+      message: 'Blocked: deleting the default route cuts off all internet connectivity'
+      action: REQUIRE_APPROVAL
+
+    - expression: 'isDnsResolverStop'
+      message: 'Blocked: stopping systemd-resolved or dnsmasq disables DNS resolution for the host'
+      action: REQUIRE_APPROVAL
+
+  defaultAction: ALLOW
