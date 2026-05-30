@@ -61,6 +61,7 @@ func NewCELEnvironment(protoTypes ...proto.Message) (*CELEnvironment, error) {
 		cel.Variable("tool", cel.StringType),
 		cel.Variable("args", cel.MapType(cel.StringType, cel.DynType)),
 		cel.Variable("session_id", cel.StringType),
+		cel.Variable("session", cel.MapType(cel.StringType, cel.DynType)),
 		cel.Variable("confidentiality", cel.IntType),
 		cel.Variable("integrity", cel.IntType),
 		cel.Variable("categories", cel.IntType),

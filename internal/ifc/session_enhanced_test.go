@@ -9,6 +9,72 @@ import (
 	"github.com/mayjain/aegis/pkg/aegis"
 )
 
+// ---- ProjectRoot ----
+
+func TestProjectRoot_UnknownSession_Empty(t *testing.T) {
+	sl := newSL()
+	if got := sl.ProjectRoot("no-such-session"); got != "" {
+		t.Fatalf("expected empty for unknown session, got %q", got)
+	}
+}
+
+func TestProjectRoot_SetThenGet(t *testing.T) {
+	sl := newSL()
+	sl.SetProjectRoot("sess-pr-1", "/code/myproject")
+	if got := sl.ProjectRoot("sess-pr-1"); got != "/code/myproject" {
+		t.Fatalf("expected /code/myproject, got %q", got)
+	}
+}
+
+func TestProjectRoot_EmptyRootIsNoOp(t *testing.T) {
+	sl := newSL()
+	sl.SetProjectRoot("sess-pr-2", "")
+	if got := sl.ProjectRoot("sess-pr-2"); got != "" {
+		t.Fatalf("SetProjectRoot with empty root should be no-op, got %q", got)
+	}
+	// First non-empty write should still work after the no-op
+	sl.SetProjectRoot("sess-pr-2", "/code/real")
+	if got := sl.ProjectRoot("sess-pr-2"); got != "/code/real" {
+		t.Fatalf("expected /code/real after non-empty set, got %q", got)
+	}
+}
+
+func TestProjectRoot_FirstWriteWins(t *testing.T) {
+	sl := newSL()
+	sl.SetProjectRoot("sess-pr-3", "/code/first")
+	sl.SetProjectRoot("sess-pr-3", "/code/second") // must be ignored
+	if got := sl.ProjectRoot("sess-pr-3"); got != "/code/first" {
+		t.Fatalf("expected first write /code/first to win, got %q", got)
+	}
+}
+
+func TestProjectRoot_ConcurrentFirstWriteWins(t *testing.T) {
+	sl := newSL()
+	const goroutines = 50
+	roots := make([]string, goroutines)
+	for i := range roots {
+		roots[i] = "/code/goroutine"
+	}
+	roots[0] = "/code/winner" // deterministic value; all are equal anyway
+
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	for i := 0; i < goroutines; i++ {
+		root := roots[i]
+		go func() {
+			defer wg.Done()
+			sl.SetProjectRoot("sess-pr-concurrent", root)
+		}()
+	}
+	wg.Wait()
+
+	got := sl.ProjectRoot("sess-pr-concurrent")
+	if got == "" {
+		t.Fatal("expected non-empty project root after concurrent sets, got empty")
+	}
+	// All values are valid (/code/goroutine or /code/winner) — just must be non-empty.
+}
+
 // ---- helpers ----
 
 func newSL() *SessionLabels { return &SessionLabels{} }

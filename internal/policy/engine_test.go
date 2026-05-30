@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -809,5 +811,148 @@ func TestPolicyEngine_Reload_WithBuiltinPolicies(t *testing.T) {
 	bashBindings := snap.bindingIdx.byTool["Bash"]
 	if len(bashBindings) != 1 {
 		t.Errorf("expected 1 Bash binding in index, got %d", len(bashBindings))
+	}
+}
+
+// TestPolicyEngine_ProjectRoot_StoredOnFirstRequest verifies that the project root
+// set in the first CheckRequest is stored in SessionLabels and retrieved correctly.
+func TestPolicyEngine_ProjectRoot_StoredOnFirstRequest(t *testing.T) {
+	sessions := &ifc.SessionLabels{}
+	celEnv, err := cel.NewCELEnvironment()
+	if err != nil {
+		t.Fatalf("cel.NewCELEnvironment: %v", err)
+	}
+	engine := NewPolicyEngine(sessions, celEnv)
+	snap := &engineSnapshot{
+		public:     aegis.EngineSnapshot{Version: 1},
+		programs:   &cel.ProgramCache{},
+		bindingIdx: bindingIndex{},
+	}
+	engine.applySnapshot(snap)
+
+	req := aegis.CheckRequest{
+		Tool:        "Bash",
+		Args:        json.RawMessage(`{"command":"ls"}`),
+		SessionID:   "sess-root-test",
+		ProjectRoot: "/code/myproject",
+	}
+	engine.Evaluate(context.Background(), req)
+
+	if got := sessions.ProjectRoot("sess-root-test"); got != "/code/myproject" {
+		t.Errorf("expected /code/myproject in session store, got %q", got)
+	}
+}
+
+// TestPolicyEngine_ProjectRoot_ImmutableAfterFirstRequest verifies that subsequent
+// requests with a different ProjectRoot cannot overwrite the first-set value.
+func TestPolicyEngine_ProjectRoot_ImmutableAfterFirstRequest(t *testing.T) {
+	sessions := &ifc.SessionLabels{}
+	celEnv, err := cel.NewCELEnvironment()
+	if err != nil {
+		t.Fatalf("cel.NewCELEnvironment: %v", err)
+	}
+	engine := NewPolicyEngine(sessions, celEnv)
+	snap := &engineSnapshot{
+		public:     aegis.EngineSnapshot{Version: 1},
+		programs:   &cel.ProgramCache{},
+		bindingIdx: bindingIndex{},
+	}
+	engine.applySnapshot(snap)
+
+	req1 := aegis.CheckRequest{Tool: "Bash", Args: json.RawMessage(`{"command":"ls"}`), SessionID: "sess-immutable", ProjectRoot: "/code/first"}
+	req2 := aegis.CheckRequest{Tool: "Bash", Args: json.RawMessage(`{"command":"pwd"}`), SessionID: "sess-immutable", ProjectRoot: "/code/second"}
+	engine.Evaluate(context.Background(), req1)
+	engine.Evaluate(context.Background(), req2)
+
+	if got := sessions.ProjectRoot("sess-immutable"); got != "/code/first" {
+		t.Errorf("project root should be immutable: expected /code/first, got %q", got)
+	}
+}
+
+// TestPolicyEngine_CrossProjectCredentialAccess_E2E verifies the end-to-end flow:
+// session.projectRoot is set via ProjectRoot in CheckRequest, and the
+// cross-project-credential-access policy expression evaluates correctly.
+func TestPolicyEngine_CrossProjectCredentialAccess_E2E(t *testing.T) {
+	// Set up real filesystem paths for EvalSymlinks to resolve.
+	projectRoot := t.TempDir()
+	otherRoot := t.TempDir()
+
+	// Create a credential file inside the other project.
+	credFile := filepath.Join(otherRoot, "secrets.env")
+	if err := os.WriteFile(credFile, []byte("SECRET=x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	sessions := &ifc.SessionLabels{}
+	celEnv, err := cel.NewCELEnvironment()
+	if err != nil {
+		t.Fatalf("cel.NewCELEnvironment: %v", err)
+	}
+	engine := NewPolicyEngine(sessions, celEnv)
+
+	// The cross-project policy expression (simplified inline for test isolation).
+	// This is the allow-condition form: returns false (→ engine Deny) when the
+	// command is a cross-project search targeting credentials.
+	// Equivalent to: allow unless (isCrossProject && targetsCredentials).
+	expression := `!((!path.isWithinProject(bash.findSearchRoot(args["command"]), session.projectRoot) && session.projectRoot != "") && args["command"].matches(".*\\.env.*"))`
+	templates := []policy_types.PolicyTemplate{
+		{
+			ID:         "cross-project-test",
+			Name:       "cross-project-test",
+			Expression: expression,
+		},
+	}
+	bundle := &aegis.CompiledBundle{
+		Templates: templates,
+		Bindings: []policy_types.PolicyBinding{
+			{
+				TemplateID: "cross-project-test",
+				Scope:      policy_types.PolicyScope{Tools: []string{"Bash"}},
+			},
+		},
+	}
+	if err := engine.Reload(context.Background(), bundle); err != nil {
+		t.Fatalf("Reload: %v", err)
+	}
+
+	// First request establishes project root.
+	initReq := aegis.CheckRequest{
+		Tool:        "Bash",
+		Args:        json.RawMessage(`{"command":"ls"}`),
+		SessionID:   "sess-xproject",
+		ProjectRoot: projectRoot,
+	}
+	engine.Evaluate(context.Background(), initReq)
+
+	if got := sessions.ProjectRoot("sess-xproject"); got != projectRoot {
+		t.Fatalf("project root not stored: expected %q, got %q", projectRoot, got)
+	}
+
+	// Request with find searching inside the other project for a .env file → should evaluate expression to true (deny).
+	crossCmd := "find " + otherRoot + " -name '*.env'"
+	crossReq := aegis.CheckRequest{
+		Tool:      "Bash",
+		Args:      json.RawMessage(`{"command":"` + crossCmd + `"}`),
+		SessionID: "sess-xproject",
+	}
+	crossResp := engine.Evaluate(context.Background(), crossReq)
+	if crossResp.Decision.Action != aegis.ActionDeny {
+		t.Errorf("cross-project .env search: expected Deny, got %v (reason: %s)", crossResp.Decision.Action, crossResp.Decision.Reason)
+	}
+
+	// Request with find searching INSIDE the project root for a .env file → expression false → allow.
+	insideEnv := filepath.Join(projectRoot, ".env")
+	if err := os.WriteFile(insideEnv, []byte("X=1"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	insideCmd := "find " + projectRoot + " -name '*.env'"
+	insideReq := aegis.CheckRequest{
+		Tool:      "Bash",
+		Args:      json.RawMessage(`{"command":"` + insideCmd + `"}`),
+		SessionID: "sess-xproject",
+	}
+	insideResp := engine.Evaluate(context.Background(), insideReq)
+	if insideResp.Decision.Action != aegis.ActionAllow {
+		t.Errorf("within-project .env search: expected Allow, got %v (reason: %s)", insideResp.Decision.Action, insideResp.Decision.Reason)
 	}
 }

@@ -57,6 +57,8 @@ var emptyArgs = map[string]any{}
 //   - The activation map is acquired from the pool, populated, evaluated, cleared, and
 //     returned to the pool — no allocation on the steady-state path from our code.
 //   - Passing nil decodedArgs is safe (treated as empty args map).
+//   - sessionProjectRoot is the immutable project root for the session (from SessionLabels).
+//     Empty string is valid (policy uses session.projectRoot == "" to skip boundary check).
 //
 // CEL evaluation is PURE (INV-10): same inputs → same output.
 // time.Now(), goroutine scheduling, I/O — FORBIDDEN inside CEL programs.
@@ -67,6 +69,7 @@ func (a *ActivationBuilder) Evaluate(
 	verdictEntry classify.VerdictEntry,
 	decodedArgs map[string]any,
 	labeled label.LabeledRequest,
+	sessionProjectRoot string,
 ) (ref.Val, error) {
 	mp := a.pool.Get().(*map[string]any)
 	m := *mp
@@ -78,6 +81,9 @@ func (a *ActivationBuilder) Evaluate(
 	m["tool"] = req.Tool
 	m["args"] = decodedArgs
 	m["session_id"] = req.SessionID
+	m["session"] = map[string]any{
+		"projectRoot": sessionProjectRoot,
+	}
 	m["confidentiality"] = int64(req.SecurityLabel.Confidentiality)
 	m["integrity"] = int64(req.SecurityLabel.Integrity)
 	m["categories"] = int64(req.SecurityLabel.Category)
@@ -110,6 +116,7 @@ func (a *ActivationBuilder) Evaluate(
 // the WS-04 layer; WS-05 will use it to resolve binding scopes.
 //
 // decodedArgs must be pre-decoded (see Evaluate for the full contract).
+// sessionProjectRoot is the immutable project root for the session; empty is valid.
 func Eval(
 	ctx context.Context,
 	prog *celgo.Program,
@@ -118,6 +125,7 @@ func Eval(
 	snap *aegis.EngineSnapshot,
 	decodedArgs map[string]any,
 	labeled label.LabeledRequest,
+	sessionProjectRoot string,
 ) (ref.Val, error) {
 	mp := activationPool.Get().(*map[string]any)
 	m := *mp
@@ -129,6 +137,9 @@ func Eval(
 	m["tool"] = req.Tool
 	m["args"] = decodedArgs
 	m["session_id"] = req.SessionID
+	m["session"] = map[string]any{
+		"projectRoot": sessionProjectRoot,
+	}
 	m["confidentiality"] = int64(req.SecurityLabel.Confidentiality)
 	m["integrity"] = int64(req.SecurityLabel.Integrity)
 	m["categories"] = int64(req.SecurityLabel.Category)
