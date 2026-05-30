@@ -968,7 +968,7 @@ func TestImport_GeneratesFromCatalog(t *testing.T) {
 	}
 
 	// Verify actions: critical → DENY, high → REQUIRE_APPROVAL
-	byName := map[string]aegisManifest{}
+	byName := map[string]nixisManifest{}
 	for _, m := range manifests {
 		byName[m.Metadata.Name] = m
 	}

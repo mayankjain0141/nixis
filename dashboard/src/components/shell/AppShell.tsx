@@ -63,7 +63,7 @@ export function AppHeader({ connectionState, onStartDemo, onStopDemo, onOpenPale
   return (
     <div style={{ display: 'flex', alignItems: 'center', height: '100%', padding: '0 16px', gap: 12 }}>
       <span style={{ fontWeight: 700, fontSize: 15, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-        AEGIS
+        NIXIS
       </span>
       <span style={{ color: 'var(--border)', fontSize: 16 }}>|</span>
 

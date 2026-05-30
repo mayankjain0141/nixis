@@ -39,7 +39,7 @@ archives:
       - nixis
       - nixis-hook
     format: tar.gz
-    name_template: "aegis_{{ .Os }}_{{ .Arch }}"
+    name_template: "nixis_{{ .Os }}_{{ .Arch }}"
 
 checksum:
   name_template: checksums.txt

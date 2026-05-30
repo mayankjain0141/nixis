@@ -179,30 +179,30 @@ type catalogEntry struct {
 
 // ---- output structs ----
 
-type aegisManifest struct {
+type nixisManifest struct {
 	APIVersion string          `yaml:"apiVersion"`
 	Kind       string          `yaml:"kind"`
-	Metadata   aegisMetadata   `yaml:"metadata"`
-	Spec       aegisPolicySpec `yaml:"spec"`
+	Metadata   nixisMetadata   `yaml:"metadata"`
+	Spec       nixisPolicySpec `yaml:"spec"`
 }
 
-type aegisMetadata struct {
+type nixisMetadata struct {
 	Name        string            `yaml:"name"`
 	Annotations map[string]string `yaml:"annotations,omitempty"`
 }
 
-type aegisPolicySpec struct {
+type nixisPolicySpec struct {
 	Description      string                `yaml:"description"`
-	MatchConstraints aegisMatchConstraints `yaml:"matchConstraints"`
-	Validations      []aegisValidation     `yaml:"validations"`
+	MatchConstraints nixisMatchConstraints `yaml:"matchConstraints"`
+	Validations      []nixisValidation     `yaml:"validations"`
 	DefaultAction    string                `yaml:"defaultAction,omitempty"`
 }
 
-type aegisMatchConstraints struct {
+type nixisMatchConstraints struct {
 	Tools []string `yaml:"tools"`
 }
 
-type aegisValidation struct {
+type nixisValidation struct {
 	Expression string `yaml:"expression"`
 	Message    string `yaml:"message"`
 	Action     string `yaml:"action"`
@@ -513,7 +513,7 @@ func runImportGitHub(cmd *cobra.Command, source string) error {
 		}
 	}()
 
-	var allManifests []aegisManifest
+	var allManifests []nixisManifest
 	var allComments []string
 	fileCount := 0
 
@@ -584,7 +584,7 @@ func importFormatName(f importFormat) string {
 }
 
 // convertFile detects the format and delegates conversion.
-func convertFile(data []byte, sourcePath string) ([]aegisManifest, []string, error) {
+func convertFile(data []byte, sourcePath string) ([]nixisManifest, []string, error) {
 	format := detectFormatWithName(sourcePath, data)
 	switch format {
 	case formatPolicyLayer:
@@ -615,13 +615,13 @@ func convertFile(data []byte, sourcePath string) ([]aegisManifest, []string, err
 
 // ---- PolicyLayer converter ----
 
-func convertPolicyLayer(data []byte, sourcePath string) ([]aegisManifest, []string, error) {
+func convertPolicyLayer(data []byte, sourcePath string) ([]nixisManifest, []string, error) {
 	var file policyLayerFile
 	if err := yaml.Unmarshal(data, &file); err != nil {
 		return nil, nil, fmt.Errorf("parse PolicyLayer YAML: %w", err)
 	}
 
-	manifests := make([]aegisManifest, 0, len(file.Policies))
+	manifests := make([]nixisManifest, 0, len(file.Policies))
 	comments := make([]string, 0, len(file.Policies))
 
 	for _, p := range file.Policies {
@@ -634,22 +634,22 @@ func convertPolicyLayer(data []byte, sourcePath string) ([]aegisManifest, []stri
 			desc = p.Name
 		}
 
-		m := aegisManifest{
+		m := nixisManifest{
 			APIVersion: "nixis.io/v1",
 			Kind:       "PolicyTemplate",
-			Metadata: aegisMetadata{
+			Metadata: nixisMetadata{
 				Name: p.ID,
 				Annotations: map[string]string{
 					"nixis.io/imported-from": filepath.Base(sourcePath),
 					"nixis.io/severity":      severity,
 				},
 			},
-			Spec: aegisPolicySpec{
+			Spec: nixisPolicySpec{
 				Description: desc,
-				MatchConstraints: aegisMatchConstraints{
+				MatchConstraints: nixisMatchConstraints{
 					Tools: []string{},
 				},
-				Validations: []aegisValidation{
+				Validations: []nixisValidation{
 					{
 						Expression: cel,
 						Message:    fmt.Sprintf("%s: %s", p.Name, desc),
@@ -669,13 +669,13 @@ func convertPolicyLayer(data []byte, sourcePath string) ([]aegisManifest, []stri
 
 // ---- Generic converter ----
 
-func convertGeneric(data []byte, sourcePath string) ([]aegisManifest, []string, error) {
+func convertGeneric(data []byte, sourcePath string) ([]nixisManifest, []string, error) {
 	var file genericPolicyFile
 	if err := yaml.Unmarshal(data, &file); err != nil {
 		return nil, nil, fmt.Errorf("parse generic YAML: %w", err)
 	}
 
-	manifests := make([]aegisManifest, 0, len(file.Policies))
+	manifests := make([]nixisManifest, 0, len(file.Policies))
 	comments := make([]string, 0, len(file.Policies))
 
 	for _, p := range file.Policies {
@@ -692,22 +692,22 @@ func convertGeneric(data []byte, sourcePath string) ([]aegisManifest, []string, 
 			name = p.ID
 		}
 
-		m := aegisManifest{
+		m := nixisManifest{
 			APIVersion: "nixis.io/v1",
 			Kind:       "PolicyTemplate",
-			Metadata: aegisMetadata{
+			Metadata: nixisMetadata{
 				Name: p.ID,
 				Annotations: map[string]string{
 					"nixis.io/imported-from": filepath.Base(sourcePath),
 					"nixis.io/severity":      severity,
 				},
 			},
-			Spec: aegisPolicySpec{
+			Spec: nixisPolicySpec{
 				Description: name,
-				MatchConstraints: aegisMatchConstraints{
+				MatchConstraints: nixisMatchConstraints{
 					Tools: tools,
 				},
-				Validations: []aegisValidation{
+				Validations: []nixisValidation{
 					{
 						Expression: p.Expression,
 						Message:    name,
@@ -727,23 +727,23 @@ func convertGeneric(data []byte, sourcePath string) ([]aegisManifest, []string, 
 
 // ---- settings.json converter ----
 
-func convertSettingsJSON(data []byte, sourcePath string) ([]aegisManifest, []string, error) {
+func convertSettingsJSON(data []byte, sourcePath string) ([]nixisManifest, []string, error) {
 	var s settingsJSON
 	if err := json.Unmarshal(data, &s); err != nil {
 		return nil, nil, fmt.Errorf("parse settings.json: %w", err)
 	}
 
-	manifests := make([]aegisManifest, 0, len(s.Permissions.Deny))
+	manifests := make([]nixisManifest, 0, len(s.Permissions.Deny))
 	comments := make([]string, 0, len(s.Permissions.Deny))
 
 	for i, rule := range s.Permissions.Deny {
 		cel, comment := translateSettingsRule(rule)
 		id := fmt.Sprintf("settings-deny-%03d", i+1)
 
-		m := aegisManifest{
+		m := nixisManifest{
 			APIVersion: "nixis.io/v1",
 			Kind:       "PolicyTemplate",
-			Metadata: aegisMetadata{
+			Metadata: nixisMetadata{
 				Name: id,
 				Annotations: map[string]string{
 					"nixis.io/imported-from": filepath.Base(sourcePath),
@@ -751,12 +751,12 @@ func convertSettingsJSON(data []byte, sourcePath string) ([]aegisManifest, []str
 					"nixis.io/source-rule":   rule,
 				},
 			},
-			Spec: aegisPolicySpec{
+			Spec: nixisPolicySpec{
 				Description: fmt.Sprintf("Deny rule imported from settings.json: %s", rule),
-				MatchConstraints: aegisMatchConstraints{
+				MatchConstraints: nixisMatchConstraints{
 					Tools: []string{},
 				},
-				Validations: []aegisValidation{
+				Validations: []nixisValidation{
 					{
 						Expression: cel,
 						Message:    fmt.Sprintf("Blocked by imported settings.json rule: %s", rule),
@@ -832,13 +832,13 @@ func globToRegex(glob string) string {
 
 // ---- AgentWall v2 converter ----
 
-func convertAgentWall(data []byte, sourcePath string) ([]aegisManifest, []string, error) {
+func convertAgentWall(data []byte, sourcePath string) ([]nixisManifest, []string, error) {
 	var file agentWallFile
 	if err := yaml.Unmarshal(data, &file); err != nil {
 		return nil, nil, fmt.Errorf("parse AgentWall YAML: %w", err)
 	}
 
-	manifests := make([]aegisManifest, 0)
+	manifests := make([]nixisManifest, 0)
 	comments := make([]string, 0)
 
 	for _, tool := range file.Tools {
@@ -846,22 +846,22 @@ func convertAgentWall(data []byte, sourcePath string) ([]aegisManifest, []string
 
 		if strings.ToLower(tool.Action) == "deny" {
 			id := fmt.Sprintf("agentwall-%s-deny", sanitizeID(tool.Name))
-			m := aegisManifest{
+			m := nixisManifest{
 				APIVersion: "nixis.io/v1",
 				Kind:       "PolicyTemplate",
-				Metadata: aegisMetadata{
+				Metadata: nixisMetadata{
 					Name: id,
 					Annotations: map[string]string{
 						"nixis.io/imported-from": filepath.Base(sourcePath),
 						"nixis.io/severity":      severity,
 					},
 				},
-				Spec: aegisPolicySpec{
+				Spec: nixisPolicySpec{
 					Description: fmt.Sprintf("AgentWall deny rule for tool %s", tool.Name),
-					MatchConstraints: aegisMatchConstraints{
+					MatchConstraints: nixisMatchConstraints{
 						Tools: []string{},
 					},
-					Validations: []aegisValidation{
+					Validations: []nixisValidation{
 						{
 							Expression: fmt.Sprintf(`tool == %q`, tool.Name),
 							Message:    fmt.Sprintf("Tool %s is denied by AgentWall policy", tool.Name),
@@ -890,22 +890,22 @@ func convertAgentWall(data []byte, sourcePath string) ([]aegisManifest, []string
 				cels, comment := agentWallFieldCEL(tool.Name, param.Name, fieldName, fieldMap)
 				for _, cel := range cels {
 					id := fmt.Sprintf("agentwall-%s-%s-%s", sanitizeID(tool.Name), sanitizeID(param.Name), sanitizeID(fieldName))
-					m := aegisManifest{
+					m := nixisManifest{
 						APIVersion: "nixis.io/v1",
 						Kind:       "PolicyTemplate",
-						Metadata: aegisMetadata{
+						Metadata: nixisMetadata{
 							Name: id,
 							Annotations: map[string]string{
 								"nixis.io/imported-from": filepath.Base(sourcePath),
 								"nixis.io/severity":      severity,
 							},
 						},
-						Spec: aegisPolicySpec{
+						Spec: nixisPolicySpec{
 							Description: fmt.Sprintf("AgentWall constraint: %s.%s.%s", tool.Name, param.Name, fieldName),
-							MatchConstraints: aegisMatchConstraints{
+							MatchConstraints: nixisMatchConstraints{
 								Tools: []string{tool.Name},
 							},
-							Validations: []aegisValidation{
+							Validations: []nixisValidation{
 								{
 									Expression: cel,
 									Message:    fmt.Sprintf("AgentWall constraint violation on %s.%s", param.Name, fieldName),
@@ -928,22 +928,22 @@ func convertAgentWall(data []byte, sourcePath string) ([]aegisManifest, []string
 				}
 				id := fmt.Sprintf("agentwall-%s-%s-required-%s", sanitizeID(tool.Name), sanitizeID(param.Name), sanitizeID(reqStr))
 				cel := fmt.Sprintf(`tool == %q && request.args.%s == ""`, tool.Name, reqStr)
-				m := aegisManifest{
+				m := nixisManifest{
 					APIVersion: "nixis.io/v1",
 					Kind:       "PolicyTemplate",
-					Metadata: aegisMetadata{
+					Metadata: nixisMetadata{
 						Name: id,
 						Annotations: map[string]string{
 							"nixis.io/imported-from": filepath.Base(sourcePath),
 							"nixis.io/severity":      severity,
 						},
 					},
-					Spec: aegisPolicySpec{
+					Spec: nixisPolicySpec{
 						Description: fmt.Sprintf("AgentWall required field: %s.%s.%s", tool.Name, param.Name, reqStr),
-						MatchConstraints: aegisMatchConstraints{
+						MatchConstraints: nixisMatchConstraints{
 							Tools: []string{tool.Name},
 						},
-						Validations: []aegisValidation{
+						Validations: []nixisValidation{
 							{
 								Expression: cel,
 								Message:    fmt.Sprintf("Required field %s is missing", reqStr),
@@ -1002,13 +1002,13 @@ func normalizeAgentWallRisk(risk string) string {
 
 // ---- mcp-visor converter ----
 
-func convertMCPVisor(data []byte, sourcePath string) ([]aegisManifest, []string, error) {
+func convertMCPVisor(data []byte, sourcePath string) ([]nixisManifest, []string, error) {
 	var file mcpVisorFile
 	if err := yaml.Unmarshal(data, &file); err != nil {
 		return nil, nil, fmt.Errorf("parse mcp-visor YAML: %w", err)
 	}
 
-	manifests := make([]aegisManifest, 0)
+	manifests := make([]nixisManifest, 0)
 	comments := make([]string, 0)
 
 	// deny_path rules
@@ -1058,23 +1058,23 @@ func convertMCPVisor(data []byte, sourcePath string) ([]aegisManifest, []string,
 	return manifests, comments, nil
 }
 
-func newMCPVisorManifest(id, desc, cel, action, severity, source string) aegisManifest {
-	return aegisManifest{
+func newMCPVisorManifest(id, desc, cel, action, severity, source string) nixisManifest {
+	return nixisManifest{
 		APIVersion: "nixis.io/v1",
 		Kind:       "PolicyTemplate",
-		Metadata: aegisMetadata{
+		Metadata: nixisMetadata{
 			Name: id,
 			Annotations: map[string]string{
 				"nixis.io/imported-from": source,
 				"nixis.io/severity":      severity,
 			},
 		},
-		Spec: aegisPolicySpec{
+		Spec: nixisPolicySpec{
 			Description: desc,
-			MatchConstraints: aegisMatchConstraints{
+			MatchConstraints: nixisMatchConstraints{
 				Tools: []string{},
 			},
-			Validations: []aegisValidation{
+			Validations: []nixisValidation{
 				{
 					Expression: cel,
 					Message:    desc,
@@ -1121,7 +1121,7 @@ var resourceToFilePattern = map[string]string{
 }
 
 // convertCheckov translates a single Checkov YAML custom policy file.
-func convertCheckov(data []byte, sourcePath string) ([]aegisManifest, []string, error) {
+func convertCheckov(data []byte, sourcePath string) ([]nixisManifest, []string, error) {
 	var file checkovFile
 	if err := yaml.Unmarshal(data, &file); err != nil {
 		return nil, nil, fmt.Errorf("parse Checkov YAML: %w", err)
@@ -1136,7 +1136,7 @@ func convertCheckov(data []byte, sourcePath string) ([]aegisManifest, []string, 
 		name = file.Metadata.ID
 	}
 
-	var manifests []aegisManifest
+	var manifests []nixisManifest
 	var comments []string
 
 	// Determine file pattern from resource_types (use first known mapping)
@@ -1357,16 +1357,16 @@ func translateCheckovLogical(def *checkovDefinition, filePattern, policyID strin
 	return []string{combined}, strings.Join(todos, "; ")
 }
 
-func checkovManifest(id, name, category, cel, action, source, originalID string) aegisManifest {
+func checkovManifest(id, name, category, cel, action, source, originalID string) nixisManifest {
 	severity := "medium"
 	cat := strings.ToLower(category)
 	if strings.Contains(cat, "encryption") || strings.Contains(cat, "iam") || strings.Contains(cat, "secret") {
 		severity = "high"
 	}
-	return aegisManifest{
+	return nixisManifest{
 		APIVersion: "nixis.io/v1",
 		Kind:       "PolicyTemplate",
-		Metadata: aegisMetadata{
+		Metadata: nixisMetadata{
 			Name: id,
 			Annotations: map[string]string{
 				"nixis.io/imported-from":  source,
@@ -1375,12 +1375,12 @@ func checkovManifest(id, name, category, cel, action, source, originalID string)
 				"nixis.io/checkov-source": "checkov-custom-policy",
 			},
 		},
-		Spec: aegisPolicySpec{
+		Spec: nixisPolicySpec{
 			Description: name,
-			MatchConstraints: aegisMatchConstraints{
+			MatchConstraints: nixisMatchConstraints{
 				Tools: []string{"Write", "Edit"},
 			},
-			Validations: []aegisValidation{
+			Validations: []nixisValidation{
 				{
 					Expression: cel,
 					Message:    fmt.Sprintf("Checkov policy %s: %s", originalID, name),
@@ -1478,8 +1478,8 @@ func runGenerateFromCatalog(cmd *cobra.Command, _ []string) error {
 }
 
 // generateCatalogPolicies creates Nixis manifests for high/critical catalog entries.
-func generateCatalogPolicies(entries []catalogEntry) ([]aegisManifest, []string) {
-	var manifests []aegisManifest
+func generateCatalogPolicies(entries []catalogEntry) ([]nixisManifest, []string) {
+	var manifests []nixisManifest
 	var comments []string
 
 	for _, e := range entries {
@@ -1507,10 +1507,10 @@ func generateCatalogPolicies(entries []catalogEntry) ([]aegisManifest, []string)
 			desc = fmt.Sprintf("Deny critically-risky %s (%s)", toolName, e.Family)
 		}
 
-		m := aegisManifest{
+		m := nixisManifest{
 			APIVersion: "nixis.io/v1",
 			Kind:       "PolicyTemplate",
-			Metadata: aegisMetadata{
+			Metadata: nixisMetadata{
 				Name: id,
 				Annotations: map[string]string{
 					"nixis.io/source":     "pkg/adapters/catalog.json",
@@ -1519,12 +1519,12 @@ func generateCatalogPolicies(entries []catalogEntry) ([]aegisManifest, []string)
 					"nixis.io/severity":   e.RiskLevel,
 				},
 			},
-			Spec: aegisPolicySpec{
+			Spec: nixisPolicySpec{
 				Description: desc,
-				MatchConstraints: aegisMatchConstraints{
+				MatchConstraints: nixisMatchConstraints{
 					Tools: []string{"Bash"},
 				},
-				Validations: []aegisValidation{
+				Validations: []nixisValidation{
 					{
 						Expression: cel,
 						Message:    fmt.Sprintf("%s is classified as %s risk — approval required", toolName, e.RiskLevel),
@@ -1618,7 +1618,7 @@ func sanitizeID(s string) string {
 //
 // format is the human-readable source format name used in the LLM prompt and cache entry
 // (e.g. "opa-gatekeeper", "sigma", "falco"). It may be empty.
-func applyLLMAssist(ctx context.Context, manifests []aegisManifest, comments []string, format string) ([]aegisManifest, []string) {
+func applyLLMAssist(ctx context.Context, manifests []nixisManifest, comments []string, format string) ([]nixisManifest, []string) {
 	if !importLLMAssist {
 		return manifests, comments
 	}
@@ -1674,7 +1674,7 @@ func applyLLMAssist(ctx context.Context, manifests []aegisManifest, comments []s
 // buildLLMSnippet constructs a natural-language description of what the policy should
 // do, combining the manifest name, description, IMPORT_TODO comment, and source format.
 // This is the text sent to the LLM as the snippet to translate.
-func buildLLMSnippet(m aegisManifest, comment, format string) string {
+func buildLLMSnippet(m nixisManifest, comment, format string) string {
 	var sb strings.Builder
 	if m.Metadata.Name != "" {
 		sb.WriteString("Policy name: ")
@@ -1708,7 +1708,7 @@ func buildLLMSnippet(m aegisManifest, comment, format string) string {
 
 // ---- output helpers ----
 
-func printDryRun(cmd *cobra.Command, manifests []aegisManifest, comments []string) error {
+func printDryRun(cmd *cobra.Command, manifests []nixisManifest, comments []string) error {
 	for i, m := range manifests {
 		if i < len(comments) && comments[i] != "" {
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "# %s\n", comments[i])
@@ -1727,7 +1727,7 @@ func printDryRun(cmd *cobra.Command, manifests []aegisManifest, comments []strin
 	return nil
 }
 
-func writeManifests(cmd *cobra.Command, manifests []aegisManifest, comments []string, sourcePath string) error {
+func writeManifests(cmd *cobra.Command, manifests []nixisManifest, comments []string, sourcePath string) error {
 	if err := os.MkdirAll(importOutDir, 0755); err != nil {
 		return fmt.Errorf("create output directory: %w", err)
 	}
@@ -1791,7 +1791,7 @@ type sigmaRule struct {
 	Falsepositives []string       `yaml:"falsepositives"`
 }
 
-func convertSigma(data []byte, sourcePath string) ([]aegisManifest, []string, error) {
+func convertSigma(data []byte, sourcePath string) ([]nixisManifest, []string, error) {
 	var rule sigmaRule
 	if err := yaml.Unmarshal(data, &rule); err != nil {
 		return nil, nil, fmt.Errorf("parse Sigma YAML: %w", err)
@@ -1843,19 +1843,19 @@ func convertSigma(data []byte, sourcePath string) ([]aegisManifest, []string, er
 		annotations["nixis.io/sigma-tags"] = strings.Join(rule.Tags, ",")
 	}
 
-	m := aegisManifest{
+	m := nixisManifest{
 		APIVersion: "nixis.io/v1",
 		Kind:       "PolicyTemplate",
-		Metadata: aegisMetadata{
+		Metadata: nixisMetadata{
 			Name:        id,
 			Annotations: annotations,
 		},
-		Spec: aegisPolicySpec{
+		Spec: nixisPolicySpec{
 			Description: desc,
-			MatchConstraints: aegisMatchConstraints{
+			MatchConstraints: nixisMatchConstraints{
 				Tools: tools,
 			},
-			Validations: []aegisValidation{
+			Validations: []nixisValidation{
 				{
 					Expression: cel,
 					Message:    fmt.Sprintf("Sigma: %s", rule.Title),
@@ -1866,7 +1866,7 @@ func convertSigma(data []byte, sourcePath string) ([]aegisManifest, []string, er
 		},
 	}
 
-	return []aegisManifest{m}, []string{comment}, nil
+	return []nixisManifest{m}, []string{comment}, nil
 }
 func buildSigmaOneOf(pattern string, selections map[string]string) (string, string) {
 	pattern = strings.TrimSpace(pattern)
@@ -2295,7 +2295,7 @@ func kyvernoKindToKubectlPattern(kind string, operations []string) string {
 
 // kyvernoSeverityToAction maps Kyverno annotation severity to Nixis action,
 // potentially overriding the validationFailureAction-derived action.
-func kyvernoImportTODO(id, reason, description, severity, category, source string) (aegisManifest, string) {
+func kyvernoImportTODO(id, reason, description, severity, category, source string) (nixisManifest, string) {
 	annots := map[string]string{
 		"nixis.io/imported-from": source,
 		"nixis.io/severity":      severity,
@@ -2303,19 +2303,19 @@ func kyvernoImportTODO(id, reason, description, severity, category, source strin
 	if category != "" {
 		annots["kyverno.io/category"] = category
 	}
-	m := aegisManifest{
+	m := nixisManifest{
 		APIVersion: "nixis.io/v1",
 		Kind:       "PolicyTemplate",
-		Metadata: aegisMetadata{
+		Metadata: nixisMetadata{
 			Name:        id,
 			Annotations: annots,
 		},
-		Spec: aegisPolicySpec{
+		Spec: nixisPolicySpec{
 			Description: description,
-			MatchConstraints: aegisMatchConstraints{
+			MatchConstraints: nixisMatchConstraints{
 				Tools: []string{},
 			},
-			Validations: []aegisValidation{
+			Validations: []nixisValidation{
 				{
 					Expression: "false",
 					Message:    fmt.Sprintf("IMPORT_TODO: %s — manual review required", reason),
@@ -2344,7 +2344,7 @@ func kyvernoSeverityToAction(severity, baseAction string) string {
 }
 
 // kyvernoValidationFailureActionToAction maps Kyverno's validationFailureAction to Nixis action.
-func convertKyverno(data []byte, sourcePath string) ([]aegisManifest, []string, error) {
+func convertKyverno(data []byte, sourcePath string) ([]nixisManifest, []string, error) {
 	var pol kyvernoPolicy
 	if err := yaml.Unmarshal(data, &pol); err != nil {
 		return nil, nil, fmt.Errorf("parse Kyverno YAML: %w", err)
@@ -2360,7 +2360,7 @@ func convertKyverno(data []byte, sourcePath string) ([]aegisManifest, []string, 
 
 	baseAction := kyvernoValidationFailureActionToAction(pol.Spec.ValidationFailureAction)
 
-	manifests := make([]aegisManifest, 0)
+	manifests := make([]nixisManifest, 0)
 	comments := make([]string, 0)
 
 	for _, rule := range pol.Spec.Rules {
@@ -2434,19 +2434,19 @@ func convertKyverno(data []byte, sourcePath string) ([]aegisManifest, []string, 
 					annots["kyverno.io/category"] = category
 				}
 
-				m := aegisManifest{
+				m := nixisManifest{
 					APIVersion: "nixis.io/v1",
 					Kind:       "PolicyTemplate",
-					Metadata: aegisMetadata{
+					Metadata: nixisMetadata{
 						Name:        id,
 						Annotations: annots,
 					},
-					Spec: aegisPolicySpec{
+					Spec: nixisPolicySpec{
 						Description: description,
-						MatchConstraints: aegisMatchConstraints{
+						MatchConstraints: nixisMatchConstraints{
 							Tools: []string{"Bash"},
 						},
-						Validations: []aegisValidation{
+						Validations: []nixisValidation{
 							{
 								Expression: cel,
 								Message:    msg,
@@ -2691,7 +2691,7 @@ func falcoResolveListRefs(condition string, lists map[string][]string) string {
 }
 
 // splitFalcoList splits a comma-separated list string into trimmed items.
-func convertFalco(data []byte, sourcePath string) ([]aegisManifest, []string, error) {
+func convertFalco(data []byte, sourcePath string) ([]nixisManifest, []string, error) {
 	ff, err := parseFalcoFile(data)
 	if err != nil {
 		return nil, nil, err
@@ -2699,7 +2699,7 @@ func convertFalco(data []byte, sourcePath string) ([]aegisManifest, []string, er
 
 	macros, lists := falcoLookupTables(ff)
 
-	manifests := make([]aegisManifest, 0, len(ff.Rules))
+	manifests := make([]nixisManifest, 0, len(ff.Rules))
 	comments := make([]string, 0, len(ff.Rules))
 
 	for _, rule := range ff.Rules {
@@ -2718,10 +2718,10 @@ func convertFalco(data []byte, sourcePath string) ([]aegisManifest, []string, er
 		}
 
 		id := "falco-" + sanitizeID(rule.Rule)
-		m := aegisManifest{
+		m := nixisManifest{
 			APIVersion: "nixis.io/v1",
 			Kind:       "PolicyTemplate",
-			Metadata: aegisMetadata{
+			Metadata: nixisMetadata{
 				Name: id,
 				Annotations: map[string]string{
 					"nixis.io/imported-from": filepath.Base(sourcePath),
@@ -2729,12 +2729,12 @@ func convertFalco(data []byte, sourcePath string) ([]aegisManifest, []string, er
 					"nixis.io/source-rule":   rule.Rule,
 				},
 			},
-			Spec: aegisPolicySpec{
+			Spec: nixisPolicySpec{
 				Description: desc,
-				MatchConstraints: aegisMatchConstraints{
+				MatchConstraints: nixisMatchConstraints{
 					Tools: tools,
 				},
-				Validations: []aegisValidation{
+				Validations: []nixisValidation{
 					{
 						Expression: cel,
 						Message:    fmt.Sprintf("Falco rule violated: %s", rule.Rule),
@@ -2893,7 +2893,7 @@ var regoPatternMappings = []struct {
 }
 
 // ---- output structs ----
-func convertOPAConstraintInstance(c opaConstraint, sourcePath string) ([]aegisManifest, []string, error) {
+func convertOPAConstraintInstance(c opaConstraint, sourcePath string) ([]nixisManifest, []string, error) {
 	// Constraint instances reference a ConstraintTemplate by kind
 	constraintKind := c.Kind
 	name := c.Metadata.Name
@@ -2903,10 +2903,10 @@ func convertOPAConstraintInstance(c opaConstraint, sourcePath string) ([]aegisMa
 	// Determine pattern and action from lookup table
 	pattern, action, comment := translateOPAConstraint(constraintKind, "")
 
-	m := aegisManifest{
+	m := nixisManifest{
 		APIVersion: "nixis.io/v1",
 		Kind:       "PolicyTemplate",
-		Metadata: aegisMetadata{
+		Metadata: nixisMetadata{
 			Name: fmt.Sprintf("gatekeeper-%s", sanitizeID(name)),
 			Annotations: map[string]string{
 				"nixis.io/source":        "open-policy-agent/gatekeeper-library",
@@ -2915,12 +2915,12 @@ func convertOPAConstraintInstance(c opaConstraint, sourcePath string) ([]aegisMa
 				"nixis.io/severity":      "high",
 			},
 		},
-		Spec: aegisPolicySpec{
+		Spec: nixisPolicySpec{
 			Description: description,
-			MatchConstraints: aegisMatchConstraints{
+			MatchConstraints: nixisMatchConstraints{
 				Tools: []string{"Bash"},
 			},
-			Validations: []aegisValidation{
+			Validations: []nixisValidation{
 				{
 					Expression: fmt.Sprintf(`tool == "Bash" && request.args.command.matches(%q)`, pattern),
 					Action:     action,
@@ -2936,7 +2936,7 @@ func convertOPAConstraintInstance(c opaConstraint, sourcePath string) ([]aegisMa
 		headerComment += "\nMANUAL REVIEW: " + comment
 	}
 
-	return []aegisManifest{m}, []string{headerComment}, nil
+	return []nixisManifest{m}, []string{headerComment}, nil
 }
 
 // translateOPAConstraint determines the kubectl pattern and action for a constraint kind.
@@ -2961,7 +2961,7 @@ func translateOPAConstraint(kind string, rego string) (pattern string, action st
 }
 
 // ---- rule translation helpers ----
-func convertOPAConstraintTemplate(ct opaConstraintTemplate, sourcePath string) ([]aegisManifest, []string, error) {
+func convertOPAConstraintTemplate(ct opaConstraintTemplate, sourcePath string) ([]nixisManifest, []string, error) {
 	constraintKind := ct.Spec.CRD.Spec.Names.Kind
 	if constraintKind == "" {
 		constraintKind = ct.Metadata.Name
@@ -2992,10 +2992,10 @@ func convertOPAConstraintTemplate(ct opaConstraintTemplate, sourcePath string) (
 	}
 	regoPreview = strings.ReplaceAll(regoPreview, "\n", " ")
 
-	m := aegisManifest{
+	m := nixisManifest{
 		APIVersion: "nixis.io/v1",
 		Kind:       "PolicyTemplate",
-		Metadata: aegisMetadata{
+		Metadata: nixisMetadata{
 			Name: fmt.Sprintf("gatekeeper-%s", sanitizeID(constraintKind)),
 			Annotations: map[string]string{
 				"nixis.io/source":        "open-policy-agent/gatekeeper-library",
@@ -3004,12 +3004,12 @@ func convertOPAConstraintTemplate(ct opaConstraintTemplate, sourcePath string) (
 				"nixis.io/severity":      "high",
 			},
 		},
-		Spec: aegisPolicySpec{
+		Spec: nixisPolicySpec{
 			Description: description,
-			MatchConstraints: aegisMatchConstraints{
+			MatchConstraints: nixisMatchConstraints{
 				Tools: []string{"Bash"},
 			},
-			Validations: []aegisValidation{
+			Validations: []nixisValidation{
 				{
 					Expression: fmt.Sprintf(`tool == "Bash" && request.args.command.matches(%q)`, pattern),
 					Action:     action,
@@ -3027,9 +3027,9 @@ func convertOPAConstraintTemplate(ct opaConstraintTemplate, sourcePath string) (
 		headerComment += "\nMANUAL REVIEW: " + comment
 	}
 
-	return []aegisManifest{m}, []string{headerComment}, nil
+	return []nixisManifest{m}, []string{headerComment}, nil
 }
-func convertOPAGatekeeper(data []byte, sourcePath string) ([]aegisManifest, []string, error) {
+func convertOPAGatekeeper(data []byte, sourcePath string) ([]nixisManifest, []string, error) {
 	// Try parsing as ConstraintTemplate first
 	var ct opaConstraintTemplate
 	if err := yaml.Unmarshal(data, &ct); err == nil && ct.Kind == "ConstraintTemplate" {

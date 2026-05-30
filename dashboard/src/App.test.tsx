@@ -35,8 +35,8 @@ describe('App', () => {
         <App />
       </StoreProvider>,
     );
-    // AppHeader renders AEGIS brand name
-    expect(screen.getByText('AEGIS')).toBeInTheDocument();
+    // AppHeader renders NIXIS brand name
+    expect(screen.getByText('NIXIS')).toBeInTheDocument();
     // EventStreamList renders empty state when no events
     expect(screen.getByText('Waiting for events…')).toBeInTheDocument();
   });

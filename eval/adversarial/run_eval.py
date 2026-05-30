@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Aegis adversarial eval runner — parallel, single-process, no subprocess overhead."""
+"""Nixis adversarial eval runner — parallel, single-process, no subprocess overhead."""
 
 import argparse
 import json
@@ -170,8 +170,8 @@ def _pct(v): return f"{v*100:.1f}%" if v is not None else "n/a"
 
 # ── main ──────────────────────────────────────────────────────────────────────
 def main():
-    ap = argparse.ArgumentParser(description="Aegis adversarial eval runner")
-    ap.add_argument("--daemon-socket", default="/tmp/aegis.sock")
+    ap = argparse.ArgumentParser(description="Nixis adversarial eval runner")
+    ap.add_argument("--daemon-socket", default="/tmp/nixis.sock")
     ap.add_argument("--cases-dir",     default="./eval/adversarial")
     ap.add_argument("--output-dir",    default="./eval/results")
     ap.add_argument("--filter",        default="", help="only run files matching this substring")
@@ -184,7 +184,7 @@ def main():
 
     if not os.path.exists(args.daemon_socket):
         print(f"{RED}Error: daemon socket not found at {args.daemon_socket}{RESET}", file=sys.stderr)
-        print("Is the Aegis daemon running?", file=sys.stderr)
+        print("Is the Nixis daemon running?", file=sys.stderr)
         sys.exit(2)
 
     cases_dir  = Path(args.cases_dir)
@@ -223,7 +223,7 @@ def main():
 
     total = sum(len(v) for v in file_cases.values())
 
-    print(f"{BOLD}=== Aegis Adversarial Evaluation ==={RESET}")
+    print(f"{BOLD}=== Nixis Adversarial Evaluation ==={RESET}")
     print(f"Socket:    {args.daemon_socket}")
     print(f"Cases dir: {cases_dir}  ({total} cases across {len(jsonl_files)} files)")
     print(f"Workers:   {args.workers}   Timeout: {args.timeout_ms}ms")

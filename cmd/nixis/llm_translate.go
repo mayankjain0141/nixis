@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	aegisCEL "github.com/mayjain/nixis/internal/cel"
+	nixisCEL "github.com/mayjain/nixis/internal/cel"
 )
 
 // anthropicURL is the endpoint for Claude API calls. Overridable in tests.
@@ -101,14 +101,14 @@ type LLMTranslator struct {
 	vertexProject string
 	vertexRegion  string
 	cacheDir      string
-	celEnv        *aegisCEL.CELEnvironment
+	celEnv        *nixisCEL.CELEnvironment
 }
 
 // NewLLMTranslator constructs an LLMTranslator. It returns an error only if the
 // CEL environment cannot be initialised (which indicates a hard programming error).
 // A missing ANTHROPIC_API_KEY is NOT an error here — Translate() will warn and skip.
 func NewLLMTranslator(model string, maxRetries int) (*LLMTranslator, error) {
-	celEnv, err := aegisCEL.NewCELEnvironment()
+	celEnv, err := nixisCEL.NewCELEnvironment()
 	if err != nil {
 		return nil, fmt.Errorf("llm-translate: create CEL environment: %w", err)
 	}
@@ -301,7 +301,7 @@ func (t *LLMTranslator) callAPI(ctx context.Context, userContent string) (string
 //   - request.args         → args
 func (t *LLMTranslator) validateExpression(expr string) error {
 	normalised := normaliseCELExpr(expr)
-	rawEnv := aegisCEL.RawEnv(t.celEnv)
+	rawEnv := nixisCEL.RawEnv(t.celEnv)
 	_, issues := rawEnv.Parse(normalised)
 	if issues != nil && issues.Err() != nil {
 		return issues.Err()

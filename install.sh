@@ -44,7 +44,7 @@ get_version() {
 
 download() {
     VERSION_STRIPPED=$(echo "$VERSION" | sed 's/^v//')
-    TARBALL="aegis_${OS}_${ARCH}.tar.gz"
+    TARBALL="nixis_${OS}_${ARCH}.tar.gz"
     BASE_URL="https://github.com/${REPO}/releases/download/${VERSION}"
 
     TMPDIR=$(mktemp -d)
