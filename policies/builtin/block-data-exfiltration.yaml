@@ -1,0 +1,68 @@
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: block-data-exfiltration
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Block data exfiltration: rsync/scp to external hosts, rclone, S3 data destruction, DNS exfil patterns"
+  matchConstraints:
+    tools: ["Bash"]
+  validations:
+    - expression: >-
+        request.args.command.matches("(?i)\\brsync\\b.*/etc/") ||
+        (request.args.command.matches("(?i)\\brsync\\b") &&
+         request.args.command.matches("(?i)@[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}:"))
+      message: "Blocked: rsync of system directories or to external IP addresses"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\brclone\\s+copy\\b") &&
+        request.args.command.matches("(?i)/(etc|home|var|opt|data|app|root|src)")
+      message: "Blocked: rclone copying sensitive system directories to remote storage"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\baws\\s+s3\\s+rm\\b.*--recursive") ||
+        request.args.command.matches("(?i)\\baws\\s+s3\\s+cp\\b.*/etc/(shadow|passwd|shadow)") ||
+        request.args.command.matches("(?i)\\baws\\s+s3\\s+cp\\b.*s3://.*attacker")
+      message: "Blocked: destructive or exfiltrating S3 operations"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bfind\\b.*\\.env.*\\|.*curl") ||
+        request.args.command.matches("(?i)\\bfind\\b.*\\.env.*xargs.*cat") ||
+        request.args.command.matches("(?i)\\bfind\\b.*\\.(env|key|pem).*\\|.*curl")
+      message: "Blocked: finding and exfiltrating .env or key files via curl"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\btar\\b.*\\|.*curl.*-X\\s*(POST|PUT)") &&
+        (request.args.command.matches("(?i)/home") ||
+         request.args.command.matches("(?i)/etc") ||
+         request.args.command.matches("(?i)/var"))
+      message: "Blocked: tar streaming system directories to external HTTP endpoint"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bscp\\b.*@.*:/stolen") ||
+        request.args.command.matches("(?i)\\bscp\\b.*/etc/(shadow|passwd).*@")
+      message: "Blocked: scp exfiltrating system credential files to external host"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bxxd\\b.*\\|.*dig\\b") &&
+        request.args.command.matches("(?i)/etc/(shadow|passwd)")
+      message: "Blocked: DNS exfiltration of credential files via dig"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\baws\\s+iam\\s+create-user\\b") ||
+        request.args.command.matches("(?i)\\baws\\s+iam\\s+attach-user-policy\\b.*AdministratorAccess") ||
+        request.args.command.matches("(?i)\\baws\\s+iam\\s+create-access-key\\b")
+      message: "Blocked: creating backdoor IAM users or attaching administrator policies"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bgcloud\\s+iam\\s+service-accounts\\s+keys\\s+create\\b")
+      message: "Blocked: creating downloadable GCP service account keys"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\baws\\s+ec2\\s+authorize-security-group-ingress\\b") &&
+        request.args.command.matches("0\\.0\\.0\\.0/0")
+      message: "Blocked: opening security group to all internet traffic"
+      action: DENY
+  defaultAction: ALLOW

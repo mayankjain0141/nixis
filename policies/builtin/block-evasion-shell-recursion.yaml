@@ -1,0 +1,72 @@
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: block-evasion-shell-recursion
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Block shell recursion evasion: interpreter wrapping (sh -c, python -c, ruby -e, node -e) of dangerous payloads"
+  matchConstraints:
+    tools: ["Bash"]
+  validations:
+    - expression: >-
+        request.args.command.matches("(?i)\\b(sh|bash|zsh|dash|fish|ksh)\\s+-c\\b") &&
+        (request.args.command.matches("(?i)/etc/shadow") ||
+         request.args.command.matches("(?i)/etc/passwd") ||
+         request.args.command.matches("(?i)curl.*\\|\\s*(sh|bash)") ||
+         request.args.command.matches("(?i)rm\\s+-rf") ||
+         request.args.command.matches("(?i)/var/log"))
+      message: "Blocked: shell -c wrapping a dangerous payload"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bpython3?\\s+-c\\b") &&
+        (request.args.command.matches("(?i)subprocess") ||
+         request.args.command.matches("(?i)os\\.system") ||
+         request.args.command.matches("(?i)/etc/shadow") ||
+         request.args.command.matches("(?i)/etc/passwd") ||
+         request.args.command.matches("(?i)smtplib") ||
+         request.args.command.matches("(?i)ftplib"))
+      message: "Blocked: Python one-liner executing dangerous subprocess or credential access"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bruby\\s+-e\\b") &&
+        (request.args.command.matches("(?i)system\\(") ||
+         request.args.command.matches("(?i)wget.*\\|.*bash") ||
+         request.args.command.matches("(?i)curl.*\\|.*bash"))
+      message: "Blocked: Ruby one-liner executing shell commands"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bperl\\s+-e\\b") &&
+        (request.args.command.matches("(?i)exec\\(") ||
+         request.args.command.matches("(?i)system\\(") ||
+         request.args.command.matches("(?i)netcat"))
+      message: "Blocked: Perl one-liner executing shell commands"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bnode\\s+-e\\b") &&
+        (request.args.command.matches("(?i)child_process") ||
+         request.args.command.matches("(?i)/etc/shadow") ||
+         request.args.command.matches("(?i)/etc/passwd"))
+      message: "Blocked: Node.js one-liner with child_process executing dangerous commands"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\b(lua|tclsh|expect|Rscript|julia|groovy)\\b.*-[ce]\\b") &&
+        (request.args.command.matches("(?i)/etc/shadow") ||
+         request.args.command.matches("(?i)/etc/passwd") ||
+         request.args.command.matches("(?i)curl.*\\|\\s*(sh|bash)"))
+      message: "Blocked: interpreter one-liner accessing credentials or executing remote payloads"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bphp\\s+-r\\b") &&
+        (request.args.command.matches("(?i)system\\(") ||
+         request.args.command.matches("(?i)/etc/shadow") ||
+         request.args.command.matches("(?i)shell_exec"))
+      message: "Blocked: PHP CLI one-liner executing system commands"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bgdb\\b.*-ex\\s+'?shell\\b") ||
+        request.args.command.matches("(?i)\\bgdb\\b.*-batch.*shell")
+      message: "Blocked: gdb batch mode shell escape"
+      action: DENY
+  defaultAction: ALLOW
