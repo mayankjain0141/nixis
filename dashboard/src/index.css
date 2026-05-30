@@ -60,3 +60,23 @@ body {
 .escalation-flash {
   animation: escalation-flash 550ms ease-out;
 }
+
+/* React Flow dark theme overrides */
+.react-flow__controls button {
+  background: #161b22 !important;
+  border: 1px solid #30363d !important;
+  color: #8b949e !important;
+  fill: #8b949e !important;
+}
+.react-flow__controls button:hover {
+  background: #21262d !important;
+}
+.react-flow__controls button svg {
+  fill: #8b949e !important;
+}
+.react-flow__edge-path {
+  stroke-width: 1.5;
+}
+.react-flow__attribution {
+  display: none !important;
+}

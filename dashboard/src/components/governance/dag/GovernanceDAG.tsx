@@ -38,8 +38,8 @@ export const governanceNodeTypes: NodeTypes = {
 } as const;
 
 const STORAGE_KEY = 'nixis-dag-positions';
-const PIPELINE_Y = 120;
-const PIPELINE_GAP = 160;
+const PIPELINE_Y = 160;
+const PIPELINE_GAP = 180;
 
 interface PipelineStage {
   id: string;
@@ -72,62 +72,86 @@ function savePositions(nodes: Node[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(positions));
 }
 
-function buildLayout(events: { tool: string; policyId?: string | null }[]) {
+function buildLayout(events: { tool: string; policyId?: string | null; decision?: string }[]) {
   const savedPositions = loadPositions();
 
+  // Pipeline nodes — always a straight horizontal line
   const pipelineNodes: Node[] = PIPELINE_STAGES.map((stage, i) => ({
     id: stage.id,
     type: stage.type,
     position: savedPositions[stage.id] ?? { x: i * PIPELINE_GAP, y: PIPELINE_Y },
     data: { label: stage.label },
+    draggable: true,
   }));
 
+  // Pipeline edges — sequential chain
   const pipelineEdges: Edge[] = PIPELINE_STAGES.slice(1).map((stage, i) => ({
     id: `pipe-${PIPELINE_STAGES[i].id}-${stage.id}`,
     source: PIPELINE_STAGES[i].id,
     target: stage.id,
     animated: true,
-    style: { stroke: 'var(--allow, #2da44e)', strokeWidth: 2 },
+    style: { stroke: '#2da44e', strokeWidth: 2 },
   }));
 
+  // Tool nodes — compact row below the Hook stage
   const tools = [...new Set(events.map((e) => e.tool))];
-  const policies = [...new Set(events.map((e) => e.policyId).filter(Boolean))] as string[];
-
   const toolNodes: Node[] = tools.map((tool, i) => ({
     id: `tool-${tool}`,
     type: 'tool',
     position: savedPositions[`tool-${tool}`] ?? {
-      x: 2 * PIPELINE_GAP + i * 100,
-      y: PIPELINE_Y + 100 + i * 60,
+      x: 1 * PIPELINE_GAP + (i % 3) * 120,
+      y: PIPELINE_Y + 80 + Math.floor(i / 3) * 60,
     },
     data: { label: tool },
+    draggable: true,
   }));
 
-  const policyNodes: Node[] = policies.map((policy, i) => ({
+  // Policy nodes — show at most 8 individual triggered policies, then a summary
+  const allPolicies = [...new Set(events.map((e) => e.policyId).filter(Boolean))] as string[];
+  const showPolicies = allPolicies.slice(0, 8);
+  const hiddenCount = allPolicies.length - showPolicies.length;
+
+  const policyNodes: Node[] = showPolicies.map((policy, i) => ({
     id: `policy-${policy}`,
     type: 'policy',
     position: savedPositions[`policy-${policy}`] ?? {
-      x: 4 * PIPELINE_GAP + i * 80,
-      y: PIPELINE_Y + 100 + i * 50,
+      x: 4 * PIPELINE_GAP + (i % 4) * 130,
+      y: PIPELINE_Y + 80 + Math.floor(i / 4) * 55,
     },
     data: { label: policy, policyId: policy },
+    draggable: true,
   }));
 
+  // If there are more policies than shown, add a summary node
+  if (hiddenCount > 0) {
+    const summaryId = 'policy-overflow';
+    policyNodes.push({
+      id: summaryId,
+      type: 'policy',
+      position: savedPositions[summaryId] ?? {
+        x: 4 * PIPELINE_GAP + 200,
+        y: PIPELINE_Y + 80 + Math.ceil(showPolicies.length / 4) * 55,
+      },
+      data: { label: `+${hiddenCount} more policies` },
+      draggable: true,
+    });
+  }
+
+  // Edges connecting dynamic nodes to the pipeline
   const dynamicEdges: Edge[] = [
+    // Tools connect from Hook
     ...tools.map((tool) => ({
       id: `edge-hook-tool-${tool}`,
       source: 'pipeline-hook',
       target: `tool-${tool}`,
-      animated: false,
-      style: { stroke: '#4f46e5', opacity: 0.5 },
+      style: { stroke: '#4f46e5', strokeDasharray: '4 2', opacity: 0.6 },
     })),
-    ...policies.map((policy) => ({
-      id: `edge-cel-policy-${policy}`,
+    // Policies connect from CEL Engine
+    ...policyNodes.map((pn) => ({
+      id: `edge-cel-${pn.id}`,
       source: 'pipeline-cel',
-      sourceHandle: 'children',
-      target: `policy-${policy}`,
-      animated: false,
-      style: { stroke: '#d97706', opacity: 0.5 },
+      target: pn.id,
+      style: { stroke: '#d97706', strokeDasharray: '4 2', opacity: 0.6 },
     })),
   ];
 
@@ -149,11 +173,16 @@ export function GovernanceDAG() {
   const [edges, setEdges, onEdgesChange] = useEdgesState(layout.edges);
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevEventsLenRef = useRef(0);
 
+  // Sync layout when new events arrive (new tools/policies discovered)
   useEffect(() => {
-    setNodes(layout.nodes);
-    setEdges(layout.edges);
-  }, [layout, setNodes, setEdges]);
+    if (events.length !== prevEventsLenRef.current) {
+      prevEventsLenRef.current = events.length;
+      setNodes(layout.nodes);
+      setEdges(layout.edges);
+    }
+  }, [layout, events.length, setNodes, setEdges]);
 
   const handleNodesChange = useCallback(
     (changes: Parameters<typeof onNodesChange>[0]) => {
@@ -202,7 +231,7 @@ export function GovernanceDAG() {
   if (events.length === 0) {
     return (
       <div style={{
-        height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
         color: 'var(--text-muted)', fontSize: 13, flexDirection: 'column', gap: 8,
       }}>
         <div style={{ fontSize: 24, opacity: 0.3 }}>&#x2B21;</div>
@@ -212,23 +241,15 @@ export function GovernanceDAG() {
     );
   }
 
-  if (nodes.length > 500) {
-    return (
-      <div style={{ height: 400, padding: 16, color: 'var(--text-secondary)', fontSize: 12 }}>
-        <div style={{ fontWeight: 600, marginBottom: 8 }}>Skeleton view — {nodes.length} nodes</div>
-        <div style={{ color: 'var(--text-muted)' }}>Too many nodes to render DAG. Filter by session or policy to reduce.</div>
-      </div>
-    );
-  }
-
   const handleNodeClick: NodeMouseHandler = (_event, node) => {
     if (!node.id.startsWith('policy-')) return;
+    if (node.id === 'policy-overflow') return;
     const policyId = node.id.slice('policy-'.length);
     setFilterPolicy(filterPolicy === policyId ? null : policyId);
   };
 
   return (
-    <div style={{ width: '100%', height: '100%', minHeight: 420 }} aria-label="Governance evaluation DAG">
+    <div style={{ width: '100%', height: '100%', minHeight: 500 }} aria-label="Governance evaluation DAG">
       <ReactFlow
         nodes={highlightedNodes}
         edges={edges}
@@ -236,19 +257,27 @@ export function GovernanceDAG() {
         onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
         fitView
-        fitViewOptions={{ padding: 0.15 }}
-        onlyRenderVisibleElements={nodes.length > 200}
+        fitViewOptions={{ padding: 0.2 }}
         onNodeClick={handleNodeClick}
+        proOptions={{ hideAttribution: true }}
+        defaultEdgeOptions={{ type: 'smoothstep' }}
       >
-        <Background />
-        <Controls />
+        <Background color="#1e293b" gap={24} size={1} />
+        <Controls
+          showInteractive={false}
+          style={{
+            background: '#161b22',
+            border: '1px solid #30363d',
+            borderRadius: 6,
+          }}
+        />
         <Panel position="top-right">
           <button
             onClick={handleResetLayout}
             style={{
-              padding: '4px 10px',
+              padding: '5px 12px',
               fontSize: 11,
-              background: '#21262d',
+              background: '#161b22',
               border: '1px solid #30363d',
               borderRadius: 4,
               color: '#8b949e',
