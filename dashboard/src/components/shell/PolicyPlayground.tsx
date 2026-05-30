@@ -1,78 +1,45 @@
 import { useState } from 'react';
 import { usePolicyStore } from '../../stores/policy-store';
+import { getDaemonApiBase } from '../../lib/api';
 
 const TOOLS = ['Bash', 'Read', 'Write', 'Edit', 'WebFetch', 'WebSearch', 'DatabaseQuery', 'GitCommit', 'GitPush', 'FileDelete'];
 
-function simulateEval(
-  tool: string,
-  args: string,
-  _policyId: string,
-  cel: string,
-): 'allow' | 'deny' | 'require_approval' | 'audit' {
-  const combined = `${tool} ${args}`.toLowerCase();
-  const celLower = cel.toLowerCase();
-
-  if (celLower.includes('force') && (combined.includes('--force') || combined.includes('force push'))) return 'deny';
-  if (celLower.includes('rm') && combined.includes('rm') && (combined.includes('-rf') || combined.includes('-fr'))) return 'deny';
-  if (celLower.includes('/etc/') && (tool === 'Write' || tool === 'Edit' || tool === 'FileDelete') && args.includes('/etc/')) return 'deny';
-  if (celLower.includes('prod') && tool === 'DatabaseQuery' && args.toLowerCase().includes('prod')) return 'require_approval';
-  if (celLower.includes('secret') && tool === 'Read' && /secret|api\.key|passwd|shadow/.test(args)) return 'audit';
-  // no-secret-transmission: deny if args explicitly contain a known secret pattern (simulated)
-  if (celLower.includes('contains_secret') && /AWS_SECRET|api_key|password\s*=|token\s*=/i.test(args)) return 'deny';
-  // gatekeeper/imported: kubectl command matching
-  if (celLower.includes('kubectl') && tool === 'Bash' && args.toLowerCase().includes('kubectl')) {
-    if (celLower.includes('nodeport') && args.toLowerCase().includes('nodeport')) return 'deny';
-    if (celLower.includes('create|apply') && /kubectl.*(create|apply)/i.test(args)) return 'deny';
-    return 'deny'; // most kubectl-matching policies are DENY
-  }
-  // falco/ssh: SSH key operations
-  if (celLower.includes('ssh') && tool === 'Bash' && /ssh-keygen|ssh-add|ssh-keyscan/i.test(args)) return 'deny';
-  // falco/xz: backdoored library
-  if (celLower.includes('liblzma') && args.includes('liblzma.so.5.6.0')) return 'deny';
-
-  return 'allow';
-}
+type SimulateResult = { verdict: string; explanation: string; latencyNs: number } | null;
 
 export function PolicyPlayground() {
   const policies = usePolicyStore((s) => s.policies);
   const [tool, setTool] = useState('Bash');
   const [args, setArgs] = useState('');
-  const [result, setResult] = useState<null | {
-    verdict: string;
-    policyName: string;
-    cel: string;
-    explanation: string;
-  }>(null);
+  const [celExpression, setCelExpression] = useState('');
+  const [result, setResult] = useState<SimulateResult>(null);
+  const [daemonError, setDaemonError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  function handleEvaluate() {
+  async function handleEvaluate() {
     if (!args.trim()) return;
-
-    let finalVerdict: string = 'allow';
-    let matchedPolicy = { id: 'aegis/default-allow', name: 'default-allow', cel: 'true' };
-
-    for (const policy of policies) {
-      const cel = policy.celExpression ?? '';
-      const verdict = simulateEval(tool, args, policy.id, cel);
-      if (verdict !== 'allow') {
-        finalVerdict = verdict;
-        matchedPolicy = { id: policy.id, name: policy.name, cel };
-        break;
-      }
+    setDaemonError(null);
+    setResult(null);
+    setLoading(true);
+    try {
+      const expression = celExpression.trim() || (policies[0]?.celExpression ?? '');
+      const resp = await fetch(`${getDaemonApiBase()}/simulate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tool,
+          args: JSON.stringify(args),
+          session_id: crypto.randomUUID(),
+          timestamp: Date.now(),
+          cel_expression: expression,
+        }),
+      });
+      if (!resp.ok) throw new Error(`daemon: HTTP ${resp.status}`);
+      setResult(await resp.json() as SimulateResult);
+    } catch (err) {
+      setDaemonError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
     }
-
-    const explanations: Record<string, string> = {
-      deny: 'This operation is blocked by policy. The CEL expression evaluated to true, triggering a DENY verdict.',
-      require_approval: 'This operation requires human approval before proceeding. A HITL gate is triggered.',
-      audit: 'This operation is allowed but will be recorded in the audit trail for review.',
-      allow: 'No policy matched — the default-allow rule applies. This operation would proceed.',
-    };
-
-    setResult({
-      verdict: finalVerdict,
-      policyName: matchedPolicy.name,
-      cel: matchedPolicy.cel,
-      explanation: explanations[finalVerdict],
-    });
   }
 
   const verdictColors: Record<string, string> = {
@@ -128,17 +95,41 @@ export function PolicyPlayground() {
         <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 3 }}>Cmd+Enter to evaluate</div>
       </label>
 
+      <label style={{ display: 'block', marginBottom: 12 }}>
+        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>
+          CEL Expression (optional — defaults to first active policy)
+        </div>
+        <input
+          value={celExpression}
+          onChange={e => setCelExpression(e.target.value)}
+          placeholder={policies[0]?.celExpression ?? 'tool == "Bash"'}
+          style={{
+            width: '100%', background: 'var(--bg-surface)', border: '1px solid var(--border)',
+            borderRadius: 4, padding: '6px 8px', color: 'var(--text-primary)',
+            fontSize: 13, fontFamily: 'monospace', outline: 'none', boxSizing: 'border-box',
+          }}
+        />
+      </label>
+
       <button
         onClick={handleEvaluate}
+        disabled={loading || !args.trim()}
         style={{
-          width: '100%', padding: '8px', borderRadius: 6, cursor: 'pointer',
-          background: args.trim() ? 'var(--info-blue)' : 'var(--bg-overlay)',
-          color: args.trim() ? '#fff' : 'var(--text-muted)',
+          width: '100%', padding: '8px', borderRadius: 6,
+          cursor: loading || !args.trim() ? 'not-allowed' : 'pointer',
+          background: args.trim() && !loading ? 'var(--info-blue)' : 'var(--bg-overlay)',
+          color: args.trim() && !loading ? '#fff' : 'var(--text-muted)',
           border: 'none', fontWeight: 600, fontSize: 13,
         }}
       >
-        Evaluate against {policies.length > 0 ? `${policies.length} policies` : 'policies'}
+        {loading ? 'Evaluating…' : `Evaluate against ${policies.length > 0 ? `${policies.length} policies` : 'policies'}`}
       </button>
+
+      {daemonError && (
+        <div style={{ color: '#d29922', fontSize: 12, padding: '8px 0' }}>
+          Daemon required — {daemonError}
+        </div>
+      )}
 
       {result && (
         <div style={{
@@ -168,22 +159,11 @@ export function PolicyPlayground() {
             {result.explanation}
           </div>
 
-          <div style={{ padding: '10px 14px', fontSize: 12 }}>
-            <div style={{ color: 'var(--text-secondary)', marginBottom: 4 }}>
-              Matched policy:{' '}
-              <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                {result.policyName}
-              </span>
+          {result.latencyNs > 0 && (
+            <div style={{ padding: '6px 14px', fontSize: 11, color: 'var(--text-muted)' }}>
+              Latency: {(result.latencyNs / 1_000_000).toFixed(2)} ms
             </div>
-            {result.cel && result.cel !== 'true' && (
-              <pre style={{
-                background: 'var(--bg-base)', border: '1px solid var(--border)',
-                borderRadius: 4, padding: '6px 8px', margin: '6px 0 0',
-                fontFamily: 'monospace', fontSize: 11, color: '#79c0ff',
-                whiteSpace: 'pre-wrap' as const, wordBreak: 'break-all' as const,
-              }}>{result.cel}</pre>
-            )}
-          </div>
+          )}
         </div>
       )}
     </div>
