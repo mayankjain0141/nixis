@@ -354,6 +354,24 @@ func (l *labelLib) CompileOptions() []cel.EnvOption {
 				}),
 			),
 		),
+		// label.hasCategory(cat int, bit int) bool — returns true if the category bitmask has the given bit set.
+		// CEL does not support the & operator; this function provides the equivalent of (cat & bit) != 0.
+		// bit must be a power of two (a single category constant like CatCredentials or TaintBit).
+		// Returns false for any non-power-of-two bit or non-positive input.
+		cel.Function("label.hasCategory",
+			cel.Overload("label_hasCategory_int_int",
+				[]*cel.Type{cel.IntType, cel.IntType},
+				cel.BoolType,
+				cel.BinaryBinding(func(lhs, rhs ref.Val) ref.Val {
+					cat, ok1 := lhs.(types.Int)
+					bit, ok2 := rhs.(types.Int)
+					if !ok1 || !ok2 || bit <= 0 {
+						return types.False
+					}
+					return types.Bool((uint64(cat) & uint64(bit)) != 0)
+				}),
+			),
+		),
 		// ifc.highWaterMark(session_id string) — returns the confidentiality int of the session label.
 		// Monotone: labels only increase, so repeated calls for the same session ID are non-decreasing.
 		cel.Function("ifc.highWaterMark",
