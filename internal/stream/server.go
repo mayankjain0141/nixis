@@ -41,6 +41,16 @@ type Evaluator interface {
 	Evaluate(ctx context.Context, req aegis.CheckRequest) aegis.CheckResponse
 }
 
+// PolicyInfo is the JSON wire format for GET /policies.
+type PolicyInfo struct {
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	Layer         string `json:"layer"`
+	Enabled       bool   `json:"enabled"`
+	CelExpression string `json:"cel_expression,omitempty"`
+	Description   string `json:"description,omitempty"`
+}
+
 // Option is a functional option for NewStreamServer.
 type Option func(*StreamServer)
 
@@ -48,6 +58,13 @@ type Option func(*StreamServer)
 func WithEvaluator(e Evaluator) Option {
 	return func(s *StreamServer) {
 		s.evaluator = e
+	}
+}
+
+// WithPolicyLister injects a policy lister, enabling the GET /policies endpoint.
+func WithPolicyLister(l aegis.PolicyLister) Option {
+	return func(s *StreamServer) {
+		s.policyLister = l
 	}
 }
 
@@ -132,14 +149,15 @@ var droppedTotal atomic.Uint64
 // StreamServer is the WebSocket fan-out hub.
 // It implements aegis.StreamTap (Emit) and aegis.SnapshotReader (LoadSnapshot).
 type StreamServer struct {
-	addr      string
-	tap       aegis.StreamTap // upstream tap (may be nil in tests — server IS the tap)
-	reader    aegis.SnapshotReader
-	evaluator Evaluator // injected via WithEvaluator; nil disables /simulate
-	clients   sync.Map  // string → *client
-	seq       sequenceCounter
-	events    chan aegis.StreamEvent // internal fan-out queue
-	httpSrv   *http.Server
+	addr         string
+	tap          aegis.StreamTap // upstream tap (may be nil in tests — server IS the tap)
+	reader       aegis.SnapshotReader
+	evaluator    Evaluator          // injected via WithEvaluator; nil disables /simulate
+	policyLister aegis.PolicyLister // injected via WithPolicyLister; nil disables GET /policies
+	clients      sync.Map           // string → *client
+	seq          sequenceCounter
+	events       chan aegis.StreamEvent // internal fan-out queue
+	httpSrv      *http.Server
 
 	// lastBundlePayload stores the most recent bundle.activated CloudEvent payload.
 	// Replayed to each new client on connect so the dashboard always shows loaded policies.
@@ -181,6 +199,7 @@ func (s *StreamServer) Start(ctx context.Context, addr string) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", s.handleWebSocket)
 	mux.HandleFunc("/simulate", s.handleSimulate)
+	mux.HandleFunc("/policies", s.handlePolicies)
 
 	s.httpSrv = &http.Server{
 		Handler:      mux,
@@ -432,6 +451,52 @@ func (s *StreamServer) handleSimulate(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		log.Printf("stream: simulate response encode: %v", err)
+	}
+}
+
+// handlePolicies handles GET /policies requests from the dashboard.
+// It returns the current active policy list as JSON.
+func (s *StreamServer) handlePolicies(w http.ResponseWriter, r *http.Request) {
+	origin := r.Header.Get("Origin")
+	corsAllowed := origin == "" || isLocalhostOrigin(origin)
+
+	if r.Method == http.MethodOptions {
+		if corsAllowed && origin != "" {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if corsAllowed && origin != "" {
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+	}
+	if s.policyLister == nil {
+		http.Error(w, "policy lister not configured", http.StatusNotImplemented)
+		return
+	}
+
+	summaries := s.policyLister.ListPolicies()
+	policies := make([]PolicyInfo, 0, len(summaries))
+	for _, ps := range summaries {
+		policies = append(policies, PolicyInfo{
+			ID:            ps.ID,
+			Name:          ps.Name,
+			Layer:         ps.Layer,
+			Enabled:       ps.Enabled,
+			CelExpression: ps.CelExpression,
+			Description:   ps.Description,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(policies); err != nil {
+		log.Printf("stream: policies response encode: %v", err)
 	}
 }
 

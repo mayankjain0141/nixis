@@ -172,7 +172,10 @@ func main() {
 		auditWriter.Start(ctx)
 	}()
 
-	streamSrv := stream.NewStreamServer(nil, nil, stream.WithEvaluator(engine))
+	streamSrv := stream.NewStreamServer(nil, nil,
+		stream.WithEvaluator(engine),
+		stream.WithPolicyLister(engine),
+	)
 	streamCtx, streamCancel := context.WithCancel(ctx)
 	streamDone := make(chan struct{})
 	go func() {

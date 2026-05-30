@@ -634,7 +634,9 @@ func TestStream_GracefulShutdown_PortReleased(t *testing.T) {
 		t.Fatal(err)
 	}
 	addr := probe.Addr().String()
-	probe.Close()
+	if err := probe.Close(); err != nil {
+		t.Logf("probe.Close: %v", err)
+	}
 
 	// Start the stream server on that address.
 	s := NewStreamServer(nil, nullReader{})
@@ -648,7 +650,9 @@ func TestStream_GracefulShutdown_PortReleased(t *testing.T) {
 			for i := 0; i < 50; i++ {
 				c, err := net.DialTimeout("tcp", addr, 10*time.Millisecond)
 				if err == nil {
-					c.Close()
+					if err := c.Close(); err != nil {
+						t.Logf("c.Close: %v", err)
+					}
 					close(started)
 					return
 				}
@@ -683,5 +687,7 @@ func TestStream_GracefulShutdown_PortReleased(t *testing.T) {
 	if err != nil {
 		t.Fatalf("port %s not released after graceful shutdown: %v", addr, err)
 	}
-	ln2.Close()
+	if err := ln2.Close(); err != nil {
+		t.Logf("ln2.Close: %v", err)
+	}
 }
