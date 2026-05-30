@@ -56,6 +56,23 @@ const (
 	EventTypeDelegationExpired = "delegation.expired"
 )
 
+// PolicySummary is the read-only policy descriptor returned by PolicyEngine.ListPolicies().
+type PolicySummary struct {
+	ID            string
+	Name          string
+	Layer         string
+	Enabled       bool
+	CelExpression string
+	Description   string
+}
+
+// PolicyLister returns the current active policy list from the engine snapshot.
+// Implemented by *policy.PolicyEngine; injected via stream.WithPolicyLister so
+// internal/stream does not import internal/policy.
+type PolicyLister interface {
+	ListPolicies() []PolicySummary
+}
+
 // StreamTap is the injection interface for internal/stream/ to receive events
 // without importing internal/audit/ or internal/policy/ (depguard enforced).
 type StreamTap interface {
