@@ -24,6 +24,9 @@ func init() {
 	rootCmd.AddCommand(bundleCmd)
 	rootCmd.AddCommand(policyCmd)
 	rootCmd.AddCommand(delegationCmd)
+	rootCmd.AddCommand(setupCmd)
+	rootCmd.AddCommand(doctorCmd)
+	rootCmd.AddCommand(daemonCmd)
 }
 
 func main() {

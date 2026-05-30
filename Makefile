@@ -1,4 +1,4 @@
-.PHONY: build generate test-keys dev lint test
+.PHONY: build generate test-keys dev lint test install uninstall release-local
 
 ## build: compile all Go binaries
 build:
@@ -30,3 +30,18 @@ dev:
 	  /tmp/aegis-daemon -policy-dir ./policies &
 	@echo "Starting dashboard dev server..."
 	@cd dashboard && npm run dev
+
+## install: build from source and run interactive setup
+install: build
+	@go build -o ~/.aegis/aegis ./cmd/aegis
+	@go build -o ~/.aegis/aegis-hook -ldflags="-s -w" ./cmd/aegis-hook
+	@~/.aegis/aegis setup
+
+## uninstall: remove aegis installation
+uninstall:
+	@~/.aegis/aegis setup --uninstall --yes || true
+	@echo "Aegis uninstalled"
+
+## release-local: build release artifacts locally (for testing)
+release-local:
+	goreleaser release --snapshot --clean

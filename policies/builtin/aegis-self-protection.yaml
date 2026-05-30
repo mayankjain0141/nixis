@@ -1,0 +1,85 @@
+# Layer 1 (CEL) self-protection policy — defense-in-depth complement to the
+# hardcoded SelfProtectGuard (Layer 2) in internal/policy/selfprotect.go.
+#
+# This policy is evaluated by the CEL engine as a normal policy. Even if the
+# hardcoded guard is somehow bypassed (e.g., future refactor removes it), this
+# CEL policy provides independent coverage.
+#
+# The hardcoded guard is Layer 2 — it runs BEFORE CEL and cannot be disabled
+# by editing YAML. This YAML is Layer 1 — it enforces the same rules via CEL
+# and is additionally useful for audit logging and policy transparency.
+#
+# Behavior:
+#   Write("~/.aegis/policies/...")     → DENY
+#   Write("~/.claude/settings.json")   → DENY
+#   Shell("kill $(pgrep aegis)")       → DENY
+#   Shell("rm -rf ~/.aegis/")          → DENY
+#   Shell("launchctl bootout ...")     → DENY
+#   Shell("aegis daemon stop")         → DENY
+#   Shell("ls -la ~/.aegis/")          → ALLOW
+#   Write("/tmp/foo.txt")              → ALLOW
+
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: aegis-self-protection
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+    aegis.io/layer: "self-protection"
+spec:
+  description: "Prevent AI agents from modifying Aegis governance configuration"
+  matchConstraints:
+    tools: ["Write", "Edit", "StrReplace", "MultiEdit", "Delete", "Shell", "Bash", "Terminal"]
+  variables:
+    - name: isWriteToAegis
+      expression: >-
+        request.args.?path.orValue("") != "" && (
+          request.args.path.matches("(?i)(\\.aegis/|\\.aegis$)") ||
+          request.args.path.matches("(?i)\\.claude/settings\\.json$")
+        )
+    - name: isWriteToAegisAlt
+      expression: >-
+        request.args.?file_path.orValue("") != "" && (
+          request.args.file_path.matches("(?i)(\\.aegis/|\\.aegis$)") ||
+          request.args.file_path.matches("(?i)\\.claude/settings\\.json$")
+        )
+    - name: isWriteToAegisTarget
+      expression: >-
+        request.args.?target_file.orValue("") != "" && (
+          request.args.target_file.matches("(?i)(\\.aegis/|\\.aegis$)") ||
+          request.args.target_file.matches("(?i)\\.claude/settings\\.json$")
+        )
+    - name: isShellKillAegis
+      expression: >-
+        request.args.?command.orValue("").matches("(?i)(kill|pkill|killall).*aegis")
+    - name: isShellLaunchctlAegis
+      expression: >-
+        request.args.?command.orValue("").matches("(?i)launchctl.*(bootout|remove|unload).*aegis")
+    - name: isShellSystemctlAegis
+      expression: >-
+        request.args.?command.orValue("").matches("(?i)systemctl.*(stop|disable|mask).*aegis")
+    - name: isShellRmAegis
+      expression: >-
+        request.args.?command.orValue("").matches("(?i)(rm|mv|chmod|chown).*[/.]aegis")
+    - name: isShellCliAegis
+      expression: >-
+        request.args.?command.orValue("").matches("(?i)aegis.*(daemon|setup).*(stop|restart|uninstall|remove)")
+    - name: isShellRedirectAegis
+      expression: >-
+        request.args.?command.orValue("").matches("(?i)(echo|cat|tee|sed|awk).*>.*[/.]aegis")
+    - name: isShellCrontabAegis
+      expression: >-
+        request.args.?command.orValue("").matches("(?i)crontab.*aegis")
+    - name: isShellTargetingAegis
+      expression: >-
+        isShellKillAegis || isShellLaunchctlAegis || isShellSystemctlAegis ||
+        isShellRmAegis || isShellCliAegis || isShellRedirectAegis || isShellCrontabAegis
+  validations:
+    - expression: 'isWriteToAegis || isWriteToAegisAlt || isWriteToAegisTarget'
+      message: "Aegis self-protection: agents cannot modify governance files. Edit ~/.aegis/policies/custom/ directly in your terminal."
+      action: DENY
+    - expression: 'isShellTargetingAegis'
+      message: "Aegis self-protection: agents cannot manage the Aegis daemon. Run aegis commands in your own terminal."
+      action: DENY
+  defaultAction: ALLOW
