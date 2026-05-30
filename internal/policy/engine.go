@@ -95,6 +95,7 @@ type engineSnapshot struct {
 	// templateParams maps TemplateID → resolved params map (from PolicyTemplate.Params).
 	// Nil map means empty params; always safe to pass to Evaluate.
 	templateParams map[string]map[string]any
+	templates      []policy_types.PolicyTemplate
 }
 
 // compiledBinding pairs a policy binding with its pre-resolved scope key.
@@ -659,6 +660,7 @@ func (e *PolicyEngine) buildSnapshot(
 		compiledAt:     time.Now().UnixNano(),
 		sourceHash:     bundle.Hash,
 		templateParams: templateParams,
+		templates:      bundle.Templates,
 	}
 	return snap, skipped, nil
 }
@@ -676,6 +678,38 @@ func buildBindingIndex(bindings []compiledBinding) bindingIndex {
 		}
 	}
 	return idx
+}
+
+// ListPolicies returns the currently loaded policies. Implements aegis.PolicyLister.
+func (e *PolicyEngine) ListPolicies() []aegis.PolicySummary {
+	snap := e.snapshot.Load()
+	if snap == nil {
+		return nil
+	}
+
+	layerByTemplateID := make(map[string]string, len(snap.bindings))
+	for _, cb := range snap.bindings {
+		if cb.binding.Layer != "" {
+			layerByTemplateID[cb.binding.TemplateID] = cb.binding.Layer
+		}
+	}
+
+	result := make([]aegis.PolicySummary, 0, len(snap.templates))
+	for _, t := range snap.templates {
+		layer := layerByTemplateID[t.ID]
+		if layer == "" {
+			layer = "cel"
+		}
+		result = append(result, aegis.PolicySummary{
+			ID:            t.ID,
+			Name:          t.Name,
+			Layer:         layer,
+			Enabled:       true,
+			CelExpression: t.Expression,
+			Description:   t.Description,
+		})
+	}
+	return result
 }
 
 // matchBindings returns all bindings that match the given tool and session.
