@@ -20,12 +20,10 @@ import (
 
 const scanTimeout = 50 * time.Millisecond
 
-// detectorIface allows injecting a test double.
 type detectorIface interface {
 	detectString(content string) []finding
 }
 
-// finding holds the subset of gitleaks report.Finding we need.
 type finding struct {
 	ruleID      string
 	secret      string
@@ -33,7 +31,6 @@ type finding struct {
 	endColumn   int
 }
 
-// realDetector wraps the gitleaks Detector and converts its findings.
 type realDetector struct {
 	d *detect.Detector
 }

@@ -12,10 +12,9 @@ import (
 	"github.com/mayjain/aegis/pkg/adapters"
 )
 
-// Classification describes the nature of a tool call. NOT a final governance decision (RISK-009).
+// Classification describes the nature of a tool call. NOT a final governance decision.
 type Classification string
 
-// RiskLevel is the assessed risk of a tool call.
 type RiskLevel string
 
 const (
@@ -26,7 +25,6 @@ const (
 	RiskCritical RiskLevel = "critical"
 )
 
-// ResourceType identifies the resource class being accessed.
 type ResourceType string
 
 const (
@@ -51,7 +49,7 @@ const (
 	EffectMessageContent      = "message_content" // SendMessage and similar coordination tools — triggers secret scan on message body
 )
 
-// VerdictEntry provides CLASSIFICATION only — NOT a final governance decision (RISK-009).
+// VerdictEntry provides CLASSIFICATION only — NOT a final governance decision.
 // Never add an Action field here. Classification != decision.
 type VerdictEntry struct {
 	Classification        Classification
