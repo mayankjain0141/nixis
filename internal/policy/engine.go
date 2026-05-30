@@ -419,11 +419,19 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 		}
 
 		if b, ok := val.Value().(bool); ok && !b {
+			action := aegis.ActionDeny
+			if cb.binding.RequireApproval {
+				action = aegis.ActionRequireApproval
+			}
+			reason := cb.binding.Message
+			if reason == "" {
+				reason = "CEL policy evaluation returned false"
+			}
 			sourceLocation := snap.programs.SourceLocation(cb.binding.TemplateID)
 			return aegis.CheckResponse{
 				Decision: aegis.Decision{
-					Action:   aegis.ActionDeny,
-					Reason:   "CEL policy evaluation returned false",
+					Action:   action,
+					Reason:   reason,
 					PolicyID: cb.binding.TemplateID,
 					Labels:   sessionLabel,
 				},
