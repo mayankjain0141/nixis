@@ -38,7 +38,11 @@ func runValidate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if len(skipped) > 0 {
-		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "WARN: %d polic(ies) skipped — undeclared CEL variables: %v\n", len(skipped), skipped)
+		skippedIDs := make([]string, len(skipped))
+		for i, s := range skipped {
+			skippedIDs[i] = s.TemplateID
+		}
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "WARN: %d polic(ies) skipped — undeclared CEL variables: %v\n", len(skipped), skippedIDs)
 	}
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "OK: %d policies valid (%d skipped)\n", len(templates)-len(skipped), len(skipped))
 	return nil

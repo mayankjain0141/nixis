@@ -23,6 +23,7 @@ import (
 	cryptorand "crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"path/filepath"
@@ -433,6 +434,9 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 		policyParams := snap.templateParams[cb.binding.TemplateID]
 		val, err := e.activationBuilder.Evaluate(ctx, prog, req, verdict, decodedArgs, labeled, policyParams, sessionProjectRoot)
 		if err != nil {
+			if cb.binding.DefaultAction == "DENY" {
+				return denyResponse("policy eval error — fail-secure: "+cb.binding.TemplateID, aegis.EnforcingLayerCEL, startNs)
+			}
 			log.Printf("WARN: policy %s eval error (skipping): %v", cb.binding.TemplateID, err)
 			continue
 		}
@@ -600,9 +604,22 @@ func (e *PolicyEngine) buildSnapshot(
 	bundle *aegis.CompiledBundle,
 	version uint64,
 ) (*engineSnapshot, []string, error) {
-	programs, skipped, err := cel.CompileAll(e.celEnv, bundle.Templates)
+	programs, skippedPolicies, err := cel.CompileAll(e.celEnv, bundle.Templates)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	// Fail-closed: refuse to activate when a defaultAction=DENY policy fails compilation.
+	// Prevents an adversary from injecting a syntax error to silently disable a DENY policy.
+	for _, s := range skippedPolicies {
+		if s.DefaultAction == "DENY" {
+			return nil, nil, fmt.Errorf("bundle: cannot load: policy %q has defaultAction=DENY but CEL compilation failed: %v", s.TemplateID, s.CompileErr)
+		}
+	}
+
+	skipped := make([]string, 0, len(skippedPolicies))
+	for _, s := range skippedPolicies {
+		skipped = append(skipped, s.TemplateID)
 	}
 
 	// Build templateParams index: TemplateID → params map.
