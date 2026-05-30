@@ -17,8 +17,8 @@ set -euo pipefail
 
 STREAM_DIR="internal/stream"
 FORBIDDEN=(
-    "github.com/mayjain/nixis/internal/audit"
-    "github.com/mayjain/nixis/internal/policy"
+    "github.com/mayankjain0141/nixis/internal/audit"
+    "github.com/mayankjain0141/nixis/internal/policy"
 )
 
 if [[ ! -d "$STREAM_DIR" ]]; then

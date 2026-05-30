@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/mayjain/nixis/pkg/nixis"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 )
 
 // nullReader implements SnapshotReader returning nil.

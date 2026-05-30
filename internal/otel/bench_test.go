@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	nixisotel "github.com/mayjain/nixis/internal/otel"
+	nixisotel "github.com/mayankjain0141/nixis/internal/otel"
 )
 
 func BenchmarkOTel_DisabledPath(b *testing.B) {

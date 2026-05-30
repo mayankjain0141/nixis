@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mayjain/nixis/internal/ifc"
-	policy "github.com/mayjain/nixis/internal/policy"
-	"github.com/mayjain/nixis/pkg/nixis"
+	"github.com/mayankjain0141/nixis/internal/ifc"
+	policy "github.com/mayankjain0141/nixis/internal/policy"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 	"github.com/spf13/viper"
 	"github.com/zricethezav/gitleaks/v8/config"
 	"github.com/zricethezav/gitleaks/v8/detect"

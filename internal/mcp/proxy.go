@@ -7,8 +7,8 @@ import (
 	"log"
 	"sync"
 
-	"github.com/mayjain/nixis/internal/policy"
-	"github.com/mayjain/nixis/pkg/nixis"
+	"github.com/mayankjain0141/nixis/internal/policy"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 )
 
 // GovernancePipeline evaluates a tool call through Nixis policy.

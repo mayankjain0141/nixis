@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mayjain/nixis/internal/delegation"
-	"github.com/mayjain/nixis/pkg/nixis"
+	"github.com/mayankjain0141/nixis/internal/delegation"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 )
 
 // newDelegEngine creates a delegation.Engine with a fresh ephemeral key pair.

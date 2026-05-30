@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/mayjain/nixis/pkg/nixis"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 )
 
 func TestSelfProtectGuard_AllowedRequests(t *testing.T) {

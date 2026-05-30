@@ -21,8 +21,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/mayjain/nixis/pkg/nixis"
-	policy_types "github.com/mayjain/nixis/pkg/policy/types"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
+	policy_types "github.com/mayankjain0141/nixis/pkg/policy/types"
 )
 
 // PolicyReloader is the interface that BundleLoader uses to push compiled bundles

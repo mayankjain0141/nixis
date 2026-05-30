@@ -78,7 +78,7 @@ if [[ "$PKG" != *"dashboard"* ]]; then
     case "$PKG_NAME" in
         stream)
             # internal/stream must be imported by internal/daemon
-            if ! grep -r "\"github.com/mayjain/nixis/internal/stream\"" cmd/ internal/daemon/ 2>/dev/null | grep -q "stream"; then
+            if ! grep -r "\"github.com/mayankjain0141/nixis/internal/stream\"" cmd/ internal/daemon/ 2>/dev/null | grep -q "stream"; then
                 echo "  [WARN] internal/stream not imported by daemon or cmd/ — may be dead code"
             else
                 echo "  [PASS] internal/stream wired into daemon"
@@ -86,7 +86,7 @@ if [[ "$PKG" != *"dashboard"* ]]; then
             ;;
         bundle)
             # internal/bundle must be imported by cmd/nixis-daemon
-            if ! grep -r "\"github.com/mayjain/nixis/internal/bundle\"" cmd/ 2>/dev/null | grep -q "bundle"; then
+            if ! grep -r "\"github.com/mayankjain0141/nixis/internal/bundle\"" cmd/ 2>/dev/null | grep -q "bundle"; then
                 echo "  [WARN] internal/bundle not imported by cmd/ — startup policy loading may be missing"
             else
                 echo "  [PASS] internal/bundle wired into daemon startup"
@@ -94,7 +94,7 @@ if [[ "$PKG" != *"dashboard"* ]]; then
             ;;
         secret)
             # internal/secret must be imported by cmd/nixis-daemon (WithSecretScanner)
-            if ! grep -r "\"github.com/mayjain/nixis/internal/secret\"" cmd/ 2>/dev/null | grep -q "secret"; then
+            if ! grep -r "\"github.com/mayankjain0141/nixis/internal/secret\"" cmd/ 2>/dev/null | grep -q "secret"; then
                 echo "  [WARN] internal/secret not imported by cmd/ — secret scanning is disabled"
             else
                 echo "  [PASS] internal/secret wired into daemon"
@@ -102,7 +102,7 @@ if [[ "$PKG" != *"dashboard"* ]]; then
             ;;
         reload)
             # internal/reload must be imported by cmd/nixis-daemon
-            if ! grep -r "\"github.com/mayjain/nixis/internal/reload\"" cmd/ 2>/dev/null | grep -q "reload"; then
+            if ! grep -r "\"github.com/mayankjain0141/nixis/internal/reload\"" cmd/ 2>/dev/null | grep -q "reload"; then
                 echo "  [WARN] internal/reload not imported by cmd/ — hot-reload is disabled"
             else
                 echo "  [PASS] internal/reload wired into daemon"
@@ -110,7 +110,7 @@ if [[ "$PKG" != *"dashboard"* ]]; then
             ;;
         delegation)
             # internal/delegation must be imported by cmd/nixis-daemon (WithDelegationValidator)
-            if ! grep -r "\"github.com/mayjain/nixis/internal/delegation\"" cmd/ 2>/dev/null | grep -q "delegation"; then
+            if ! grep -r "\"github.com/mayankjain0141/nixis/internal/delegation\"" cmd/ 2>/dev/null | grep -q "delegation"; then
                 echo "  [WARN] internal/delegation not imported by cmd/ — delegation validation is disabled"
             else
                 echo "  [PASS] internal/delegation wired into daemon"

@@ -21,8 +21,8 @@ import (
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
-	"github.com/mayjain/nixis/internal/ifc"
-	nixistypes "github.com/mayjain/nixis/pkg/nixis"
+	"github.com/mayankjain0141/nixis/internal/ifc"
+	nixistypes "github.com/mayankjain0141/nixis/pkg/nixis"
 	"google.golang.org/protobuf/proto"
 )
 

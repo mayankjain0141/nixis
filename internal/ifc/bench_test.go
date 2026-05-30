@@ -3,7 +3,7 @@ package ifc
 import (
 	"testing"
 
-	"github.com/mayjain/nixis/pkg/nixis"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 )
 
 var (

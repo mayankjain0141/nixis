@@ -19,6 +19,6 @@ spec:
             - Edit
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.matches(".*image:.*:latest.*")'
-          message: 'Container images must not use disallowed tags such as 'latest'. Pin images to a specific digest or version tag.'
+          message: "Container images must not use disallowed tags such as 'latest'. Pin images to a specific digest or version tag."
           action: DENY
     defaultAction: ALLOW

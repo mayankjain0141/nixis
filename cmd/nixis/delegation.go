@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	internaldel "github.com/mayjain/nixis/internal/delegation"
+	internaldel "github.com/mayankjain0141/nixis/internal/delegation"
 	"github.com/spf13/cobra"
 )
 

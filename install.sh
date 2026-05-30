@@ -1,7 +1,7 @@
 #!/bin/sh
 set -euo pipefail
 
-REPO="mayjain/nixis"
+REPO="mayankjain0141/nixis"
 INSTALL_DIR="${NIXIS_INSTALL_DIR:-$HOME/.nixis}"
 
 info() { printf "\033[1;34m==>\033[0m %s\n" "$1"; }

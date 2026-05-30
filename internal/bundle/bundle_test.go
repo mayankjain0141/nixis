@@ -6,7 +6,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/mayjain/nixis/internal/bundle"
+	"github.com/mayankjain0141/nixis/internal/bundle"
 )
 
 // --- ActivationFSM ---

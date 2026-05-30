@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mayjain/nixis/internal/bundle"
-	"github.com/mayjain/nixis/pkg/nixis"
-	policy_types "github.com/mayjain/nixis/pkg/policy/types"
+	"github.com/mayankjain0141/nixis/internal/bundle"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
+	policy_types "github.com/mayankjain0141/nixis/pkg/policy/types"
 )
 
 // makeSignedBundle creates a tar.gz containing bundle.yaml with policyYAML,

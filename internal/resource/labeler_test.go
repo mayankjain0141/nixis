@@ -4,8 +4,8 @@ package resource
 import (
 	"testing"
 
-	"github.com/mayjain/nixis/internal/ifc"
-	"github.com/mayjain/nixis/pkg/nixis"
+	"github.com/mayankjain0141/nixis/internal/ifc"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 )
 
 func TestRuleBasedLabeler_Label(t *testing.T) {

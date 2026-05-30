@@ -22,8 +22,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/mayjain/nixis/internal/otel"
-	"github.com/mayjain/nixis/pkg/nixis"
+	"github.com/mayankjain0141/nixis/internal/otel"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 )
 
 type ipLimiter struct {

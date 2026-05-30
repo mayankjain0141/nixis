@@ -10,7 +10,7 @@ import (
 	rpcstatus "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc/codes"
 
-	"github.com/mayjain/nixis/pkg/nixis"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 )
 
 func translateRequest(envoyReq *authv3.CheckRequest) nixis.CheckRequest {

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	nixisCEL "github.com/mayjain/nixis/internal/cel"
+	nixisCEL "github.com/mayankjain0141/nixis/internal/cel"
 )
 
 // validateOrFixExpr checks whether expr compiles (after normalization). If it does,

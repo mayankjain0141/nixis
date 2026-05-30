@@ -13,9 +13,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	grpcauthz "github.com/mayjain/nixis/internal/grpc"
-	"github.com/mayjain/nixis/internal/stream"
-	"github.com/mayjain/nixis/pkg/nixis"
+	grpcauthz "github.com/mayankjain0141/nixis/internal/grpc"
+	"github.com/mayankjain0141/nixis/internal/stream"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 )
 
 func TestMain(m *testing.M) {

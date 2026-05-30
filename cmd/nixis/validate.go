@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/mayjain/nixis/internal/bundle"
-	"github.com/mayjain/nixis/internal/cel"
+	"github.com/mayankjain0141/nixis/internal/bundle"
+	"github.com/mayankjain0141/nixis/internal/cel"
 	"github.com/spf13/cobra"
 )
 

@@ -4,8 +4,8 @@ package resource
 import (
 	"strings"
 
-	"github.com/mayjain/nixis/internal/ifc"
-	"github.com/mayjain/nixis/pkg/nixis"
+	"github.com/mayankjain0141/nixis/internal/ifc"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 )
 
 // pathRule maps a file path pattern to a SecurityLabel.

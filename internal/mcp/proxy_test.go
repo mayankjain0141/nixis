@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mayjain/nixis/internal/mcp"
-	"github.com/mayjain/nixis/internal/policy"
-	"github.com/mayjain/nixis/pkg/nixis"
+	"github.com/mayankjain0141/nixis/internal/mcp"
+	"github.com/mayankjain0141/nixis/internal/policy"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 	_ "modernc.org/sqlite"
 )
 

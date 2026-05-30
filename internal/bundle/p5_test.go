@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/mayjain/nixis/internal/cel"
-	policy_types "github.com/mayjain/nixis/pkg/policy/types"
+	"github.com/mayankjain0141/nixis/internal/cel"
+	policy_types "github.com/mayankjain0141/nixis/pkg/policy/types"
 )
 
 const bashUnmatchedNetworkCmdYAML = `apiVersion: nixis.io/v1

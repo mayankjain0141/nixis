@@ -7,8 +7,8 @@ import (
 	"crypto/sha256"
 	"time"
 
-	"github.com/mayjain/nixis/pkg/nixis"
-	policy_types "github.com/mayjain/nixis/pkg/policy/types"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
+	policy_types "github.com/mayankjain0141/nixis/pkg/policy/types"
 )
 
 // SetParseDirFn injects a custom parseDirFn into a BundleLoader for testing.

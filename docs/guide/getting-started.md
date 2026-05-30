@@ -151,7 +151,7 @@ If no daemon is running, the dashboard operates in demo mode with simulated even
 Check that all policy files parse correctly:
 
 ```bash
-./bin/nixis validate --dir policies/
+./bin/nixis validate policies/
 ```
 
 ## Troubleshooting

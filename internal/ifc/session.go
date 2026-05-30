@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/mayjain/nixis/pkg/nixis"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 )
 
 // maxUint64Label is the packed representation of the unconstrained ceiling.

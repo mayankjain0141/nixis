@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mayjain/nixis/internal/audit"
-	"github.com/mayjain/nixis/internal/ifc"
-	"github.com/mayjain/nixis/pkg/nixis"
+	"github.com/mayankjain0141/nixis/internal/audit"
+	"github.com/mayankjain0141/nixis/internal/ifc"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 )
 
 // --- stub engine implementations ---

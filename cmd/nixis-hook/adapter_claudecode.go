@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/mayjain/nixis/pkg/nixis"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 )
 
 // ClaudeCodeAdapter handles the Claude Code hook protocol.

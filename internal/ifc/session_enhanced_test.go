@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mayjain/nixis/pkg/nixis"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 )
 
 // ---- ProjectRoot ----

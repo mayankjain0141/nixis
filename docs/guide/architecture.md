@@ -197,7 +197,7 @@ Daemon (single fan-out goroutine)
  └── Client 4 (filter: latency>1ms)
 ```
 
-**Wire format:** CloudEvents v1.0 with `aegissequence` extension (monotonic, gap-free sequence number per connection).
+**Wire format:** CloudEvents v1.0 with `nixissequence` extension (monotonic, gap-free sequence number per connection).
 
 **Design decisions:**
 - Single fan-out goroutine — avoids lock contention on the client list
@@ -233,19 +233,19 @@ flowchart TD
     end
 
     subgraph pkg ["pkg/ (public types)"]
-        aegis_pkg["nixis"]
+        nixis_pkg["nixis"]
     end
 
     DaemonBin --> daemon
-    HookBin --> aegis_pkg
-    CLI --> policy & bundle & aegis_pkg
+    HookBin --> nixis_pkg
+    CLI --> policy & bundle & nixis_pkg
 
     daemon --> policy & audit_pkg & stream_pkg & ifc_pkg & delegation_pkg & otel_pkg
-    policy --> cel & classify & ifc_pkg & label_pkg & aegis_pkg
-    stream_pkg --> aegis_pkg
-    audit_pkg --> aegis_pkg
-    ifc_pkg --> aegis_pkg
-    delegation_pkg --> aegis_pkg
+    policy --> cel & classify & ifc_pkg & label_pkg & nixis_pkg
+    stream_pkg --> nixis_pkg
+    audit_pkg --> nixis_pkg
+    ifc_pkg --> nixis_pkg
+    delegation_pkg --> nixis_pkg
 
     classDef cmd fill:none,stroke:#666
     classDef internal fill:none,stroke:#666

@@ -3,7 +3,7 @@ package adapters_test
 import (
 	"testing"
 
-	"github.com/mayjain/nixis/pkg/adapters"
+	"github.com/mayankjain0141/nixis/pkg/adapters"
 )
 
 func TestCatalog_Loads(t *testing.T) {

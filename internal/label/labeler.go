@@ -8,10 +8,10 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/mayjain/nixis/internal/classify"
-	"github.com/mayjain/nixis/internal/ifc"
-	"github.com/mayjain/nixis/internal/resource"
-	"github.com/mayjain/nixis/pkg/nixis"
+	"github.com/mayankjain0141/nixis/internal/classify"
+	"github.com/mayankjain0141/nixis/internal/ifc"
+	"github.com/mayankjain0141/nixis/internal/resource"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 )
 
 // LabeledRequest is the output of Label(). Contains resource classification

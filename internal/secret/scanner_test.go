@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	policy "github.com/mayjain/nixis/internal/policy"
-	"github.com/mayjain/nixis/pkg/nixis"
+	policy "github.com/mayankjain0141/nixis/internal/policy"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 )
 
 // panicDetector is a test double that always panics.

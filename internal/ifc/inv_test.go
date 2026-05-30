@@ -4,7 +4,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/mayjain/nixis/pkg/nixis"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 )
 
 // TestINV_003_ElevateUsesCAS verifies concurrent elevation on the same session

@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mayjain/nixis/internal/audit"
-	"github.com/mayjain/nixis/internal/ifc"
+	"github.com/mayankjain0141/nixis/internal/audit"
+	"github.com/mayankjain0141/nixis/internal/ifc"
 )
 
 // --- approval endpoint unit tests (no running daemon, direct handler call) ---

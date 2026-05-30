@@ -10,9 +10,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/mayjain/nixis/internal/cel"
-	"github.com/mayjain/nixis/internal/ifc"
-	"github.com/mayjain/nixis/pkg/nixis"
+	"github.com/mayankjain0141/nixis/internal/cel"
+	"github.com/mayankjain0141/nixis/internal/ifc"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 )
 
 // TestINV_005_SingleStoreCallSite verifies engine.go has exactly one atomic .Store( call.

@@ -15,8 +15,13 @@ Opens on http://localhost:5173. Connects to the daemon at `ws://127.0.0.1:9090/w
 
 ## Environment Variables
 
-- `VITE_DAEMON_STREAM_ADDR` — WebSocket URL for event streaming (default: `ws://127.0.0.1:9090/ws`)
-- `VITE_DAEMON_API_ADDR` — HTTP base URL for the daemon REST API (default: `http://127.0.0.1:9090`)
+- `VITE_DAEMON_URL` — Daemon base URL, required for production builds (default in dev: `http://127.0.0.1:9090`)
+
+Copy `.env.example` to `.env` for local development:
+
+```bash
+cp .env.example .env
+```
 
 ## Scripts
 

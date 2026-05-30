@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/mayjain/nixis/pkg/nixis"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 )
 
 // SelfProtectGuard is a hardcoded security guard compiled into the daemon binary.

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mayjain/nixis/internal/ifc"
+	"github.com/mayankjain0141/nixis/internal/ifc"
 )
 
 // stubSessionLabels wraps SessionLabels and counts PruneExpiredRules calls.

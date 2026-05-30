@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/mayjain/nixis/internal/otel"
+	"github.com/mayankjain0141/nixis/internal/otel"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"

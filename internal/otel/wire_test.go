@@ -11,7 +11,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 
-	nixisotel "github.com/mayjain/nixis/internal/otel"
+	nixisotel "github.com/mayankjain0141/nixis/internal/otel"
 )
 
 // TestOTel_FullWire verifies that after InitializeWithProviders, a RecordEvaluation

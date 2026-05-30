@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	policy_types "github.com/mayjain/nixis/pkg/policy/types"
+	policy_types "github.com/mayankjain0141/nixis/pkg/policy/types"
 	"gopkg.in/yaml.v3"
 )
 
