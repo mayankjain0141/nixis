@@ -150,7 +150,7 @@ var droppedTotal atomic.Uint64
 // It implements aegis.StreamTap (Emit) and aegis.SnapshotReader (LoadSnapshot).
 type StreamServer struct {
 	addr         string
-	tap          aegis.StreamTap    // upstream tap (may be nil in tests — server IS the tap)
+	tap          aegis.StreamTap // upstream tap (may be nil in tests — server IS the tap)
 	reader       aegis.SnapshotReader
 	evaluator    Evaluator          // injected via WithEvaluator; nil disables /simulate
 	policyLister aegis.PolicyLister // injected via WithPolicyLister; nil disables GET /policies
