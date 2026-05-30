@@ -1,4 +1,3 @@
-# IMPORT_REVIEW: translated from Rego — checks manifest content at Write/Edit time
 # imported from: gatekeeper-library via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -18,6 +17,6 @@ spec:
             - Edit
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (request.args.content.contains("PersistentVolumeClaim") || request.args.content.contains("StatefulSet")) && !request.args.content.contains("storageClassName:")'
-          message: 'IMPORT_REVIEW: gatekeeper-k8sstorageclass — check manifest content'
+          message: 'PersistentVolumeClaims should specify a storage class. Relying on the default storage class can produce unexpected provisioning behavior.'
           action: AUDIT
     defaultAction: ALLOW

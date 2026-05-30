@@ -1,4 +1,3 @@
-# IMPORT_REVIEW: translated from Rego — checks manifest content at Write/Edit time
 # imported from: gatekeeper-library via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -19,6 +18,6 @@ spec:
             - Edit
     validations:
         - expression: '((tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("hostNetwork: true")) || (tool == "Bash" && request.args.command.contains("--host-network"))'
-          message: 'IMPORT_REVIEW: gatekeeper-k8spsphostnetworkingports — check manifest content'
+          message: 'Pods must not use the host network namespace. Host networking bypasses network isolation and exposes the node's network stack.'
           action: DENY
     defaultAction: ALLOW
