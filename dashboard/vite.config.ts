@@ -1,7 +1,10 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
-const securityHeaders = {
+// Production CSP — strict, no eval, applied to `vite preview` and production servers.
+// Do NOT apply to the dev server: Vite HMR requires 'unsafe-eval' to inject the
+// React Fast Refresh preamble. Applying script-src 'self' in dev blocks HMR entirely.
+const prodSecurityHeaders = {
   'Content-Security-Policy': [
     "default-src 'self'",
     "script-src 'self'",
@@ -20,6 +23,13 @@ const securityHeaders = {
   'Cross-Origin-Opener-Policy': 'same-origin',
 };
 
+// Dev server headers — no CSP (localhost is not a security boundary; HMR needs eval).
+const devSecurityHeaders = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'no-referrer',
+};
+
 export default defineConfig({
   plugins: [
     react(),
@@ -36,14 +46,14 @@ export default defineConfig({
     sourcemap: false,
   },
   server: {
-    headers: securityHeaders,
+    headers: devSecurityHeaders,
     proxy: {
       '/simulate': 'http://localhost:9090',
       '/healthz': 'http://localhost:9090',
     },
   },
   preview: {
-    headers: securityHeaders,
+    headers: prodSecurityHeaders,
   },
   test: {
     globals: true,
