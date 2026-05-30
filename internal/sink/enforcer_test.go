@@ -11,6 +11,50 @@ import (
 	"github.com/mayjain/aegis/pkg/aegis"
 )
 
+func TestIsExternal(t *testing.T) {
+	tests := []struct {
+		resource string
+		want     bool
+	}{
+		// localhost variants → internal
+		{"localhost", false},
+		{"http://localhost", false},
+		{"http://localhost:5432", false},
+		{"http://localhost/path", false},
+		{"foo.localhost", false},
+		{"host.docker.internal", false},
+		// loopback IPs → internal
+		{"127.0.0.1", false},
+		{"http://127.0.0.1:3306", false},
+		{"::1", false},
+		{"http://[::1]:6379", false},
+		// RFC-1918 → internal
+		{"192.168.1.1", false},
+		{"10.0.0.1", false},
+		{"172.16.0.1", false},
+		{"172.31.255.255", false},
+		// link-local → internal
+		{"169.254.1.1", false},
+		// external domains → external
+		{"github.com", true},
+		{"evil.com", true},
+		{"https://github.com/org/repo", true},
+		// external IPs → external
+		{"8.8.8.8", true},
+		{"1.1.1.1", true},
+		// empty → not external (conservative: no resource = not a known external sink)
+		{"", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.resource, func(t *testing.T) {
+			got := sink.IsExternal(tt.resource)
+			if got != tt.want {
+				t.Errorf("IsExternal(%q) = %v, want %v", tt.resource, got, tt.want)
+			}
+		})
+	}
+}
+
 func futureRule(effect, pattern string) ifc.StandingRule {
 	return ifc.StandingRule{
 		Effect:          effect,
@@ -70,36 +114,40 @@ func TestDecision(t *testing.T) {
 			want:    aegis.ActionAllow,
 		},
 
-		// --- tainted + restricted effect + ApprovalNone ---
+		// --- tainted + restricted effect + ApprovalNone + external resource → deny ---
 		{
-			name:    "tainted_network_egress_no_approval",
-			snap:    ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone},
-			effects: []string{classify.EffectNetworkEgress},
-			want:    aegis.ActionRequireApproval,
+			name:      "tainted_network_egress_no_approval_external",
+			snap:      ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone},
+			effects:   []string{classify.EffectNetworkEgress},
+			resources: []string{"github.com"},
+			want:      aegis.ActionDeny,
 		},
 		{
-			name:    "tainted_content_publish_no_approval",
-			snap:    ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone},
-			effects: []string{classify.EffectContentPublish},
-			want:    aegis.ActionRequireApproval,
+			name:      "tainted_content_publish_no_approval_external",
+			snap:      ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone},
+			effects:   []string{classify.EffectContentPublish},
+			resources: []string{"evil.com"},
+			want:      aegis.ActionDeny,
 		},
 		{
-			name:    "tainted_process_coordination_no_approval",
-			snap:    ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone},
-			effects: []string{classify.EffectProcessCoordination},
-			want:    aegis.ActionRequireApproval,
+			name:      "tainted_process_coordination_no_approval_external",
+			snap:      ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone},
+			effects:   []string{classify.EffectProcessCoordination},
+			resources: []string{"external.service.com"},
+			want:      aegis.ActionDeny,
 		},
+		// internal/localhost effects (no specific external resource) → allow
 		{
 			name:    "tainted_content_internal_no_approval",
 			snap:    ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone},
 			effects: []string{classify.EffectContentInternal},
-			want:    aegis.ActionRequireApproval,
+			want:    aegis.ActionAllow,
 		},
 		{
 			name:    "tainted_message_content_no_approval",
 			snap:    ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone},
 			effects: []string{classify.EffectMessageContent},
-			want:    aegis.ActionRequireApproval,
+			want:    aegis.ActionAllow,
 		},
 
 		// --- tainted + ApprovalSessionGranted ---
@@ -137,7 +185,7 @@ func TestDecision(t *testing.T) {
 			},
 			effects:   []string{classify.EffectNetworkEgress},
 			resources: []string{"evil.com"},
-			want:      aegis.ActionRequireApproval,
+			want:      aegis.ActionDeny, // external resource not covered by rule → deny
 		},
 		{
 			name: "tainted_standing_rule_effect_mismatch",
@@ -148,7 +196,7 @@ func TestDecision(t *testing.T) {
 			},
 			effects:   []string{classify.EffectContentPublish},
 			resources: []string{"api.github.com"},
-			want:      aegis.ActionRequireApproval,
+			want:      aegis.ActionDeny, // external resource, effect mismatch → deny
 		},
 		{
 			name: "tainted_standing_rule_expired",
@@ -159,7 +207,7 @@ func TestDecision(t *testing.T) {
 			},
 			effects:   []string{classify.EffectNetworkEgress},
 			resources: []string{"api.github.com"},
-			want:      aegis.ActionRequireApproval,
+			want:      aegis.ActionDeny, // external resource, expired rule → deny
 		},
 
 		// --- tainted + multi-resource ---
@@ -183,10 +231,10 @@ func TestDecision(t *testing.T) {
 			},
 			effects:   []string{classify.EffectNetworkEgress},
 			resources: []string{"api.github.com", "evil.com"},
-			want:      aegis.ActionRequireApproval,
+			want:      aegis.ActionDeny, // evil.com is external and not covered → deny
 		},
 		{
-			name: "tainted_empty_resources_require_approval",
+			name: "tainted_empty_resources_no_network_cmd_allow",
 			snap: ifc.SessionSnapshot{
 				IsTainted:     true,
 				ApprovalState: ifc.ApprovalStandingRule,
@@ -194,24 +242,49 @@ func TestDecision(t *testing.T) {
 			},
 			effects:   []string{classify.EffectNetworkEgress},
 			resources: []string{},
-			want:      aegis.ActionRequireApproval,
+			want:      aegis.ActionAllow, // no external resource identified → allow (internal assumed)
 		},
 
-		// --- ApprovalPending ---
+		// --- ApprovalPending + external resource → deny ---
 		{
-			name:    "tainted_approval_pending_no_double_prompt",
+			name:      "tainted_approval_pending_external",
+			snap:      ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalPending},
+			effects:   []string{classify.EffectNetworkEgress},
+			resources: []string{"external.com"},
+			want:      aegis.ActionDeny,
+		},
+		// ApprovalPending + no external resource → allow (not exfiltration)
+		{
+			name:    "tainted_approval_pending_no_resource",
 			snap:    ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalPending},
 			effects: []string{classify.EffectNetworkEgress},
-			want:    aegis.ActionRequireApproval,
+			want:    aegis.ActionAllow,
 		},
 
 		// --- containsNetworkCmd ---
 		{
-			name:               "tainted_bash_network_cmd_triggers_gating",
+			name:               "tainted_bash_network_cmd_no_resources_deny",
 			snap:               ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone},
 			effects:            []string{classify.EffectExecProcess},
 			containsNetworkCmd: true,
-			want:               aegis.ActionRequireApproval,
+			resources:          []string{},
+			want:               aegis.ActionDeny, // unknown destination + network cmd → conservative deny
+		},
+		{
+			name:               "tainted_bash_network_cmd_localhost_allow",
+			snap:               ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone},
+			effects:            []string{classify.EffectExecProcess},
+			containsNetworkCmd: true,
+			resources:          []string{"localhost"},
+			want:               aegis.ActionAllow, // localhost → allow even with network cmd
+		},
+		{
+			name:               "tainted_bash_network_cmd_external_deny",
+			snap:               ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone},
+			effects:            []string{classify.EffectExecProcess},
+			containsNetworkCmd: true,
+			resources:          []string{"evil.com"},
+			want:               aegis.ActionDeny,
 		},
 		{
 			name:               "tainted_bash_no_network_cmd_allowed",
@@ -228,16 +301,95 @@ func TestDecision(t *testing.T) {
 			want:               aegis.ActionAllow,
 		},
 
-		// --- multiple effects, one restricted ---
+		// --- multiple effects, one restricted + external resource → deny ---
 		{
-			name: "tainted_multiple_effects_one_restricted",
+			name: "tainted_multiple_effects_one_restricted_external",
 			snap: ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone},
 			effects: []string{
 				classify.EffectReadFiles,
 				classify.EffectNetworkEgress,
 				classify.EffectExecProcess,
 			},
-			want: aegis.ActionRequireApproval,
+			resources: []string{"evil.com"},
+			want:      aegis.ActionDeny,
+		},
+
+		// --- T-LEG-086/087/088: localhost DB/cache access — allow even in tainted session ---
+		{
+			name:               "tainted_localhost_psql_allow",
+			snap:               ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone},
+			effects:            []string{classify.EffectExecProcess},
+			containsNetworkCmd: true,
+			resources:          []string{"localhost"},
+			want:               aegis.ActionAllow,
+		},
+		{
+			name:               "tainted_localhost_mysqldump_allow",
+			snap:               ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone},
+			effects:            []string{classify.EffectExecProcess},
+			containsNetworkCmd: true,
+			resources:          []string{"localhost"},
+			want:               aegis.ActionAllow,
+		},
+		{
+			name:               "tainted_localhost_redis_allow",
+			snap:               ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone},
+			effects:            []string{classify.EffectExecProcess},
+			containsNetworkCmd: true,
+			resources:          []string{"localhost"},
+			want:               aegis.ActionAllow,
+		},
+
+		// --- TestDecision_TaintedLocalhost_Allow: various internal hosts ---
+		{
+			name:               "tainted_127_0_0_1_allow",
+			snap:               ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone},
+			effects:            []string{classify.EffectNetworkEgress},
+			containsNetworkCmd: false,
+			resources:          []string{"127.0.0.1"},
+			want:               aegis.ActionAllow,
+		},
+		{
+			name:               "tainted_rfc1918_192_allow",
+			snap:               ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone},
+			effects:            []string{classify.EffectNetworkEgress},
+			containsNetworkCmd: false,
+			resources:          []string{"192.168.1.100"},
+			want:               aegis.ActionAllow,
+		},
+		{
+			name:               "tainted_docker_internal_allow",
+			snap:               ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone},
+			effects:            []string{classify.EffectNetworkEgress},
+			containsNetworkCmd: false,
+			resources:          []string{"host.docker.internal"},
+			want:               aegis.ActionAllow,
+		},
+
+		// --- TestDecision_TaintedExternal_Deny ---
+		{
+			name:               "tainted_external_github_deny",
+			snap:               ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone},
+			effects:            []string{classify.EffectNetworkEgress},
+			containsNetworkCmd: false,
+			resources:          []string{"github.com"},
+			want:               aegis.ActionDeny,
+		},
+		{
+			name:               "tainted_external_evil_deny",
+			snap:               ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone},
+			effects:            []string{classify.EffectNetworkEgress},
+			containsNetworkCmd: false,
+			resources:          []string{"evil.com"},
+			want:               aegis.ActionDeny,
+		},
+		{
+			name:               "tainted_external_ip_deny",
+			snap:               ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone},
+			effects:            []string{classify.EffectNetworkEgress},
+			containsNetworkCmd: false,
+			resources:          []string{"8.8.8.8"},
+			want:               aegis.ActionDeny,
 		},
 	}
 
