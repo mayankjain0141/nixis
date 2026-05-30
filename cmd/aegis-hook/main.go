@@ -227,6 +227,7 @@ func buildCheckRequest(h HookInput, timestampNs int64) aegis.CheckRequest {
 		Timestamp:       timestampNs,
 		SpawnToken:      os.Getenv("AEGIS_SPAWN_TOKEN"),
 		ParentSessionID: os.Getenv("AEGIS_PARENT_SESSION_ID"),
+		ProjectRoot:     os.Getenv("AEGIS_PROJECT_ROOT"),
 	}
 }
 

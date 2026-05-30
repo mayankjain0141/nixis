@@ -860,7 +860,7 @@ func TestPolicyEngine_ParamsFlowToCEL(t *testing.T) {
 		t.Fatalf("Reload: %v", err)
 	}
 
-	makeReq := func(cmd string) aegis.CheckRequest {
+makeReq := func(cmd string) aegis.CheckRequest {
 		args, _ := json.Marshal(map[string]any{"command": cmd})
 		return aegis.CheckRequest{
 			Tool:      "Bash",
