@@ -4,8 +4,9 @@ import { GovernanceDAG } from '../governance/dag/GovernanceDAG';
 import { DelegationTree } from '../governance/DelegationTree';
 import { AuditHashChain } from '../governance/AuditHashChain';
 import { PolicyPlayground } from './PolicyPlayground';
+import { ThreatTimeline } from '../governance/ThreatTimeline';
 
-export type MainTab = 'dag' | 'playground' | 'audit' | 'delegation';
+export type MainTab = 'dag' | 'playground' | 'audit' | 'delegation' | 'threats';
 
 // Shared ref so App.tsx's navigate handler can switch tabs without prop-drilling
 export const activeTabRef = { current: 'dag' as MainTab, setTab: (_t: MainTab) => {} };
@@ -29,7 +30,7 @@ export function MainArea() {
         background: 'var(--bg-surface)',
         padding: '0 12px', height: 36, flexShrink: 0,
       }}>
-        {(['dag', 'playground', 'audit', 'delegation'] as const).map(tab => (
+        {(['dag', 'playground', 'audit', 'delegation', 'threats'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -41,7 +42,7 @@ export function MainArea() {
               textTransform: 'uppercase' as const, letterSpacing: '0.06em',
             }}
           >
-            {tab === 'dag' ? 'DAG' : tab === 'playground' ? 'Playground' : tab === 'audit' ? 'Audit Chain' : 'Delegation'}
+            {tab === 'dag' ? 'DAG' : tab === 'playground' ? 'Playground' : tab === 'audit' ? 'Audit Chain' : tab === 'delegation' ? 'Delegation' : 'Threats'}
           </button>
         ))}
       </div>
@@ -52,6 +53,11 @@ export function MainArea() {
         {activeTab === 'playground' && <PolicyPlayground />}
         {activeTab === 'audit'      && <AuditHashChain />}
         {activeTab === 'delegation' && <DelegationTree />}
+        {activeTab === 'threats'    && (
+          <div style={{ padding: 16 }}>
+            <ThreatTimeline />
+          </div>
+        )}
       </div>
     </div>
   );
