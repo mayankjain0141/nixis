@@ -17,6 +17,7 @@ import { useLatticeStore } from './stores/lattice-store';
 import { useThreatStore } from './stores/threat-store';
 import { runDemoScenario, runLiveDemoScenario, getDemoPolicies } from './mocks/demoScenario';
 import { getDaemonApiBase } from './lib/api';
+import { loadPolicies } from './lib/policy-loader';
 import { createWebSocketManager } from './lib/realtime/ws-manager';
 import { createEventIngestionPipeline } from './lib/realtime/ingestion-pipeline';
 import { createEventBus } from './lib/realtime/event-bus';
@@ -451,6 +452,12 @@ export default function App() {
 
     setConnectionState('CONNECTING');
     wsManager.connect();
+
+    loadPolicies().then(policies => {
+      if (policies.length > 0) {
+        usePolicyStore.getState().setPolicies(policies);
+      }
+    });
 
     const fallbackTimer = setTimeout(() => {
       if (wsManager.getState() !== 'CONNECTED' && !useMock) {
