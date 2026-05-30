@@ -15,6 +15,6 @@ spec:
             - Bash
     validations:
         - expression: tool == "Bash" && request.args.command.startsWith("fdisk")
-          message: fdisk is classified as critical risk — approval required
+          message: fdisk is blocked — this operation is not appropriate for an AI agent
           action: DENY
     defaultAction: ALLOW

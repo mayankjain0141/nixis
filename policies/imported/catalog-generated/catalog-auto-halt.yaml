@@ -15,6 +15,6 @@ spec:
             - Bash
     validations:
         - expression: tool == "Bash" && request.args.command.startsWith("halt")
-          message: halt is classified as critical risk — approval required
+          message: halt is blocked — this operation is not appropriate for an AI agent
           action: DENY
     defaultAction: ALLOW

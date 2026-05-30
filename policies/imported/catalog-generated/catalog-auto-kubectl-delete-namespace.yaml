@@ -15,6 +15,6 @@ spec:
             - Bash
     validations:
         - expression: tool == "Bash" && request.args.command.startsWith("kubectl delete namespace")
-          message: kubectl delete namespace is classified as critical risk — approval required
-          action: DENY
+          message: kubectl delete namespace requires approval — confirm this is the intended operation
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

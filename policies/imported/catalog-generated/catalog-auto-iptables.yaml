@@ -15,6 +15,6 @@ spec:
             - Bash
     validations:
         - expression: tool == "Bash" && request.args.command.startsWith("iptables")
-          message: iptables is classified as critical risk — approval required
-          action: DENY
+          message: iptables requires approval — confirm this is the intended operation
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

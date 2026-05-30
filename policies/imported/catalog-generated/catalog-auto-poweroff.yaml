@@ -15,6 +15,6 @@ spec:
             - Bash
     validations:
         - expression: tool == "Bash" && request.args.command.startsWith("poweroff")
-          message: poweroff is classified as critical risk — approval required
+          message: poweroff is blocked — this operation is not appropriate for an AI agent
           action: DENY
     defaultAction: ALLOW
