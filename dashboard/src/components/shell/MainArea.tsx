@@ -84,7 +84,7 @@ export function MainArea() {
           </div>
         )}
         {activeTab === 'lattice'    && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
+          <div style={{ display: 'flex', padding: 16 }}>
             <LatticeHasseDiagram />
           </div>
         )}

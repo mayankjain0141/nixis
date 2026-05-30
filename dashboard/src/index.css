@@ -40,3 +40,23 @@ body {
   60%  { box-shadow: 0 0 0 6px rgba(88, 166, 255, 0); }
   100% { box-shadow: 0 0 0 0 rgba(88, 166, 255, 0); }
 }
+
+@keyframes count-pulse {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+@keyframes escalation-flash {
+  0%   { opacity: 0; }
+  50%  { opacity: 0.5; }
+  100% { opacity: 0; }
+}
+
+.count-badge-pulse {
+  animation: count-pulse 350ms ease-out;
+}
+
+.escalation-flash {
+  animation: escalation-flash 550ms ease-out;
+}
