@@ -2,7 +2,9 @@
 package bundle
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -50,74 +52,98 @@ type paramDefinition struct {
 // ParsePolicyFile parses a single YAML policy file and returns a PolicyTemplate and PolicyBinding.
 // The CEL expression is the first validation expression (for MVP-1 simplicity).
 // Returns (nil, nil, nil) if the file is not a PolicyTemplate.
+// For multi-document YAML files (separated by ---), only the first document is returned.
+// Use ParsePolicyDir to load all documents from a directory.
 func ParsePolicyFile(path string) (*policy_types.PolicyTemplate, *policy_types.PolicyBinding, error) {
+	templates, bindings, err := ParsePolicyFileAll(path)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(templates) == 0 {
+		return nil, nil, nil
+	}
+	return &templates[0], &bindings[0], nil
+}
+
+// ParsePolicyFileAll parses all YAML documents in a single file.
+// Files with multiple --- separated documents (e.g. semantic-categories.yaml) produce
+// one template+binding per document. Single-document files return a slice of length 1.
+// Returns (nil, nil, nil) if the file contains no PolicyTemplate documents.
+func ParsePolicyFileAll(path string) ([]policy_types.PolicyTemplate, []policy_types.PolicyBinding, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	var manifest policyManifest
-	if err := yaml.Unmarshal(data, &manifest); err != nil {
-		return nil, nil, err
-	}
+	var templates []policy_types.PolicyTemplate
+	var bindings []policy_types.PolicyBinding
 
-	if manifest.Kind != "PolicyTemplate" {
-		return nil, nil, nil
-	}
-
-	if manifest.APIVersion != "aegis.io/v1" {
-		return nil, nil, nil
-	}
-
-	expr, requireApproval := buildCombinedExpression(&manifest)
-	if expr == "" {
-		log.Printf("bundle: %s: PolicyTemplate %q has no evaluable validations — skipping", path, manifest.Metadata.Name)
-		return nil, nil, nil
-	}
-
-	var message string
-	for _, v := range manifest.Spec.Validations {
-		if v.Message != "" {
-			message = v.Message
-			break
+	dec := yaml.NewDecoder(bytes.NewReader(data))
+	for {
+		var manifest policyManifest
+		if err := dec.Decode(&manifest); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, nil, err
 		}
+
+		if manifest.Kind != "PolicyTemplate" || manifest.APIVersion != "aegis.io/v1" {
+			continue
+		}
+
+		expr, requireApproval := buildCombinedExpression(&manifest)
+		if expr == "" {
+			log.Printf("bundle: %s: PolicyTemplate %q has no evaluable validations — skipping", path, manifest.Metadata.Name)
+			continue
+		}
+
+		var message string
+		for _, v := range manifest.Spec.Validations {
+			if v.Message != "" {
+				message = v.Message
+				break
+			}
+		}
+
+		params, err := resolveParams(manifest.Spec.Params, path)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		layer := manifest.Spec.Layer
+		if _, known := LayerPriority[layer]; !known || layer == "" {
+			layer = LayerCEL
+		}
+
+		templates = append(templates, policy_types.PolicyTemplate{
+			ID:            manifest.Metadata.Name,
+			Name:          manifest.Metadata.Name,
+			Description:   strings.TrimRight(manifest.Spec.Description, "\n\r "),
+			Expression:    expr,
+			Params:        params,
+			SourceFile:    path,
+			SourceLine:    1,
+			DefaultAction: manifest.Spec.DefaultAction,
+		})
+		bindings = append(bindings, policy_types.PolicyBinding{
+			TemplateID: manifest.Metadata.Name,
+			Scope: policy_types.PolicyScope{
+				Tools:   manifest.Spec.MatchConstraints.Tools,
+				Effects: manifest.Spec.MatchConstraints.Effects,
+			},
+			Priority:        0,
+			Layer:           layer,
+			RequireApproval: requireApproval,
+			Message:         message,
+			DefaultAction:   manifest.Spec.DefaultAction,
+		})
 	}
 
-	params, err := resolveParams(manifest.Spec.Params, path)
-	if err != nil {
-		return nil, nil, err
+	if len(templates) == 0 {
+		return nil, nil, nil
 	}
-
-	template := &policy_types.PolicyTemplate{
-		ID:            manifest.Metadata.Name,
-		Name:          manifest.Metadata.Name,
-		Description:   strings.TrimRight(manifest.Spec.Description, "\n\r "),
-		Expression:    expr,
-		Params:        params,
-		SourceFile:    path,
-		SourceLine:    1,
-		DefaultAction: manifest.Spec.DefaultAction,
-	}
-
-	layer := manifest.Spec.Layer
-	if _, known := LayerPriority[layer]; !known || layer == "" {
-		layer = LayerCEL
-	}
-
-	binding := &policy_types.PolicyBinding{
-		TemplateID: manifest.Metadata.Name,
-		Scope: policy_types.PolicyScope{
-			Tools:   manifest.Spec.MatchConstraints.Tools,
-			Effects: manifest.Spec.MatchConstraints.Effects,
-		},
-		Priority:        0,
-		Layer:           layer,
-		RequireApproval: requireApproval,
-		Message:         message,
-		DefaultAction:   manifest.Spec.DefaultAction,
-	}
-
-	return template, binding, nil
+	return templates, bindings, nil
 }
 
 // resolveParams converts the raw YAML params map into a resolved map[string]any
@@ -327,17 +353,15 @@ func ParsePolicyDir(dir string) ([]policy_types.PolicyTemplate, []policy_types.P
 			return nil
 		}
 
-		template, binding, parseErr := ParsePolicyFile(path)
+		fileTmpl, fileBind, parseErr := ParsePolicyFileAll(path)
 		if parseErr != nil {
 			log.Printf("bundle: skipping %s: %v", path, parseErr)
 			skipped++
 			return nil
 		}
 
-		if template != nil && binding != nil {
-			templates = append(templates, *template)
-			bindings = append(bindings, *binding)
-		}
+		templates = append(templates, fileTmpl...)
+		bindings = append(bindings, fileBind...)
 		return nil
 	})
 	if err != nil {

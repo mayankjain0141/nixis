@@ -59,7 +59,7 @@ func TestINV_014_PathCanonicalization(t *testing.T) {
 	// Path inside project: expression must evaluate to true.
 	insideArgs := argsJSON(t, map[string]any{"target": inside, "root": root})
 	insideReq := aegis.CheckRequest{Tool: "ReadFile", Args: insideArgs}
-insideVal, err := builder.Evaluate(context.Background(), prog, insideReq, verdict, decodeArgs(t, insideArgs), label.LabeledRequest{}, nil, "")
+	insideVal, err := builder.Evaluate(context.Background(), prog, insideReq, verdict, decodeArgs(t, insideArgs), label.LabeledRequest{}, nil, "")
 	if err != nil {
 		t.Fatalf("evaluate inside: %v", err)
 	}
@@ -70,7 +70,7 @@ insideVal, err := builder.Evaluate(context.Background(), prog, insideReq, verdic
 	// Path via symlink escaping root: expression must evaluate to false.
 	escapeRaw, _ := json.Marshal(map[string]any{"target": escapePath, "root": root})
 	escapeReq := aegis.CheckRequest{Tool: "ReadFile", Args: escapeRaw}
-escapeVal, err := builder.Evaluate(context.Background(), prog, escapeReq, verdict, decodeArgs(t, escapeRaw), label.LabeledRequest{}, nil, "")
+	escapeVal, err := builder.Evaluate(context.Background(), prog, escapeReq, verdict, decodeArgs(t, escapeRaw), label.LabeledRequest{}, nil, "")
 	if err != nil {
 		t.Fatalf("evaluate escape: %v", err)
 	}
