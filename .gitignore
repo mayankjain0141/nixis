@@ -136,6 +136,9 @@ testdata/
 # ===========================
 .worktrees/
 
+# eval results (historical run artifacts, kept local only)
+eval/results/
+
 # compiled binaries (built at repo root)
 /nixis
 /nixis-daemon
