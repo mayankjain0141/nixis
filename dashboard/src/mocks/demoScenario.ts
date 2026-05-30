@@ -1206,7 +1206,7 @@ export function runLiveDemoScenario(apiBase: string, onError: (err: Error) => vo
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             tool: input.tool,
-            args: JSON.stringify(input.args ?? {}),
+            args: input.args ?? {},
             session_id: input.sessionId,
             timestamp: Date.now() * 1_000_000,
           }),
