@@ -95,7 +95,7 @@ describe('PolicyPlayground — fetch payload', () => {
   it('sends correct JSON body to /simulate endpoint', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ verdict: 'deny', explanation: 'Blocked.', latencyNs: 0 }),
+      json: async () => ({ Decision: { Action: 'deny', Reason: 'Blocked.', PolicyID: 'test-policy' }, LatencyNs: 1000000 }),
     } as unknown as Response);
     vi.stubGlobal('fetch', mockFetch);
 
@@ -113,9 +113,9 @@ describe('PolicyPlayground — fetch payload', () => {
     expect(options.method).toBe('POST');
 
     const body = JSON.parse(options.body as string) as Record<string, unknown>;
-    expect(body.tool).toBe('Bash');
-    expect(body.cel_expression).toBeDefined();
-    expect(body.session_id).toBeDefined();
-    expect(body.timestamp).toBeTypeOf('number');
+    expect(body.Tool).toBe('Bash');
+    expect(body.Args).toMatchObject({ command: expect.any(String) });
+    expect(body.SessionID).toBeDefined();
+    expect(body.Timestamp).toBeTypeOf('number');
   });
 });
