@@ -16,7 +16,7 @@ export function ToolNode({ data }: NodeProps) {
     >
       <div style={{ fontSize: 9, color: '#818cf8', marginBottom: 2, fontWeight: 600 }}>TOOL</div>
       <div>{String(data.label ?? '')}</div>
-      <Handle type="target" position={Position.Top} id="parent" />
+      <Handle type="target" position={Position.Left} />
       <Handle type="source" position={Position.Right} />
     </div>
   );

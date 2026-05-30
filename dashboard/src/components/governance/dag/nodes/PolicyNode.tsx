@@ -24,7 +24,6 @@ export function PolicyNode({ data }: NodeProps) {
       <div>{String(data.label ?? '')}</div>
       <Handle type="target" position={Position.Left} />
       <Handle type="source" position={Position.Right} />
-      <Handle type="source" position={Position.Bottom} id="children" />
     </div>
   );
 }
