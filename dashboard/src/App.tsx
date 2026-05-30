@@ -19,6 +19,7 @@ import { useUIStore } from './stores/ui-store';
 import { useLatticeStore } from './stores/lattice-store';
 import { useThreatStore } from './stores/threat-store';
 import { runDemoScenario, runLiveDemoScenario, getDemoPolicies } from './mocks/demoScenario';
+import { getDaemonApiBase } from './lib/api';
 import { createWebSocketManager } from './lib/realtime/ws-manager';
 import { createEventIngestionPipeline } from './lib/realtime/ingestion-pipeline';
 import { createEventBus } from './lib/realtime/event-bus';
@@ -39,17 +40,6 @@ const DAEMON_WS_URL = (() => {
     return 'ws://localhost:9090/ws';
   }
 })();
-
-function getDaemonApiBase(): string {
-  try {
-    if (import.meta.env?.VITE_DAEMON_API_URL) {
-      return import.meta.env.VITE_DAEMON_API_URL as string;
-    }
-  } catch {
-    // import.meta not available in test environments
-  }
-  return 'http://localhost:9090';
-}
 
 function buildPolicyUpdate(
   event: ValidatedEvent & { type: 'policy.evaluated' | 'policy.denied' },
