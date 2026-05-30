@@ -2,8 +2,11 @@
 package ifc
 
 import (
+	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/mayjain/aegis/pkg/aegis"
 )
@@ -21,12 +24,62 @@ const (
 	stateOrdinalDeclassified uint32 = 3
 )
 
+// ApprovalState is the permission layer state machine.
+// Transitions: none → pending → standing_rule → session_granted
+// Backward transitions only occur on StandingRule expiration (standing_rule → none).
+type ApprovalState uint32
+
+const (
+	ApprovalNone           ApprovalState = 0 // no approval granted
+	ApprovalPending        ApprovalState = 1 // approval request shown to user, awaiting response
+	ApprovalStandingRule   ApprovalState = 2 // one or more standing rules active
+	ApprovalSessionGranted ApprovalState = 3 // blanket session approval ("allow all")
+)
+
+// StandingRule is a domain-scoped or path-scoped approval with TTL.
+// Created when user grants approval for a pattern (e.g., "allow *.github.com").
+type StandingRule struct {
+	Effect          string    // "network_egress", "file_write", etc.
+	ResourcePattern string    // glob: "*.github.com", "/tmp/**"
+	ExpiresAt       time.Time // TTL (default: 30 min or session end)
+	GrantedAt       time.Time // when rule was created
+	GrantedBy       string    // approver identifier for audit
+}
+
+// SessionSnapshot is a point-in-time read of session state for sink enforcement.
+// All fields are copied — mutations to the session do not affect the snapshot.
+//
+// ATOMICITY GUARANTEE: This is NOT a single atomic read. It performs three
+// separate reads: label, approvalState, and standingRules (under RLock).
+//
+// KNOWN LIMITATION (R3 — ACCEPTED): A race exists where ApprovalState is granted
+// between the TaintBit read and the ApprovalState read. This can cause ONE spurious
+// REQUIRE_APPROVAL response when the user has just granted approval. This is an
+// accepted limitation: the NEXT request from the same session will see the granted
+// approval. This is a UX imperfection, not a security flaw.
+type SessionSnapshot struct {
+	Label         aegis.SecurityLabel
+	IsTainted     bool
+	ApprovalState ApprovalState
+	StandingRules []StandingRule // defensive copy
+}
+
 // sessionData holds per-session mutable state.
-// Fields are accessed only via atomic primitives.
+// Fields are accessed only via atomic primitives or under mutex protection.
 type sessionData struct {
+	// === LABEL STATE (existing fields — unchanged) ===
 	label   atomic.Uint64 // packed current label — CAS-updated by Elevate only
 	ceiling atomic.Uint64 // packed ceiling; 0 = not yet set (treated as maxUint64Label)
 	state   atomic.Uint32 // monotone state ordinal (see stateOrdinal* constants)
+
+	// === APPROVAL STATE (new — atomic because single-value enum, read on hot path) ===
+	// Written by declassification layer; read on sink enforcement path.
+	approvalState atomic.Uint32 // ApprovalState enum
+
+	// === STANDING RULES (new — mutex-protected because slice mutation is not atomic) ===
+	// RWMutex: concurrent reads allowed during sink checks, exclusive on add/prune.
+	rulesMu       sync.RWMutex
+	standingRules []StandingRule
 }
 
 // SessionLabels is a concurrent-safe registry of per-session IFC labels.
@@ -191,4 +244,204 @@ func (s *SessionLabels) CheckCeiling(sessionID string, proposed aegis.SecurityLa
 func (s *SessionLabels) markDeclassified(sessionID string) {
 	entry := s.getOrCreate(sessionID)
 	advanceState(entry, stateOrdinalDeclassified)
+}
+
+// IsTainted returns true if the session's TaintBit category bit is set.
+// This is a fast path for callers that only need the taint bit, not the full snapshot.
+func (s *SessionLabels) IsTainted(sessionID string) bool {
+	v, ok := s.entries.Load(sessionID)
+	if !ok {
+		return false
+	}
+	label := unpackLabel(v.(*sessionData).label.Load())
+	return (label.Category & TaintBit) != 0
+}
+
+// Snapshot returns a point-in-time SessionSnapshot for sink enforcement.
+//
+// ATOMICITY GUARANTEE: This is NOT a single atomic read. It performs three
+// separate reads: label, approvalState, and standingRules (under RLock).
+// The snapshot may observe:
+//   - label from time T1
+//   - approvalState from time T2 (T2 >= T1)
+//   - standingRules from time T3 (T3 >= T2)
+//
+// TAINT SAFETY: Snapshot() is called AFTER maybeTaint() in the evaluation pipeline.
+// By the time Snapshot() runs, any taint from the current request's resource access
+// is already committed to the session label. This guarantees read-your-writes
+// consistency for the current request.
+func (s *SessionLabels) Snapshot(sessionID string) SessionSnapshot {
+	v, ok := s.entries.Load(sessionID)
+	if !ok {
+		return SessionSnapshot{
+			Label:         aegis.SecurityLabel{},
+			IsTainted:     false,
+			ApprovalState: ApprovalNone,
+			StandingRules: nil,
+		}
+	}
+	entry := v.(*sessionData)
+
+	label := unpackLabel(entry.label.Load())
+	isTainted := (label.Category & TaintBit) != 0
+	approvalState := ApprovalState(entry.approvalState.Load())
+
+	entry.rulesMu.RLock()
+	rules := make([]StandingRule, len(entry.standingRules))
+	copy(rules, entry.standingRules)
+	entry.rulesMu.RUnlock()
+
+	return SessionSnapshot{
+		Label:         label,
+		IsTainted:     isTainted,
+		ApprovalState: approvalState,
+		StandingRules: rules,
+	}
+}
+
+// SetApprovalState updates the session's approval state.
+// Transitions are NOT validated — caller must ensure forward-only progression.
+// This method is called from declassification/approval handlers, not hot path.
+func (s *SessionLabels) SetApprovalState(sessionID string, state ApprovalState) {
+	entry := s.getOrCreate(sessionID)
+	entry.approvalState.Store(uint32(state))
+}
+
+// AddStandingRule appends a standing approval rule and sets ApprovalState to ApprovalStandingRule.
+// Uses a CAS loop to ensure ApprovalState only moves forward (never demotes SessionGranted).
+func (s *SessionLabels) AddStandingRule(sessionID string, rule StandingRule) {
+	entry := s.getOrCreate(sessionID)
+
+	entry.rulesMu.Lock()
+	entry.standingRules = append(entry.standingRules, rule)
+	entry.rulesMu.Unlock()
+
+	// Transition to standing_rule state (idempotent if already there or higher)
+	for {
+		old := entry.approvalState.Load()
+		if ApprovalState(old) >= ApprovalStandingRule {
+			return
+		}
+		if entry.approvalState.CompareAndSwap(old, uint32(ApprovalStandingRule)) {
+			return
+		}
+	}
+}
+
+// MatchesStandingRule checks if any non-expired standing rule matches the effect and resource.
+// Returns (true, &rule) on match, (false, nil) on no match.
+//
+// GLOB SEMANTICS:
+//   - "*.github.com" matches "api.github.com" but NOT "evil.api.github.com" (single-level wildcard)
+//   - "*.github.com" also matches "github.com" (exact base domain)
+//   - "/tmp/**" matches "/tmp/foo" and "/tmp/foo/bar" (recursive path wildcard)
+//   - Exact strings match exactly
+//
+// Resource and pattern are lowercased and trailing dots are stripped before matching
+// (handles trailing-dot DNS normalization).
+func (s *SessionLabels) MatchesStandingRule(sessionID, effect, resource string) (bool, *StandingRule) {
+	v, ok := s.entries.Load(sessionID)
+	if !ok {
+		return false, nil
+	}
+	entry := v.(*sessionData)
+
+	now := time.Now()
+	resource = strings.TrimSuffix(strings.ToLower(resource), ".")
+
+	entry.rulesMu.RLock()
+	defer entry.rulesMu.RUnlock()
+
+	for i := range entry.standingRules {
+		rule := &entry.standingRules[i]
+
+		if !rule.ExpiresAt.IsZero() && now.After(rule.ExpiresAt) {
+			continue
+		}
+
+		if rule.Effect != effect {
+			continue
+		}
+
+		pattern := strings.TrimSuffix(strings.ToLower(rule.ResourcePattern), ".")
+		if matchesPattern(pattern, resource) {
+			return true, rule
+		}
+	}
+	return false, nil
+}
+
+// PruneExpiredRules removes all expired standing rules from all sessions.
+// If no rules remain for a session, ApprovalState transitions back to ApprovalNone
+// (only if it was ApprovalStandingRule — does not demote ApprovalSessionGranted).
+//
+// Must be invoked by a background goroutine in the daemon every 5 minutes.
+func (s *SessionLabels) PruneExpiredRules() {
+	now := time.Now()
+
+	s.entries.Range(func(key, value any) bool {
+		entry := value.(*sessionData)
+
+		entry.rulesMu.Lock()
+		n := 0
+		for i := range entry.standingRules {
+			if entry.standingRules[i].ExpiresAt.IsZero() || now.Before(entry.standingRules[i].ExpiresAt) {
+				entry.standingRules[n] = entry.standingRules[i]
+				n++
+			}
+		}
+		entry.standingRules = entry.standingRules[:n]
+		hasRules := n > 0
+		entry.rulesMu.Unlock()
+
+		if !hasRules {
+			for {
+				old := entry.approvalState.Load()
+				if ApprovalState(old) != ApprovalStandingRule {
+					break
+				}
+				if entry.approvalState.CompareAndSwap(old, uint32(ApprovalNone)) {
+					break
+				}
+			}
+		}
+		return true
+	})
+}
+
+// matchesPattern implements our glob semantics for standing rule matching.
+//
+// Pattern and target must already be lowercased and trailing-dot-stripped by the caller.
+func matchesPattern(pattern, target string) bool {
+	if !strings.Contains(pattern, "*") {
+		return pattern == target
+	}
+
+	// Domain wildcard: *.github.com
+	// "*.github.com" matches "api.github.com" (one level) but NOT "evil.api.github.com" (two levels).
+	// Also matches exact base "github.com".
+	if strings.HasPrefix(pattern, "*.") {
+		suffix := pattern[1:] // ".github.com"
+		// Exact base match: "*.github.com" matches "github.com"
+		if target == pattern[2:] {
+			return true
+		}
+		// Single-level subdomain: count dots to enforce exactly one level of wildcard
+		if strings.HasSuffix(target, suffix) {
+			patternDots := strings.Count(suffix, ".")
+			targetDots := strings.Count(target, ".")
+			return targetDots == patternDots
+		}
+		return false
+	}
+
+	// Path recursive wildcard: /tmp/**
+	if strings.HasSuffix(pattern, "/**") {
+		prefix := pattern[:len(pattern)-3]
+		return strings.HasPrefix(target, prefix)
+	}
+
+	// Fallback: filepath.Match for single-character and bracket glob patterns
+	matched, err := filepath.Match(pattern, target)
+	return err == nil && matched
 }
