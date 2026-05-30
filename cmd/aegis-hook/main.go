@@ -149,12 +149,7 @@ func main() {
 	isClaudeCode := hookInput.HookEventName != ""
 
 	// Build CheckRequest.
-	req := aegis.CheckRequest{
-		Tool:      hookInput.Tool,
-		Args:      hookInput.GetInput(),
-		SessionID: hookInput.GetSessionID(),
-		Timestamp: time.Now().UnixNano(),
-	}
+	req := buildCheckRequest(hookInput, time.Now().UnixNano())
 
 	// Connect to daemon socket.
 	conn, err := dialSocket(socketPath, deadline)
@@ -218,6 +213,21 @@ func main() {
 		os.Exit(2)
 	}
 	os.Exit(0)
+}
+
+// buildCheckRequest constructs the CheckRequest from the parsed hook input and
+// spawn-token environment variables set by the harness for child sessions.
+// spawnToken and parentSessionID are read from AEGIS_SPAWN_TOKEN and
+// AEGIS_PARENT_SESSION_ID respectively; both are empty for root sessions.
+func buildCheckRequest(h HookInput, timestampNs int64) aegis.CheckRequest {
+	return aegis.CheckRequest{
+		Tool:            h.Tool,
+		Args:            h.GetInput(),
+		SessionID:       h.GetSessionID(),
+		Timestamp:       timestampNs,
+		SpawnToken:      os.Getenv("AEGIS_SPAWN_TOKEN"),
+		ParentSessionID: os.Getenv("AEGIS_PARENT_SESSION_ID"),
+	}
 }
 
 // socketPath returns the daemon Unix socket path.

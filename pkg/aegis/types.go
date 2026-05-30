@@ -84,6 +84,14 @@ type CheckRequest struct {
 	Tool           string          // exact tool name as declared by the hook (e.g. "Bash", "Write")
 	Args           json.RawMessage // tool arguments; only sha256:<hex> is stored in audit (INV-012)
 	SessionID      string          // stable session identifier propagated from the hook
+	// ParentSessionID is the session_id of the parent agent that spawned this session.
+	// Populated by the hook when AEGIS_SPAWN_TOKEN env var is present.
+	// Empty for root (non-delegated) sessions.
+	ParentSessionID string          `json:"parent_session_id,omitempty"`
+	// SpawnToken is a one-time cryptographic token issued by the daemon when an Agent
+	// tool call is approved from a tainted session. The child hook reads this from the
+	// AEGIS_SPAWN_TOKEN env var and includes it in its first request.
+	SpawnToken     string          `json:"spawn_token,omitempty"`
 	SecurityLabel  SecurityLabel   // caller's current lattice label at request time
 	AuthorityChain []DelegationRef // delegation chain from session root to caller; may be empty
 	Nonce          [16]byte        // replay-prevention nonce; must be unique per request
