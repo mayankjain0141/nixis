@@ -68,7 +68,7 @@ export const useStreamStore = create<StreamState>()(
         draft.connectionState = state;
         if (state === 'CONNECTED') {
           draft.metrics.lastConnectedAt = Date.now();
-        } else if (state === 'DISCONNECTED') {
+        } else if (state === 'DISCONNECTED' || state === 'ERROR') {
           draft.metrics.lastDisconnectedAt = Date.now();
         } else if (state === 'RECONNECTING') {
           draft.metrics.reconnectCount++;
