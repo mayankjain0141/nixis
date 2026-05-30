@@ -54,6 +54,7 @@ export function AppHeader({ connectionState, onStartDemo, onStopDemo, onOpenPale
   const CONNECTION_COLORS: Record<string, string> = {
     CONNECTED: '#2da44e', MOCK: '#8250df', CONNECTING: '#d29922',
     DISCONNECTED: '#cf222e', RECONNECTING: '#d29922', IDLE: '#484f58', FAILED: '#cf222e',
+    ERROR: '#cf222e',
   };
   const color = CONNECTION_COLORS[connectionState] ?? '#484f58';
   const isMock = connectionState === 'MOCK';

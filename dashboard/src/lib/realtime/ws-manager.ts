@@ -35,6 +35,14 @@ const BACKOFF_DELAYS = [1000, 2000, 4000, 8000, 16000];
 const HEARTBEAT_DEAD_THRESHOLD_MS = 60_000;
 const TAB_BUFFER_CAPACITY = 500;
 
+// Ping/pong liveness constants (P1-3).
+const PING_INTERVAL_MS = 5_000;
+const PONG_TIMEOUT_MS = 2_000;
+const MAX_MISSED_PONGS = 3;
+
+// Heartbeat validation constants (P1-5).
+const MAX_CLOCK_OFFSET_MS = 300_000; // 5 minutes
+
 export function createWebSocketManager(wsUrl: string): IWebSocketManager {
   let ws: WebSocket | null = null;
   let state: ConnectionState = 'IDLE';
@@ -54,6 +62,14 @@ export function createWebSocketManager(wsUrl: string): IWebSocketManager {
     clockOffsetMs: 0,
   };
 
+  // Ping/pong state (P1-3).
+  let pingIntervalTimer: ReturnType<typeof setInterval> | null = null;
+  let pongTimeoutTimer: ReturnType<typeof setTimeout> | null = null;
+  let missedPongs = 0;
+
+  // Heartbeat sequence tracking (P1-5).
+  let lastHeartbeatSeq = -1;
+
   function setState(next: ConnectionState): void {
     state = next;
   }
@@ -61,6 +77,30 @@ export function createWebSocketManager(wsUrl: string): IWebSocketManager {
   function clearTimers(): void {
     if (reconnectTimer !== null) { clearTimeout(reconnectTimer); reconnectTimer = null; }
     if (heartbeatTimer !== null) { clearTimeout(heartbeatTimer); heartbeatTimer = null; }
+    stopPing();
+  }
+
+  function stopPing(): void {
+    if (pingIntervalTimer !== null) { clearInterval(pingIntervalTimer); pingIntervalTimer = null; }
+    if (pongTimeoutTimer !== null) { clearTimeout(pongTimeoutTimer); pongTimeoutTimer = null; }
+    missedPongs = 0;
+  }
+
+  function startPing(): void {
+    stopPing();
+    pingIntervalTimer = setInterval(() => {
+      if (ws !== null && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'ping' }));
+        pongTimeoutTimer = setTimeout(() => {
+          missedPongs++;
+          if (missedPongs >= MAX_MISSED_PONGS) {
+            // 3 consecutive missed pongs — connection is dead, force reconnect.
+            ws?.close();
+            scheduleReconnect();
+          }
+        }, PONG_TIMEOUT_MS);
+      }
+    }, PING_INTERVAL_MS);
   }
 
   function scheduleHeartbeatCheck(): void {
@@ -100,6 +140,7 @@ export function createWebSocketManager(wsUrl: string): IWebSocketManager {
       lastHeartbeatAt = Date.now();
       reconnectAttempt = 0;
       scheduleHeartbeatCheck();
+      startPing();
 
       // On reconnect, send resumeFrom so daemon can backfill missed events.
       if (lastSequenceId > 0) {
@@ -122,8 +163,31 @@ export function createWebSocketManager(wsUrl: string): IWebSocketManager {
       // Track sequence from heartbeat to update clockOffset.
       try {
         const parsed = JSON.parse(raw) as Record<string, unknown>;
+
+        // Handle pong — clear missed pong counter (P1-3).
+        if (parsed.type === 'pong') {
+          if (pongTimeoutTimer !== null) { clearTimeout(pongTimeoutTimer); pongTimeoutTimer = null; }
+          missedPongs = 0;
+          return;
+        }
+
         if (parsed.type === 'stream.heartbeat' && typeof parsed.serverTime === 'number') {
-          metrics.clockOffsetMs = parsed.serverTime - Date.now();
+          const offset = parsed.serverTime - Date.now();
+          // Reject heartbeats with clock more than 5 minutes off (P1-5).
+          if (Math.abs(offset) > MAX_CLOCK_OFFSET_MS) {
+            console.warn('[ws] heartbeat rejected — clock offset exceeds ±5 min', { offset });
+            return;
+          }
+          // Reject non-monotonic sequence — possible replay attack (P1-5).
+          // Only validate when seq is present; legacy heartbeats without seq are accepted.
+          if (typeof parsed.seq === 'number') {
+            if (parsed.seq <= lastHeartbeatSeq) {
+              console.warn('[ws] heartbeat seq regression — possible replay', { seq: parsed.seq, lastHeartbeatSeq });
+              return;
+            }
+            lastHeartbeatSeq = parsed.seq;
+          }
+          metrics.clockOffsetMs = offset;
           lastHeartbeatAt = Date.now();
           scheduleHeartbeatCheck();
         }
@@ -187,6 +251,7 @@ export function createWebSocketManager(wsUrl: string): IWebSocketManager {
       clearTimers();
       setState('IDLE');
       reconnectAttempt = 0;
+      lastHeartbeatSeq = -1;
       ws?.close();
       ws = null;
     },
