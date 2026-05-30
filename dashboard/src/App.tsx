@@ -179,6 +179,9 @@ function routeEvents(
               ? new Date(event.envelope.time).getTime()
               : Date.now(),
             acknowledged: false,
+            humanDescription: '',
+            impact: '',
+            relatedSessionName: '',
           });
           updateLastSequence(event.envelope.aegissequence);
         }));

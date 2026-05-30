@@ -14,6 +14,9 @@ function makeThreat(n: number): ThreatEvent {
     aegisSequence: n,
     timestamp: Date.now(),
     acknowledged: false,
+    humanDescription: '',
+    impact: '',
+    relatedSessionName: '',
   };
 }
 
