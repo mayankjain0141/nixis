@@ -15,6 +15,6 @@ spec:
             - Bash
     validations:
         - expression: tool == "Bash" && request.args.command.startsWith("nft")
-          message: nft is classified as critical risk — approval required
-          action: DENY
+          message: nft requires approval — confirm this is the intended operation
+          action: REQUIRE_APPROVAL
     defaultAction: ALLOW

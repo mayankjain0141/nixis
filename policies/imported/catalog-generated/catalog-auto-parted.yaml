@@ -15,6 +15,6 @@ spec:
             - Bash
     validations:
         - expression: tool == "Bash" && request.args.command.startsWith("parted")
-          message: parted is classified as critical risk — approval required
+          message: parted is blocked — this operation is not appropriate for an AI agent
           action: DENY
     defaultAction: ALLOW
