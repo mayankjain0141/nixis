@@ -16,8 +16,8 @@ export function HookNode({ data }: NodeProps) {
     >
       <div style={{ fontSize: 9, color: '#a78bfa', marginBottom: 2, fontWeight: 600 }}>HOOK</div>
       <div>{String(data.label ?? '')}</div>
-      <Handle type="target" position={Position.Top} />
-      <Handle type="source" position={Position.Bottom} />
+      <Handle type="target" position={Position.Left} />
+      <Handle type="source" position={Position.Right} />
     </div>
   );
 }

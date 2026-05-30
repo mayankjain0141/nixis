@@ -22,8 +22,9 @@ export function PolicyNode({ data }: NodeProps) {
     >
       <div style={{ fontSize: 9, color: '#fbbf24', marginBottom: 2, fontWeight: 600 }}>POLICY</div>
       <div>{String(data.label ?? '')}</div>
-      <Handle type="target" position={Position.Top} />
-      <Handle type="source" position={Position.Bottom} />
+      <Handle type="target" position={Position.Left} />
+      <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Bottom} id="children" />
     </div>
   );
 }
