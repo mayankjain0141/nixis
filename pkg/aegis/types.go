@@ -64,6 +64,7 @@ const (
 	EnforcingLayerDelegation EnforcingLayer = "delegation"
 	EnforcingLayerAdapter    EnforcingLayer = "adapter"
 	EnforcingLayerSecretScan EnforcingLayer = "secret-scan"
+	EnforcingLayerSink       EnforcingLayer = "sink"
 )
 
 // DelegationRef is a reference in an authority chain.
