@@ -140,3 +140,6 @@ testdata/
 /aegis-daemon
 /aegis-fix
 /aegis-hook
+docs/
+SUBAGENT_PLAYBOOK.md
+CLAUDE.md
