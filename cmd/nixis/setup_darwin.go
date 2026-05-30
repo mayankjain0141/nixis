@@ -20,9 +20,9 @@ func plistPath() string {
 }
 
 func installDaemonService(homeDir, policyDir string, yes bool) error {
-	aegisDir := filepath.Join(homeDir, ".nixis")
-	daemonBin := filepath.Join(aegisDir, "nixis-daemon")
-	logPath := filepath.Join(aegisDir, "daemon.log")
+	nixisDir := filepath.Join(homeDir, ".nixis")
+	daemonBin := filepath.Join(nixisDir, "nixis-daemon")
+	logPath := filepath.Join(nixisDir, "daemon.log")
 	socketPath := "/tmp/nixis.sock"
 
 	plist := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>

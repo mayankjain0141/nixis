@@ -137,9 +137,9 @@ testdata/
 .worktrees/
 
 # compiled binaries (built at repo root)
-/aegis
-/aegis-daemon
-/aegis-fix
-/aegis-hook
+/nixis
+/nixis-daemon
+/nixis-fix
+/nixis-hook
 SUBAGENT_PLAYBOOK.md
 CLAUDE.md

@@ -33,7 +33,7 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("resolve home directory: %w", err)
 	}
-	aegisDir := filepath.Join(homeDir, ".nixis")
+	nixisDir := filepath.Join(homeDir, ".nixis")
 
 	fmt.Fprintln(w, "Nixis Health Check")
 	fmt.Fprintln(w, "==================")
@@ -48,19 +48,19 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	checks = append(checks, checkSocket())
 
 	// Check 3: Hook binary
-	checks = append(checks, checkHookBinary(aegisDir))
+	checks = append(checks, checkHookBinary(nixisDir))
 
 	// Check 4: Hook output format
-	checks = append(checks, checkHookFormat(aegisDir))
+	checks = append(checks, checkHookFormat(nixisDir))
 
 	// Check 5: settings.json hook
-	checks = append(checks, checkSettingsJSON(homeDir, aegisDir))
+	checks = append(checks, checkSettingsJSON(homeDir, nixisDir))
 
 	// Check 6: Policies loaded
 	checks = append(checks, checkPoliciesLoaded())
 
 	// Check 7: Fail-open count
-	checks = append(checks, checkFailOpen(aegisDir))
+	checks = append(checks, checkFailOpen(nixisDir))
 
 	// Check 8: Heartbeat
 	checks = append(checks, checkHeartbeat())
@@ -130,8 +130,8 @@ func checkSocket() doctorCheck {
 	return doctorCheck{name: "Socket", status: "OK", detail: detail}
 }
 
-func checkHookBinary(aegisDir string) doctorCheck {
-	hookPath := filepath.Join(aegisDir, "nixis-hook")
+func checkHookBinary(nixisDir string) doctorCheck {
+	hookPath := filepath.Join(nixisDir, "nixis-hook")
 	info, err := os.Stat(hookPath)
 	if err != nil {
 		return doctorCheck{name: "Hook", status: "FAIL", detail: fmt.Sprintf("%s not found", hookPath), warning: true}
@@ -142,15 +142,15 @@ func checkHookBinary(aegisDir string) doctorCheck {
 	return doctorCheck{name: "Hook", status: "OK", detail: fmt.Sprintf("%s (executable)", hookPath)}
 }
 
-func checkHookFormat(aegisDir string) doctorCheck {
-	hookPath := filepath.Join(aegisDir, "nixis-hook")
+func checkHookFormat(nixisDir string) doctorCheck {
+	hookPath := filepath.Join(nixisDir, "nixis-hook")
 	if _, err := os.Stat(hookPath); err != nil {
 		return doctorCheck{name: "Hook Format", status: "FAIL", detail: "hook binary missing, cannot test", warning: true}
 	}
 	return doctorCheck{name: "Hook Format", status: "OK", detail: "skipped (requires running daemon)"}
 }
 
-func checkSettingsJSON(homeDir, aegisDir string) doctorCheck {
+func checkSettingsJSON(homeDir, nixisDir string) doctorCheck {
 	path := settingsJSONPath(homeDir)
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -174,7 +174,7 @@ func checkSettingsJSON(homeDir, aegisDir string) doctorCheck {
 
 	hookJSON, _ := json.Marshal(preToolUse)
 	hookStr := string(hookJSON)
-	expectedPath := filepath.Join(aegisDir, "nixis-hook")
+	expectedPath := filepath.Join(nixisDir, "nixis-hook")
 
 	if !strings.Contains(hookStr, expectedPath) {
 		return doctorCheck{name: "Settings", status: "FAIL", detail: "PreToolUse hook does not reference " + expectedPath, warning: true}
@@ -218,8 +218,8 @@ func checkPoliciesLoaded() doctorCheck {
 	return doctorCheck{name: "Policies", status: "OK", detail: fmt.Sprintf("engine ok, %d evaluations served", health.Evaluations)}
 }
 
-func checkFailOpen(aegisDir string) doctorCheck {
-	logPath := filepath.Join(aegisDir, "failopen.log")
+func checkFailOpen(nixisDir string) doctorCheck {
+	logPath := filepath.Join(nixisDir, "failopen.log")
 	f, err := os.Open(logPath)
 	if err != nil {
 		if os.IsNotExist(err) {

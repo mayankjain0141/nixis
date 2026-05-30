@@ -5,18 +5,18 @@ import (
 	"fmt"
 	"strings"
 
-	aegisCEL "github.com/mayjain/nixis/internal/cel"
+	nixisCEL "github.com/mayjain/nixis/internal/cel"
 )
 
 // validateOrFixExpr checks whether expr compiles (after normalization). If it does,
 // it returns expr unchanged. If not, it applies fixCELEscaping and tries again.
 // Returns the valid expression, or "" if both attempts fail (logged to stderr).
 func validateOrFixExpr(expr, fname string) string {
-	env, err := aegisCEL.NewCELEnvironment()
+	env, err := nixisCEL.NewCELEnvironment()
 	if err != nil {
 		return expr // environment failure is not an expression problem; pass through
 	}
-	rawEnv := aegisCEL.RawEnv(env)
+	rawEnv := nixisCEL.RawEnv(env)
 
 	normalised := normaliseCELExprForFix(expr)
 	_, issues := rawEnv.Parse(normalised)

@@ -20,8 +20,8 @@ func systemdUnitPath() string {
 }
 
 func installDaemonService(homeDir, policyDir string, yes bool) error {
-	aegisDir := filepath.Join(homeDir, ".nixis")
-	daemonBin := filepath.Join(aegisDir, "nixis-daemon")
+	nixisDir := filepath.Join(homeDir, ".nixis")
+	daemonBin := filepath.Join(nixisDir, "nixis-daemon")
 	socketPath := "/tmp/nixis.sock"
 
 	unit := fmt.Sprintf(`[Unit]

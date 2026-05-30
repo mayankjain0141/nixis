@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	aegisCEL "github.com/mayjain/nixis/internal/cel"
+	nixisCEL "github.com/mayjain/nixis/internal/cel"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -40,7 +40,7 @@ func init() {
 func runFixCel(cmd *cobra.Command, args []string) error {
 	dir := args[0]
 
-	celEnv, err := aegisCEL.NewCELEnvironment()
+	celEnv, err := nixisCEL.NewCELEnvironment()
 	if err != nil {
 		return fmt.Errorf("fix-cel: create CEL environment: %w", err)
 	}
@@ -100,7 +100,7 @@ const (
 // Returns celFixAlreadyOK if nothing needed changing, celFixOK if repairs were written,
 // celFixFailed if an expression could not be repaired (written as fail-secure false),
 // or celFixSkip if the file could not be read/parsed.
-func fixCelFile(env *aegisCEL.CELEnvironment, path string) (celFixResult, error) {
+func fixCelFile(env *nixisCEL.CELEnvironment, path string) (celFixResult, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return celFixSkip, fmt.Errorf("read: %w", err)
@@ -116,7 +116,7 @@ func fixCelFile(env *aegisCEL.CELEnvironment, path string) (celFixResult, error)
 	}
 
 	root := doc.Content[0]
-	if !isAegisPolicyTemplate(root) {
+	if !isNixisPolicyTemplate(root) {
 		return celFixSkip, nil
 	}
 
@@ -129,7 +129,7 @@ func fixCelFile(env *aegisCEL.CELEnvironment, path string) (celFixResult, error)
 	anyFailed := false
 	var firstFailErr error
 
-	rawEnv := aegisCEL.RawEnv(env)
+	rawEnv := nixisCEL.RawEnv(env)
 
 	for _, node := range exprNodes {
 		expr := node.Value
@@ -200,9 +200,9 @@ func normaliseCELExprForFix(expr string) string {
 	return expr
 }
 
-// isAegisPolicyTemplate returns true if root is a mapping with
+// isNixisPolicyTemplate returns true if root is a mapping with
 // apiVersion: nixis.io/v1 and kind: PolicyTemplate.
-func isAegisPolicyTemplate(root *yaml.Node) bool {
+func isNixisPolicyTemplate(root *yaml.Node) bool {
 	if root.Kind != yaml.MappingNode {
 		return false
 	}

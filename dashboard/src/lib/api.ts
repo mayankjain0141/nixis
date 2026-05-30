@@ -1,5 +1,5 @@
 export function getDaemonApiBase(): string {
-  const override = (window as unknown as Record<string, unknown>).__AEGIS_DAEMON_URL__;
+  const override = (window as unknown as Record<string, unknown>).__NIXIS_DAEMON_URL__;
   if (typeof override === 'string' && override) {
     try {
       const url = new URL(override);

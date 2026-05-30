@@ -1,15 +1,15 @@
 [Unit]
-Description=Aegis Governance Daemon
+Description=Nixis Governance Daemon
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/aegis-daemon -policy-dir /etc/aegis/policies -audit-db /var/lib/aegis/audit.db
+ExecStart=/usr/local/bin/nixis-daemon -policy-dir /etc/nixis/policies -audit-db /var/lib/nixis/audit.db
 Restart=on-failure
 RestartSec=5
-User=aegis
-Group=aegis
-Environment=AEGIS_SOCKET_PATH=/tmp/aegis.sock
+User=nixis
+Group=nixis
+Environment=NIXIS_SOCKET_PATH=/tmp/nixis.sock
 StandardOutput=journal
 StandardError=journal
 LimitNOFILE=65536

@@ -11,7 +11,7 @@ import (
 // TestCLI_Smoke_AllCommandsExitCleanly runs each CLI command with --help
 // to verify they're registered and have valid flag definitions.
 func TestCLI_Smoke_AllCommandsExitCleanly(t *testing.T) {
-	binary := buildAegisBinary(t)
+	binary := buildNixisBinary(t)
 
 	cmds := []struct {
 		name string
@@ -45,9 +45,9 @@ func TestCLI_Smoke_AllCommandsExitCleanly(t *testing.T) {
 	}
 }
 
-// buildAegisBinary compiles the nixis CLI binary into a temp dir and returns its path.
+// buildNixisBinary compiles the nixis CLI binary into a temp dir and returns its path.
 // The test is skipped if go build fails (e.g., missing dependencies in CI).
-func buildAegisBinary(t *testing.T) string {
+func buildNixisBinary(t *testing.T) string {
 	t.Helper()
 
 	dir := t.TempDir()

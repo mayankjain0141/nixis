@@ -399,9 +399,9 @@ spec:
 	}
 }
 
-// TestParsePolicyFile_AegisAnnotations verifies that nixis.io/* and third-party
+// TestParsePolicyFile_NixisAnnotations verifies that nixis.io/* and third-party
 // annotations (kyverno.io/*, nixis.io/falco-tags, etc.) do not cause parse errors.
-func TestParsePolicyFile_AegisAnnotations(t *testing.T) {
+func TestParsePolicyFile_NixisAnnotations(t *testing.T) {
 	content := `apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:

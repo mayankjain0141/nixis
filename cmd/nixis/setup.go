@@ -42,15 +42,15 @@ func runSetup(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("resolve home directory: %w", err)
 	}
-	aegisDir := filepath.Join(homeDir, ".nixis")
+	nixisDir := filepath.Join(homeDir, ".nixis")
 
 	if setupUninstall {
-		return runUninstall(cmd, homeDir, aegisDir)
+		return runUninstall(cmd, homeDir, nixisDir)
 	}
-	return runInstall(cmd, homeDir, aegisDir)
+	return runInstall(cmd, homeDir, nixisDir)
 }
 
-func runInstall(cmd *cobra.Command, homeDir, aegisDir string) error {
+func runInstall(cmd *cobra.Command, homeDir, nixisDir string) error {
 	w := cmd.OutOrStdout()
 
 	fmt.Fprintln(w, "Nixis Setup")
@@ -72,12 +72,12 @@ func runInstall(cmd *cobra.Command, homeDir, aegisDir string) error {
 
 	// Step 2: Deploy binaries to ~/.nixis/
 	fmt.Fprintln(w)
-	fmt.Fprintln(w, "[2/8] Deploying binaries to", aegisDir)
-	if err := os.MkdirAll(aegisDir, 0o755); err != nil && !setupDryRun {
-		return fmt.Errorf("create %s: %w", aegisDir, err)
+	fmt.Fprintln(w, "[2/8] Deploying binaries to", nixisDir)
+	if err := os.MkdirAll(nixisDir, 0o755); err != nil && !setupDryRun {
+		return fmt.Errorf("create %s: %w", nixisDir, err)
 	}
 	for _, name := range binaries {
-		dest := filepath.Join(aegisDir, name)
+		dest := filepath.Join(nixisDir, name)
 		fmt.Fprintf(w, "  %s → %s\n", binSources[name], dest)
 		if !setupDryRun {
 			if err := copyFile(binSources[name], dest, 0o755); err != nil {
@@ -89,8 +89,8 @@ func runInstall(cmd *cobra.Command, homeDir, aegisDir string) error {
 	// Step 3: Create policy directories
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "[3/8] Creating policy directories...")
-	builtinDir := filepath.Join(aegisDir, "policies", "builtin")
-	customDir := filepath.Join(aegisDir, "policies", "custom")
+	builtinDir := filepath.Join(nixisDir, "policies", "builtin")
+	customDir := filepath.Join(nixisDir, "policies", "custom")
 	for _, dir := range []string{builtinDir, customDir} {
 		fmt.Fprintf(w, "  mkdir -p %s\n", dir)
 		if !setupDryRun {
@@ -114,7 +114,7 @@ func runInstall(cmd *cobra.Command, homeDir, aegisDir string) error {
 	// Step 5: Install daemon service
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "[5/8] Installing daemon service...")
-	policyDir := filepath.Join(aegisDir, "policies")
+	policyDir := filepath.Join(nixisDir, "policies")
 	if !setupDryRun {
 		if err := installDaemonService(homeDir, policyDir, setupYes); err != nil {
 			return fmt.Errorf("install daemon service: %w", err)
@@ -127,7 +127,7 @@ func runInstall(cmd *cobra.Command, homeDir, aegisDir string) error {
 	// Step 6: Patch settings.json
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "[6/8] Patching Claude Code settings.json...")
-	hookPath := filepath.Join(aegisDir, "nixis-hook")
+	hookPath := filepath.Join(nixisDir, "nixis-hook")
 	if err := patchSettingsJSON(w, homeDir, hookPath); err != nil {
 		return fmt.Errorf("patch settings.json: %w", err)
 	}
@@ -136,7 +136,7 @@ func runInstall(cmd *cobra.Command, homeDir, aegisDir string) error {
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "[7/8] Running smoke test...")
 	if !setupDryRun {
-		if err := runSmokeTest(w, aegisDir); err != nil {
+		if err := runSmokeTest(w, nixisDir); err != nil {
 			fmt.Fprintf(w, "  ⚠ Smoke test warning: %v\n", err)
 		} else {
 			fmt.Fprintln(w, "  ✓ Smoke test passed")
@@ -149,8 +149,8 @@ func runInstall(cmd *cobra.Command, homeDir, aegisDir string) error {
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "[8/8] Cleaning up stale artifacts...")
 	staleFiles := []string{
-		filepath.Join(aegisDir, "nixis-hook-wrapper.sh"),
-		filepath.Join(aegisDir, "audit.log"),
+		filepath.Join(nixisDir, "nixis-hook-wrapper.sh"),
+		filepath.Join(nixisDir, "audit.log"),
 	}
 	for _, f := range staleFiles {
 		if _, err := os.Stat(f); err == nil {
@@ -167,7 +167,7 @@ func runInstall(cmd *cobra.Command, homeDir, aegisDir string) error {
 	return nil
 }
 
-func runUninstall(cmd *cobra.Command, homeDir, aegisDir string) error {
+func runUninstall(cmd *cobra.Command, homeDir, nixisDir string) error {
 	w := cmd.OutOrStdout()
 	fmt.Fprintln(w, "Nixis Uninstall")
 	fmt.Fprintln(w, "===============")
@@ -192,16 +192,16 @@ func runUninstall(cmd *cobra.Command, homeDir, aegisDir string) error {
 
 	// Step 3: Remove ~/.nixis directory
 	fmt.Fprintln(w)
-	fmt.Fprintln(w, "[3/4] Removing", aegisDir)
+	fmt.Fprintln(w, "[3/4] Removing", nixisDir)
 	if !setupDryRun {
 		if !setupYes {
-			if !confirm(fmt.Sprintf("Remove %s and all contents?", aegisDir)) {
+			if !confirm(fmt.Sprintf("Remove %s and all contents?", nixisDir)) {
 				fmt.Fprintln(w, "  Skipped (user declined)")
 				return nil
 			}
 		}
-		if err := os.RemoveAll(aegisDir); err != nil {
-			return fmt.Errorf("remove %s: %w", aegisDir, err)
+		if err := os.RemoveAll(nixisDir); err != nil {
+			return fmt.Errorf("remove %s: %w", nixisDir, err)
 		}
 		fmt.Fprintln(w, "  Removed")
 	}
@@ -417,8 +417,8 @@ func unpatchSettingsJSON(w io.Writer, homeDir string) error {
 	return nil
 }
 
-func runSmokeTest(w io.Writer, aegisDir string) error {
-	hookBin := filepath.Join(aegisDir, "nixis-hook")
+func runSmokeTest(w io.Writer, nixisDir string) error {
+	hookBin := filepath.Join(nixisDir, "nixis-hook")
 	cmd := exec.Command(hookBin, "--version")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
