@@ -13,6 +13,9 @@ export interface ThreatEvent {
   aegisSequence: number;
   timestamp: number;
   acknowledged: boolean;
+  humanDescription: string;
+  impact: string;
+  relatedSessionName: string;
 }
 
 const MAX_THREATS = 200;
