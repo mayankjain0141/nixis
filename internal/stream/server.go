@@ -112,6 +112,17 @@ func WithPolicyLister(l aegis.PolicyLister) Option {
 	}
 }
 
+// RouteRegistrar is a function that registers additional handlers on the stream server's HTTP mux.
+type RouteRegistrar func(mux *http.ServeMux)
+
+// WithRouteRegistrar adds a callback that registers additional HTTP handlers on the
+// stream server's mux during Start(). Used to co-locate the REST /v1/check endpoint.
+func WithRouteRegistrar(r RouteRegistrar) Option {
+	return func(s *StreamServer) {
+		s.routeRegistrars = append(s.routeRegistrars, r)
+	}
+}
+
 // client represents one connected dashboard WebSocket client.
 type client struct {
 	id     string
@@ -209,6 +220,9 @@ type StreamServer struct {
 	// lastBundlePayload stores the most recent bundle.activated CloudEvent payload.
 	// Replayed to each new client on connect so the dashboard always shows loaded policies.
 	lastBundlePayload atomic.Pointer[[]byte]
+
+	// routeRegistrars holds callbacks that register additional HTTP handlers.
+	routeRegistrars []RouteRegistrar
 }
 
 // NewStreamServer constructs a StreamServer.
@@ -249,6 +263,10 @@ func (s *StreamServer) Start(ctx context.Context, addr string) error {
 	mux.HandleFunc("/simulate", s.handleSimulate)
 	mux.HandleFunc("/policies", s.handlePolicies)
 	mux.HandleFunc("/healthz/ready", s.handleHealthzReady)
+
+	for _, reg := range s.routeRegistrars {
+		reg(mux)
+	}
 
 	s.httpSrv = &http.Server{
 		Handler:      mux,
@@ -854,6 +872,43 @@ func (s *StreamServer) EmitBundleActivated(_ context.Context, version uint64, ha
 	}
 	// Store for replay to clients that connect after the initial broadcast.
 	s.lastBundlePayload.Store(&payload)
+	s.broadcast(payload)
+}
+
+// EmitAuditCheckpoint broadcasts an audit.checkpoint event with the chain hash,
+// previous hash, and record count since the previous checkpoint.
+// It bypasses the generic StreamEvent path so checkpoint-specific fields land
+// in the data payload where the dashboard Zod schema expects them.
+func (s *StreamServer) EmitAuditCheckpoint(_ context.Context, seq int64, hash, prevHash string, eventCount int) {
+	wseq := s.seq.next()
+	data := map[string]any{
+		"sequence":          seq,
+		"hash":              hash,
+		"prev_hash":         prevHash,
+		"events_since_prev": eventCount,
+	}
+	raw, err := json.Marshal(data)
+	if err != nil {
+		log.Printf("stream: marshal audit.checkpoint data: %v", err)
+		return
+	}
+	evt := cloudEvent{
+		SpecVersion:     "1.0",
+		ID:              fmt.Sprintf("ckpt-%d", wseq),
+		Type:            "audit.checkpoint",
+		Source:          "aegis-daemon/instance-001",
+		Time:            time.Now().UTC().Format(time.RFC3339Nano),
+		DataContentType: "application/json",
+		AegisSequence:   wseq,
+		MerkleSelf:      hash,
+		MerklePrev:      prevHash,
+		Data:            raw,
+	}
+	payload, err := json.Marshal(evt)
+	if err != nil {
+		log.Printf("stream: marshal audit.checkpoint envelope: %v", err)
+		return
+	}
 	s.broadcast(payload)
 }
 

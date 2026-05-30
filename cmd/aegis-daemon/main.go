@@ -18,7 +18,9 @@ import (
 	"crypto/ed25519"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/mayjain/aegis/internal/audit"
@@ -52,6 +54,13 @@ func main() {
 		failOpenLog = flag.String("failopen-log", "", "Fail-open log path (default: $AEGIS_FAILOPEN_LOG or ~/.aegis/failopen.log)")
 	)
 	flag.Parse()
+
+	pidLock, err := daemon.AcquirePIDLock(filepath.Join(expandHome("~/.aegis"), "daemon.pid"))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "aegis-daemon: %v\n", err)
+		os.Exit(exitStartupFailure)
+	}
+	defer pidLock.Unlock()
 
 	cfg := daemon.Config{
 		SocketPath:  *socketPath,
@@ -165,15 +174,12 @@ func main() {
 		}()
 	}
 
-	auditDone := make(chan struct{})
-	go func() {
-		defer close(auditDone)
-		auditWriter.Start(ctx)
-	}()
-
 	streamSrv := stream.NewStreamServer(nil, nil,
 		stream.WithEvaluator(engine),
 		stream.WithPolicyLister(engine),
+		stream.WithRouteRegistrar(func(mux *http.ServeMux) {
+			daemon.RegisterCheckHandler(mux, engine)
+		}),
 	)
 	streamCtx, streamCancel := context.WithCancel(ctx)
 	streamDone := make(chan struct{})
@@ -181,12 +187,23 @@ func main() {
 		defer close(streamDone)
 		addr := os.Getenv("AEGIS_DASHBOARD_ADDR")
 		if addr == "" {
-			addr = ":9090"
+			addr = "127.0.0.1:9090"
 		}
 		if err := streamSrv.Start(streamCtx, addr); err != nil && streamCtx.Err() == nil {
 			fmt.Fprintf(os.Stderr, "aegis-daemon: stream server error: %v\n", err)
 		}
 	}()
+	// Wire audit checkpoint → stream event so the dashboard Forensic Review shows live data.
+	auditWriter.SetCheckpointEmitFn(func(seq int64, hash, prevHash string, eventCount int) {
+		streamSrv.EmitAuditCheckpoint(ctx, seq, hash, prevHash, eventCount)
+	})
+
+	auditDone := make(chan struct{})
+	go func() {
+		defer close(auditDone)
+		auditWriter.Start(ctx)
+	}()
+
 	// Graceful shutdown: cancel the stream server context and wait for it to
 	// drain connections and release the TCP port before the process exits.
 	// Without this wait the goroutine never gets scheduled and the port lingers

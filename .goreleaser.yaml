@@ -1,0 +1,85 @@
+version: 2
+
+builds:
+  - id: aegis
+    main: ./cmd/aegis
+    binary: aegis
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+    flags:
+      - -trimpath
+
+  - id: aegis-hook
+    main: ./cmd/aegis-hook
+    binary: aegis-hook
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+    flags:
+      - -trimpath
+
+archives:
+  - id: default
+    builds:
+      - aegis
+      - aegis-hook
+    format: tar.gz
+    name_template: "aegis_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+brews:
+  - name: aegis
+    repository:
+      owner: mayjain
+      name: homebrew-tap
+    directory: Formula
+    homepage: https://github.com/mayjain/aegis
+    description: "Real-time governance engine for AI coding agents"
+    install: |
+      bin.install "aegis"
+      bin.install "aegis-hook"
+    test: |
+      system "#{bin}/aegis", "version"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
+release:
+  github:
+    owner: mayjain
+    name: aegis
+  header: |
+    ## Install
+
+    ```bash
+    # Homebrew (macOS)
+    brew install mayjain/tap/aegis
+
+    # Or curl one-liner
+    curl -sSfL https://raw.githubusercontent.com/mayjain/aegis/main/install.sh | sh
+
+    # Then configure
+    aegis setup
+    ```
