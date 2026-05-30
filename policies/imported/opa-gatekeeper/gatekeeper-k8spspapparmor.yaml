@@ -1,4 +1,3 @@
-# IMPORT_REVIEW: translated from Rego — checks manifest content at Write/Edit time
 # imported from: gatekeeper-library via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -18,6 +17,6 @@ spec:
             - Edit
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && (request.args.content.contains("kind: Pod") || request.args.content.contains("kind: Deployment") || request.args.content.contains("kind: DaemonSet")) && !request.args.content.contains("container.apparmor.security.beta.kubernetes.io/")'
-          message: 'IMPORT_REVIEW: gatekeeper-k8spspapparmor — check manifest content'
+          message: 'Containers should use an approved AppArmor profile. AppArmor restricts container system call surface.'
           action: AUDIT
     defaultAction: ALLOW

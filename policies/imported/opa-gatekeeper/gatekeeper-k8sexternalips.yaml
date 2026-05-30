@@ -1,4 +1,3 @@
-# IMPORT_REVIEW: translated from Rego — checks manifest content at Write/Edit time
 # imported from: gatekeeper-library via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -20,6 +19,6 @@ spec:
             - Edit
     validations:
         - expression: '(tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("externalIPs:")'
-          message: 'IMPORT_REVIEW: gatekeeper-k8sexternalips — check manifest content'
+          message: 'Services must not specify externalIPs. External IPs bypass cluster network policies and can enable man-in-the-middle attacks.'
           action: DENY
     defaultAction: ALLOW
