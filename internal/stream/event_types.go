@@ -2,7 +2,7 @@
 package stream
 
 // validEventTypes is the set of 12 canonical wire event types.
-// No other type may be emitted (per ADR-012, STREAMING_PROTOCOL.md §4.1).
+// No other type may be emitted (STREAMING_PROTOCOL.md §4.1).
 var validEventTypes = map[string]bool{
 	"policy.evaluated":   true,
 	"policy.denied":      true,

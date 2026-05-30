@@ -22,10 +22,8 @@ var (
 	reloadErrorTotal   atomic.Int64
 )
 
-// ReloadSuccessTotal returns the count of successful policy reloads.
 func ReloadSuccessTotal() int64 { return reloadSuccessTotal.Load() }
 
-// ReloadErrorTotal returns the count of failed policy reloads.
 func ReloadErrorTotal() int64 { return reloadErrorTotal.Load() }
 
 // PolicyReloader is the interface for the policy engine's Reload method.
@@ -34,13 +32,11 @@ type PolicyReloader interface {
 	Reload() error
 }
 
-// ReloadWatcher watches a directory and triggers policy reloads on file changes.
 type ReloadWatcher struct {
 	policyDir string
 	engine    PolicyReloader
 }
 
-// NewReloadWatcher creates a new ReloadWatcher.
 func NewReloadWatcher(policyDir string, engine PolicyReloader) (*ReloadWatcher, error) {
 	return &ReloadWatcher{
 		policyDir: policyDir,
@@ -48,7 +44,6 @@ func NewReloadWatcher(policyDir string, engine PolicyReloader) (*ReloadWatcher, 
 	}, nil
 }
 
-// New is an alias for NewReloadWatcher.
 func New(policyDir string, engine PolicyReloader) (*ReloadWatcher, error) {
 	return NewReloadWatcher(policyDir, engine)
 }
