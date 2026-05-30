@@ -41,6 +41,10 @@ type LabeledRequest struct {
 	// ContainsNetworkCmd is true if a Bash command contains a network-capable binary.
 	ContainsNetworkCmd bool
 
+	// ContainsInterpreterExec is true if a Bash command contains a sub-interpreter
+	// execution pattern (bash -c, python -c, eval, pipe-to-sh, BASH_ENV injection, etc.).
+	ContainsInterpreterExec bool
+
 	// UnknownTool is true when no arg schema is registered for this tool.
 	// Set by the policy engine after CheckArgSchema; not populated by the labeler.
 	UnknownTool bool
@@ -145,6 +149,7 @@ func (l *ruleBasedLabeler) Label(req aegis.CheckRequest, _ classify.VerdictEntry
 	if req.Tool == "Bash" {
 		if cmd, ok := decodedArgs["command"].(string); ok {
 			result.ContainsNetworkCmd = containsNetworkCmd(cmd)
+			result.ContainsInterpreterExec = containsInterpreterExec(cmd)
 		}
 	}
 
@@ -469,6 +474,35 @@ var networkBinaries = map[string]bool{
 	"dig":      true,
 	"nslookup": true,
 	"host":     true,
+	"xmrig":    true,
+	"minerd":   true,
+}
+
+// interpreterExecPatterns detects sub-interpreter execution and startup-file injection.
+// $( and ` (backtick) are intentionally excluded — they produce unacceptable FP rates
+// (make -j$(nproc), GOFLAGS="$(git describe ...)").
+var interpreterExecPatterns = []string{
+	"bash -c", "sh -c", "zsh -c", "fish -c", "ksh -c", "dash -c",
+	"python -c", "python3 -c",
+	"perl -e",
+	"ruby -e",
+	"node -e", "nodejs -e",
+	"php -r",
+	"osascript -e",
+	" eval ",
+	" << ", // heredoc (space-bounded to reduce FP on << in source code)
+	"| bash", "| sh", "| /bin/bash", "| /bin/sh", "|bash", "|sh",
+	"BASH_ENV=",
+	" ENV=",
+}
+
+func containsInterpreterExec(cmd string) bool {
+	for _, p := range interpreterExecPatterns {
+		if strings.Contains(cmd, p) {
+			return true
+		}
+	}
+	return false
 }
 
 // containsNetworkCmd returns true if any token in the command is a network-capable binary.
