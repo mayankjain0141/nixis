@@ -1,14 +1,14 @@
-# imported from: gatekeeper-library via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: gatekeeper-library via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: gatekeeper-k8spsphostprobeslifecycle
     annotations:
-        aegis.io/imported-from: aegis-import-1339214318.yaml
-        aegis.io/original-kind: K8sPSPHostProbesLifecycle
-        aegis.io/severity: high
-        aegis.io/llm-confidence: medium
-        aegis.io/source: open-policy-agent/gatekeeper-library
+        nixis.io/imported-from: nixis-import-1339214318.yaml
+        nixis.io/original-kind: K8sPSPHostProbesLifecycle
+        nixis.io/severity: high
+        nixis.io/llm-confidence: medium
+        nixis.io/source: open-policy-agent/gatekeeper-library
 spec:
     description: Disallows specifying the host field in probes and lifecycle hooks. The Baseline profile (v1.34+) requires that probes (livenessProbe, readinessProbe, startupProbe) and lifecycle hooks (postStart, preStop) must not specify a host field. This prevents containers from executing network requests to the host node. For more information, see https://kubernetes.io/docs/concepts/security/pod-security-standards/
     matchConstraints:

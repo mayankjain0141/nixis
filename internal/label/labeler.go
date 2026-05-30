@@ -8,10 +8,10 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/mayjain/aegis/internal/classify"
-	"github.com/mayjain/aegis/internal/ifc"
-	"github.com/mayjain/aegis/internal/resource"
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/internal/classify"
+	"github.com/mayjain/nixis/internal/ifc"
+	"github.com/mayjain/nixis/internal/resource"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 // LabeledRequest is the output of Label(). Contains resource classification
@@ -22,11 +22,11 @@ type LabeledRequest struct {
 	Matched bool
 
 	// ResourceLabel is the derived SecurityLabel (may be zero if !Matched).
-	ResourceLabel aegis.SecurityLabel
+	ResourceLabel nixis.SecurityLabel
 
 	// AllResourceLabels contains labels for ALL extracted paths/domains.
 	// Used when a single command touches multiple resources (e.g., cp a b).
-	AllResourceLabels []aegis.SecurityLabel
+	AllResourceLabels []nixis.SecurityLabel
 
 	// ResourceType classifies the primary resource kind.
 	// Values: "file", "url", "credential", "cloud_metadata", "kernel_special", "unknown"
@@ -53,7 +53,7 @@ type LabeledRequest struct {
 // Labeler derives LabeledRequest from a CheckRequest.
 // This is the CEL-aware wrapper around internal/resource.ResourceLabeler.
 type Labeler interface {
-	Label(req aegis.CheckRequest, verdict classify.VerdictEntry) LabeledRequest
+	Label(req nixis.CheckRequest, verdict classify.VerdictEntry) LabeledRequest
 }
 
 // ruleBasedLabeler wraps resource.RuleBasedLabeler with CEL metadata.
@@ -73,7 +73,7 @@ func NewLabeler() Labeler {
 }
 
 // Label derives resource labels and match metadata from tool+args.
-func (l *ruleBasedLabeler) Label(req aegis.CheckRequest, _ classify.VerdictEntry) LabeledRequest {
+func (l *ruleBasedLabeler) Label(req nixis.CheckRequest, _ classify.VerdictEntry) LabeledRequest {
 	var decodedArgs map[string]any
 	if len(req.Args) > 0 {
 		_ = json.Unmarshal(req.Args, &decodedArgs)
@@ -93,7 +93,7 @@ func (l *ruleBasedLabeler) Label(req aegis.CheckRequest, _ classify.VerdictEntry
 	allRaw = append(allRaw, paths...)
 	allRaw = append(allRaw, domains...)
 
-	var allLabels []aegis.SecurityLabel
+	var allLabels []nixis.SecurityLabel
 	var allTypes []string
 	var matched bool
 
@@ -210,9 +210,9 @@ func mergePaths(a, b []string) []string {
 }
 
 // joinAll joins a slice of SecurityLabels using max(Conf), min(Integrity), union(Category).
-func joinAll(labels []aegis.SecurityLabel) aegis.SecurityLabel {
+func joinAll(labels []nixis.SecurityLabel) nixis.SecurityLabel {
 	if len(labels) == 0 {
-		return aegis.SecurityLabel{}
+		return nixis.SecurityLabel{}
 	}
 	result := labels[0]
 	for _, l := range labels[1:] {
@@ -224,7 +224,7 @@ func joinAll(labels []aegis.SecurityLabel) aegis.SecurityLabel {
 type extPathRule struct {
 	pattern string
 	matchFn func(path, pattern string) bool
-	label   aegis.SecurityLabel
+	label   nixis.SecurityLabel
 	rtype   string
 }
 
@@ -235,7 +235,7 @@ func (r *extPathRule) matches(path string) bool {
 type extDomainRule struct {
 	pattern string
 	matchFn func(domain, pattern string) bool
-	label   aegis.SecurityLabel
+	label   nixis.SecurityLabel
 	rtype   string
 }
 
@@ -245,24 +245,24 @@ func (r *extDomainRule) matches(domain string) bool {
 
 // classifyPath classifies a file path using the extended rule set.
 // Returns (label, resourceType, matched).
-func (l *ruleBasedLabeler) classifyPath(path string) (aegis.SecurityLabel, string, bool) {
+func (l *ruleBasedLabeler) classifyPath(path string) (nixis.SecurityLabel, string, bool) {
 	for i := range l.pathRules {
 		if l.pathRules[i].matches(path) {
 			return l.pathRules[i].label, l.pathRules[i].rtype, true
 		}
 	}
-	return aegis.SecurityLabel{}, "unknown", false
+	return nixis.SecurityLabel{}, "unknown", false
 }
 
 // classifyDomain classifies a URL/domain using the extended rule set.
 // Returns (label, resourceType, matched).
-func (l *ruleBasedLabeler) classifyDomain(domain string) (aegis.SecurityLabel, string, bool) {
+func (l *ruleBasedLabeler) classifyDomain(domain string) (nixis.SecurityLabel, string, bool) {
 	for i := range l.domainRules {
 		if l.domainRules[i].matches(domain) {
 			return l.domainRules[i].label, l.domainRules[i].rtype, true
 		}
 	}
-	return aegis.SecurityLabel{}, "unknown", false
+	return nixis.SecurityLabel{}, "unknown", false
 }
 
 func matchExact(path, pattern string) bool    { return path == pattern }
@@ -282,8 +282,8 @@ func matchRegex(re *regexp.Regexp) func(string, string) bool {
 	}
 }
 
-func lbl(conf, integ uint16, cat uint32) aegis.SecurityLabel {
-	return aegis.SecurityLabel{Confidentiality: conf, Integrity: integ, Category: cat}
+func lbl(conf, integ uint16, cat uint32) nixis.SecurityLabel {
+	return nixis.SecurityLabel{Confidentiality: conf, Integrity: integ, Category: cat}
 }
 
 // extDefaultPathRules returns the label package's extended path classification rules.

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Package secret implements secret detection for Aegis using Gitleaks.
+// Package secret implements secret detection for Nixis using Gitleaks.
 package secret
 
 import (
@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mayjain/aegis/internal/ifc"
-	policy "github.com/mayjain/aegis/internal/policy"
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/internal/ifc"
+	policy "github.com/mayjain/nixis/internal/policy"
+	"github.com/mayjain/nixis/pkg/nixis"
 	"github.com/spf13/viper"
 	"github.com/zricethezav/gitleaks/v8/config"
 	"github.com/zricethezav/gitleaks/v8/detect"
@@ -87,17 +87,17 @@ func (s *Scanner) init() {
 		}
 		viper.SetConfigType("toml")
 		if err := viper.ReadConfig(strings.NewReader(config.DefaultConfig)); err != nil {
-			log.Printf("aegis/secret: gitleaks config read failed — scanner disabled")
+			log.Printf("nixis/secret: gitleaks config read failed — scanner disabled")
 			return
 		}
 		var vc config.ViperConfig
 		if err := viper.Unmarshal(&vc); err != nil {
-			log.Printf("aegis/secret: gitleaks config unmarshal failed — scanner disabled")
+			log.Printf("nixis/secret: gitleaks config unmarshal failed — scanner disabled")
 			return
 		}
 		cfg, err := vc.Translate()
 		if err != nil {
-			log.Printf("aegis/secret: gitleaks config translate failed — scanner disabled")
+			log.Printf("nixis/secret: gitleaks config translate failed — scanner disabled")
 			return
 		}
 		regexes := make([]*regexp.Regexp, 0, len(exampleCredentialPatterns))
@@ -136,11 +136,11 @@ func (s *Scanner) ShouldScan(effects []string, boundary policy.BoundaryType) boo
 // ScanBoundary scans content for secrets within the given trust boundary.
 // It enforces a 50 ms deadline per scan. On panic or timeout it returns DENY.
 // The raw secret value NEVER appears in any returned Finding or log line.
-func (s *Scanner) ScanBoundary(ctx context.Context, content string, boundary policy.BoundaryType) ([]policy.Finding, aegis.SecurityLabel) {
+func (s *Scanner) ScanBoundary(ctx context.Context, content string, boundary policy.BoundaryType) ([]policy.Finding, nixis.SecurityLabel) {
 	s.init()
 
 	if s.detector == nil {
-		return nil, aegis.SecurityLabel{}
+		return nil, nixis.SecurityLabel{}
 	}
 
 	// Check context before scanning.
@@ -187,7 +187,7 @@ func (s *Scanner) ScanBoundary(ctx context.Context, content string, boundary pol
 			return nil, denyLabel()
 		}
 		if len(r.findings) == 0 {
-			return nil, aegis.SecurityLabel{}
+			return nil, nixis.SecurityLabel{}
 		}
 		out := make([]policy.Finding, 0, len(r.findings))
 		for _, f := range r.findings {
@@ -206,8 +206,8 @@ func (s *Scanner) ScanBoundary(ctx context.Context, content string, boundary pol
 
 // denyLabel returns the SecurityLabel that signals a detected secret.
 // Confidentiality=3 (highest) with credentials category bit set.
-func denyLabel() aegis.SecurityLabel {
-	return aegis.SecurityLabel{
+func denyLabel() nixis.SecurityLabel {
+	return nixis.SecurityLabel{
 		Confidentiality: 3,
 		Category:        ifc.CatCredentials,
 	}

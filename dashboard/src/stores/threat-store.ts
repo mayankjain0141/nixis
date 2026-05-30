@@ -10,7 +10,7 @@ export interface ThreatEvent {
   tool: string;
   severity: ThreatSeverity;
   description: string;
-  aegisSequence: number;
+  nixisSequence: number;
   timestamp: number;
   acknowledged: boolean;
   humanDescription: string;

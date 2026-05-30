@@ -15,7 +15,7 @@ function makePolicyEvaluated(
     type: 'policy.evaluated',
     envelope: {
       type: 'policy.evaluated',
-      aegissequence: seq,
+      nixissequence: seq,
       id: `evt-${seq}`,
       time: new Date().toISOString(),
     },
@@ -38,7 +38,7 @@ function makePolicyEvaluated(
 function makePolicyDenied(seq: number, tool = 'GitPush', latencyNs = 2_000_000): ValidatedEvent {
   return {
     type: 'policy.denied',
-    envelope: { type: 'policy.denied', aegissequence: seq, id: `evt-${seq}` },
+    envelope: { type: 'policy.denied', nixissequence: seq, id: `evt-${seq}` },
     data: {
       tool,
       session_id: 'sess-2',
@@ -58,16 +58,16 @@ function makePolicyDenied(seq: number, tool = 'GitPush', latencyNs = 2_000_000):
 // ── OrderedEventList tests ────────────────────────────────────────────────────
 
 describe('OrderedEventList', () => {
-  it('maintains ascending aegissequence order on insertion', () => {
+  it('maintains ascending nixissequence order on insertion', () => {
     const list = new OrderedEventList();
     list.insert(makePolicyEvaluated(3));
     list.insert(makePolicyEvaluated(1));
     list.insert(makePolicyEvaluated(2));
-    const seqs = list.toArray().map(e => e.envelope.aegissequence);
+    const seqs = list.toArray().map(e => e.envelope.nixissequence);
     expect(seqs).toEqual([1, 2, 3]);
   });
 
-  it('drops duplicate aegissequence silently', () => {
+  it('drops duplicate nixissequence silently', () => {
     const list = new OrderedEventList();
     list.insert(makePolicyEvaluated(1));
     list.insert(makePolicyEvaluated(1));
@@ -77,7 +77,7 @@ describe('OrderedEventList', () => {
   it('handles already-ordered insertion', () => {
     const list = new OrderedEventList();
     for (let i = 1; i <= 5; i++) list.insert(makePolicyEvaluated(i));
-    const seqs = list.toArray().map(e => e.envelope.aegissequence);
+    const seqs = list.toArray().map(e => e.envelope.nixissequence);
     expect(seqs).toEqual([1, 2, 3, 4, 5]);
   });
 });
@@ -94,7 +94,7 @@ describe('TestStream_AuditOrdering', () => {
       makePolicyEvaluated(2),
     ]);
     const ordered = sp.getOrderedEvents();
-    const seqs = ordered.map(e => e.envelope.aegissequence);
+    const seqs = ordered.map(e => e.envelope.nixissequence);
     expect(seqs).toEqual([1, 2, 3]);
   });
 
@@ -102,7 +102,7 @@ describe('TestStream_AuditOrdering', () => {
     const sp = createStreamProcessor();
     sp.processBatch([makePolicyEvaluated(5), makePolicyEvaluated(2)]);
     sp.processBatch([makePolicyEvaluated(1), makePolicyEvaluated(4), makePolicyEvaluated(3)]);
-    const seqs = sp.getOrderedEvents().map(e => e.envelope.aegissequence);
+    const seqs = sp.getOrderedEvents().map(e => e.envelope.nixissequence);
     expect(seqs).toEqual([1, 2, 3, 4, 5]);
   });
 });
@@ -218,7 +218,7 @@ describe('createStreamProcessor', () => {
     const policyEvent = makePolicyEvaluated(1, 'allow', 'Shell', 1_000_000, 'sess-1');
     const delegEvent: ValidatedEvent = {
       type: 'delegation.created',
-      envelope: { type: 'delegation.created', aegissequence: 2, id: 'del-1' },
+      envelope: { type: 'delegation.created', nixissequence: 2, id: 'del-1' },
       data: { subject: 'sess-1' },
     };
     sp.processBatch([policyEvent, delegEvent]);

@@ -2,7 +2,7 @@
 // This is the ONLY place allowed to read from multiple stores at once.
 // Stores themselves never import from each other.
 
-import type { SecurityLabel } from '../types/aegis';
+import type { SecurityLabel } from '../types/nixis';
 import { VERDICTS } from '../types/events';
 
 export interface InvariantResult {
@@ -18,7 +18,7 @@ const VALID_VERDICT_SET = new Set<string>(VERDICTS);
 export interface InvariantCheckerDeps {
   getGovernanceEvents(): Array<{
     id: string;
-    aegisSequence: number;
+    nixisSequence: number;
     verdict: string;
   }>;
   getSessionLabels(): Map<string, { label: SecurityLabel; updatedAt: number }>;
@@ -33,21 +33,21 @@ export class GovernanceInvariantChecker {
     this.deps = deps;
   }
 
-  // INV: aegisSequence values in the event list are strictly increasing.
+  // INV: nixisSequence values in the event list are strictly increasing.
   // A regression means an out-of-order or duplicate event was accepted into the store.
   checkMonotonicSequence(): InvariantResult {
     const events = this.deps.getGovernanceEvents();
     let lastSeq = -1;
     for (const e of events) {
-      if (e.aegisSequence <= lastSeq) {
+      if (e.nixisSequence <= lastSeq) {
         return {
           id: 'version-monotonic',
           passed: false,
           severity: 'P0-security',
-          message: `Sequence regression: event "${e.id}" has aegisSequence ${e.aegisSequence} after ${lastSeq}`,
+          message: `Sequence regression: event "${e.id}" has nixisSequence ${e.nixisSequence} after ${lastSeq}`,
         };
       }
-      lastSeq = e.aegisSequence;
+      lastSeq = e.nixisSequence;
     }
     return { id: 'version-monotonic', passed: true, severity: 'P0-security', message: 'OK' };
   }

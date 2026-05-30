@@ -1,12 +1,12 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-require-network-policy-require-network-policy-deployment
     annotations:
-        aegis.io/imported-from: aegis-import-382613204.yaml
-        aegis.io/severity: low
-        aegis.io/llm-confidence: medium
+        nixis.io/imported-from: nixis-import-382613204.yaml
+        nixis.io/severity: low
+        nixis.io/llm-confidence: medium
         kyverno.io/category: Sample
 spec:
     description: NetworkPolicy is used to control Pod-to-Pod communication and is a good practice to ensure only authorized Pods can send/receive traffic. This policy checks incoming Deployments to ensure they have a matching, preexisting NetworkPolicy.

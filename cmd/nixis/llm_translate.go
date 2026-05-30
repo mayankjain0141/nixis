@@ -22,14 +22,14 @@ import (
 	"strings"
 	"time"
 
-	aegisCEL "github.com/mayjain/aegis/internal/cel"
+	aegisCEL "github.com/mayjain/nixis/internal/cel"
 )
 
 // anthropicURL is the endpoint for Claude API calls. Overridable in tests.
 var anthropicURL = "https://api.anthropic.com/v1/messages"
 
 // llmSystemPrompt is the invariant part of every translation request.
-const llmSystemPrompt = `You are a policy translator for Aegis, a security governance system for AI agents.
+const llmSystemPrompt = `You are a policy translator for Nixis, a security governance system for AI agents.
 Convert the given policy snippet to a CEL (Common Expression Language) expression.
 
 Available CEL variables:
@@ -81,7 +81,7 @@ type anthropicResponse struct {
 	} `json:"content"`
 }
 
-// translationCacheEntry is the format stored in ~/.aegis/import-cache/<hash>.json.
+// translationCacheEntry is the format stored in ~/.nixis/import-cache/<hash>.json.
 type translationCacheEntry struct {
 	InputHash       string    `json:"input_hash"`
 	SourceFormat    string    `json:"source_format"`
@@ -117,7 +117,7 @@ func NewLLMTranslator(model string, maxRetries int) (*LLMTranslator, error) {
 	if err != nil {
 		home = "."
 	}
-	cacheDir := filepath.Join(home, ".aegis", "import-cache")
+	cacheDir := filepath.Join(home, ".nixis", "import-cache")
 
 	return &LLMTranslator{
 		model:         model,

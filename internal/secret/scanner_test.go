@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	policy "github.com/mayjain/aegis/internal/policy"
-	"github.com/mayjain/aegis/pkg/aegis"
+	policy "github.com/mayjain/nixis/internal/policy"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 // panicDetector is a test double that always panics.
@@ -48,7 +48,7 @@ func newScannerWithDetector(td detectorIface) *Scanner {
 }
 
 // isZeroLabel returns true when the label carries no security signal.
-func isZeroLabel(l aegis.SecurityLabel) bool {
+func isZeroLabel(l nixis.SecurityLabel) bool {
 	return l.Confidentiality == 0 && l.Integrity == 0 && l.Category == 0
 }
 

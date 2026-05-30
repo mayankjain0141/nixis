@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 const maxChainDepth = 8
@@ -50,10 +50,10 @@ func New(trustedKeys ...ed25519.PublicKey) (*Engine, error) {
 }
 
 // Validate implements policy.DelegationValidator.
-// Each aegis.DelegationRef carries a TokenID (used to look up the serialised token)
+// Each nixis.DelegationRef carries a TokenID (used to look up the serialised token)
 // and an Issuer. For this implementation, TokenID is expected to be a JSON-encoded
 // DelegationToken so the chain can be fully reconstructed from the DelegationRef slice.
-func (e *Engine) Validate(chain []aegis.DelegationRef, now time.Time) error {
+func (e *Engine) Validate(chain []nixis.DelegationRef, now time.Time) error {
 	if len(chain) == 0 {
 		return nil
 	}
@@ -84,7 +84,7 @@ func (e *Engine) Validate(chain []aegis.DelegationRef, now time.Time) error {
 
 // decodeAndVerify decodes a DelegationToken from a DelegationRef and verifies
 // its Ed25519 signature. Signature is verified before any other parsing (per spec).
-func (e *Engine) decodeAndVerify(ref aegis.DelegationRef, idx int) (DelegationToken, error) {
+func (e *Engine) decodeAndVerify(ref nixis.DelegationRef, idx int) (DelegationToken, error) {
 	// TokenID carries the JSON-encoded token; Issuer is informational.
 	var tok DelegationToken
 	if err := json.Unmarshal([]byte(ref.TokenID), &tok); err != nil {
@@ -134,7 +134,7 @@ func (e *Engine) Revoke(chainID string) {
 
 // ValidateChain decodes, verifies, and builds a Chain from the given DelegationRef
 // slice. Returns the validated Chain (with pre-computed ceiling) alongside any error.
-func (e *Engine) ValidateChain(chain []aegis.DelegationRef, now time.Time) (*Chain, error) {
+func (e *Engine) ValidateChain(chain []nixis.DelegationRef, now time.Time) (*Chain, error) {
 	if len(chain) == 0 {
 		return nil, nil
 	}
@@ -156,7 +156,7 @@ func (e *Engine) ValidateChain(chain []aegis.DelegationRef, now time.Time) (*Cha
 
 // ApplyCeiling returns true if the CheckRequest falls within the given EffectiveCeiling.
 // Returns false (deny) if the ceiling has expired or the request exceeds it.
-func (e *Engine) ApplyCeiling(req aegis.CheckRequest, ceiling EffectiveCeiling) bool {
+func (e *Engine) ApplyCeiling(req nixis.CheckRequest, ceiling EffectiveCeiling) bool {
 	if time.Now().After(ceiling.ExpiresAt) {
 		return false
 	}

@@ -1,14 +1,14 @@
-# imported from: gatekeeper-library via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: gatekeeper-library via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: gatekeeper-k8srequiredprobes
     annotations:
-        aegis.io/imported-from: aegis-import-2032251612.yaml
-        aegis.io/original-kind: K8sRequiredProbes
-        aegis.io/severity: high
-        aegis.io/llm-confidence: medium
-        aegis.io/source: open-policy-agent/gatekeeper-library
+        nixis.io/imported-from: nixis-import-2032251612.yaml
+        nixis.io/original-kind: K8sRequiredProbes
+        nixis.io/severity: high
+        nixis.io/llm-confidence: medium
+        nixis.io/source: open-policy-agent/gatekeeper-library
 spec:
     description: Requires Pods to have readiness and/or liveness probes.
     matchConstraints:

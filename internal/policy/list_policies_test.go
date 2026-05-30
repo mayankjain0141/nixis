@@ -3,10 +3,10 @@ package policy
 import (
 	"testing"
 
-	"github.com/mayjain/aegis/internal/cel"
-	"github.com/mayjain/aegis/internal/ifc"
-	"github.com/mayjain/aegis/pkg/aegis"
-	policy_types "github.com/mayjain/aegis/pkg/policy/types"
+	"github.com/mayjain/nixis/internal/cel"
+	"github.com/mayjain/nixis/internal/ifc"
+	"github.com/mayjain/nixis/pkg/nixis"
+	policy_types "github.com/mayjain/nixis/pkg/policy/types"
 )
 
 func TestListPoliciesNilSnapshot(t *testing.T) {
@@ -33,7 +33,7 @@ func TestListPoliciesWithTemplates(t *testing.T) {
 
 	// Inject a snapshot with two templates and one binding.
 	snap := &engineSnapshot{
-		public: aegis.EngineSnapshot{Version: 1},
+		public: nixis.EngineSnapshot{Version: 1},
 		templates: []policy_types.PolicyTemplate{
 			{ID: "t1", Name: "Template One", Expression: "true", Description: "first"},
 			{ID: "t2", Name: "Template Two", Expression: "false", Description: "second"},
@@ -91,7 +91,7 @@ func TestListPoliciesEmptyTemplates(t *testing.T) {
 	engine := NewPolicyEngine(sessions, celEnv)
 
 	snap := &engineSnapshot{
-		public:     aegis.EngineSnapshot{Version: 1},
+		public:     nixis.EngineSnapshot{Version: 1},
 		templates:  []policy_types.PolicyTemplate{},
 		bindings:   []compiledBinding{},
 		programs:   &cel.ProgramCache{},

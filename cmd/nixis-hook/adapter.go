@@ -4,10 +4,10 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
-// IDEAdapter translates between a specific IDE's hook format and Aegis's
+// IDEAdapter translates between a specific IDE's hook format and Nixis's
 // internal CheckRequest/CheckResponse protocol.
 type IDEAdapter interface {
 	// Name returns the adapter identifier for logging.
@@ -15,9 +15,9 @@ type IDEAdapter interface {
 	// Detect returns true if this adapter should handle the given raw input.
 	Detect(raw json.RawMessage) bool
 	// ParseInput converts IDE-specific JSON into a CheckRequest.
-	ParseInput(raw json.RawMessage) (aegis.CheckRequest, error)
+	ParseInput(raw json.RawMessage) (nixis.CheckRequest, error)
 	// FormatOutput converts a CheckResponse into IDE-specific stdout bytes and exit code.
-	FormatOutput(resp aegis.CheckResponse, rawInput json.RawMessage) (stdout []byte, exitCode int)
+	FormatOutput(resp nixis.CheckResponse, rawInput json.RawMessage) (stdout []byte, exitCode int)
 	// FormatFailOpen produces fail-open output when the daemon is unreachable.
 	FormatFailOpen(reason string, rawInput json.RawMessage) (stdout []byte, exitCode int)
 }

@@ -1,14 +1,14 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-bpf-program-not-profiled
     annotations:
-        aegis.io/falco-tags: maturity_incubating,host,container,mitre_persistence,TA0003
-        aegis.io/imported-from: aegis-import-2621062960.yaml
-        aegis.io/severity: low
-        aegis.io/llm-confidence: medium
-        aegis.io/source-rule: BPF Program Not Profiled
+        nixis.io/falco-tags: maturity_incubating,host,container,mitre_persistence,TA0003
+        nixis.io/imported-from: nixis-import-2621062960.yaml
+        nixis.io/severity: low
+        nixis.io/llm-confidence: medium
+        nixis.io/source-rule: BPF Program Not Profiled
 spec:
     description: |
         BPF is a kernel technology that can be misused for malicious purposes, like "Linux Kernel Module Injection". This rule should be considered an auditing rule to notify you of any unprofiled BPF tools running in your environment. However, it requires customization after profiling your environment. BPF-powered agents make bpf syscalls all the time, so this rule only sends logs for BPF_PROG_LOAD calls (bpf cmd=5) in the enter event. If you also want to log whether the syscall failed or succeeded, remove the direction filter and add the evt.arg.res_or_fd output field.

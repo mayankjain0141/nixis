@@ -1,12 +1,12 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-concatenate-configmaps-concat-cm
     annotations:
-        aegis.io/imported-from: aegis-import-718173178.yaml
-        aegis.io/severity: medium
-        aegis.io/llm-confidence: medium
+        nixis.io/imported-from: nixis-import-718173178.yaml
+        nixis.io/severity: medium
+        nixis.io/llm-confidence: medium
         kyverno.io/category: Other
 spec:
     description: In some cases, an update to an existing resource should have downstream effects on a different resource in another Namespace. Rather than overwriting the target, the current state of the source can be concatenated to the target. This policy, triggered by an update to a source ConfigMap, concatenates that value of a target ConfigMap in a different Namespace.
@@ -14,6 +14,6 @@ spec:
         tools: []
     validations:
         - expression: 'false'
-          message: 'Mutate rule (ConfigMap concatenation) — Aegis cannot mutate requests; verify downstream ConfigMaps are updated when source ConfigMaps change via CI/CD or GitOps workflows'
+          message: 'Mutate rule (ConfigMap concatenation) — Nixis cannot mutate requests; verify downstream ConfigMaps are updated when source ConfigMaps change via CI/CD or GitOps workflows'
           action: AUDIT
     defaultAction: ALLOW

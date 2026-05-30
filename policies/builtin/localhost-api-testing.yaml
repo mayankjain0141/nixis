@@ -27,15 +27,15 @@
 #   1. Set env vars BEFORE session start — not in command text
 #   2. Use a credential manager that injects at subprocess boundary
 
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: localhost-api-testing
   annotations:
     # This policy is in the built-in signed bundle only.
     # project-level-override: prohibited
-    aegis.io/bundle: builtin
-    aegis.io/builtin-only: "true"
+    nixis.io/bundle: builtin
+    nixis.io/builtin-only: "true"
 spec:
   description: "Permit API key use against localhost targets with audit; require approval for external endpoints"
   matchConstraints:

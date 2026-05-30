@@ -1,4 +1,4 @@
-import { type StreamEvent, type Action, EVENT_TYPES, type EventType } from '../types/aegis';
+import { type StreamEvent, type Action, EVENT_TYPES, type EventType } from '../types/nixis';
 
 export interface SequenceOptions {
   sessionCount?: number;
@@ -45,7 +45,7 @@ export function createMockStreamEvent(overrides?: Partial<StreamEvent>): StreamE
   const seed = lcg(seq ^ (Date.now() & 0xffffffff));
   const base: StreamEvent = {
     type: EVENT_TYPES.DECISION,
-    aegisSequence: seq,
+    nixisSequence: seq,
     sessionId: makeSessionId(seed % 16),
     tool: ALL_TOOLS[(seed >>> 4) % ALL_TOOLS.length],
     action: ALL_ACTIONS[(seed >>> 8) % ALL_ACTIONS.length],
@@ -90,7 +90,7 @@ export function createMockEventSequence(count: number, options: SequenceOptions 
 
     events.push({
       type: types[typeIndex],
-      aegisSequence: i + 1, // 1-indexed, strictly monotonic, independent of other generators
+      nixisSequence: i + 1, // 1-indexed, strictly monotonic, independent of other generators
       sessionId: makeSessionId(sessionIndex),
       tool: ALL_TOOLS[toolIndex],
       action: ALL_ACTIONS[actionIndex],
@@ -128,7 +128,7 @@ export function createMockStreamGenerator(intervalMs: number): MockStreamGenerat
     const reasonIndex = (seed >>> 15) % ALL_REASONS.length;
     const event: StreamEvent = {
       type: allTypes[typeIndex],
-      aegisSequence: seq,
+      nixisSequence: seq,
       sessionId: makeSessionId((seed >>> 11) % 3),
       tool: ALL_TOOLS[toolIndex],
       action: ALL_ACTIONS[actionIndex],

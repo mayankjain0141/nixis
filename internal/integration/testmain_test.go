@@ -6,7 +6,7 @@ import (
 
 	"go.uber.org/goleak"
 
-	"github.com/mayjain/aegis/internal/otel"
+	"github.com/mayjain/nixis/internal/otel"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"

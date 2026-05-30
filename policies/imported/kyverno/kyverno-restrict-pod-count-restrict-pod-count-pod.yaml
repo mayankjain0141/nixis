@@ -1,10 +1,10 @@
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-pod-count-restrict-pod-count-pod
     annotations:
-        aegis.io/imported-from: aegis-import-80099680.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-80099680.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Sample
 spec:
     description: Sometimes Kubernetes Nodes may have a maximum number of Pods they can accommodate due to resources outside CPU and memory such as licensing, or in some development cases. This policy restricts Pod count on a Node named `minikube` to be no more than 10.

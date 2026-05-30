@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-require-pod-probes-validate-probes-pod
     annotations:
-        aegis.io/imported-from: aegis-import-4281716217.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-4281716217.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Best Practices, EKS Best Practices
 spec:
     description: Liveness and readiness probes need to be configured to correctly manage a Pod's lifecycle during deployments, restarts, and upgrades. For each Pod, a periodic `livenessProbe` is performed by the kubelet to determine if the Pod's containers are running or need to be restarted. A `readinessProbe` is used by Services and Deployments to determine if the Pod is ready to receive network traffic. This policy validates that all containers have one of livenessProbe, readinessProbe, or startupProbe defined.

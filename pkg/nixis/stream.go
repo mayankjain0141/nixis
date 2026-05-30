@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-package aegis
+package nixis
 
 import "context"
 
@@ -7,7 +7,7 @@ import "context"
 // The event type field uses one of the 12 canonical event type constants.
 type StreamEvent struct {
 	Type           string        // one of the 12 canonical event types (see constants below)
-	AegisSequence  uint64        // monotonic sequence number assigned in the fan-out goroutine at Emit() time
+	NixisSequence  uint64        // monotonic sequence number assigned in the fan-out goroutine at Emit() time
 	SessionID      string        // session that produced this event; empty for system events
 	Tool           string        // tool involved in the event; empty for non-decision events
 	Action         Action        // authorization action for decision events; zero (Deny) for non-decision events

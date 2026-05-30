@@ -1,14 +1,14 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-contact-cloud-metadata-service-from-container
     annotations:
-        aegis.io/falco-tags: maturity_incubating,network,container,mitre_discovery,T1565
-        aegis.io/imported-from: aegis-import-2621062960.yaml
-        aegis.io/severity: low
-        aegis.io/llm-confidence: medium
-        aegis.io/source-rule: Contact cloud metadata service from container
+        nixis.io/falco-tags: maturity_incubating,network,container,mitre_discovery,T1565
+        nixis.io/imported-from: nixis-import-2621062960.yaml
+        nixis.io/severity: low
+        nixis.io/llm-confidence: medium
+        nixis.io/source-rule: Contact cloud metadata service from container
 spec:
     description: |
         Detects attempts to communicate with the Cloud Instance Metadata Service from a container. This detection is narrowly focused and might not apply to your environment. In addition, it could generate noise and require fine-tuning.

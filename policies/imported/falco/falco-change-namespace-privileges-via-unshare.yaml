@@ -1,14 +1,14 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-change-namespace-privileges-via-unshare
     annotations:
-        aegis.io/falco-tags: maturity_incubating,container,mitre_privilege_escalation,T1611
-        aegis.io/imported-from: aegis-import-2621062960.yaml
-        aegis.io/severity: low
-        aegis.io/llm-confidence: medium
-        aegis.io/source-rule: Change namespace privileges via unshare
+        nixis.io/falco-tags: maturity_incubating,container,mitre_privilege_escalation,T1611
+        nixis.io/imported-from: nixis-import-2621062960.yaml
+        nixis.io/severity: low
+        nixis.io/llm-confidence: medium
+        nixis.io/source-rule: Change namespace privileges via unshare
 spec:
     description: |
         Unprivileged users in containers may not have CAP_SYS_ADMIN or other elevated privileges. However, they can use the unshare system call with CLONE_NEWNS or CLONE_NEWUSER to create or clone a namespace or user with the necessary privileges to conduct further attacks. It is best practice to block the unshare system call via seccomp if it is not needed. Misuse of unshare can be related to misconfigured Kubernetes clusters, for example.

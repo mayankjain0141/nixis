@@ -18,7 +18,7 @@ export interface Decision {
 
 export interface StreamEvent {
   type: string;           // one of the 12 canonical event types
-  aegisSequence: number;  // uint64 (JS safe integer range is sufficient)
+  nixisSequence: number;  // uint64 (JS safe integer range is sufficient)
   sessionId: string;
   tool: string;
   action: Action;
@@ -27,7 +27,7 @@ export interface StreamEvent {
   timestamp: number;      // unix nanos
 }
 
-// 12 canonical event type constants — must match pkg/aegis/stream.go exactly.
+// 12 canonical event type constants — must match pkg/nixis/stream.go exactly.
 export const EVENT_TYPES = {
   DECISION: 'decision',
   LABEL_ESCALATED: 'label.escalated',

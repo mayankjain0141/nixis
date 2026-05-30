@@ -4,8 +4,8 @@ import {
   createMockEventSequence,
   createMockStreamGenerator,
 } from './streamGenerator';
-import { EVENT_TYPES } from '../types/aegis';
-import type { Action, StreamEvent } from '../types/aegis';
+import { EVENT_TYPES } from '../types/nixis';
+import type { Action, StreamEvent } from '../types/nixis';
 
 const VALID_ACTIONS = new Set<Action>(['deny', 'allow', 'require_approval', 'audit']);
 const ALL_EVENT_TYPES = new Set(Object.values(EVENT_TYPES));
@@ -14,8 +14,8 @@ describe('createMockStreamEvent', () => {
   it('returns a valid StreamEvent with all required fields', () => {
     const event = createMockStreamEvent();
     expect(ALL_EVENT_TYPES.has(event.type as never)).toBe(true);
-    expect(typeof event.aegisSequence).toBe('number');
-    expect(event.aegisSequence).toBeGreaterThan(0);
+    expect(typeof event.nixisSequence).toBe('number');
+    expect(event.nixisSequence).toBeGreaterThan(0);
     expect(VALID_ACTIONS.has(event.action)).toBe(true);
     expect(typeof event.sessionId).toBe('string');
     expect(event.sessionId.length).toBeGreaterThan(0);
@@ -38,10 +38,10 @@ describe('createMockStreamEvent', () => {
     expect(event.label).toBeDefined();
   });
 
-  it('aegisSequence is positive and increases across successive calls', () => {
+  it('nixisSequence is positive and increases across successive calls', () => {
     const a = createMockStreamEvent();
     const b = createMockStreamEvent();
-    expect(b.aegisSequence).toBeGreaterThan(a.aegisSequence);
+    expect(b.nixisSequence).toBeGreaterThan(a.nixisSequence);
   });
 
   it('never generates a non-canonical action', () => {
@@ -61,11 +61,11 @@ describe('createMockEventSequence', () => {
     expect(createMockEventSequence(0)).toHaveLength(0);
   });
 
-  it('aegisSequence starts at 1 and is strictly monotonically increasing', () => {
+  it('nixisSequence starts at 1 and is strictly monotonically increasing', () => {
     const events = createMockEventSequence(100);
-    expect(events[0].aegisSequence).toBe(1);
+    expect(events[0].nixisSequence).toBe(1);
     for (let i = 1; i < events.length; i++) {
-      expect(events[i].aegisSequence).toBe(events[i - 1].aegisSequence + 1);
+      expect(events[i].nixisSequence).toBe(events[i - 1].nixisSequence + 1);
     }
   });
 
@@ -219,7 +219,7 @@ describe('createMockStreamGenerator', () => {
     }
   });
 
-  it('emitted events have strictly monotonically increasing aegisSequence', () => {
+  it('emitted events have strictly monotonically increasing nixisSequence', () => {
     const gen = createMockStreamGenerator(50);
     const received: StreamEvent[] = [];
     gen.onEvent(e => received.push(e));
@@ -227,7 +227,7 @@ describe('createMockStreamGenerator', () => {
     vi.advanceTimersByTime(1000);
     gen.stop();
     for (let i = 1; i < received.length; i++) {
-      expect(received[i].aegisSequence).toBeGreaterThan(received[i - 1].aegisSequence);
+      expect(received[i].nixisSequence).toBeGreaterThan(received[i - 1].nixisSequence);
     }
   });
 

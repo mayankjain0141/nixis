@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-verify-flux-sources-flux-image-repositories-imagerepository
     annotations:
-        aegis.io/imported-from: aegis-import-1554976445.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-1554976445.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Flux
 spec:
     description: Flux source APIs include a number of different sources such as GitRepository, Bucket, HelmRepository, and ImageRepository resources. Each of these by default can be pointed to any location. In a production environment, it may be desired to restrict these to only known sources to prevent accessing outside sources. This policy verifies that each of the Flux sources comes from a trusted location.

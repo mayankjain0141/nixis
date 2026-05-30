@@ -12,36 +12,36 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 
-	grpcpkg "github.com/mayjain/aegis/internal/grpc"
-	"github.com/mayjain/aegis/pkg/aegis"
+	grpcpkg "github.com/mayjain/nixis/internal/grpc"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 // mockEngine is a test double for GovernanceEngine.
 type mockEngine struct {
-	action aegis.Action
+	action nixis.Action
 	reason string
 	delay  time.Duration
 }
 
-func (m *mockEngine) Evaluate(ctx context.Context, _ aegis.CheckRequest) aegis.CheckResponse {
+func (m *mockEngine) Evaluate(ctx context.Context, _ nixis.CheckRequest) nixis.CheckResponse {
 	if m.delay > 0 {
 		select {
 		case <-time.After(m.delay):
 		case <-ctx.Done():
-			return aegis.CheckResponse{Decision: aegis.Decision{Action: aegis.ActionDeny, Reason: "timeout"}}
+			return nixis.CheckResponse{Decision: nixis.Decision{Action: nixis.ActionDeny, Reason: "timeout"}}
 		}
 	}
-	return aegis.CheckResponse{Decision: aegis.Decision{Action: m.action, Reason: m.reason}}
+	return nixis.CheckResponse{Decision: nixis.Decision{Action: m.action, Reason: m.reason}}
 }
 
 // capturingEngine records the last CheckRequest it received.
 type capturingEngine struct {
-	last aegis.CheckRequest
+	last nixis.CheckRequest
 }
 
-func (c *capturingEngine) Evaluate(_ context.Context, req aegis.CheckRequest) aegis.CheckResponse {
+func (c *capturingEngine) Evaluate(_ context.Context, req nixis.CheckRequest) nixis.CheckResponse {
 	c.last = req
-	return aegis.CheckResponse{Decision: aegis.Decision{Action: aegis.ActionAllow}}
+	return nixis.CheckResponse{Decision: nixis.Decision{Action: nixis.ActionAllow}}
 }
 
 // startTestServer opens a real listener, spawns a Server.Serve goroutine, and returns a
@@ -108,7 +108,7 @@ func makeHTTPCheckRequest(method, path string, headers map[string]string) *authv
 }
 
 func TestGRPC_AllowVerdict(t *testing.T) {
-	client, cleanup := startTestServer(t, &mockEngine{action: aegis.ActionAllow})
+	client, cleanup := startTestServer(t, &mockEngine{action: nixis.ActionAllow})
 	defer cleanup()
 
 	resp, err := client.Check(context.Background(), makeHTTPCheckRequest("GET", "/api/foo", nil))
@@ -126,7 +126,7 @@ func TestGRPC_AllowVerdict(t *testing.T) {
 
 func TestGRPC_DenyVerdict(t *testing.T) {
 	const reason = "policy denied"
-	client, cleanup := startTestServer(t, &mockEngine{action: aegis.ActionDeny, reason: reason})
+	client, cleanup := startTestServer(t, &mockEngine{action: nixis.ActionDeny, reason: reason})
 	defer cleanup()
 
 	resp, err := client.Check(context.Background(), makeHTTPCheckRequest("POST", "/admin", nil))
@@ -147,7 +147,7 @@ func TestGRPC_DenyVerdict(t *testing.T) {
 }
 
 func TestGRPC_RequireApprovalVerdict(t *testing.T) {
-	client, cleanup := startTestServer(t, &mockEngine{action: aegis.ActionRequireApproval})
+	client, cleanup := startTestServer(t, &mockEngine{action: nixis.ActionRequireApproval})
 	defer cleanup()
 
 	resp, err := client.Check(context.Background(), makeHTTPCheckRequest("DELETE", "/resource", nil))
@@ -164,18 +164,18 @@ func TestGRPC_RequireApprovalVerdict(t *testing.T) {
 	}
 	found := false
 	for _, h := range denied.GetHeaders() {
-		if h.GetHeader().GetKey() == "x-aegis-approval-required" && h.GetHeader().GetValue() == "true" {
+		if h.GetHeader().GetKey() == "x-nixis-approval-required" && h.GetHeader().GetValue() == "true" {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Error("expected x-aegis-approval-required header")
+		t.Error("expected x-nixis-approval-required header")
 	}
 }
 
 func TestGRPC_AuditVerdict(t *testing.T) {
-	client, cleanup := startTestServer(t, &mockEngine{action: aegis.ActionAudit})
+	client, cleanup := startTestServer(t, &mockEngine{action: nixis.ActionAudit})
 	defer cleanup()
 
 	resp, err := client.Check(context.Background(), makeHTTPCheckRequest("GET", "/data", nil))
@@ -192,19 +192,19 @@ func TestGRPC_AuditVerdict(t *testing.T) {
 	}
 	found := false
 	for _, h := range ok.GetHeaders() {
-		if h.GetHeader().GetKey() == "x-aegis-audited" && h.GetHeader().GetValue() == "true" {
+		if h.GetHeader().GetKey() == "x-nixis-audited" && h.GetHeader().GetValue() == "true" {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Error("expected x-aegis-audited header")
+		t.Error("expected x-nixis-audited header")
 	}
 }
 
 func TestGRPC_NilRequest_Deny(t *testing.T) {
 	srv, err := grpcpkg.NewServer(grpcpkg.Config{
-		Engine: &mockEngine{action: aegis.ActionAllow},
+		Engine: &mockEngine{action: nixis.ActionAllow},
 	})
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)
@@ -222,7 +222,7 @@ func TestGRPC_NilRequest_Deny(t *testing.T) {
 
 func TestGRPC_Timeout_Deny(t *testing.T) {
 	// Engine delays 200ms, server timeout is 50ms — context must cancel first.
-	engine := &mockEngine{action: aegis.ActionAllow, delay: 200 * time.Millisecond}
+	engine := &mockEngine{action: nixis.ActionAllow, delay: 200 * time.Millisecond}
 	srv, err := grpcpkg.NewServer(grpcpkg.Config{
 		Engine:  engine,
 		Timeout: 50 * time.Millisecond,

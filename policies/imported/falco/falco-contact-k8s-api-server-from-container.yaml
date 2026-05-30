@@ -1,14 +1,14 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-contact-k8s-api-server-from-container
     annotations:
-        aegis.io/falco-tags: maturity_stable,container,network,k8s,mitre_discovery,T1565
-        aegis.io/imported-from: aegis-import-999705196.yaml
-        aegis.io/severity: low
-        aegis.io/llm-confidence: medium
-        aegis.io/source-rule: Contact K8S API Server From Container
+        nixis.io/falco-tags: maturity_stable,container,network,k8s,mitre_discovery,T1565
+        nixis.io/imported-from: nixis-import-999705196.yaml
+        nixis.io/severity: low
+        nixis.io/llm-confidence: medium
+        nixis.io/source-rule: Contact K8S API Server From Container
 spec:
     description: |
         Detect attempts to communicate with the K8S API Server from a container by non-profiled users. Kubernetes APIs play a pivotal role in configuring the cluster management lifecycle. Detecting potential unauthorized access to the API server is of utmost importance. Audit your complete infrastructure and pinpoint any potential machines from which the API server might be accessible based on your network layout. If Falco can't operate on all these machines, consider analyzing the Kubernetes audit logs (typically drained from control nodes, and Falco offers a k8saudit plugin) as an additional data source for detections within the control plane.

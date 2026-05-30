@@ -1,14 +1,14 @@
-# imported from: gatekeeper-library via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: gatekeeper-library via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: gatekeeper-k8spsphostprocess
     annotations:
-        aegis.io/imported-from: aegis-import-2333992299.yaml
-        aegis.io/original-kind: K8sPSPHostProcess
-        aegis.io/severity: high
-        aegis.io/llm-confidence: medium
-        aegis.io/source: open-policy-agent/gatekeeper-library
+        nixis.io/imported-from: nixis-import-2333992299.yaml
+        nixis.io/original-kind: K8sPSPHostProcess
+        nixis.io/severity: high
+        nixis.io/llm-confidence: medium
+        nixis.io/source: open-policy-agent/gatekeeper-library
 spec:
     description: Disallows HostProcess containers for Windows pods. HostProcess containers enable privileged access on Windows nodes and must be disallowed in Baseline and Restricted policies. Corresponds to the windowsOptions.hostProcess field in a Pod's securityContext or container securityContext. For more information, see https://kubernetes.io/docs/concepts/security/pod-security-standards/
     matchConstraints:

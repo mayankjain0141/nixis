@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Package grpc exposes Aegis governance as an Envoy ext_authz service.
+// Package grpc exposes Nixis governance as an Envoy ext_authz service.
 package grpc
 
 import (
@@ -11,12 +11,12 @@ import (
 	authv3 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	"google.golang.org/grpc"
 
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 // GovernanceEngine evaluates policy decisions. Implemented by internal/policy.PolicyEngine.
 type GovernanceEngine interface {
-	Evaluate(ctx context.Context, req aegis.CheckRequest) aegis.CheckResponse
+	Evaluate(ctx context.Context, req nixis.CheckRequest) nixis.CheckResponse
 }
 
 // Config configures the ext_authz gRPC server.
@@ -61,10 +61,10 @@ func (s *Server) Check(ctx context.Context, req *authv3.CheckRequest) (*authv3.C
 	evalCtx, cancel := context.WithTimeout(ctx, s.cfg.Timeout)
 	defer cancel()
 
-	aegisReq := translateRequest(req)
-	aegisResp := s.engine.Evaluate(evalCtx, aegisReq)
+	nixisReq := translateRequest(req)
+	nixisResp := s.engine.Evaluate(evalCtx, nixisReq)
 
-	return translateResponse(aegisResp), nil
+	return translateResponse(nixisResp), nil
 }
 
 // Start binds a TCP listener on cfg.ListenAddr and serves until ctx is cancelled.

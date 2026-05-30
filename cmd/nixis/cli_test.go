@@ -105,7 +105,7 @@ func TestCLI_AuditVerify_ExitCodes(t *testing.T) {
 		auditDB = ""
 		auditFrom = ""
 		auditTo = ""
-		if err := os.Unsetenv("AEGIS_AUDIT_DB"); err != nil {
+		if err := os.Unsetenv("NIXIS_AUDIT_DB"); err != nil {
 			t.Fatalf("unsetenv: %v", err)
 		}
 		err := auditVerifyCmd.RunE(auditVerifyCmd, nil)
@@ -147,8 +147,8 @@ printf '{"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"read_file","descript
 	if !strings.Contains(out, "read_file") {
 		t.Errorf("expected tool name 'read_file' in output, got:\n%s", out)
 	}
-	if !strings.Contains(out, "aegis:") {
-		t.Errorf("expected aegis annotation in output, got:\n%s", out)
+	if !strings.Contains(out, "nixis:") {
+		t.Errorf("expected nixis annotation in output, got:\n%s", out)
 	}
 }
 
@@ -159,7 +159,7 @@ func TestCLI_Simulate_ConnectError(t *testing.T) {
 	errBuf := &bytes.Buffer{}
 	simulateCmd.SetOut(outBuf)
 	simulateCmd.SetErr(errBuf)
-	simulateSocket = "/tmp/aegis-nonexistent-socket-ws28-test.sock"
+	simulateSocket = "/tmp/nixis-nonexistent-socket-ws28-test.sock"
 	simulateArgs = "{}"
 	simulateSession = ""
 	err := simulateCmd.RunE(simulateCmd, []string{"test_tool"})
@@ -179,7 +179,7 @@ func TestCLI_Bundle_Activate_ParsesFile(t *testing.T) {
 
 	outBuf := &bytes.Buffer{}
 	bundleActivateCmd.SetOut(outBuf)
-	bundleSocket = "/tmp/aegis-nonexistent-socket-ws28-bundle-test.sock"
+	bundleSocket = "/tmp/nixis-nonexistent-socket-ws28-bundle-test.sock"
 
 	// RunE parses the bundle first and prints "parsed: N templates..." before
 	// attempting the socket connection. Regardless of socket error, we verify parse succeeded.
@@ -195,7 +195,7 @@ func TestCLI_Bundle_Activate_ParsesFile(t *testing.T) {
 // --- helpers ---
 
 func validPolicyYAML(name, expr string) string {
-	return fmt.Sprintf(`apiVersion: aegis.io/v1
+	return fmt.Sprintf(`apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: %s

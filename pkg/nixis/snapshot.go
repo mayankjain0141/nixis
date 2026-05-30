@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-package aegis
+package nixis
 
 import (
-	policy_types "github.com/mayjain/aegis/pkg/policy/types"
+	policy_types "github.com/mayjain/nixis/pkg/policy/types"
 )
 
 // EngineSnapshot is the single immutable evaluation state.

@@ -1,13 +1,13 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-delete-or-rename-shell-history
     annotations:
-        aegis.io/falco-tags: maturity_incubating,host,container,process,filesystem,mitre_defense_evasion,T1070
-        aegis.io/imported-from: aegis-import-2621062960.yaml
-        aegis.io/severity: medium
-        aegis.io/source-rule: Delete or rename shell history
+        nixis.io/falco-tags: maturity_incubating,host,container,process,filesystem,mitre_defense_evasion,T1070
+        nixis.io/imported-from: nixis-import-2621062960.yaml
+        nixis.io/severity: medium
+        nixis.io/source-rule: Delete or rename shell history
 spec:
     description: |
         Detect shell history deletion, frequently used by unsophisticated adversaries to eliminate evidence. Note that it can also trigger when exiting a Terminal shell, such as with `kubectl exec`, which may introduce some noise.

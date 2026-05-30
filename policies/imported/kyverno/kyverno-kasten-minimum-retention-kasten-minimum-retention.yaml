@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-kasten-minimum-retention-kasten-minimum-retention
     annotations:
-        aegis.io/imported-from: aegis-import-2482814985.yaml
-        aegis.io/severity: low
+        nixis.io/imported-from: nixis-import-2482814985.yaml
+        nixis.io/severity: low
         kyverno.io/category: Veeam Kasten
 spec:
     description: 'Example Kyverno policy to enforce common compliance retention standards by modifying Kasten Policy backup retention settings. Based on regulation/compliance standard requirements, uncomment (1) of the desired GFS retention schedules to mutate existing and future Kasten Policies. Alternatively, this policy can be used to reduce retention lengths to enforce cost optimization. NOTE: This example only applies to Kasten Policies with an ''@hourly'' frequency. Refer to Kasten documentation for Policy API specification if modifications are necessary: https://docs.kasten.io/latest/api/policies.html#policy-api-type'
@@ -13,6 +13,6 @@ spec:
         tools: []
     validations:
         - expression: 'false'
-          message: 'Mutate rule — Aegis does not mutate requests — manual review required'
+          message: 'Mutate rule — Nixis does not mutate requests — manual review required'
           action: AUDIT
     defaultAction: ALLOW

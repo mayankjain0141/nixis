@@ -18,7 +18,7 @@ var validEventTypes = map[string]bool{
 	"mcp.tool_drift":     true,
 }
 
-// normalizeEventType maps internal aegis event type strings (from pkg/aegis constants)
+// normalizeEventType maps internal nixis event type strings (from pkg/nixis constants)
 // to the 12 canonical wire types. Unknown types are mapped to "system.error".
 func normalizeEventType(internal string) string {
 	switch internal {

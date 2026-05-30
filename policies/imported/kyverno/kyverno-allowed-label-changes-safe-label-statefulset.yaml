@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-allowed-label-changes-safe-label-statefulset
     annotations:
-        aegis.io/imported-from: aegis-import-1584203326.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-1584203326.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Other
 spec:
     description: In some cases, operations teams need a type of limited access to change resources during troubleshooting or outage mitigation. This policy demonstrates how to prevent modification to labels except one with the key `breakglass`. Changing, adding, or deleting any other labels is denied.

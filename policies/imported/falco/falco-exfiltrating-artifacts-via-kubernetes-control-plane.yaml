@@ -1,14 +1,14 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-exfiltrating-artifacts-via-kubernetes-control-plane
     annotations:
-        aegis.io/falco-tags: maturity_incubating,container,filesystem,mitre_exfiltration,TA0010
-        aegis.io/imported-from: aegis-import-2621062960.yaml
-        aegis.io/severity: low
-        aegis.io/llm-confidence: medium
-        aegis.io/source-rule: Exfiltrating Artifacts via Kubernetes Control Plane
+        nixis.io/falco-tags: maturity_incubating,container,filesystem,mitre_exfiltration,TA0010
+        nixis.io/imported-from: nixis-import-2621062960.yaml
+        nixis.io/severity: low
+        nixis.io/llm-confidence: medium
+        nixis.io/source-rule: Exfiltrating Artifacts via Kubernetes Control Plane
 spec:
     description: |
         Detect the copying of artifacts from a container's file system using the Kubernetes control plane (kubectl cp). This rule can identify potential exfiltration of application secrets from containers' file systems, potentially revealing the outcomes of unauthorized access and control plane misuse via stolen identities (such as stolen credentials like Kubernetes serviceaccount tokens). Can be customized by the adopter to only monitor specific artifact paths, containers, or namespaces as needed.

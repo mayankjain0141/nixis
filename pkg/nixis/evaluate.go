@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-package aegis
+package nixis
 
 import "context"
 
@@ -11,7 +11,7 @@ type EvaluatorConfig struct {
 // evaluateEngine is the minimal interface for policy evaluation.
 // Users construct an engine externally (e.g., using internal/policy.PolicyEngine)
 // and pass it to NewInProcessEvaluator via dependency injection.
-// This avoids circular imports between pkg/aegis and internal packages.
+// This avoids circular imports between pkg/nixis and internal packages.
 type evaluateEngine interface {
 	Evaluate(ctx context.Context, req CheckRequest) CheckResponse
 }
@@ -32,8 +32,8 @@ type InProcessEvaluator struct {
 //	celEnv, _ := cel.NewCELEnvironment()
 //	engine := policy.NewPolicyEngine(sessions, celEnv)
 //	templates, bindings, _ := bundle.ParsePolicyDir("./policies")
-//	engine.Reload(ctx, &aegis.CompiledBundle{Templates: templates, Bindings: bindings})
-//	evaluator := aegis.NewInProcessEvaluator(engine)
+//	engine.Reload(ctx, &nixis.CompiledBundle{Templates: templates, Bindings: bindings})
+//	evaluator := nixis.NewInProcessEvaluator(engine)
 //	resp := evaluator.Check(ctx, req)
 func NewInProcessEvaluator(engine evaluateEngine) *InProcessEvaluator {
 	return &InProcessEvaluator{engine: engine}

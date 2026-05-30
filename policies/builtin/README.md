@@ -1,6 +1,6 @@
 # Built-in Policy Bundle
 
-This directory contains the Aegis built-in policy bundle. All policies here are Ed25519-signed and loaded at daemon startup. **Project-level policies cannot override or disable built-in policies.**
+This directory contains the Nixis built-in policy bundle. All policies here are Ed25519-signed and loaded at daemon startup. **Project-level policies cannot override or disable built-in policies.**
 
 ## Policies
 
@@ -17,7 +17,7 @@ Built-in policies are Ed25519-signed as part of the bundle distribution. The dae
 
 ## Bundle-Only Restriction
 
-`localhost-api-testing.yaml` carries the `aegis.io/builtin-only: "true"` annotation. It cannot be overridden, disabled, or replicated at project level. Any project-level policy containing `skipTaint: true` will fail policy validation — this directive is banned per FINAL_SPEC_HARDENING.md P1-3.
+`localhost-api-testing.yaml` carries the `nixis.io/builtin-only: "true"` annotation. It cannot be overridden, disabled, or replicated at project level. Any project-level policy containing `skipTaint: true` will fail policy validation — this directive is banned per FINAL_SPEC_HARDENING.md P1-3.
 
 ## Taint Behavior
 

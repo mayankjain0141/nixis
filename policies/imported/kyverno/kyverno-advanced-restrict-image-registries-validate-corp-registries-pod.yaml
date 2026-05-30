@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-advanced-restrict-image-registries-validate-corp-registries-pod
     annotations:
-        aegis.io/imported-from: aegis-import-2996176450.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-2996176450.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Other
 spec:
     description: In instances where a ClusterPolicy defines all the approved image registries is insufficient, more granular control may be needed to set permitted registries, especially in multi-tenant use cases where some registries may be based on the Namespace. This policy shows an advanced version of the Restrict Image Registries policy which gets a global approved registry from a ConfigMap and, based upon an annotation at the Namespace level, gets the registry approved for that Namespace.

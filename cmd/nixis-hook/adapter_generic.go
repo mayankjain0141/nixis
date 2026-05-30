@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 // GenericAdapter is the fallback adapter for unknown IDEs.
@@ -49,37 +49,37 @@ func (a *GenericAdapter) Name() string { return "generic" }
 // Detect always returns true — GenericAdapter is the terminal fallback.
 func (a *GenericAdapter) Detect(_ json.RawMessage) bool { return true }
 
-func (a *GenericAdapter) ParseInput(raw json.RawMessage) (aegis.CheckRequest, error) {
+func (a *GenericAdapter) ParseInput(raw json.RawMessage) (nixis.CheckRequest, error) {
 	var inp genericInput
 	if err := json.Unmarshal(raw, &inp); err != nil {
-		return aegis.CheckRequest{}, fmt.Errorf("parse generic input: %w", err)
+		return nixis.CheckRequest{}, fmt.Errorf("parse generic input: %w", err)
 	}
 	toolName := inp.resolveToolName()
 	if toolName == "" {
-		return aegis.CheckRequest{}, fmt.Errorf("no tool_name or tool field found in input")
+		return nixis.CheckRequest{}, fmt.Errorf("no tool_name or tool field found in input")
 	}
-	return aegis.CheckRequest{
+	return nixis.CheckRequest{
 		Tool:            toolName,
 		Args:            inp.resolveArgs(),
 		SessionID:       inp.SessionID,
-		SpawnToken:      os.Getenv("AEGIS_SPAWN_TOKEN"),
-		ParentSessionID: os.Getenv("AEGIS_PARENT_SESSION_ID"),
-		ProjectRoot:     os.Getenv("AEGIS_PROJECT_ROOT"),
+		SpawnToken:      os.Getenv("NIXIS_SPAWN_TOKEN"),
+		ParentSessionID: os.Getenv("NIXIS_PARENT_SESSION_ID"),
+		ProjectRoot:     os.Getenv("NIXIS_PROJECT_ROOT"),
 	}, nil
 }
 
-func (a *GenericAdapter) FormatOutput(resp aegis.CheckResponse, _ json.RawMessage) ([]byte, int) {
+func (a *GenericAdapter) FormatOutput(resp nixis.CheckResponse, _ json.RawMessage) ([]byte, int) {
 	specific := ClaudeCodeHookSpecific{}
 	switch resp.Decision.Action {
-	case aegis.ActionAllow:
+	case nixis.ActionAllow:
 		specific.PermissionDecision = "allow"
-	case aegis.ActionDeny:
+	case nixis.ActionDeny:
 		specific.PermissionDecision = "deny"
 		specific.PermissionDecisionReason = resp.Decision.Reason
-	case aegis.ActionRequireApproval:
+	case nixis.ActionRequireApproval:
 		specific.PermissionDecision = "ask"
 		specific.PermissionDecisionReason = resp.Decision.Reason
-	case aegis.ActionAudit:
+	case nixis.ActionAudit:
 		specific.PermissionDecision = "allow"
 	default:
 		specific.PermissionDecision = "deny"

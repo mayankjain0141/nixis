@@ -5,7 +5,7 @@ test.describe('Governance Dashboard', () => {
     const errors: string[] = [];
     page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
     await page.goto('/');
-    await expect(page).toHaveTitle(/Aegis/);
+    await expect(page).toHaveTitle(/Nixis/);
     await page.waitForTimeout(1000);
     expect(errors.filter(e => !e.includes('WebSocket'))).toHaveLength(0);
   });

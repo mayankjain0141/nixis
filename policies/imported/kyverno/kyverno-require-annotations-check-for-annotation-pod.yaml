@@ -2,14 +2,14 @@
 # annotations block. content.contains("annotations:") cannot verify which keys are present inside that block,
 # only that the block exists. Additionally, !contains("annotations:") would fire on all manifests including
 # non-Pod kinds that legitimately omit annotations. Downgraded to REQUIRE_APPROVAL with content narrowing.
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-require-annotations-check-for-annotation-pod
     annotations:
-        aegis.io/imported-from: aegis-import-480693979.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-480693979.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Other
 spec:
     description: 'Define and use annotations that identify semantic attributes of your application or Deployment. A common set of annotations allows tools to work collaboratively, describing objects in a common manner that all tools can understand. The recommended annotations describe applications in a way that can be queried. This policy validates that the annotation `corp.org/department` is specified with some value. '

@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-require-run-as-containeruser-require-run-as-containeruser-pod
     annotations:
-        aegis.io/imported-from: aegis-import-1847196217.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-1847196217.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Windows Security
 spec:
     description: Containers must be required to run as ContainerUser. This policy ensures that the fields spec.securityContext.windowsOptions.runAsUserName, spec.containers[*].securityContext.windowsOptions.runAsUserName, spec.initContainers[*].securityContext.windowsOptions.runAsUserName, and is either unset or set to ContainerUser.

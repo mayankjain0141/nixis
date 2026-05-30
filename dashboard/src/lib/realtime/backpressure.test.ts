@@ -15,7 +15,7 @@ afterEach(() => vi.clearAllMocks());
 function makeAllow(seq: number): ValidatedEvent {
   return {
     type: 'policy.evaluated',
-    envelope: { type: 'policy.evaluated', id: `e${seq}`, aegissequence: seq, data: {} },
+    envelope: { type: 'policy.evaluated', id: `e${seq}`, nixissequence: seq, data: {} },
     data: {
       tool: 'Shell', session_id: 's',
       decision: { action: 'allow', reason: '', policy_id: 'p', enforcing_layer: 'adapter', labels: { confidentiality: 0, integrity: 0, categories: 0 } },
@@ -27,7 +27,7 @@ function makeAllow(seq: number): ValidatedEvent {
 function makeDeny(seq: number): ValidatedEvent {
   return {
     type: 'policy.denied',
-    envelope: { type: 'policy.denied', id: `d${seq}`, aegissequence: seq, data: {} },
+    envelope: { type: 'policy.denied', id: `d${seq}`, nixissequence: seq, data: {} },
     data: {
       tool: 'Shell', session_id: 's',
       decision: { action: 'deny', reason: 'Denied', policy_id: 'p', enforcing_layer: 'cel', labels: { confidentiality: 0, integrity: 0, categories: 0 } },
@@ -39,7 +39,7 @@ function makeDeny(seq: number): ValidatedEvent {
 function makeSecret(seq: number): ValidatedEvent {
   return {
     type: 'secret.detected',
-    envelope: { type: 'secret.detected', id: `s${seq}`, aegissequence: seq, data: {} },
+    envelope: { type: 'secret.detected', id: `s${seq}`, nixissequence: seq, data: {} },
     data: { session_id: 's', tool: 'Shell' },
     priority: 'CRITICAL',
   };
@@ -48,7 +48,7 @@ function makeSecret(seq: number): ValidatedEvent {
 function makeHeartbeat(seq: number): ValidatedEvent {
   return {
     type: 'stream.heartbeat',
-    envelope: { type: 'stream.heartbeat', id: `h${seq}`, aegissequence: seq, data: {} },
+    envelope: { type: 'stream.heartbeat', id: `h${seq}`, nixissequence: seq, data: {} },
     data: { serverTime: Date.now() },
   };
 }
@@ -164,7 +164,7 @@ describe('createBackpressureController', () => {
       const ctrl = createBackpressureController();
       const immediateSeqs: number[] = [];
       ctrl.onOutput((b: ProcessedBatch) => {
-        for (const e of b.immediateEvents) immediateSeqs.push(e.envelope.aegissequence);
+        for (const e of b.immediateEvents) immediateSeqs.push(e.envelope.nixissequence);
       });
       ctrl.submit([makeAllow(1), makeDeny(2), makeAllow(3)]);
       // flushSync called (for deny), deny is in immediateEvents

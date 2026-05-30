@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-require-emptydir-requests-and-limits-check-emptydir-requests-limits-pod
     annotations:
-        aegis.io/imported-from: aegis-import-177497570.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-177497570.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Other
 spec:
     description: Pods which mount emptyDir volumes may be allowed to potentially overrun the medium backing the emptyDir volume. This sample ensures that any initContainers or containers mounting an emptyDir volume have ephemeral-storage requests and limits set. Policy will be skipped if the volume has already a sizeLimit set.

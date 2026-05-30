@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	aegisCEL "github.com/mayjain/aegis/internal/cel"
+	aegisCEL "github.com/mayjain/nixis/internal/cel"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -15,7 +15,7 @@ import (
 var fixCelCmd = &cobra.Command{
 	Use:   "fix-cel <directory>",
 	Short: "Repair broken CEL escape sequences in imported policy YAML files",
-	Long: `Walk a directory of Aegis PolicyTemplate YAML files, find validation
+	Long: `Walk a directory of Nixis PolicyTemplate YAML files, find validation
 expressions that fail CEL compilation, apply escape normalization, and
 write back fixed files.
 
@@ -27,8 +27,8 @@ For each file:
     CEL_FIX_FAILED comment is added so operators can review manually.
 
 Examples:
-  aegis policy fix-cel policies/imported/
-  aegis policy fix-cel policies/imported/kyverno/`,
+  nixis policy fix-cel policies/imported/
+  nixis policy fix-cel policies/imported/kyverno/`,
 	Args: cobra.ExactArgs(1),
 	RunE: runFixCel,
 }
@@ -201,7 +201,7 @@ func normaliseCELExprForFix(expr string) string {
 }
 
 // isAegisPolicyTemplate returns true if root is a mapping with
-// apiVersion: aegis.io/v1 and kind: PolicyTemplate.
+// apiVersion: nixis.io/v1 and kind: PolicyTemplate.
 func isAegisPolicyTemplate(root *yaml.Node) bool {
 	if root.Kind != yaml.MappingNode {
 		return false
@@ -215,7 +215,7 @@ func isAegisPolicyTemplate(root *yaml.Node) bool {
 			kind = root.Content[i+1].Value
 		}
 	}
-	return apiVersion == "aegis.io/v1" && kind == "PolicyTemplate"
+	return apiVersion == "nixis.io/v1" && kind == "PolicyTemplate"
 }
 
 // collectExpressionNodes walks the YAML node tree and returns all scalar nodes

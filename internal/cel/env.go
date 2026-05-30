@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Package cel implements the CEL (Common Expression Language) policy evaluator for Aegis.
+// Package cel implements the CEL (Common Expression Language) policy evaluator for Nixis.
 //
 // Hot path contract: Evaluate() must not allocate. Activation maps are pooled via sync.Pool.
 // Banned in this package: fmt.Sprintf, encoding/json.Marshal (golangci-lint enforced).
@@ -21,8 +21,8 @@ import (
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
-	"github.com/mayjain/aegis/internal/ifc"
-	aegistypes "github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/internal/ifc"
+	nixistypes "github.com/mayjain/nixis/pkg/nixis"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -47,7 +47,7 @@ func RawEnv(e *CELEnvironment) *cel.Env {
 	return e.env
 }
 
-// NewCELEnvironment constructs an immutable CEL environment with Aegis-specific type
+// NewCELEnvironment constructs an immutable CEL environment with Nixis-specific type
 // declarations and all custom functions registered.
 //
 // protoTypes registers additional proto.Message descriptors with the CEL type system.
@@ -305,12 +305,12 @@ func (l *labelLib) CompileOptions() []cel.EnvOption {
 					}
 					aC, aI, aCat, bC, bI, bCat := intVal(args[0]), intVal(args[1]), intVal(args[2]),
 						intVal(args[3]), intVal(args[4]), intVal(args[5])
-					subject := aegistypes.SecurityLabel{
+					subject := nixistypes.SecurityLabel{
 						Confidentiality: clampUint16(aC),
 						Integrity:       clampUint16(aI),
 						Category:        clampUint32(aCat),
 					}
-					object := aegistypes.SecurityLabel{
+					object := nixistypes.SecurityLabel{
 						Confidentiality: clampUint16(bC),
 						Integrity:       clampUint16(bI),
 						Category:        clampUint32(bCat),
@@ -330,12 +330,12 @@ func (l *labelLib) CompileOptions() []cel.EnvOption {
 					}
 					aC, aI, aCat, bC, bI, bCat := intVal(args[0]), intVal(args[1]), intVal(args[2]),
 						intVal(args[3]), intVal(args[4]), intVal(args[5])
-					a := aegistypes.SecurityLabel{
+					a := nixistypes.SecurityLabel{
 						Confidentiality: clampUint16(aC),
 						Integrity:       clampUint16(aI),
 						Category:        clampUint32(aCat),
 					}
-					b := aegistypes.SecurityLabel{
+					b := nixistypes.SecurityLabel{
 						Confidentiality: clampUint16(bC),
 						Integrity:       clampUint16(bI),
 						Category:        clampUint32(bCat),

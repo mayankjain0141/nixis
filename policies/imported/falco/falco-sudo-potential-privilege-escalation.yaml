@@ -1,14 +1,14 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-sudo-potential-privilege-escalation
     annotations:
-        aegis.io/falco-tags: maturity_sandbox,host,container,filesystem,users,mitre_privilege_escalation,T1548.003
-        aegis.io/imported-from: aegis-import-1470842712.yaml
-        aegis.io/severity: critical
-        aegis.io/llm-confidence: medium
-        aegis.io/source-rule: Sudo Potential Privilege Escalation
+        nixis.io/falco-tags: maturity_sandbox,host,container,filesystem,users,mitre_privilege_escalation,T1548.003
+        nixis.io/imported-from: nixis-import-1470842712.yaml
+        nixis.io/severity: critical
+        nixis.io/llm-confidence: medium
+        nixis.io/source-rule: Sudo Potential Privilege Escalation
 spec:
     description: |
         Affecting sudo (<= 1.9.5p2), there's a privilege escalation vulnerability. By executing sudo using the sudoedit -s or sudoedit -i command with a command-line argument that ends with a single backslash character, an unprivileged user can potentially escalate privileges to root. This rule is highly specific and might be bypassed due to potential issues with string matching on command line arguments.

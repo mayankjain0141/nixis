@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-namespace-protection-check-freeze--
     annotations:
-        aegis.io/imported-from: aegis-import-836758609.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-836758609.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Other
 spec:
     description: Cases where RBAC may be applied at a higher level and where Namespace-level protections may be necessary can be accomplished with a separate policy. For example, one may want to protect creates, updates, and deletes on only a single Namespace. This policy will block creates, updates, and deletes to any Namespace labeled with `freeze=true`. Caution should be exercised when using rules which match on all kinds (`"*"`) as this will involve, for larger clusters, a substantial amount of processing on Kyverno's part. Additional resource requests and/or limits may be required.

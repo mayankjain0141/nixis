@@ -1,4 +1,4 @@
-# Contributing to Aegis
+# Contributing to Nixis
 
 Thank you for your interest in contributing. This document covers prerequisites, build steps, and the PR process.
 
@@ -77,7 +77,7 @@ The daemon binds to these default addresses:
 |---------|---------|---------|
 | WebSocket stream | `ws://127.0.0.1:9090/ws` | `--stream-addr` flag |
 | Healthz / delegation API | `http://127.0.0.1:9091` | `HealthzAddr` in config |
-| gRPC ext_authz | disabled by default | `AEGIS_GRPC_ADDR` env var |
+| gRPC ext_authz | disabled by default | `NIXIS_GRPC_ADDR` env var |
 
 The dashboard dev server defaults to `http://localhost:5173` and connects to the WebSocket stream via `VITE_DAEMON_WS_URL` (defaults to `ws://localhost:9090/ws`).
 

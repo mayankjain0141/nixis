@@ -56,13 +56,13 @@
 #   or deployed to production, these actions are permanent or hard to reverse.
 #   All publish/deploy operations require explicit human approval.
 
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: block-accidental-publish
   annotations:
-    aegis.io/default-enabled: "true"
-    aegis.io/bundle: builtin
+    nixis.io/default-enabled: "true"
+    nixis.io/bundle: builtin
 spec:
   description: "Block accidental package publishing, artifact upload, and production deployment by AI agents"
   matchConstraints:

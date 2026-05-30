@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-prevent-bare-pods-bare-pods-pod
     annotations:
-        aegis.io/imported-from: aegis-import-3042388180.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-3042388180.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Other, EKS Best Practices
 spec:
     description: Pods not created by workload controllers such as Deployments have no self-healing or scaling abilities and are unsuitable for production. This policy prevents such "bare" Pods from being created unless they originate from a higher-level workload controller of some sort.

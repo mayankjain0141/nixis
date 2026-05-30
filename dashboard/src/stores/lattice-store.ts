@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import type { SecurityLabel } from '../types/aegis';
+import type { SecurityLabel } from '../types/nixis';
 import type { LabelState } from '../types/events';
 
 export interface LatticeNode {

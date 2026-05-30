@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useGovernanceStore } from './governance-store';
 import type { GovernanceEvent } from './governance-store';
-import type { SecurityLabel } from '../types/aegis';
+import type { SecurityLabel } from '../types/nixis';
 import type { DelegationHop } from './governance-store';
 
 function makeEvent(overrides: Partial<GovernanceEvent> = {}): GovernanceEvent {
@@ -16,7 +16,7 @@ function makeEvent(overrides: Partial<GovernanceEvent> = {}): GovernanceEvent {
     label: { confidentiality: 0, integrity: 0, categories: 0 },
     labelState: 'fresh',
     latencyNs: 1000,
-    aegisSequence: 1,
+    nixisSequence: 1,
     timestamp: Date.now(),
     ...overrides,
   };
@@ -45,18 +45,18 @@ describe('useGovernanceStore', () => {
 
     it('caps the event buffer at MAX_EVENTS (1000)', () => {
       for (let i = 0; i < 1005; i++) {
-        useGovernanceStore.getState().appendEvent(makeEvent({ aegisSequence: i }));
+        useGovernanceStore.getState().appendEvent(makeEvent({ nixisSequence: i }));
       }
       expect(useGovernanceStore.getState().events.length).toBe(1000);
     });
 
     it('retains the most recent events when capped', () => {
       for (let i = 0; i < 1005; i++) {
-        useGovernanceStore.getState().appendEvent(makeEvent({ aegisSequence: i, id: `evt-${i}` }));
+        useGovernanceStore.getState().appendEvent(makeEvent({ nixisSequence: i, id: `evt-${i}` }));
       }
       const events = useGovernanceStore.getState().events;
-      expect(events[0].aegisSequence).toBe(5);
-      expect(events[999].aegisSequence).toBe(1004);
+      expect(events[0].nixisSequence).toBe(5);
+      expect(events[999].nixisSequence).toBe(1004);
     });
   });
 

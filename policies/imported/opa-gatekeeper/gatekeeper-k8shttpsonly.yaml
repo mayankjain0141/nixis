@@ -1,14 +1,14 @@
-# imported from: gatekeeper-library via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: gatekeeper-library via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: gatekeeper-k8shttpsonly
     annotations:
-        aegis.io/imported-from: aegis-import-2054395890.yaml
-        aegis.io/original-kind: K8sHttpsOnly
-        aegis.io/severity: high
-        aegis.io/llm-confidence: medium
-        aegis.io/source: open-policy-agent/gatekeeper-library
+        nixis.io/imported-from: nixis-import-2054395890.yaml
+        nixis.io/original-kind: K8sHttpsOnly
+        nixis.io/severity: high
+        nixis.io/llm-confidence: medium
+        nixis.io/source: open-policy-agent/gatekeeper-library
 spec:
     description: |-
         Requires Ingress resources to be HTTPS only.  Ingress resources must include the `kubernetes.io/ingress.allow-http` annotation, set to `false`. By default a valid TLS {} configuration is required, this can be made optional by setting the `tlsOptional` parameter to `true`.

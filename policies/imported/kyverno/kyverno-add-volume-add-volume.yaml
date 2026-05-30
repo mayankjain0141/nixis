@@ -1,12 +1,12 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-add-volume-add-volume
     annotations:
-        aegis.io/imported-from: aegis-import-2477114500.yaml
-        aegis.io/severity: low
-        aegis.io/llm-confidence: medium
+        nixis.io/imported-from: nixis-import-2477114500.yaml
+        nixis.io/severity: low
+        nixis.io/llm-confidence: medium
         kyverno.io/category: Sample
 spec:
     description: Some Kubernetes applications like HashiCorp Vault must perform some modifications to resources in order to invoke their specific functionality. Often times, that functionality is controlled by the presence of a label or specific annotation. This policy, based on HashiCorp Vault, adds a volume and volumeMount to a Deployment if there is an annotation called "vault.k8s.corp.net/inject=enabled" present.
@@ -14,6 +14,6 @@ spec:
         tools: []
     validations:
         - expression: 'false'
-          message: 'Mutate rule (Vault volume injection) — Aegis cannot mutate requests; verify Deployments with vault.k8s.corp.net/inject=enabled annotation define the required volume and volumeMount'
+          message: 'Mutate rule (Vault volume injection) — Nixis cannot mutate requests; verify Deployments with vault.k8s.corp.net/inject=enabled annotation define the required volume and volumeMount'
           action: AUDIT
     defaultAction: ALLOW

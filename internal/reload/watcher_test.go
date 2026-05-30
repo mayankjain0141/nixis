@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mayjain/aegis/internal/reload"
+	"github.com/mayjain/nixis/internal/reload"
 )
 
 type mockReloader struct {

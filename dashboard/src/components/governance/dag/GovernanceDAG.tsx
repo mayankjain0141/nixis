@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   ReactFlow,
   Background,
@@ -55,6 +55,19 @@ export function GovernanceDAG() {
   const events = useGovernanceStore((s) => s.events);
   const filterPolicy = useGovernanceStore((s) => s.filterPolicy);
   const setFilterPolicy = useGovernanceStore((s) => s.setFilterPolicy);
+  const [highlightedIds, setHighlightedIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    function handler(e: Event) {
+      const { tool } = (e as CustomEvent<{ nixisSequence?: number; tool?: string }>).detail;
+      const ids = new Set<string>();
+      if (tool) ids.add(`tool-${tool}`);
+      setHighlightedIds(ids);
+      setTimeout(() => setHighlightedIds(new Set()), 3000);
+    }
+    window.addEventListener('nixis:highlight-event', handler);
+    return () => window.removeEventListener('nixis:highlight-event', handler);
+  }, []);
 
   const { nodes, edges } = useMemo(() => {
     const tools = [...new Set(events.map((e) => e.tool))];
@@ -82,7 +95,7 @@ export function GovernanceDAG() {
     const canvasH = Math.max(totalToolH, totalPolicyH) + 80;
 
     const nodes: Node[] = [
-      { id: 'daemon', type: 'daemon', position: { x: 0, y: canvasH / 2 - 50 }, data: { label: 'aegis-daemon' } },
+      { id: 'daemon', type: 'daemon', position: { x: 0, y: canvasH / 2 - 50 }, data: { label: 'nixis-daemon' } },
       { id: 'ifc',    type: 'ifc',    position: { x: 0, y: canvasH / 2 + 50 }, data: { label: 'IFC Lattice' } },
       { id: 'audit',  type: 'audit',  position: { x: 780, y: canvasH / 2 - 20 }, data: { label: 'Audit Chain' } },
       ...tools.map((tool, i) => ({
@@ -140,6 +153,16 @@ export function GovernanceDAG() {
     return { nodes, edges };
   }, [events]);
 
+  const highlightedNodes = useMemo(
+    () =>
+      nodes.map((node) =>
+        highlightedIds.has(node.id)
+          ? { ...node, style: { ...node.style, boxShadow: '0 0 0 3px #fbbf24, 0 0 12px #fbbf2466', borderRadius: 8 } }
+          : node,
+      ),
+    [nodes, highlightedIds],
+  );
+
   if (events.length === 0) {
     return (
       <div style={{
@@ -172,7 +195,7 @@ export function GovernanceDAG() {
   return (
     <div style={{ width: '100%', height: '100%', minHeight: 420 }} aria-label="Governance evaluation DAG">
       <ReactFlow
-        nodes={nodes}
+        nodes={highlightedNodes}
         edges={edges}
         nodeTypes={governanceNodeTypes}
         fitView

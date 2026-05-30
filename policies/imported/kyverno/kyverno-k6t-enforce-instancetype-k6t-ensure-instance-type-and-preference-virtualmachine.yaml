@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-k6t-enforce-instancetype-k6t-ensure-instance-type-and-preference-virtualmachine
     annotations:
-        aegis.io/imported-from: aegis-import-235143124.yaml
-        aegis.io/severity: low
+        nixis.io/imported-from: nixis-import-235143124.yaml
+        nixis.io/severity: low
         kyverno.io/category: KubeVirt
 spec:
     description: Check VirtualMachines and validate that they are using an instance type and preference.

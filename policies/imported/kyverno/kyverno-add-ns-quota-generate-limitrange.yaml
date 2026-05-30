@@ -1,12 +1,12 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-add-ns-quota-generate-limitrange
     annotations:
-        aegis.io/imported-from: aegis-import-1116694944.yaml
-        aegis.io/severity: low
-        aegis.io/llm-confidence: medium
+        nixis.io/imported-from: nixis-import-1116694944.yaml
+        nixis.io/severity: low
+        nixis.io/llm-confidence: medium
         kyverno.io/category: Multi-Tenancy, EKS Best Practices
 spec:
     description: To better control the number of resources that can be created in a given Namespace and provide default resource consumption limits for Pods, ResourceQuota and LimitRange resources are recommended. This policy will generate ResourceQuota and LimitRange resources when a new Namespace is created.
@@ -14,6 +14,6 @@ spec:
         tools: []
     validations:
         - expression: 'false'
-          message: 'Generate rule (LimitRange on namespace creation) — Aegis cannot generate resources; verify new namespaces have a LimitRange resource defining container resource defaults'
+          message: 'Generate rule (LimitRange on namespace creation) — Nixis cannot generate resources; verify new namespaces have a LimitRange resource defining container resource defaults'
           action: AUDIT
     defaultAction: ALLOW

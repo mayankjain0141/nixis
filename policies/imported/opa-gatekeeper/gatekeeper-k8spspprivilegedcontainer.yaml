@@ -1,14 +1,14 @@
-# imported from: gatekeeper-library via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: gatekeeper-library via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: gatekeeper-k8spspprivilegedcontainer
     annotations:
-        aegis.io/imported-from: aegis-import-2257911594.yaml
-        aegis.io/original-kind: K8sPSPPrivilegedContainer
-        aegis.io/severity: high
-        aegis.io/llm-confidence: medium
-        aegis.io/source: open-policy-agent/gatekeeper-library
+        nixis.io/imported-from: nixis-import-2257911594.yaml
+        nixis.io/original-kind: K8sPSPPrivilegedContainer
+        nixis.io/severity: high
+        nixis.io/llm-confidence: medium
+        nixis.io/source: open-policy-agent/gatekeeper-library
 spec:
     description: Controls the ability of any container to enable privileged mode. Corresponds to the `privileged` field in a PodSecurityPolicy. For more information, see https://kubernetes.io/docs/concepts/policy/pod-security-policy/#privileged
     matchConstraints:

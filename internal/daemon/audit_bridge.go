@@ -4,11 +4,11 @@ package daemon
 import (
 	"time"
 
-	"github.com/mayjain/aegis/internal/audit"
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/internal/audit"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
-func buildAuditRecord(req aegis.CheckRequest, resp aegis.CheckResponse) audit.AuditRecord {
+func buildAuditRecord(req nixis.CheckRequest, resp nixis.CheckResponse) audit.AuditRecord {
 	return audit.AuditRecord{
 		Timestamp:      time.Now().UnixNano(),
 		SessionID:      req.SessionID,

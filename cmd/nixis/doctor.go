@@ -16,7 +16,7 @@ import (
 
 var doctorCmd = &cobra.Command{
 	Use:   "doctor",
-	Short: "Check Aegis installation health",
+	Short: "Check Nixis installation health",
 	RunE:  runDoctor,
 }
 
@@ -33,9 +33,9 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("resolve home directory: %w", err)
 	}
-	aegisDir := filepath.Join(homeDir, ".aegis")
+	aegisDir := filepath.Join(homeDir, ".nixis")
 
-	fmt.Fprintln(w, "Aegis Health Check")
+	fmt.Fprintln(w, "Nixis Health Check")
 	fmt.Fprintln(w, "==================")
 
 	var checks []doctorCheck
@@ -131,7 +131,7 @@ func checkSocket() doctorCheck {
 }
 
 func checkHookBinary(aegisDir string) doctorCheck {
-	hookPath := filepath.Join(aegisDir, "aegis-hook")
+	hookPath := filepath.Join(aegisDir, "nixis-hook")
 	info, err := os.Stat(hookPath)
 	if err != nil {
 		return doctorCheck{name: "Hook", status: "FAIL", detail: fmt.Sprintf("%s not found", hookPath), warning: true}
@@ -143,7 +143,7 @@ func checkHookBinary(aegisDir string) doctorCheck {
 }
 
 func checkHookFormat(aegisDir string) doctorCheck {
-	hookPath := filepath.Join(aegisDir, "aegis-hook")
+	hookPath := filepath.Join(aegisDir, "nixis-hook")
 	if _, err := os.Stat(hookPath); err != nil {
 		return doctorCheck{name: "Hook Format", status: "FAIL", detail: "hook binary missing, cannot test", warning: true}
 	}
@@ -174,7 +174,7 @@ func checkSettingsJSON(homeDir, aegisDir string) doctorCheck {
 
 	hookJSON, _ := json.Marshal(preToolUse)
 	hookStr := string(hookJSON)
-	expectedPath := filepath.Join(aegisDir, "aegis-hook")
+	expectedPath := filepath.Join(aegisDir, "nixis-hook")
 
 	if !strings.Contains(hookStr, expectedPath) {
 		return doctorCheck{name: "Settings", status: "FAIL", detail: "PreToolUse hook does not reference " + expectedPath, warning: true}

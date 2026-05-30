@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-prevent-cr8escape-restrict-sysctls-cr8escape-pod
     annotations:
-        aegis.io/imported-from: aegis-import-545297968.yaml
-        aegis.io/severity: high
+        nixis.io/imported-from: nixis-import-545297968.yaml
+        nixis.io/severity: high
         kyverno.io/category: Other
 spec:
     description: A vulnerability "cr8escape" (CVE-2022-0811) in CRI-O the container runtime engine underpinning Kubernetes allows attackers to escape from a Kubernetes container and gain root access to the host. The recommended remediation is to disallow sysctl settings with + or = in their value.

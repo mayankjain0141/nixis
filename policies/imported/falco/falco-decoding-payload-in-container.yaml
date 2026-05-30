@@ -1,14 +1,14 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-decoding-payload-in-container
     annotations:
-        aegis.io/falco-tags: maturity_sandbox,container,process,mitre_command_and_control,T1132
-        aegis.io/imported-from: aegis-import-1470842712.yaml
-        aegis.io/severity: low
-        aegis.io/llm-confidence: medium
-        aegis.io/source-rule: Decoding Payload in Container
+        nixis.io/falco-tags: maturity_sandbox,container,process,mitre_command_and_control,T1132
+        nixis.io/imported-from: nixis-import-1470842712.yaml
+        nixis.io/severity: low
+        nixis.io/llm-confidence: medium
+        nixis.io/source-rule: Decoding Payload in Container
 spec:
     description: |
         Detect any use of {base64} decoding in a container. Legitimate applications may decode encoded payloads. The template list known_decode_payload_containers can be used for simple tuning and customization, or you can adopt custom, more refined tuning. Less sophisticated adversaries may {base64}-decode their payloads not only to obfuscate them, but also to ensure that the payload remains intact when the application processes it. Note that injecting commands into an application's input often results in the application processing passed strings like "sh -c". In these cases, you may be lucky and the encoded blob will also be logged. Otherwise, all you will see is the {base64} decoding command, as the encoded blob was already interpreted by the shell.

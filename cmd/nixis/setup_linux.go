@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-const systemdServiceName = "aegis-daemon.service"
+const systemdServiceName = "nixis-daemon.service"
 
 func systemdUnitPath() string {
 	homeDir, _ := os.UserHomeDir()
@@ -20,18 +20,18 @@ func systemdUnitPath() string {
 }
 
 func installDaemonService(homeDir, policyDir string, yes bool) error {
-	aegisDir := filepath.Join(homeDir, ".aegis")
-	daemonBin := filepath.Join(aegisDir, "aegis-daemon")
-	socketPath := "/tmp/aegis.sock"
+	aegisDir := filepath.Join(homeDir, ".nixis")
+	daemonBin := filepath.Join(aegisDir, "nixis-daemon")
+	socketPath := "/tmp/nixis.sock"
 
 	unit := fmt.Sprintf(`[Unit]
-Description=Aegis Governance Daemon
+Description=Nixis Governance Daemon
 After=default.target
 
 [Service]
 ExecStart=%s -policy-dir %s -socket %s
 Restart=always
-Environment=AEGIS_DASHBOARD_ADDR=127.0.0.1:9090
+Environment=NIXIS_DASHBOARD_ADDR=127.0.0.1:9090
 
 [Install]
 WantedBy=default.target
@@ -113,7 +113,7 @@ func daemonServiceStatus() (running bool, pid int, err error) {
 
 func startDaemon() error {
 	if _, err := os.Stat(systemdUnitPath()); os.IsNotExist(err) {
-		return fmt.Errorf("unit file not found at %s; run 'aegis setup' first", systemdUnitPath())
+		return fmt.Errorf("unit file not found at %s; run 'nixis setup' first", systemdUnitPath())
 	}
 	cmd := exec.Command("systemctl", "--user", "start", systemdServiceName)
 	if output, err := cmd.CombinedOutput(); err != nil {

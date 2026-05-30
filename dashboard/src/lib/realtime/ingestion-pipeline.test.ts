@@ -8,13 +8,13 @@ function makeSend() { return vi.fn<IWebSocketManager['send']>(); }
 
 function makePolicyEvaluated(seq: number, id?: string, verdict = 'allow'): string {
   return JSON.stringify({
-    type: 'policy.evaluated', id: id ?? `evt-${seq}`, aegissequence: seq,
+    type: 'policy.evaluated', id: id ?? `evt-${seq}`, nixissequence: seq,
     data: { tool: 'Shell', session_id: 'sess-1', decision: { action: verdict, reason: '', policy_id: 'pol-1', enforcing_layer: 'adapter', labels: { confidentiality: 0, integrity: 0, categories: 0 } }, label_state: 'fresh', latency_ns: 1000 },
   });
 }
 function makePolicyDenied(seq: number, id?: string): string {
   return JSON.stringify({
-    type: 'policy.denied', id: id ?? `evt-${seq}`, aegissequence: seq,
+    type: 'policy.denied', id: id ?? `evt-${seq}`, nixissequence: seq,
     data: { tool: 'Shell', session_id: 'sess-1', decision: { action: 'deny', reason: 'Denied', policy_id: 'pol-1', enforcing_layer: 'cel', labels: { confidentiality: 0, integrity: 0, categories: 0 } }, label_state: 'fresh', latency_ns: 2000 },
   });
 }
@@ -38,7 +38,7 @@ describe('createEventIngestionPipeline', () => {
   });
 
   describe('Zod envelope validation', () => {
-    it('discards events missing aegissequence', () => {
+    it('discards events missing nixissequence', () => {
       const pipeline = createEventIngestionPipeline({ send: makeSend() });
       const received: ValidatedEvent[] = [];
       pipeline.onValidated(e => received.push(e));
@@ -61,7 +61,7 @@ describe('createEventIngestionPipeline', () => {
       const received: ValidatedEvent[] = [];
       pipeline.onValidated(e => received.push(e));
       pipeline.ingest(JSON.stringify({
-        type: 'policy.evaluated', aegissequence: 1,
+        type: 'policy.evaluated', nixissequence: 1,
         data: { tool: 'Shell', session_id: 's', decision: { action: 'allow', reason: '', policy_id: 'p', enforcing_layer: 'adapter', labels: { level: 'Confidential' } }, label_state: 'fresh', latency_ns: 0 },
       }), META);
       expect(received).toHaveLength(0);
@@ -85,11 +85,11 @@ describe('createEventIngestionPipeline', () => {
       pipeline.ingest(raw, META);
       expect(received).toHaveLength(1);
     });
-    it('drops duplicate by aegissequence when no id field', () => {
+    it('drops duplicate by nixissequence when no id field', () => {
       const pipeline = createEventIngestionPipeline({ send: makeSend() });
       const received: ValidatedEvent[] = [];
       pipeline.onValidated(e => received.push(e));
-      const raw = JSON.stringify({ type: 'policy.evaluated', aegissequence: 99, data: { tool: 'Shell', session_id: 's', decision: { action: 'allow', reason: '', policy_id: 'p', enforcing_layer: 'adapter', labels: { confidentiality: 0, integrity: 0, categories: 0 } }, label_state: 'fresh', latency_ns: 0 } });
+      const raw = JSON.stringify({ type: 'policy.evaluated', nixissequence: 99, data: { tool: 'Shell', session_id: 's', decision: { action: 'allow', reason: '', policy_id: 'p', enforcing_layer: 'adapter', labels: { confidentiality: 0, integrity: 0, categories: 0 } }, label_state: 'fresh', latency_ns: 0 } });
       pipeline.ingest(raw, META);
       pipeline.ingest(raw, META);
       expect(received).toHaveLength(1);
@@ -115,7 +115,7 @@ describe('createEventIngestionPipeline', () => {
     it('delivers in-order events immediately', () => {
       const pipeline = createEventIngestionPipeline({ send: makeSend() });
       const seqs: number[] = [];
-      pipeline.onValidated(e => seqs.push(e.envelope.aegissequence));
+      pipeline.onValidated(e => seqs.push(e.envelope.nixissequence));
       pipeline.ingest(makePolicyEvaluated(1, 'e1'), META);
       pipeline.ingest(makePolicyEvaluated(2, 'e2'), META);
       pipeline.ingest(makePolicyEvaluated(3, 'e3'), META);
@@ -124,7 +124,7 @@ describe('createEventIngestionPipeline', () => {
     it('buffers out-of-order events and delivers once gap is filled', () => {
       const pipeline = createEventIngestionPipeline({ send: makeSend() });
       const seqs: number[] = [];
-      pipeline.onValidated(e => seqs.push(e.envelope.aegissequence));
+      pipeline.onValidated(e => seqs.push(e.envelope.nixissequence));
       pipeline.ingest(makePolicyEvaluated(1, 'e1'), META);
       pipeline.ingest(makePolicyEvaluated(3, 'e3'), META);
       expect(seqs).toEqual([1]);
@@ -150,7 +150,7 @@ describe('createEventIngestionPipeline', () => {
       const pipeline = createEventIngestionPipeline({ send: makeSend() });
       const received: ValidatedEvent[] = [];
       pipeline.onValidated(e => received.push(e));
-      pipeline.ingest(JSON.stringify({ type: 'label.escalated', id: 'esc-1', aegissequence: 1, data: { session_id: 's', label: { confidentiality: 32768, integrity: 32768, categories: 0 }, label_state: 'escalated' } }), META);
+      pipeline.ingest(JSON.stringify({ type: 'label.escalated', id: 'esc-1', nixissequence: 1, data: { session_id: 's', label: { confidentiality: 32768, integrity: 32768, categories: 0 }, label_state: 'escalated' } }), META);
       expect(received).toHaveLength(1);
       if (received[0].type === 'label.escalated') expect(received[0].priority).toBe('CRITICAL');
     });
@@ -158,7 +158,7 @@ describe('createEventIngestionPipeline', () => {
       const pipeline = createEventIngestionPipeline({ send: makeSend() });
       const received: ValidatedEvent[] = [];
       pipeline.onValidated(e => received.push(e));
-      pipeline.ingest(JSON.stringify({ type: 'secret.detected', id: 'sec-1', aegissequence: 1, data: { session_id: 's', tool: 'Shell' } }), META);
+      pipeline.ingest(JSON.stringify({ type: 'secret.detected', id: 'sec-1', nixissequence: 1, data: { session_id: 's', tool: 'Shell' } }), META);
       expect(received).toHaveLength(1);
       if (received[0].type === 'secret.detected') expect(received[0].priority).toBe('CRITICAL');
     });
@@ -169,7 +169,7 @@ describe('createEventIngestionPipeline', () => {
       const pipeline = createEventIngestionPipeline({ send: makeSend() });
       const received: ValidatedEvent[] = [];
       pipeline.onValidated(e => received.push(e));
-      pipeline.ingest(JSON.stringify({ type: 'some.unknown.type', aegissequence: 1, data: {} }), META);
+      pipeline.ingest(JSON.stringify({ type: 'some.unknown.type', nixissequence: 1, data: {} }), META);
       expect(received).toHaveLength(0);
     });
   });

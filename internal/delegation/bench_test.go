@@ -3,7 +3,7 @@ package delegation_test
 import (
 	"testing"
 
-	"github.com/mayjain/aegis/internal/delegation"
+	"github.com/mayjain/nixis/internal/delegation"
 )
 
 func BenchmarkDelegation_Ceiling(b *testing.B) {

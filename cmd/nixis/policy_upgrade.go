@@ -26,8 +26,8 @@ var policyUpgradeCmd = &cobra.Command{
 	Use:   "upgrade",
 	Short: "Upgrade builtin policies to latest version",
 	Long: `Fetches the latest builtin policies from the project GitHub release
-(or from a local directory with --local) and installs them to ~/.aegis/policies/builtin/.
-Custom policies in ~/.aegis/policies/custom/ are never modified.`,
+(or from a local directory with --local) and installs them to ~/.nixis/policies/builtin/.
+Custom policies in ~/.nixis/policies/custom/ are never modified.`,
 	RunE: runPolicyUpgrade,
 }
 
@@ -35,7 +35,7 @@ func init() {
 	policyUpgradeCmd.Flags().BoolVar(&policyUpgradeLocal, "local", false, "Copy from local directory instead of GitHub")
 	policyUpgradeCmd.Flags().StringVar(&policyUpgradeDir, "dir", "./policies", "Local policy source directory (used with --local)")
 	policyUpgradeCmd.Flags().StringVar(&policyUpgradeOwner, "owner", "mayjain", "GitHub repository owner")
-	policyUpgradeCmd.Flags().StringVar(&policyUpgradeRepo, "repo", "aegis", "GitHub repository name")
+	policyUpgradeCmd.Flags().StringVar(&policyUpgradeRepo, "repo", "nixis", "GitHub repository name")
 	policyUpgradeCmd.Flags().BoolVarP(&policyUpgradeYes, "yes", "y", false, "Skip confirmation prompts")
 	policyCmd.AddCommand(policyUpgradeCmd)
 }
@@ -47,12 +47,12 @@ func runPolicyUpgrade(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("resolve home directory: %w", err)
 	}
 
-	builtinDir := filepath.Join(homeDir, ".aegis", "policies", "builtin")
+	builtinDir := filepath.Join(homeDir, ".nixis", "policies", "builtin")
 	if err := os.MkdirAll(builtinDir, 0o755); err != nil {
 		return fmt.Errorf("create builtin directory: %w", err)
 	}
 
-	fmt.Fprintln(w, "Aegis Policy Upgrade")
+	fmt.Fprintln(w, "Nixis Policy Upgrade")
 	fmt.Fprintln(w, "====================")
 	fmt.Fprintln(w)
 
@@ -269,7 +269,7 @@ func downloadAndExtractPolicies(client *http.Client, url string) (string, error)
 		return "", fmt.Errorf("download returned %d", resp.StatusCode)
 	}
 
-	tmpDir, err := os.MkdirTemp("", "aegis-policies-*")
+	tmpDir, err := os.MkdirTemp("", "nixis-policies-*")
 	if err != nil {
 		return "", err
 	}

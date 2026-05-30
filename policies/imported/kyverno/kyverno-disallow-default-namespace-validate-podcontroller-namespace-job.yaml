@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-disallow-default-namespace-validate-podcontroller-namespace-job
     annotations:
-        aegis.io/imported-from: aegis-import-4018604391.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-4018604391.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Multi-Tenancy
 spec:
     description: Kubernetes Namespaces are an optional feature that provide a way to segment and isolate cluster resources across multiple applications and users. As a best practice, workloads should be isolated with Namespaces. Namespaces should be required and the default (empty) Namespace should not be used. This policy validates that Pods specify a Namespace name other than `default`. Rule auto-generation is disabled here due to Pod controllers need to specify the `namespace` field under the top-level `metadata` object and not at the Pod template level.

@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mayjain/aegis/internal/classify"
-	"github.com/mayjain/aegis/internal/ifc"
-	"github.com/mayjain/aegis/internal/sink"
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/internal/classify"
+	"github.com/mayjain/nixis/internal/ifc"
+	"github.com/mayjain/nixis/internal/sink"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 func TestIsExternal(t *testing.T) {
@@ -78,20 +78,20 @@ func TestDecision(t *testing.T) {
 		effects            []string
 		resources          []string
 		containsNetworkCmd bool
-		want               aegis.Action
+		want               nixis.Action
 	}{
 		// --- untainted sessions always allow ---
 		{
 			name:    "untainted_any_restricted_effect",
 			snap:    ifc.SessionSnapshot{IsTainted: false},
 			effects: []string{classify.EffectNetworkEgress},
-			want:    aegis.ActionAllow,
+			want:    nixis.ActionAllow,
 		},
 		{
 			name:    "fresh_session_zero_snapshot",
 			snap:    ifc.SessionSnapshot{},
 			effects: []string{classify.EffectNetworkEgress},
-			want:    aegis.ActionAllow,
+			want:    nixis.ActionAllow,
 		},
 
 		// --- tainted + non-restricted effects ---
@@ -99,19 +99,19 @@ func TestDecision(t *testing.T) {
 			name:    "tainted_read_files",
 			snap:    ifc.SessionSnapshot{IsTainted: true},
 			effects: []string{classify.EffectReadFiles},
-			want:    aegis.ActionAllow,
+			want:    nixis.ActionAllow,
 		},
 		{
 			name:    "tainted_write_files",
 			snap:    ifc.SessionSnapshot{IsTainted: true},
 			effects: []string{classify.EffectWriteFiles},
-			want:    aegis.ActionAllow,
+			want:    nixis.ActionAllow,
 		},
 		{
 			name:    "tainted_exec_process_no_network_cmd",
 			snap:    ifc.SessionSnapshot{IsTainted: true},
 			effects: []string{classify.EffectExecProcess},
-			want:    aegis.ActionAllow,
+			want:    nixis.ActionAllow,
 		},
 
 		// --- tainted + restricted effect + ApprovalNone + external resource → deny ---
@@ -120,34 +120,34 @@ func TestDecision(t *testing.T) {
 			snap:      ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone},
 			effects:   []string{classify.EffectNetworkEgress},
 			resources: []string{"github.com"},
-			want:      aegis.ActionDeny,
+			want:      nixis.ActionDeny,
 		},
 		{
 			name:      "tainted_content_publish_no_approval_external",
 			snap:      ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone},
 			effects:   []string{classify.EffectContentPublish},
 			resources: []string{"evil.com"},
-			want:      aegis.ActionDeny,
+			want:      nixis.ActionDeny,
 		},
 		{
 			name:      "tainted_process_coordination_no_approval_external",
 			snap:      ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone},
 			effects:   []string{classify.EffectProcessCoordination},
 			resources: []string{"external.service.com"},
-			want:      aegis.ActionDeny,
+			want:      nixis.ActionDeny,
 		},
 		// internal/localhost effects (no specific external resource) → allow
 		{
 			name:    "tainted_content_internal_no_approval",
 			snap:    ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone},
 			effects: []string{classify.EffectContentInternal},
-			want:    aegis.ActionAllow,
+			want:    nixis.ActionAllow,
 		},
 		{
 			name:    "tainted_message_content_no_approval",
 			snap:    ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone},
 			effects: []string{classify.EffectMessageContent},
-			want:    aegis.ActionAllow,
+			want:    nixis.ActionAllow,
 		},
 
 		// --- tainted + ApprovalSessionGranted ---
@@ -155,13 +155,13 @@ func TestDecision(t *testing.T) {
 			name:    "tainted_network_egress_session_granted",
 			snap:    ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalSessionGranted},
 			effects: []string{classify.EffectNetworkEgress},
-			want:    aegis.ActionAllow,
+			want:    nixis.ActionAllow,
 		},
 		{
 			name:    "tainted_content_publish_session_granted",
 			snap:    ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalSessionGranted},
 			effects: []string{classify.EffectContentPublish},
-			want:    aegis.ActionAllow,
+			want:    nixis.ActionAllow,
 		},
 
 		// --- tainted + ApprovalStandingRule + single resource ---
@@ -174,7 +174,7 @@ func TestDecision(t *testing.T) {
 			},
 			effects:   []string{classify.EffectNetworkEgress},
 			resources: []string{"api.github.com"},
-			want:      aegis.ActionAllow,
+			want:      nixis.ActionAllow,
 		},
 		{
 			name: "tainted_standing_rule_domain_mismatch",
@@ -185,7 +185,7 @@ func TestDecision(t *testing.T) {
 			},
 			effects:   []string{classify.EffectNetworkEgress},
 			resources: []string{"evil.com"},
-			want:      aegis.ActionDeny, // external resource not covered by rule → deny
+			want:      nixis.ActionDeny, // external resource not covered by rule → deny
 		},
 		{
 			name: "tainted_standing_rule_effect_mismatch",
@@ -196,7 +196,7 @@ func TestDecision(t *testing.T) {
 			},
 			effects:   []string{classify.EffectContentPublish},
 			resources: []string{"api.github.com"},
-			want:      aegis.ActionDeny, // external resource, effect mismatch → deny
+			want:      nixis.ActionDeny, // external resource, effect mismatch → deny
 		},
 		{
 			name: "tainted_standing_rule_expired",
@@ -207,7 +207,7 @@ func TestDecision(t *testing.T) {
 			},
 			effects:   []string{classify.EffectNetworkEgress},
 			resources: []string{"api.github.com"},
-			want:      aegis.ActionDeny, // external resource, expired rule → deny
+			want:      nixis.ActionDeny, // external resource, expired rule → deny
 		},
 
 		// --- tainted + multi-resource ---
@@ -220,7 +220,7 @@ func TestDecision(t *testing.T) {
 			},
 			effects:   []string{classify.EffectNetworkEgress},
 			resources: []string{"api.github.com", "raw.github.com"},
-			want:      aegis.ActionAllow,
+			want:      nixis.ActionAllow,
 		},
 		{
 			name: "tainted_standing_rule_multi_resource_partial_match",
@@ -231,7 +231,7 @@ func TestDecision(t *testing.T) {
 			},
 			effects:   []string{classify.EffectNetworkEgress},
 			resources: []string{"api.github.com", "evil.com"},
-			want:      aegis.ActionDeny, // evil.com is external and not covered → deny
+			want:      nixis.ActionDeny, // evil.com is external and not covered → deny
 		},
 		{
 			name: "tainted_empty_resources_no_network_cmd_allow",
@@ -242,7 +242,7 @@ func TestDecision(t *testing.T) {
 			},
 			effects:   []string{classify.EffectNetworkEgress},
 			resources: []string{},
-			want:      aegis.ActionAllow, // no external resource identified → allow (internal assumed)
+			want:      nixis.ActionAllow, // no external resource identified → allow (internal assumed)
 		},
 
 		// --- ApprovalPending + external resource → deny ---
@@ -251,14 +251,14 @@ func TestDecision(t *testing.T) {
 			snap:      ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalPending},
 			effects:   []string{classify.EffectNetworkEgress},
 			resources: []string{"external.com"},
-			want:      aegis.ActionDeny,
+			want:      nixis.ActionDeny,
 		},
 		// ApprovalPending + no external resource → allow (not exfiltration)
 		{
 			name:    "tainted_approval_pending_no_resource",
 			snap:    ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalPending},
 			effects: []string{classify.EffectNetworkEgress},
-			want:    aegis.ActionAllow,
+			want:    nixis.ActionAllow,
 		},
 
 		// --- containsNetworkCmd ---
@@ -268,7 +268,7 @@ func TestDecision(t *testing.T) {
 			effects:            []string{classify.EffectExecProcess},
 			containsNetworkCmd: true,
 			resources:          []string{},
-			want:               aegis.ActionDeny, // unknown destination + network cmd → conservative deny
+			want:               nixis.ActionDeny, // unknown destination + network cmd → conservative deny
 		},
 		{
 			name:               "tainted_bash_network_cmd_localhost_allow",
@@ -276,7 +276,7 @@ func TestDecision(t *testing.T) {
 			effects:            []string{classify.EffectExecProcess},
 			containsNetworkCmd: true,
 			resources:          []string{"localhost"},
-			want:               aegis.ActionAllow, // localhost → allow even with network cmd
+			want:               nixis.ActionAllow, // localhost → allow even with network cmd
 		},
 		{
 			name:               "tainted_bash_network_cmd_external_deny",
@@ -284,21 +284,21 @@ func TestDecision(t *testing.T) {
 			effects:            []string{classify.EffectExecProcess},
 			containsNetworkCmd: true,
 			resources:          []string{"evil.com"},
-			want:               aegis.ActionDeny,
+			want:               nixis.ActionDeny,
 		},
 		{
 			name:               "tainted_bash_no_network_cmd_allowed",
 			snap:               ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone},
 			effects:            []string{classify.EffectExecProcess},
 			containsNetworkCmd: false,
-			want:               aegis.ActionAllow,
+			want:               nixis.ActionAllow,
 		},
 		{
 			name:               "untainted_bash_network_cmd_allowed",
 			snap:               ifc.SessionSnapshot{IsTainted: false},
 			effects:            []string{classify.EffectExecProcess},
 			containsNetworkCmd: true,
-			want:               aegis.ActionAllow,
+			want:               nixis.ActionAllow,
 		},
 
 		// --- multiple effects, one restricted + external resource → deny ---
@@ -311,7 +311,7 @@ func TestDecision(t *testing.T) {
 				classify.EffectExecProcess,
 			},
 			resources: []string{"evil.com"},
-			want:      aegis.ActionDeny,
+			want:      nixis.ActionDeny,
 		},
 
 		// --- T-LEG-086/087/088: localhost DB/cache access — allow even in tainted session ---
@@ -321,7 +321,7 @@ func TestDecision(t *testing.T) {
 			effects:            []string{classify.EffectExecProcess},
 			containsNetworkCmd: true,
 			resources:          []string{"localhost"},
-			want:               aegis.ActionAllow,
+			want:               nixis.ActionAllow,
 		},
 		{
 			name:               "tainted_localhost_mysqldump_allow",
@@ -329,7 +329,7 @@ func TestDecision(t *testing.T) {
 			effects:            []string{classify.EffectExecProcess},
 			containsNetworkCmd: true,
 			resources:          []string{"localhost"},
-			want:               aegis.ActionAllow,
+			want:               nixis.ActionAllow,
 		},
 		{
 			name:               "tainted_localhost_redis_allow",
@@ -337,7 +337,7 @@ func TestDecision(t *testing.T) {
 			effects:            []string{classify.EffectExecProcess},
 			containsNetworkCmd: true,
 			resources:          []string{"localhost"},
-			want:               aegis.ActionAllow,
+			want:               nixis.ActionAllow,
 		},
 
 		// --- TestDecision_TaintedLocalhost_Allow: various internal hosts ---
@@ -347,7 +347,7 @@ func TestDecision(t *testing.T) {
 			effects:            []string{classify.EffectNetworkEgress},
 			containsNetworkCmd: false,
 			resources:          []string{"127.0.0.1"},
-			want:               aegis.ActionAllow,
+			want:               nixis.ActionAllow,
 		},
 		{
 			name:               "tainted_rfc1918_192_allow",
@@ -355,7 +355,7 @@ func TestDecision(t *testing.T) {
 			effects:            []string{classify.EffectNetworkEgress},
 			containsNetworkCmd: false,
 			resources:          []string{"192.168.1.100"},
-			want:               aegis.ActionAllow,
+			want:               nixis.ActionAllow,
 		},
 		{
 			name:               "tainted_docker_internal_allow",
@@ -363,7 +363,7 @@ func TestDecision(t *testing.T) {
 			effects:            []string{classify.EffectNetworkEgress},
 			containsNetworkCmd: false,
 			resources:          []string{"host.docker.internal"},
-			want:               aegis.ActionAllow,
+			want:               nixis.ActionAllow,
 		},
 
 		// --- TestDecision_TaintedExternal_Deny ---
@@ -373,7 +373,7 @@ func TestDecision(t *testing.T) {
 			effects:            []string{classify.EffectNetworkEgress},
 			containsNetworkCmd: false,
 			resources:          []string{"github.com"},
-			want:               aegis.ActionDeny,
+			want:               nixis.ActionDeny,
 		},
 		{
 			name:               "tainted_external_evil_deny",
@@ -381,7 +381,7 @@ func TestDecision(t *testing.T) {
 			effects:            []string{classify.EffectNetworkEgress},
 			containsNetworkCmd: false,
 			resources:          []string{"evil.com"},
-			want:               aegis.ActionDeny,
+			want:               nixis.ActionDeny,
 		},
 		{
 			name:               "tainted_external_ip_deny",
@@ -389,7 +389,7 @@ func TestDecision(t *testing.T) {
 			effects:            []string{classify.EffectNetworkEgress},
 			containsNetworkCmd: false,
 			resources:          []string{"8.8.8.8"},
-			want:               aegis.ActionDeny,
+			want:               nixis.ActionDeny,
 		},
 	}
 

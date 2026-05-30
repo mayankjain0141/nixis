@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mayjain/aegis/internal/mcp"
-	"github.com/mayjain/aegis/internal/policy"
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/internal/mcp"
+	"github.com/mayjain/nixis/internal/policy"
+	"github.com/mayjain/nixis/pkg/nixis"
 	_ "modernc.org/sqlite"
 )
 
@@ -35,10 +35,10 @@ func (m *mockUpstream) ListTools(_ context.Context) ([]mcp.ToolDefinition, error
 func (m *mockUpstream) Close() error { return nil }
 
 type mockPipeline struct {
-	resp aegis.CheckResponse
+	resp nixis.CheckResponse
 }
 
-func (m *mockPipeline) Evaluate(_ context.Context, _ aegis.CheckRequest) aegis.CheckResponse {
+func (m *mockPipeline) Evaluate(_ context.Context, _ nixis.CheckRequest) nixis.CheckResponse {
 	return m.resp
 }
 
@@ -47,11 +47,11 @@ type mockScanner struct {
 	detected bool
 }
 
-func (s *mockScanner) ScanBoundary(_ context.Context, _ string, _ policy.BoundaryType) ([]policy.Finding, aegis.SecurityLabel) {
+func (s *mockScanner) ScanBoundary(_ context.Context, _ string, _ policy.BoundaryType) ([]policy.Finding, nixis.SecurityLabel) {
 	if s.detected {
 		s.findings = []policy.Finding{{Rule: "test-secret-rule"}}
 	}
-	return s.findings, aegis.SecurityLabel{}
+	return s.findings, nixis.SecurityLabel{}
 }
 
 func (s *mockScanner) ShouldScan(_ []string, _ policy.BoundaryType) bool {
@@ -75,20 +75,20 @@ func toolCallRequest(toolName string) mcp.JSONRPCRequest {
 }
 
 func allowPipeline() *mockPipeline {
-	return &mockPipeline{resp: aegis.CheckResponse{
-		Decision: aegis.Decision{Action: aegis.ActionAllow},
+	return &mockPipeline{resp: nixis.CheckResponse{
+		Decision: nixis.Decision{Action: nixis.ActionAllow},
 	}}
 }
 
 func denyPipeline(reason string) *mockPipeline {
-	return &mockPipeline{resp: aegis.CheckResponse{
-		Decision: aegis.Decision{Action: aegis.ActionDeny, Reason: reason},
+	return &mockPipeline{resp: nixis.CheckResponse{
+		Decision: nixis.Decision{Action: nixis.ActionDeny, Reason: reason},
 	}}
 }
 
 func requireApprovalPipeline() *mockPipeline {
-	return &mockPipeline{resp: aegis.CheckResponse{
-		Decision: aegis.Decision{Action: aegis.ActionRequireApproval, Reason: "needs approval"},
+	return &mockPipeline{resp: nixis.CheckResponse{
+		Decision: nixis.Decision{Action: nixis.ActionRequireApproval, Reason: "needs approval"},
 	}}
 }
 
@@ -227,7 +227,7 @@ func TestMCP_Fingerprint_Deterministic(t *testing.T) {
 }
 
 func TestMCP_PassThrough_NonToolCall(t *testing.T) {
-	expected := json.RawMessage(`{"name":"aegis-mcp","version":"0.1"}`)
+	expected := json.RawMessage(`{"name":"nixis-mcp","version":"0.1"}`)
 	upstream := &mockUpstream{callResult: expected}
 	proxy := mcp.NewInMemory(upstream, denyPipeline("should not reach pipeline"), nil, "sess-2")
 

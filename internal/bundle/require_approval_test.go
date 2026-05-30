@@ -63,7 +63,7 @@ func TestBuildCombinedExpression_MixedActions_DenyTakesPrecedence(t *testing.T) 
 }
 
 func TestParsePolicyFile_RequireApproval_SetsBinding(t *testing.T) {
-	content := `apiVersion: aegis.io/v1
+	content := `apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: ra-policy
@@ -96,7 +96,7 @@ spec:
 }
 
 func TestParsePolicyFile_Message_PropagatedToBinding(t *testing.T) {
-	content := `apiVersion: aegis.io/v1
+	content := `apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: msg-policy

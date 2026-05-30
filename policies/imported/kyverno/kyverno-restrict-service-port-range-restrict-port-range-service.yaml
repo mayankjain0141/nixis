@@ -4,14 +4,14 @@
 # validate the numeric range — false-negatives for all out-of-range ports, false-positives for
 # manifests with port fields that are in range. REQUIRE_APPROVAL fires on any manifest with a port
 # field, not selectively on out-of-range values.
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-service-port-range-restrict-port-range-service
     annotations:
-        aegis.io/imported-from: aegis-import-2278148088.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-2278148088.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Other
 spec:
     description: Services which are allowed to expose any port number may be able to impact other applications running on the Node which require them, or may make specifying security policy externally more challenging. This policy enforces that only the port range 32000 to 33000 may be used for Service resources.

@@ -4,11 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/mayjain/aegis/internal/cel"
-	"github.com/mayjain/aegis/internal/classify"
-	"github.com/mayjain/aegis/internal/label"
-	aegis "github.com/mayjain/aegis/pkg/aegis"
-	policy_types "github.com/mayjain/aegis/pkg/policy/types"
+	"github.com/mayjain/nixis/internal/cel"
+	"github.com/mayjain/nixis/internal/classify"
+	"github.com/mayjain/nixis/internal/label"
+	nixis "github.com/mayjain/nixis/pkg/nixis"
+	policy_types "github.com/mayjain/nixis/pkg/policy/types"
 )
 
 // BenchmarkCEL_EvalSimple benchmarks a simple single-comparison expression.
@@ -35,7 +35,7 @@ func BenchmarkCEL_EvalSimple(b *testing.B) {
 		b.Fatal("program not found")
 	}
 
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "Read",
 		SessionID: "bench-session",
 	}
@@ -80,10 +80,10 @@ func BenchmarkCEL_EvalComplex(b *testing.B) {
 		b.Fatal("program not found")
 	}
 
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:          "Bash",
 		SessionID:     "bench-session",
-		SecurityLabel: aegis.SecurityLabel{Confidentiality: 2, Integrity: 3},
+		SecurityLabel: nixis.SecurityLabel{Confidentiality: 2, Integrity: 3},
 	}
 	verdict := classify.VerdictEntry{
 		RiskLevel: classify.RiskMedium,

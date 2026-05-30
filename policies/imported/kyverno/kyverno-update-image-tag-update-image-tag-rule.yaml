@@ -1,12 +1,12 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-update-image-tag-update-image-tag-rule
     annotations:
-        aegis.io/imported-from: aegis-import-1530587862.yaml
-        aegis.io/severity: medium
-        aegis.io/llm-confidence: medium
+        nixis.io/imported-from: nixis-import-1530587862.yaml
+        nixis.io/severity: medium
+        nixis.io/llm-confidence: medium
         kyverno.io/category: Other
 spec:
     description: For use cases like sidecar injection, it is often the case where existing Deployments need the sidecar image updated without destroying the whole Deployment or Pods. This policy updates the image tag on containers named vault-agent for existing Deployments which have the annotation vault.hashicorp.com/agent-inject="true". It may be necessary to grant additional privileges to the Kyverno ServiceAccount, via one of the existing ClusterRoleBindings or a new one, so it can modify Deployments.

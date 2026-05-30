@@ -1,14 +1,14 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-network-tool-executed-during-npm-package-install
     annotations:
-        aegis.io/falco-tags: maturity_sandbox,container,network,process,mitre_execution,T1195.002
-        aegis.io/imported-from: aegis-import-1470842712.yaml
-        aegis.io/severity: medium
-        aegis.io/llm-confidence: medium
-        aegis.io/source-rule: Network Tool Executed During NPM Package Install
+        nixis.io/falco-tags: maturity_sandbox,container,network,process,mitre_execution,T1195.002
+        nixis.io/imported-from: nixis-import-1470842712.yaml
+        nixis.io/severity: medium
+        nixis.io/llm-confidence: medium
+        nixis.io/source-rule: Network Tool Executed During NPM Package Install
 spec:
     description: |
         Detect network tools being launched when an NPM package is installed. Malicious NPM packages may invoke  preinstall or postinstall commands, which can involve network tools to download malicious payloads or exfiltrate  sensitive information. Network tools spawned by npm, node, yarn, pnpm, bun, or related processes during  package installation should be investigated. This rule complements the more generic "Launch Suspicious Network  Tool in Container" rule with a specific focus on the supply chain attack vector via NPM packages.

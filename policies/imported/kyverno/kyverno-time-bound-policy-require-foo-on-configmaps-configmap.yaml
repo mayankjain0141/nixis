@@ -1,12 +1,12 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-time-bound-policy-require-foo-on-configmaps-configmap
     annotations:
-        aegis.io/imported-from: aegis-import-622645317.yaml
-        aegis.io/severity: low
-        aegis.io/llm-confidence: medium
+        nixis.io/imported-from: nixis-import-622645317.yaml
+        nixis.io/severity: low
+        nixis.io/llm-confidence: medium
         kyverno.io/category: Other
 spec:
     description: Sometimes a policy should be active or inactive based on a time window determined as part of the policy. Whether the policy should come into play should be dependent on that time. This policy illustrates how to time-bound any policy by using preconditions with JMESPath time filters. In this case, the policy enforces that label `foo` be required on all ConfigMaps during the hours of 8am-5pm EST (expressed in UTC). Additional, similar preconditions may be added to perform other time checks, for example a range of days.

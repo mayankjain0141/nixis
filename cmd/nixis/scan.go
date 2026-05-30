@@ -9,8 +9,8 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/mayjain/aegis/internal/classify"
-	"github.com/mayjain/aegis/pkg/adapters"
+	"github.com/mayjain/nixis/internal/classify"
+	"github.com/mayjain/nixis/pkg/adapters"
 	"github.com/spf13/cobra"
 )
 
@@ -95,7 +95,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 			"protocolVersion": "2024-11-05",
 			"capabilities":    map[string]interface{}{},
 			"clientInfo": map[string]interface{}{
-				"name":    "aegis-scan",
+				"name":    "nixis-scan",
 				"version": "1.0",
 			},
 		},
@@ -163,11 +163,11 @@ func runScan(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		}
-		if _, err := fmt.Fprintf(out, "    # aegis: classify as %s\n", riskLevel); err != nil {
+		if _, err := fmt.Fprintf(out, "    # nixis: classify as %s\n", riskLevel); err != nil {
 			return err
 		}
 		effectsLine := buildEffectsLine(entry.Effects)
-		if _, err := fmt.Fprintf(out, "    # aegis: effects: [%s]\n", effectsLine); err != nil {
+		if _, err := fmt.Fprintf(out, "    # nixis: effects: [%s]\n", effectsLine); err != nil {
 			return err
 		}
 	}

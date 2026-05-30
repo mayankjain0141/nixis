@@ -1,12 +1,12 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-audit-event-on-delete-generate-event-on-delete
     annotations:
-        aegis.io/imported-from: aegis-import-2605130174.yaml
-        aegis.io/severity: low
-        aegis.io/llm-confidence: medium
+        nixis.io/imported-from: nixis-import-2605130174.yaml
+        nixis.io/severity: low
+        nixis.io/llm-confidence: medium
         kyverno.io/category: Other
 spec:
     description: Kubernetes Events are limited in that the circumstances under which they are created cannot be changed and with what they are associated is fixed. It may be advantageous in many cases to augment these out-of-the-box Events with custom Events which can be custom designed to your needs. This policy generates an Event when a Secret has been deleted. It lists the userInfo of the actor performing the deletion.
@@ -14,6 +14,6 @@ spec:
         tools: []
     validations:
         - expression: 'false'
-          message: 'Generate rule (audit Event on resource delete) — Aegis cannot generate resources; verify resource deletion events are captured via other audit mechanisms'
+          message: 'Generate rule (audit Event on resource delete) — Nixis cannot generate resources; verify resource deletion events are captured via other audit mechanisms'
           action: AUDIT
     defaultAction: ALLOW

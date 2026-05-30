@@ -1,14 +1,14 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-launch-disallowed-container
     annotations:
-        aegis.io/falco-tags: maturity_sandbox,container,mitre_lateral_movement,T1610
-        aegis.io/imported-from: aegis-import-1470842712.yaml
-        aegis.io/severity: medium
-        aegis.io/llm-confidence: medium
-        aegis.io/source-rule: Launch Disallowed Container
+        nixis.io/falco-tags: maturity_sandbox,container,mitre_lateral_movement,T1610
+        nixis.io/imported-from: nixis-import-1470842712.yaml
+        nixis.io/severity: medium
+        nixis.io/llm-confidence: medium
+        nixis.io/source-rule: Launch Disallowed Container
 spec:
     description: |
         Detect the initial process launched within a container that is not in a list of allowed containers. This rule holds value for generic auditing; however, this rule requires a good understanding of your setup and consistent effort to keep the list of allowed containers current. In some situations, this can be challenging to manage.

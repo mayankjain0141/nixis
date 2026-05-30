@@ -1,14 +1,14 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-unexpected-udp-traffic
     annotations:
-        aegis.io/falco-tags: maturity_incubating,host,container,network,mitre_exfiltration,TA0011
-        aegis.io/imported-from: aegis-import-2621062960.yaml
-        aegis.io/severity: low
-        aegis.io/llm-confidence: medium
-        aegis.io/source-rule: Unexpected UDP Traffic
+        nixis.io/falco-tags: maturity_incubating,host,container,network,mitre_exfiltration,TA0011
+        nixis.io/imported-from: nixis-import-2621062960.yaml
+        nixis.io/severity: low
+        nixis.io/llm-confidence: medium
+        nixis.io/source-rule: Unexpected UDP Traffic
 spec:
     description: |
         Detecting UDP traffic on ports other than 53 (DNS) or other commonly used ports. Misusing UDP is a known TTP among attackers. Monitoring unusual network activity is highly valuable but often generates significant noise, as is the case with this detection.

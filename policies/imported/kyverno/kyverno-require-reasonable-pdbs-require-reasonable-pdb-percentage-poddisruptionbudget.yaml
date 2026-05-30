@@ -1,10 +1,10 @@
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-require-reasonable-pdbs-require-reasonable-pdb-percentage-poddisruptionbudget
     annotations:
-        aegis.io/imported-from: aegis-import-162133070.yaml
-        aegis.io/severity: low
+        nixis.io/imported-from: nixis-import-162133070.yaml
+        nixis.io/severity: low
         kyverno.io/category: Other
 spec:
     description: PodDisruptionBudget resources are useful to ensuring minimum availability is maintained at all times. Achieving a balance between availability and maintainability is important. This policy validates that a PodDisruptionBudget, specified as percentages, allows 50% of the replicas to be out of service in that minAvailable should be no higher than 50% and maxUnavailable should be no lower than 50%.

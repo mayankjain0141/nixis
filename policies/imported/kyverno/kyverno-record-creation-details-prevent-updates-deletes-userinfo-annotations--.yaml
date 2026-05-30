@@ -2,14 +2,14 @@
 # The companion mutate policy (add-userinfo) is also translated to false+AUDIT — without annotation injection,
 # no existing resource will have the annotation. Enforcing annotation presence would DENY all new manifests.
 # Translated to false + AUDIT to match the companion policy's audit-only status.
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-record-creation-details-prevent-updates-deletes-userinfo-annotations--
     annotations:
-        aegis.io/imported-from: aegis-import-74090786.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-74090786.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Other
 spec:
     description: Kubernetes by default does not make a record of who or what created a resource in that resource itself. It must be retrieved from an audit log, if enabled, which can make it difficult for cluster operators to know who was responsible for an object's creation. This policy writes an annotation with the key `kyverno.io/created-by` having all the userInfo fields present in the AdmissionReview request for any object being created. It then protects this annotation from tampering or removal making it immutable. Although this policy matches on all kinds ("*") it is highly recommend to more narrowly scope it to only the resources which should be labeled.

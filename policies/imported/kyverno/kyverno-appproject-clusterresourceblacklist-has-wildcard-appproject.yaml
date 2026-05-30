@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-appproject-clusterresourceblacklist-has-wildcard-appproject
     annotations:
-        aegis.io/imported-from: aegis-import-1854350564.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-1854350564.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Argo
 spec:
     description: An AppProject may optionally specify clusterResourceBlacklist which is a blacklisted group of cluster resources. This is often a good practice to ensure AppProjects do not allow more access than needed. This policy is a combination of two rules which enforce that all AppProjects specify clusterResourceBlacklist and that their group and kind have wildcards as values.

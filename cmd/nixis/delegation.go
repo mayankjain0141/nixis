@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	internaldel "github.com/mayjain/aegis/internal/delegation"
+	internaldel "github.com/mayjain/nixis/internal/delegation"
 	"github.com/spf13/cobra"
 )
 
@@ -68,7 +68,7 @@ func init() {
 	delegationIssueCmd.Flags().StringVar(&delegKeyFile, "key", "", "Path to Ed25519 private key file (JSON); generated if omitted")
 
 	delegationRevokeCmd.Flags().StringVar(&delegRevokeChainID, "chain-id", "", "Chain ID to revoke")
-	delegationRevokeCmd.Flags().StringVar(&delegRevokeSocket, "socket", "", "Daemon socket path (default: $AEGIS_SOCKET_PATH or /tmp/aegis.sock)")
+	delegationRevokeCmd.Flags().StringVar(&delegRevokeSocket, "socket", "", "Daemon socket path (default: $NIXIS_SOCKET_PATH or /tmp/nixis.sock)")
 
 	delegationVerifyCmd.Flags().StringVar(&delegVerifyKeyFile, "key", "", "Path to Ed25519 public key file (JSON); read from token file if omitted")
 

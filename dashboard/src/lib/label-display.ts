@@ -1,6 +1,6 @@
 // The ONLY location in the frontend that converts numeric SecurityLabel to display strings.
 // All other code uses numeric values. ADR-013 canonical mapping.
-import type { SecurityLabel } from '../types/aegis';
+import type { SecurityLabel } from '../types/nixis';
 
 export function confidentialityToLevel(c: number): string {
   if (c < 8192) return 'Unclassified';

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 // CursorAdapter handles the Cursor IDE hook protocol.
@@ -36,37 +36,37 @@ func (a *CursorAdapter) Detect(raw json.RawMessage) bool {
 	return probe.ConversationID != "" && probe.HookEventName == ""
 }
 
-func (a *CursorAdapter) ParseInput(raw json.RawMessage) (aegis.CheckRequest, error) {
+func (a *CursorAdapter) ParseInput(raw json.RawMessage) (nixis.CheckRequest, error) {
 	var inp cursorInput
 	if err := json.Unmarshal(raw, &inp); err != nil {
-		return aegis.CheckRequest{}, fmt.Errorf("parse cursor input: %w", err)
+		return nixis.CheckRequest{}, fmt.Errorf("parse cursor input: %w", err)
 	}
-	return aegis.CheckRequest{
+	return nixis.CheckRequest{
 		Tool:            inp.ToolName,
 		Args:            inp.Input,
 		SessionID:       inp.ConversationID,
-		SpawnToken:      os.Getenv("AEGIS_SPAWN_TOKEN"),
-		ParentSessionID: os.Getenv("AEGIS_PARENT_SESSION_ID"),
-		ProjectRoot:     os.Getenv("AEGIS_PROJECT_ROOT"),
+		SpawnToken:      os.Getenv("NIXIS_SPAWN_TOKEN"),
+		ParentSessionID: os.Getenv("NIXIS_PARENT_SESSION_ID"),
+		ProjectRoot:     os.Getenv("NIXIS_PROJECT_ROOT"),
 	}, nil
 }
 
-func (a *CursorAdapter) FormatOutput(resp aegis.CheckResponse, _ json.RawMessage) ([]byte, int) {
+func (a *CursorAdapter) FormatOutput(resp nixis.CheckResponse, _ json.RawMessage) ([]byte, int) {
 	var out CursorHookOutput
 	out.LatencyNs = resp.LatencyNs
 
 	switch resp.Decision.Action {
-	case aegis.ActionAllow:
+	case nixis.ActionAllow:
 		out.Decision.Action = "allow"
-	case aegis.ActionDeny:
+	case nixis.ActionDeny:
 		out.Decision.Action = "deny"
 		out.Decision.Reason = resp.Decision.Reason
 		out.Decision.PolicyID = resp.Decision.PolicyID
-	case aegis.ActionRequireApproval:
+	case nixis.ActionRequireApproval:
 		out.Decision.Action = "require_approval"
 		out.Decision.Reason = resp.Decision.Reason
 		out.Decision.PolicyID = resp.Decision.PolicyID
-	case aegis.ActionAudit:
+	case nixis.ActionAudit:
 		out.Decision.Action = "audit"
 	default:
 		out.Decision.Action = "deny"
@@ -74,7 +74,7 @@ func (a *CursorAdapter) FormatOutput(resp aegis.CheckResponse, _ json.RawMessage
 	}
 
 	exitCode := 0
-	if resp.Decision.Action == aegis.ActionDeny || resp.Decision.Action == aegis.ActionRequireApproval {
+	if resp.Decision.Action == nixis.ActionDeny || resp.Decision.Action == nixis.ActionRequireApproval {
 		exitCode = 2
 	}
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Package daemon implements the Aegis governance daemon: Unix socket listener,
+// Package daemon implements the Nixis governance daemon: Unix socket listener,
 // length-prefixed JSON framing, policy evaluation dispatch, and graceful shutdown.
 //
 // Critical invariants enforced here:
@@ -29,34 +29,34 @@ type Config struct {
 	SocketPath  string
 	PolicyDir   string
 	AuditDBPath string
-	// FailOpenLog defaults to ~/.aegis/failopen.log (or $AEGIS_FAILOPEN_LOG).
+	// FailOpenLog defaults to ~/.nixis/failopen.log (or $NIXIS_FAILOPEN_LOG).
 	FailOpenLog string
 	// HealthzAddr is the address for the /healthz HTTP endpoint. Defaults to "127.0.0.1:9091".
 	HealthzAddr string
 }
 
 // defaultSocketPath returns the canonical Unix socket path.
-// Priority: $AEGIS_SOCKET_PATH → $XDG_RUNTIME_DIR/aegis/aegis.sock → /tmp/aegis.sock
+// Priority: $NIXIS_SOCKET_PATH → $XDG_RUNTIME_DIR/nixis/nixis.sock → /tmp/nixis.sock
 func defaultSocketPath() string {
-	if v := os.Getenv("AEGIS_SOCKET_PATH"); v != "" {
+	if v := os.Getenv("NIXIS_SOCKET_PATH"); v != "" {
 		return v
 	}
 	if xdg := os.Getenv("XDG_RUNTIME_DIR"); xdg != "" {
-		return filepath.Join(xdg, "aegis", "aegis.sock")
+		return filepath.Join(xdg, "nixis", "nixis.sock")
 	}
-	return "/tmp/aegis.sock"
+	return "/tmp/nixis.sock"
 }
 
 // defaultFailOpenLog returns the default fail-open log path.
 func defaultFailOpenLog() string {
-	if v := os.Getenv("AEGIS_FAILOPEN_LOG"); v != "" {
+	if v := os.Getenv("NIXIS_FAILOPEN_LOG"); v != "" {
 		return v
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "/tmp/aegis-failopen.log"
+		return "/tmp/nixis-failopen.log"
 	}
-	return filepath.Join(home, ".aegis", "failopen.log")
+	return filepath.Join(home, ".nixis", "failopen.log")
 }
 
 // applyDefaults fills in zero-value Config fields.

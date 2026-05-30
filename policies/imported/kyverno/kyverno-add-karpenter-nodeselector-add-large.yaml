@@ -1,12 +1,12 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-add-karpenter-nodeselector-add-large
     annotations:
-        aegis.io/imported-from: aegis-import-2379906077.yaml
-        aegis.io/severity: medium
-        aegis.io/llm-confidence: medium
+        nixis.io/imported-from: nixis-import-2379906077.yaml
+        nixis.io/severity: medium
+        nixis.io/llm-confidence: medium
         kyverno.io/category: Karpenter, EKS Best Practices
 spec:
     description: Selecting the correct Node(s) provisioned by Karpenter is a way to specify the appropriate resource landing zone for a workload. This policy injects a nodeSelector map into the Pod based on the Namespace type where it is deployed.
@@ -14,6 +14,6 @@ spec:
         tools: []
     validations:
         - expression: 'false'
-          message: 'Mutate rule (Karpenter nodeSelector injection) — Aegis cannot mutate requests; verify pods in production namespaces include appropriate nodeSelector for large Karpenter nodes'
+          message: 'Mutate rule (Karpenter nodeSelector injection) — Nixis cannot mutate requests; verify pods in production namespaces include appropriate nodeSelector for large Karpenter nodes'
           action: AUDIT
     defaultAction: ALLOW

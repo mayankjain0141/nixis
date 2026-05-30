@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/pkg/nixis"
 	"os"
 )
 
@@ -71,8 +71,8 @@ func TestHookInput_CursorFormat(t *testing.T) {
 }
 
 func TestTranslateToClaudeCode_Allow(t *testing.T) {
-	resp := aegis.CheckResponse{}
-	resp.Decision.Action = aegis.ActionAllow
+	resp := nixis.CheckResponse{}
+	resp.Decision.Action = nixis.ActionAllow
 
 	out := translateToClaudeCode(resp, "PreToolUse")
 
@@ -105,8 +105,8 @@ func TestTranslateToClaudeCode_Allow(t *testing.T) {
 }
 
 func TestTranslateToClaudeCode_Deny(t *testing.T) {
-	resp := aegis.CheckResponse{}
-	resp.Decision.Action = aegis.ActionDeny
+	resp := nixis.CheckResponse{}
+	resp.Decision.Action = nixis.ActionDeny
 	resp.Decision.Reason = "policy P-001 prohibits rm -rf"
 
 	out := translateToClaudeCode(resp, "PreToolUse")
@@ -120,8 +120,8 @@ func TestTranslateToClaudeCode_Deny(t *testing.T) {
 }
 
 func TestTranslateToClaudeCode_RequireApproval(t *testing.T) {
-	resp := aegis.CheckResponse{}
-	resp.Decision.Action = aegis.ActionRequireApproval
+	resp := nixis.CheckResponse{}
+	resp.Decision.Action = nixis.ActionRequireApproval
 	resp.Decision.Reason = "requires human approval"
 
 	out := translateToClaudeCode(resp, "PreToolUse")
@@ -135,7 +135,7 @@ func TestTranslateToClaudeCode_RequireApproval(t *testing.T) {
 }
 
 // TestBuildCheckRequest_SpawnTokenFromEnv verifies that buildCheckRequest reads
-// AEGIS_SPAWN_TOKEN and AEGIS_PARENT_SESSION_ID from the environment and
+// NIXIS_SPAWN_TOKEN and NIXIS_PARENT_SESSION_ID from the environment and
 // populates the corresponding CheckRequest fields. Both env vars are optional —
 // empty string is the correct value for root (non-delegated) sessions.
 func TestBuildCheckRequest_SpawnTokenFromEnv(t *testing.T) {
@@ -146,8 +146,8 @@ func TestBuildCheckRequest_SpawnTokenFromEnv(t *testing.T) {
 	}
 
 	t.Run("token_and_parent_present", func(t *testing.T) {
-		t.Setenv("AEGIS_SPAWN_TOKEN", "tok-abc123")
-		t.Setenv("AEGIS_PARENT_SESSION_ID", "sess-parent-001")
+		t.Setenv("NIXIS_SPAWN_TOKEN", "tok-abc123")
+		t.Setenv("NIXIS_PARENT_SESSION_ID", "sess-parent-001")
 
 		req := buildCheckRequest(h, 42)
 
@@ -169,8 +169,8 @@ func TestBuildCheckRequest_SpawnTokenFromEnv(t *testing.T) {
 	})
 
 	t.Run("root_session_no_env_vars", func(t *testing.T) {
-		os.Unsetenv("AEGIS_SPAWN_TOKEN")
-		os.Unsetenv("AEGIS_PARENT_SESSION_ID")
+		os.Unsetenv("NIXIS_SPAWN_TOKEN")
+		os.Unsetenv("NIXIS_PARENT_SESSION_ID")
 
 		req := buildCheckRequest(h, 0)
 
@@ -186,8 +186,8 @@ func TestBuildCheckRequest_SpawnTokenFromEnv(t *testing.T) {
 // TestBuildCheckRequest_FieldTypes is a compile-time assertion that SpawnToken and
 // ParentSessionID on CheckRequest are string fields, exercised here to catch any
 // future type mismatch.
-var _ = func() aegis.CheckRequest {
-	return aegis.CheckRequest{SpawnToken: "", ParentSessionID: ""}
+var _ = func() nixis.CheckRequest {
+	return nixis.CheckRequest{SpawnToken: "", ParentSessionID: ""}
 }
 
 // TestHookInput_MixedFormat verifies that when both field names are present,

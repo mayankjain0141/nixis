@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-memory-requests-equal-limits-memory-requests-equal-limits-pod
     annotations:
-        aegis.io/imported-from: aegis-import-3866710378.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-3866710378.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Sample
 spec:
     description: Pods which have memory limits equal to requests could be given a QoS class of Guaranteed if they also set CPU limits equal to requests. Guaranteed is the highest schedulable class. This policy checks that all containers in a given Pod have memory requests equal to limits.

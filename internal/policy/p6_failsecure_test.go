@@ -6,12 +6,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mayjain/aegis/internal/cel"
-	"github.com/mayjain/aegis/internal/classify"
-	"github.com/mayjain/aegis/internal/ifc"
-	"github.com/mayjain/aegis/pkg/adapters"
-	"github.com/mayjain/aegis/pkg/aegis"
-	policy_types "github.com/mayjain/aegis/pkg/policy/types"
+	"github.com/mayjain/nixis/internal/cel"
+	"github.com/mayjain/nixis/internal/classify"
+	"github.com/mayjain/nixis/internal/ifc"
+	"github.com/mayjain/nixis/pkg/adapters"
+	"github.com/mayjain/nixis/pkg/nixis"
+	policy_types "github.com/mayjain/nixis/pkg/policy/types"
 )
 
 // makeEngineWithDefaultAction builds a minimal engine with a single CEL policy
@@ -57,7 +57,7 @@ func makeEngineWithDefaultAction(t *testing.T, templateID, expression, defaultAc
 	}
 
 	snap := &engineSnapshot{
-		public:     aegis.EngineSnapshot{Version: 1},
+		public:     nixis.EngineSnapshot{Version: 1},
 		classifier: classifier,
 		programs:   programs,
 		bindings:   bindings,
@@ -79,11 +79,11 @@ const runtimeErrorExpr = `confidentiality / 0 > 0`
 func TestEngine_P6_EvalError_AllowDefault_PolicySkipped(t *testing.T) {
 	engine := makeEngineWithDefaultAction(t, "allow-default-policy", runtimeErrorExpr, "ALLOW")
 
-	resp := engine.Evaluate(context.Background(), aegis.CheckRequest{Tool: "Bash", SessionID: "s1"})
+	resp := engine.Evaluate(context.Background(), nixis.CheckRequest{Tool: "Bash", SessionID: "s1"})
 
 	// The erroring policy should be skipped. No other policy denies, so we expect Allow.
 	// If the decision IS deny, it must not have come from our policy (PolicyID check).
-	if resp.Decision.Action == aegis.ActionDeny && resp.Decision.PolicyID == "allow-default-policy" {
+	if resp.Decision.Action == nixis.ActionDeny && resp.Decision.PolicyID == "allow-default-policy" {
 		t.Errorf("defaultAction=ALLOW: policy should be skipped on eval error, not denied; got %+v", resp.Decision)
 	}
 }
@@ -94,12 +94,12 @@ func TestEngine_P6_EvalError_AllowDefault_PolicySkipped(t *testing.T) {
 func TestEngine_P6_EvalError_DenyDefault_FailsSecure(t *testing.T) {
 	engine := makeEngineWithDefaultAction(t, "deny-default-policy", runtimeErrorExpr, "DENY")
 
-	resp := engine.Evaluate(context.Background(), aegis.CheckRequest{Tool: "Bash", SessionID: "s1"})
+	resp := engine.Evaluate(context.Background(), nixis.CheckRequest{Tool: "Bash", SessionID: "s1"})
 
-	if resp.Decision.Action != aegis.ActionDeny {
+	if resp.Decision.Action != nixis.ActionDeny {
 		t.Errorf("defaultAction=DENY: expected ActionDeny on eval error, got %v", resp.Decision.Action)
 	}
-	if resp.EnforcingLayer != aegis.EnforcingLayerCEL {
+	if resp.EnforcingLayer != nixis.EnforcingLayerCEL {
 		t.Errorf("expected EnforcingLayerCEL, got %v", resp.EnforcingLayer)
 	}
 }
@@ -117,7 +117,7 @@ func TestBundle_P6_CompileError_DenyDefault_RefusesLoad(t *testing.T) {
 
 	// A policy with defaultAction=DENY that references an undeclared variable will be
 	// skipped by CompileAll (type-check phase), and buildSnapshot must reject it.
-	bundle := &aegis.CompiledBundle{
+	bundle := &nixis.CompiledBundle{
 		Templates: []policy_types.PolicyTemplate{
 			{
 				ID:            "deny-with-bad-cel",

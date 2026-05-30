@@ -1,19 +1,19 @@
 # Policy Authoring Guide
 
-Aegis policies are YAML files that define what tool calls to intercept and how to evaluate them using [CEL](https://github.com/google/cel-go) (Common Expression Language) expressions.
+Nixis policies are YAML files that define what tool calls to intercept and how to evaluate them using [CEL](https://github.com/google/cel-go) (Common Expression Language) expressions.
 
 ## Policy File Anatomy
 
 Every policy follows this structure:
 
 ```yaml
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: my-policy-name
   annotations:
-    aegis.io/default-enabled: "true"   # loaded automatically
-    aegis.io/bundle: builtin            # bundle membership
+    nixis.io/default-enabled: "true"   # loaded automatically
+    nixis.io/bundle: builtin            # bundle membership
 spec:
   description: "Human-readable description"
   matchConstraints:
@@ -79,7 +79,7 @@ request.args.command.contains("curl") && request.secret_detected
 
 ## Built-In Policies Walkthrough
 
-Aegis ships with 19 policies enabled by default. Here are three that demonstrate different patterns:
+Nixis ships with 19 policies enabled by default. Here are three that demonstrate different patterns:
 
 ### 1. Credential Exfiltration Block
 
@@ -144,12 +144,12 @@ touch policies/custom/my-org-rules.yaml
 **Step 2:** Define the policy. A complete example requiring approval for `git push --force`:
 
 ```yaml
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: require-approval-force-push
   annotations:
-    aegis.io/default-enabled: "true"
+    nixis.io/default-enabled: "true"
 spec:
   description: "Require human approval for git force-push"
   matchConstraints:
@@ -169,26 +169,26 @@ spec:
 **Step 3:** Validate it:
 
 ```bash
-./bin/aegis validate --dir policies/custom/
+./bin/nixis validate --dir policies/custom/
 ```
 
 **Step 4:** The daemon hot-reloads automatically (fsnotify). No restart needed.
 
 ## Testing Policies
 
-Use `aegis simulate` to dry-run tool calls against the running daemon:
+Use `nixis simulate` to dry-run tool calls against the running daemon:
 
 ```bash
 # Test a force-push (should trigger REQUIRE_APPROVAL)
-./bin/aegis simulate Bash --session test-fp \
+./bin/nixis simulate Bash --session test-fp \
   --args '{"command": "git push --force origin main"}'
 
 # Test a normal push (should ALLOW)
-./bin/aegis simulate Bash --session test-push \
+./bin/nixis simulate Bash --session test-push \
   --args '{"command": "git push origin feature-branch"}'
 
 # Test reading a .env file (should DENY via IFC)
-./bin/aegis simulate Read --session test-env \
+./bin/nixis simulate Read --session test-env \
   --args '{"file_path": "/app/.env.production"}'
 ```
 
@@ -209,22 +209,22 @@ Policies can be grouped into signed bundles for distribution:
 
 ```bash
 # Create a bundle from a directory
-./bin/aegis bundle create --dir policies/custom/ --output my-org.bundle
+./bin/nixis bundle create --dir policies/custom/ --output my-org.bundle
 
 # Verify bundle integrity
-./bin/aegis bundle verify my-org.bundle
+./bin/nixis bundle verify my-org.bundle
 ```
 
 ## Importing from Other Formats
 
-Aegis can translate policies from OPA/Rego, Kyverno, and Falco formats using an LLM:
+Nixis can translate policies from OPA/Rego, Kyverno, and Falco formats using an LLM:
 
 ```bash
 # Requires LITELLM_API_KEY in .env
-./bin/aegis policy import --source opa --input my-rego-policy.rego --output policies/imported/
+./bin/nixis policy import --source opa --input my-rego-policy.rego --output policies/imported/
 ```
 
-This produces Aegis-native YAML that you can review and customize.
+This produces Nixis-native YAML that you can review and customize.
 
 ## Advanced: Label-Aware Policies
 
@@ -250,7 +250,7 @@ Once a session reads sensitive data, it cannot exfiltrate via network — the IF
 
 | Path | Purpose |
 |------|---------|
-| `policies/builtin/` | Default-enabled policies shipped with Aegis |
+| `policies/builtin/` | Default-enabled policies shipped with Nixis |
 | `policies/imported/` | Policies translated from other formats |
 | `policies/custom/` | Your organization's custom policies (create this) |
 

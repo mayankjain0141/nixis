@@ -9,7 +9,7 @@ import (
 )
 
 func TestParsePolicyFile_Valid(t *testing.T) {
-	content := `apiVersion: aegis.io/v1
+	content := `apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: test-policy
@@ -73,7 +73,7 @@ spec:
 }
 
 func TestParsePolicyFile_NonPolicy(t *testing.T) {
-	content := `apiVersion: aegis.io/v1
+	content := `apiVersion: nixis.io/v1
 kind: PolicyBinding
 metadata:
   name: not-a-template
@@ -227,14 +227,14 @@ func TestParsePolicyDir_ImportedCount(t *testing.T) {
 // that operators can see in the active policy list.
 func TestParsePolicyFile_ImportTodoStub_DENY(t *testing.T) {
 	content := `# IMPORT_TODO: unsupported schema type "object" — manual review required
-# imported from: agentwall via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: agentwall via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: stub-deny-policy
     annotations:
-        aegis.io/imported-from: aegis-import-123.yaml
-        aegis.io/severity: high
+        nixis.io/imported-from: nixis-import-123.yaml
+        nixis.io/severity: high
 spec:
     description: 'AgentWall constraint stub'
     matchConstraints:
@@ -272,15 +272,15 @@ spec:
 // TestParsePolicyFile_ImportTodoStub_RequireApproval verifies stubs with REQUIRE_APPROVAL.
 func TestParsePolicyFile_ImportTodoStub_RequireApproval(t *testing.T) {
 	content := `# IMPORT_TODO: Falco kernel macro — manual review required
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: stub-require-approval-policy
     annotations:
-        aegis.io/falco-tags: maturity_incubating,host
-        aegis.io/severity: low
-        aegis.io/source-rule: Launch Suspicious Network Tool on Host
+        nixis.io/falco-tags: maturity_incubating,host
+        nixis.io/severity: low
+        nixis.io/source-rule: Launch Suspicious Network Tool on Host
 spec:
     description: |
         Detect network tools launched without filters.
@@ -319,14 +319,14 @@ spec:
 
 // TestParsePolicyFile_ImportTodoStub_AUDIT verifies stubs with AUDIT action.
 func TestParsePolicyFile_ImportTodoStub_AUDIT(t *testing.T) {
-	content := `# IMPORT_TODO: mutate rule — Aegis does not mutate requests
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+	content := `# IMPORT_TODO: mutate rule — Nixis does not mutate requests
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: stub-audit-policy
     annotations:
-        aegis.io/imported-from: aegis-import-456.yaml
+        nixis.io/imported-from: nixis-import-456.yaml
         kyverno.io/category: Istio
 spec:
     description: In order for Istio to include namespaces in ambient mode, the label must be set.
@@ -361,7 +361,7 @@ spec:
 // TestParsePolicyFile_MultiLineDescription verifies that multi-line YAML block scalar
 // descriptions (|) have trailing whitespace/newlines trimmed.
 func TestParsePolicyFile_MultiLineDescription(t *testing.T) {
-	content := `apiVersion: aegis.io/v1
+	content := `apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: multi-line-desc-policy
@@ -399,19 +399,19 @@ spec:
 	}
 }
 
-// TestParsePolicyFile_AegisAnnotations verifies that aegis.io/* and third-party
-// annotations (kyverno.io/*, aegis.io/falco-tags, etc.) do not cause parse errors.
+// TestParsePolicyFile_AegisAnnotations verifies that nixis.io/* and third-party
+// annotations (kyverno.io/*, nixis.io/falco-tags, etc.) do not cause parse errors.
 func TestParsePolicyFile_AegisAnnotations(t *testing.T) {
-	content := `apiVersion: aegis.io/v1
+	content := `apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: annotated-policy
     annotations:
-        aegis.io/imported-from: aegis-import-789.yaml
-        aegis.io/severity: high
-        aegis.io/source: open-policy-agent/gatekeeper-library
-        aegis.io/original-kind: K8sAllowedRepos
-        aegis.io/falco-tags: maturity_stable,network,process
+        nixis.io/imported-from: nixis-import-789.yaml
+        nixis.io/severity: high
+        nixis.io/source: open-policy-agent/gatekeeper-library
+        nixis.io/original-kind: K8sAllowedRepos
+        nixis.io/falco-tags: maturity_stable,network,process
         kyverno.io/category: Security
 spec:
     description: Policy with many annotations
@@ -449,7 +449,7 @@ func TestParsePolicyDir_SkipsNonYAML(t *testing.T) {
 		t.Fatalf("failed to write README: %v", err)
 	}
 
-	policyContent := `apiVersion: aegis.io/v1
+	policyContent := `apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: test-policy
@@ -478,7 +478,7 @@ spec:
 // TestParsePolicyFile_Params_ExtractsDefaults verifies that a policy with a params:
 // section has its defaults resolved and stored in PolicyTemplate.Params.
 func TestParsePolicyFile_Params_ExtractsDefaults(t *testing.T) {
-	content := `apiVersion: aegis.io/v1
+	content := `apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: params-policy
@@ -540,7 +540,7 @@ spec:
 // TestParsePolicyFile_Params_NoParams verifies that a policy without params:
 // produces a nil Params field (no allocation for param-free policies).
 func TestParsePolicyFile_Params_NoParams(t *testing.T) {
-	content := `apiVersion: aegis.io/v1
+	content := `apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: no-params-policy
@@ -573,7 +573,7 @@ spec:
 // TestParsePolicyFile_Params_RejectsWellKnownPorts verifies that devPorts values
 // below 1024 (well-known ports) cause ParsePolicyFile to return an error.
 func TestParsePolicyFile_Params_RejectsWellKnownPorts(t *testing.T) {
-	content := `apiVersion: aegis.io/v1
+	content := `apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: bad-ports-policy

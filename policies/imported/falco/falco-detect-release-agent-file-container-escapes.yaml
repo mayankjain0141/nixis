@@ -1,14 +1,14 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-detect-release-agent-file-container-escapes
     annotations:
-        aegis.io/falco-tags: maturity_stable,container,process,mitre_privilege_escalation,T1611
-        aegis.io/imported-from: aegis-import-999705196.yaml
-        aegis.io/severity: critical
-        aegis.io/llm-confidence: medium
-        aegis.io/source-rule: Detect release_agent File Container Escapes
+        nixis.io/falco-tags: maturity_stable,container,process,mitre_privilege_escalation,T1611
+        nixis.io/imported-from: nixis-import-999705196.yaml
+        nixis.io/severity: critical
+        nixis.io/llm-confidence: medium
+        nixis.io/source-rule: Detect release_agent File Container Escapes
 spec:
     description: |
         Detect an attempt to exploit a container escape using release_agent file. By running a container with certains capabilities, a privileged user can modify release_agent file and escape from the container.

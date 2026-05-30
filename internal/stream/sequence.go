@@ -3,7 +3,7 @@ package stream
 
 import "sync/atomic"
 
-// sequenceCounter assigns monotonically increasing aegissequence values
+// sequenceCounter assigns monotonically increasing nixissequence values
 // in the fan-out goroutine at Emit() time — NOT in evaluation goroutines.
 // This is the sole place sequence numbers are assigned (per §7 STREAMING_PROTOCOL.md).
 type sequenceCounter struct {

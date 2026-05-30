@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 // ---- ProjectRoot ----
@@ -119,7 +119,7 @@ func TestIsTainted_AfterTaintWithSecret_True(t *testing.T) {
 
 func TestIsTainted_AfterElevateWithoutTaintBit_False(t *testing.T) {
 	sl := newSL()
-	sl.Elevate("sess-3", aegis.SecurityLabel{Confidentiality: 500, Category: CatInternal})
+	sl.Elevate("sess-3", nixis.SecurityLabel{Confidentiality: 500, Category: CatInternal})
 	if sl.IsTainted("sess-3") {
 		t.Fatal("expected false: elevated with non-TaintBit category")
 	}
@@ -139,7 +139,7 @@ func TestSnapshot_UnknownSession_ReturnsZero(t *testing.T) {
 	if snap.StandingRules != nil {
 		t.Errorf("StandingRules should be nil, got %v", snap.StandingRules)
 	}
-	if snap.Label != (aegis.SecurityLabel{}) {
+	if snap.Label != (nixis.SecurityLabel{}) {
 		t.Errorf("Label should be zero, got %v", snap.Label)
 	}
 }

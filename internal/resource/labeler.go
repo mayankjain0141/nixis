@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Package resource implements daemon-side trusted resource labeling for Aegis.
+// Package resource implements daemon-side trusted resource labeling for Nixis.
 //
 // The hook sends SecurityLabel{0,0,0} — it cannot be trusted to classify resources.
 // This package derives SecurityLabel from the tool name and decoded arguments,
@@ -10,8 +10,8 @@
 package resource
 
 import (
-	"github.com/mayjain/aegis/internal/ifc"
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/internal/ifc"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 // ResourceLabeler derives a trusted SecurityLabel from a tool invocation.
@@ -19,7 +19,7 @@ import (
 type ResourceLabeler interface {
 	// Label derives the resource's SecurityLabel from the tool and its decoded arguments.
 	// Returns the zero label for resources with no special sensitivity.
-	Label(tool string, args map[string]any) aegis.SecurityLabel
+	Label(tool string, args map[string]any) nixis.SecurityLabel
 
 	// IsSink returns true if the tool+args represent an exfiltration-capable sink
 	// (external network, messaging, file write outside project scope).
@@ -49,8 +49,8 @@ func NewRuleBasedLabeler() *RuleBasedLabeler {
 //  1. Extract file paths from args (Read/Write path, Bash command targets)
 //  2. Extract URLs/domains from args (WebFetch url, Bash curl/wget targets)
 //  3. Return the highest-sensitivity label found across all extracted resources
-func (r *RuleBasedLabeler) Label(tool string, args map[string]any) aegis.SecurityLabel {
-	var result aegis.SecurityLabel
+func (r *RuleBasedLabeler) Label(tool string, args map[string]any) nixis.SecurityLabel {
+	var result nixis.SecurityLabel
 
 	paths := ExtractPaths(tool, args)
 	for _, p := range paths {
@@ -87,23 +87,23 @@ func (r *RuleBasedLabeler) IsSink(tool string, args map[string]any) bool {
 }
 
 // labelPath returns the SecurityLabel for a file path based on pattern matching.
-func (r *RuleBasedLabeler) labelPath(path string) aegis.SecurityLabel {
+func (r *RuleBasedLabeler) labelPath(path string) nixis.SecurityLabel {
 	for i := range r.pathRules {
 		if r.pathRules[i].matches(path) {
 			return r.pathRules[i].label
 		}
 	}
-	return aegis.SecurityLabel{}
+	return nixis.SecurityLabel{}
 }
 
 // labelDomain returns the SecurityLabel for a domain/URL based on pattern matching.
-func (r *RuleBasedLabeler) labelDomain(domain string) aegis.SecurityLabel {
+func (r *RuleBasedLabeler) labelDomain(domain string) nixis.SecurityLabel {
 	for i := range r.domainRules {
 		if r.domainRules[i].matches(domain) {
 			return r.domainRules[i].label
 		}
 	}
-	return aegis.SecurityLabel{}
+	return nixis.SecurityLabel{}
 }
 
 // isBashSink checks if a Bash command targets an external network destination.
@@ -120,7 +120,7 @@ func (r *RuleBasedLabeler) isBashSink(args map[string]any) bool {
 }
 
 // elevateMax returns the label with maximum values in each dimension (same as session Elevate).
-func elevateMax(a, b aegis.SecurityLabel) aegis.SecurityLabel {
+func elevateMax(a, b nixis.SecurityLabel) nixis.SecurityLabel {
 	c := a.Confidentiality
 	if b.Confidentiality > c {
 		c = b.Confidentiality
@@ -129,7 +129,7 @@ func elevateMax(a, b aegis.SecurityLabel) aegis.SecurityLabel {
 	if b.Integrity > i {
 		i = b.Integrity
 	}
-	return aegis.SecurityLabel{
+	return nixis.SecurityLabel{
 		Confidentiality: c,
 		Integrity:       i,
 		Category:        a.Category | b.Category,
@@ -138,7 +138,7 @@ func elevateMax(a, b aegis.SecurityLabel) aegis.SecurityLabel {
 
 // IsSecretCategory returns true if the label's category bits include credentials or security keys.
 // Used by the evaluation pipeline to trigger automatic session tainting.
-func IsSecretCategory(label aegis.SecurityLabel) bool {
+func IsSecretCategory(label nixis.SecurityLabel) bool {
 	return label.Category&(ifc.CatCredentials|ifc.CatSecurityKey) != 0
 }
 

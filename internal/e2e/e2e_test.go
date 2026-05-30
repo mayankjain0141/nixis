@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mayjain/aegis/internal/audit"
-	"github.com/mayjain/aegis/internal/bundle"
-	"github.com/mayjain/aegis/internal/cel"
-	"github.com/mayjain/aegis/internal/ifc"
-	"github.com/mayjain/aegis/internal/policy"
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/internal/audit"
+	"github.com/mayjain/nixis/internal/bundle"
+	"github.com/mayjain/nixis/internal/cel"
+	"github.com/mayjain/nixis/internal/ifc"
+	"github.com/mayjain/nixis/internal/policy"
+	"github.com/mayjain/nixis/pkg/nixis"
 	"go.uber.org/goleak"
 )
 
@@ -54,13 +54,13 @@ func TestE2E_CheckRequest_PolicyEvaluation_AuditWrite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParsePolicyDir: %v", err)
 	}
-	compiled := &aegis.CompiledBundle{Version: 1, Templates: templates, Bindings: bindings}
+	compiled := &nixis.CompiledBundle{Version: 1, Templates: templates, Bindings: bindings}
 	if err := engine.Reload(ctx, compiled); err != nil {
 		t.Fatalf("engine.Reload: %v", err)
 	}
 
 	// 4. Evaluate a CheckRequest
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "Bash",
 		Args:      []byte(`{"command": "ls -la"}`),
 		SessionID: "e2e-test-session-001",
@@ -68,7 +68,7 @@ func TestE2E_CheckRequest_PolicyEvaluation_AuditWrite(t *testing.T) {
 	resp := engine.Evaluate(ctx, req)
 
 	// 5. Verify response: valid action and positive latency.
-	if resp.Decision.Action != aegis.ActionAllow && resp.Decision.Action != aegis.ActionDeny {
+	if resp.Decision.Action != nixis.ActionAllow && resp.Decision.Action != nixis.ActionDeny {
 		t.Errorf("unexpected action: %v", resp.Decision.Action)
 	}
 	if resp.LatencyNs <= 0 {
@@ -98,14 +98,14 @@ func TestE2E_DenyOnUninitializedEngine(t *testing.T) {
 	sessions := &ifc.SessionLabels{}
 	engine := policy.NewPolicyEngine(sessions, celEnv)
 
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "Bash",
 		Args:      []byte(`{"command": "rm -rf /"}`),
 		SessionID: "e2e-uninit-session",
 	}
 	resp := engine.Evaluate(context.Background(), req)
 
-	if resp.Decision.Action != aegis.ActionDeny {
+	if resp.Decision.Action != nixis.ActionDeny {
 		t.Errorf("expected Deny for uninitialized engine, got: %v", resp.Decision.Action)
 	}
 }
@@ -131,18 +131,18 @@ func TestE2E_ReloadAndEvaluate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParsePolicyDir: %v", err)
 	}
-	compiled := &aegis.CompiledBundle{Version: 1, Templates: templates, Bindings: bindings}
+	compiled := &nixis.CompiledBundle{Version: 1, Templates: templates, Bindings: bindings}
 	if err := engine.Reload(ctx, compiled); err != nil {
 		t.Fatalf("engine.Reload: %v", err)
 	}
 
 	cases := []struct {
 		name string
-		req  aegis.CheckRequest
+		req  nixis.CheckRequest
 	}{
 		{
 			name: "safe_read_only",
-			req: aegis.CheckRequest{
+			req: nixis.CheckRequest{
 				Tool:      "Bash",
 				Args:      []byte(`{"command": "ls -la"}`),
 				SessionID: "e2e-session-safe",
@@ -150,7 +150,7 @@ func TestE2E_ReloadAndEvaluate(t *testing.T) {
 		},
 		{
 			name: "write_tool",
-			req: aegis.CheckRequest{
+			req: nixis.CheckRequest{
 				Tool:      "Write",
 				Args:      []byte(`{"file_path": "/tmp/test.txt", "content": "hello"}`),
 				SessionID: "e2e-session-write",
@@ -158,7 +158,7 @@ func TestE2E_ReloadAndEvaluate(t *testing.T) {
 		},
 		{
 			name: "read_tool",
-			req: aegis.CheckRequest{
+			req: nixis.CheckRequest{
 				Tool:      "Read",
 				Args:      []byte(`{"file_path": "/tmp/test.txt"}`),
 				SessionID: "e2e-session-read",
@@ -169,7 +169,7 @@ func TestE2E_ReloadAndEvaluate(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			resp := engine.Evaluate(ctx, tc.req)
-			if resp.Decision.Action != aegis.ActionAllow && resp.Decision.Action != aegis.ActionDeny {
+			if resp.Decision.Action != nixis.ActionAllow && resp.Decision.Action != nixis.ActionDeny {
 				t.Errorf("unexpected action for %s: %v", tc.name, resp.Decision.Action)
 			}
 			if resp.LatencyNs <= 0 {

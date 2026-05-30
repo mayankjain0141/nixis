@@ -1,14 +1,14 @@
-# imported from: policies via aegis policy import
+# imported from: policies via nixis policy import
 # Gap: verifying that every host in spec.rules appears in spec.tls[].hosts requires list
 # comparison that CEL file-content matching cannot perform — trigger on Ingress+TLS presence
 # for REQUIRE_APPROVAL so a human verifies cross-field consistency.
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-ingress-host-match-tls-host-match-tls-ingress
     annotations:
-        aegis.io/imported-from: aegis-import-3983699395.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-3983699395.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Other
 spec:
     description: Ingress resources which name a host name that is not present in the TLS section can produce ingress routing failures as a TLS certificate may not correspond to the destination host. This policy ensures that the host name in an Ingress rule is also found in the list of TLS hosts.

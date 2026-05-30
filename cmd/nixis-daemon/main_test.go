@@ -13,9 +13,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	grpcauthz "github.com/mayjain/aegis/internal/grpc"
-	"github.com/mayjain/aegis/internal/stream"
-	"github.com/mayjain/aegis/pkg/aegis"
+	grpcauthz "github.com/mayjain/nixis/internal/grpc"
+	"github.com/mayjain/nixis/internal/stream"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 func TestMain(m *testing.M) {
@@ -41,7 +41,7 @@ func TestDaemon_ExitCodes_Defined(t *testing.T) {
 	}
 }
 
-// TestDaemon_GRPCServer_StartsWhenEnvSet verifies that AEGIS_GRPC_ADDR causes the gRPC
+// TestDaemon_GRPCServer_StartsWhenEnvSet verifies that NIXIS_GRPC_ADDR causes the gRPC
 // ext_authz server to bind and accept connections.
 func TestDaemon_GRPCServer_StartsWhenEnvSet(t *testing.T) {
 	// Pick a free port by letting the OS assign one, then release it.
@@ -102,8 +102,8 @@ func TestDaemon_GRPCServer_StartsWhenEnvSet(t *testing.T) {
 // noopEngine satisfies grpcauthz.GovernanceEngine for test use.
 type noopEngine struct{}
 
-func (n *noopEngine) Evaluate(_ context.Context, _ aegis.CheckRequest) aegis.CheckResponse {
-	return aegis.CheckResponse{}
+func (n *noopEngine) Evaluate(_ context.Context, _ nixis.CheckRequest) nixis.CheckResponse {
+	return nixis.CheckResponse{}
 }
 
 var _ grpcauthz.GovernanceEngine = (*noopEngine)(nil)

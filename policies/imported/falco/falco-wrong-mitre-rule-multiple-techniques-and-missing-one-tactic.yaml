@@ -1,13 +1,13 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-wrong-mitre-rule-multiple-techniques-and-missing-one-tactic
     annotations:
-        aegis.io/falco-tags: host,container,filesystem,mitre_credential_access,mitre_discovery,T1555,T1212,T1020,T1552,T1083
-        aegis.io/imported-from: aegis-import-1844418014.yaml
-        aegis.io/severity: medium
-        aegis.io/source-rule: wrong mitre rule multiple techniques and missing one tactic
+        nixis.io/falco-tags: host,container,filesystem,mitre_credential_access,mitre_discovery,T1555,T1212,T1020,T1552,T1083
+        nixis.io/imported-from: nixis-import-1844418014.yaml
+        nixis.io/severity: medium
+        nixis.io/source-rule: wrong mitre rule multiple techniques and missing one tactic
 spec:
     description: |
         Read sensitive file untrusted - an attempt to read any sensitive file (e.g. files containing user/password/authentication information). Exceptions are made for known trusted programs.

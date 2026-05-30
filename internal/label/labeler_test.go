@@ -5,14 +5,14 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/mayjain/aegis/internal/classify"
-	"github.com/mayjain/aegis/internal/ifc"
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/internal/classify"
+	"github.com/mayjain/nixis/internal/ifc"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
-func makeReq(tool string, args map[string]any) aegis.CheckRequest {
+func makeReq(tool string, args map[string]any) nixis.CheckRequest {
 	raw, _ := json.Marshal(args)
-	return aegis.CheckRequest{
+	return nixis.CheckRequest{
 		Tool: tool,
 		Args: raw,
 	}
@@ -348,7 +348,7 @@ func TestLabel_NilArgs(t *testing.T) {
 	labeler := NewLabeler()
 	verdict := classify.VerdictEntry{}
 
-	req := aegis.CheckRequest{Tool: "Read", Args: nil}
+	req := nixis.CheckRequest{Tool: "Read", Args: nil}
 	got := labeler.Label(req, verdict)
 	if got.Matched {
 		t.Error("Matched should be false for nil args")

@@ -9,12 +9,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 // SelfProtectGuard is a hardcoded security guard compiled into the daemon binary.
 // It runs BEFORE any YAML/CEL policy evaluation and cannot be disabled by editing
-// policy files. It blocks tool calls that target Aegis's own configuration, binaries,
+// policy files. It blocks tool calls that target Nixis's own configuration, binaries,
 // policies, or service management.
 //
 // This guard only fires on tool calls routed through the hook (agent actions).
@@ -43,49 +43,49 @@ func (g *SelfProtectGuard) init() {
 		g.homeDir = home
 
 		g.protectedPaths = []string{
-			filepath.Join(home, ".aegis") + string(filepath.Separator),
-			filepath.Join(home, ".aegis"),
+			filepath.Join(home, ".nixis") + string(filepath.Separator),
+			filepath.Join(home, ".nixis"),
 			filepath.Join(home, ".claude", "settings.json"),
-			filepath.Join(home, "Library", "LaunchAgents", "com.aegis.daemon.plist"),
-			filepath.Join(home, ".config", "systemd", "user", "aegis-daemon.service"),
+			filepath.Join(home, "Library", "LaunchAgents", "com.nixis.daemon.plist"),
+			filepath.Join(home, ".config", "systemd", "user", "nixis-daemon.service"),
 		}
 
 		g.shellPatterns = []*regexp.Regexp{
-			regexp.MustCompile(`(?i)\baegis\b.*\b(daemon|setup)\b.*\b(stop|restart|uninstall|remove)\b`),
-			regexp.MustCompile(`(?i)\b(kill|pkill|killall)\b.*aegis`),
-			regexp.MustCompile(`(?i)\blaunchctl\b.*(bootout|unload|remove).*aegis`),
-			regexp.MustCompile(`(?i)\bsystemctl\b.*(stop|disable|mask).*aegis`),
-			regexp.MustCompile(`(?i)\b(rm|mv|chmod|chown)\b.*[/.]aegis`),
+			regexp.MustCompile(`(?i)\bnixis\b.*\b(daemon|setup)\b.*\b(stop|restart|uninstall|remove)\b`),
+			regexp.MustCompile(`(?i)\b(kill|pkill|killall)\b.*nixis`),
+			regexp.MustCompile(`(?i)\blaunchctl\b.*(bootout|unload|remove).*nixis`),
+			regexp.MustCompile(`(?i)\bsystemctl\b.*(stop|disable|mask).*nixis`),
+			regexp.MustCompile(`(?i)\b(rm|mv|chmod|chown)\b.*[/.]nixis`),
 			regexp.MustCompile(`(?i)\b(rm|mv|chmod|chown)\b.*settings\.json`),
-			regexp.MustCompile(`(?i)(echo|cat|tee|sed|awk).*>.*[/.]aegis`),
-			regexp.MustCompile(`(?i)\bcrontab\b.*aegis`),
-			regexp.MustCompile(`(?i)\bgit\b.*\b(checkout|reset|clean)\b.*[/.]aegis`),
-			regexp.MustCompile(`(?i)cd\s+.*[/.]aegis.*&&`),
+			regexp.MustCompile(`(?i)(echo|cat|tee|sed|awk).*>.*[/.]nixis`),
+			regexp.MustCompile(`(?i)\bcrontab\b.*nixis`),
+			regexp.MustCompile(`(?i)\bgit\b.*\b(checkout|reset|clean)\b.*[/.]nixis`),
+			regexp.MustCompile(`(?i)cd\s+.*[/.]nixis.*&&`),
 		}
 	})
 }
 
-const selfProtectDenyReason = "Aegis self-protection: AI agents cannot modify governance configuration. " +
-	"To change policies, edit ~/.aegis/policies/custom/ directly in your terminal. " +
-	"To manage the daemon, run 'aegis daemon stop' in your terminal."
+const selfProtectDenyReason = "Nixis self-protection: AI agents cannot modify governance configuration. " +
+	"To change policies, edit ~/.nixis/policies/custom/ directly in your terminal. " +
+	"To manage the daemon, run 'nixis daemon stop' in your terminal."
 
 // Check evaluates a CheckRequest against the self-protection rules.
 // Returns a non-nil Decision if the request is blocked, nil if it should proceed
 // to normal policy evaluation.
-func (g *SelfProtectGuard) Check(req aegis.CheckRequest) *aegis.Decision {
+func (g *SelfProtectGuard) Check(req nixis.CheckRequest) *nixis.Decision {
 	if g.checkFilePath(req) {
-		return &aegis.Decision{
-			Action:   aegis.ActionDeny,
+		return &nixis.Decision{
+			Action:   nixis.ActionDeny,
 			Reason:   selfProtectDenyReason,
-			PolicyID: "aegis-self-protection-guard",
+			PolicyID: "nixis-self-protection-guard",
 		}
 	}
 
 	if g.checkShellCommand(req) {
-		return &aegis.Decision{
-			Action:   aegis.ActionDeny,
+		return &nixis.Decision{
+			Action:   nixis.ActionDeny,
 			Reason:   selfProtectDenyReason,
-			PolicyID: "aegis-self-protection-guard",
+			PolicyID: "nixis-self-protection-guard",
 		}
 	}
 
@@ -94,7 +94,7 @@ func (g *SelfProtectGuard) Check(req aegis.CheckRequest) *aegis.Decision {
 
 // checkFilePath inspects tool calls that write files (Write, Edit, etc.)
 // and blocks writes to protected paths. Resolves symlinks before matching.
-func (g *SelfProtectGuard) checkFilePath(req aegis.CheckRequest) bool {
+func (g *SelfProtectGuard) checkFilePath(req nixis.CheckRequest) bool {
 	path := g.extractFilePath(req)
 	if path == "" {
 		return false
@@ -105,8 +105,8 @@ func (g *SelfProtectGuard) checkFilePath(req aegis.CheckRequest) bool {
 }
 
 // checkShellCommand inspects Shell/Bash tool calls for commands that
-// target Aegis processes or configuration.
-func (g *SelfProtectGuard) checkShellCommand(req aegis.CheckRequest) bool {
+// target Nixis processes or configuration.
+func (g *SelfProtectGuard) checkShellCommand(req nixis.CheckRequest) bool {
 	cmd := g.extractCommand(req)
 	if cmd == "" {
 		return false
@@ -127,7 +127,7 @@ func (g *SelfProtectGuard) checkShellCommand(req aegis.CheckRequest) bool {
 
 // extractFilePath gets the file path from tool arguments.
 // Supports Write, Edit, StrReplace, MultiEdit tool formats.
-func (g *SelfProtectGuard) extractFilePath(req aegis.CheckRequest) string {
+func (g *SelfProtectGuard) extractFilePath(req nixis.CheckRequest) string {
 	if len(req.Args) == 0 {
 		return ""
 	}
@@ -163,7 +163,7 @@ func (g *SelfProtectGuard) extractFilePath(req aegis.CheckRequest) string {
 }
 
 // extractCommand gets the shell command from tool arguments.
-func (g *SelfProtectGuard) extractCommand(req aegis.CheckRequest) string {
+func (g *SelfProtectGuard) extractCommand(req nixis.CheckRequest) string {
 	shellTools := map[string]bool{
 		"Shell": true, "shell": true,
 		"Bash": true, "bash": true,
@@ -239,12 +239,12 @@ func (g *SelfProtectGuard) isProtectedPath(resolved string) bool {
 // to protected paths that aren't caught by the regex patterns alone.
 func (g *SelfProtectGuard) commandTargetsProtectedPath(cmd string) bool {
 	pathIndicators := []string{
-		".aegis/",
-		".aegis\"",
-		".aegis'",
-		"aegis.sock",
-		"com.aegis.daemon",
-		"aegis-daemon.service",
+		".nixis/",
+		".nixis\"",
+		".nixis'",
+		"nixis.sock",
+		"com.nixis.daemon",
+		"nixis-daemon.service",
 		".claude/settings.json",
 	}
 

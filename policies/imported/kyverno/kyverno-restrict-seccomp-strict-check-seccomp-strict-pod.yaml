@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-seccomp-strict-check-seccomp-strict-pod
     annotations:
-        aegis.io/imported-from: aegis-import-2320595677.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-2320595677.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Pod Security Standards (Restricted)
 spec:
     description: The seccomp profile in the Restricted group must not be explicitly set to Unconfined but additionally must also not allow an unset value. This policy, requiring Kubernetes v1.19 or later, ensures that seccomp is set to `RuntimeDefault` or `Localhost`. A known issue prevents a policy such as this using `anyPattern` from being persisted properly in Kubernetes 1.23.0-1.23.2.

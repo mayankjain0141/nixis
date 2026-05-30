@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mayjain/aegis/internal/cel"
+	"github.com/mayjain/nixis/internal/cel"
 )
 
 // TestP4Policy3_CloudMetadataDeny_ParsesCorrectly verifies that the semantic cloud
@@ -60,13 +60,13 @@ func TestP4Policy3_CloudMetadataDeny_ParsesCorrectly(t *testing.T) {
 // TestP4Policy3_CloudMetadataDeny_ExpressionStructure verifies the combined DENY
 // expression produced by buildCombinedExpression for the semantic-categories policy.
 func TestP4Policy3_CloudMetadataDeny_ExpressionStructure(t *testing.T) {
-	content := `apiVersion: aegis.io/v1
+	content := `apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: semantic-cloud-metadata-deny
   annotations:
-    aegis.io/default-enabled: "true"
-    aegis.io/bundle: builtin
+    nixis.io/default-enabled: "true"
+    nixis.io/bundle: builtin
 spec:
   description: "Deny exec operations targeting cloud metadata endpoints"
   validations:

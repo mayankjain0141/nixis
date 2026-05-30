@@ -2,13 +2,13 @@
 
 ## System Overview
 
-Aegis is split into three binaries that communicate via Unix domain socket:
+Nixis is split into three binaries that communicate via Unix domain socket:
 
 ```mermaid
 sequenceDiagram
     participant Agent as AI Agent (IDE)
-    participant Hook as aegis-hook
-    participant Daemon as aegis-daemon
+    participant Hook as nixis-hook
+    participant Daemon as nixis-daemon
     participant Audit as Audit (SQLite)
     participant Dashboard as Dashboard (React)
 
@@ -25,21 +25,21 @@ sequenceDiagram
 
 This is the same split pattern used by Docker (docker CLI / dockerd / containerd) and Kubernetes (kubectl / kube-apiserver / kubelet):
 
-**`aegis-hook`** — Per-invocation. The IDE calls this on every tool call. It must:
+**`nixis-hook`** — Per-invocation. The IDE calls this on every tool call. It must:
 - Start in <5ms (static binary, no runtime initialization)
 - Complete round-trip in <200ms (the IDE's tolerance budget)
 - Be small (~3MB) — loaded into memory on every tool invocation
 
 It *cannot* hold compiled policies in memory because it exits after every call. The daemon amortizes that cost.
 
-**`aegis-daemon`** — Long-lived. Holds:
+**`nixis-daemon`** — Long-lived. Holds:
 - Pre-compiled CEL programs (expensive to build, microseconds to evaluate)
 - Session state (IFC labels, taint history, standing rules)
 - Audit writer goroutine
 - WebSocket connections to the dashboard
 - Hot-reload watcher
 
-**`aegis` CLI** — Offline tooling. No daemon dependency. Works in CI pipelines.
+**`nixis` CLI** — Offline tooling. No daemon dependency. Works in CI pipelines.
 
 ## The 200ms Budget
 
@@ -108,7 +108,7 @@ flowchart TD
 The `Evaluate()` function is designed for zero heap allocations on the steady-state path:
 
 ```go
-func (e *PolicyEngine) Evaluate(ctx context.Context, req aegis.CheckRequest) aegis.CheckResponse {
+func (e *PolicyEngine) Evaluate(ctx context.Context, req nixis.CheckRequest) nixis.CheckResponse {
     snap := e.snapshot.Load()
     // ... all evaluation uses this snapshot pointer
 }
@@ -211,9 +211,9 @@ Daemon (single fan-out goroutine)
 ```mermaid
 flowchart TD
     subgraph cmd ["cmd/ (entry points)"]
-        CLI["aegis"]
-        DaemonBin["aegis-daemon"]
-        HookBin["aegis-hook"]
+        CLI["nixis"]
+        DaemonBin["nixis-daemon"]
+        HookBin["nixis-hook"]
     end
 
     subgraph internal ["internal/ (private)"]
@@ -233,7 +233,7 @@ flowchart TD
     end
 
     subgraph pkg ["pkg/ (public types)"]
-        aegis_pkg["aegis"]
+        aegis_pkg["nixis"]
     end
 
     DaemonBin --> daemon
@@ -254,7 +254,7 @@ flowchart TD
 
 **Acyclic constraint:** The dependency graph is strictly acyclic. `internal/stream` cannot import `internal/audit` or `internal/policy` — this is enforced by `scripts/check-stream-isolation.sh` in CI.
 
-**Why `pkg/aegis/` exists:** It defines the shared type vocabulary (`CheckRequest`, `CheckResponse`, `SecurityLabel`, `Action`, `StreamEvent`) that both the hook binary and the daemon consume. The hook binary only imports `pkg/aegis/` — it has no dependency on `internal/`.
+**Why `pkg/nixis/` exists:** It defines the shared type vocabulary (`CheckRequest`, `CheckResponse`, `SecurityLabel`, `Action`, `StreamEvent`) that both the hook binary and the daemon consume. The hook binary only imports `pkg/nixis/` — it has no dependency on `internal/`.
 
 ## Key Invariants
 
@@ -315,7 +315,7 @@ Run the adversarial evaluation (requires daemon running):
 
 ```bash
 # Start daemon in one terminal
-./bin/aegis-daemon
+./bin/nixis-daemon
 
 # Run eval suite (784 cases across 7 categories)
 cd eval/adversarial && ./run_eval.sh

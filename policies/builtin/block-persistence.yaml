@@ -1,10 +1,10 @@
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: block-persistence
   annotations:
-    aegis.io/default-enabled: "true"
-    aegis.io/bundle: builtin
+    nixis.io/default-enabled: "true"
+    nixis.io/bundle: builtin
 spec:
   description: "Block persistence mechanisms: cron jobs, shell profile modification, init scripts, and SSH key injection"
   matchConstraints:

@@ -1,14 +1,14 @@
 # CEL_LIMITATION: cross-resource existence check — cannot verify a matching HPA exists in the cluster.
 # Expression set to false (pass-through) to avoid AUDIT noise on every ReplicaSet write.
 # Requires admission webhook with cluster API access to enforce.
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-check-hpa-exists-validate-hpa-replicaset
     annotations:
-        aegis.io/imported-from: aegis-import-3088533108.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-3088533108.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Other
 spec:
     description: This policy ensures that Deployments, ReplicaSets, StatefulSets, and DaemonSets are only allowed if they have a corresponding Horizontal Pod Autoscaler (HPA) configured in the same namespace. The policy checks for the presence of an HPA that targets the resource and denies the creation or update of the resource if no such HPA exists. This policy helps enforce scaling practices and ensures that resources are managed efficiently.

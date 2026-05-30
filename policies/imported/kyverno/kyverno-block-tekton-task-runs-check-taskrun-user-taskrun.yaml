@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-block-tekton-task-runs-check-taskrun-user-taskrun
     annotations:
-        aegis.io/imported-from: aegis-import-2587875102.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-2587875102.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Tekton
 spec:
     description: Restrict creation of TaskRun resources to the Tekton pipelines controller.

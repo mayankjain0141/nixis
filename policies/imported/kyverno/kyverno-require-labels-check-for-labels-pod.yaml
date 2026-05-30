@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-require-labels-check-for-labels-pod
     annotations:
-        aegis.io/imported-from: aegis-import-3591541551.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-3591541551.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Best Practices
 spec:
     description: Define and use labels that identify semantic attributes of your application or Deployment. A common set of labels allows tools to work collaboratively, describing objects in a common manner that all tools can understand. The recommended labels describe applications in a way that can be queried. This policy validates that the label `app.kubernetes.io/name` is specified with some value.

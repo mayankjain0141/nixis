@@ -42,12 +42,12 @@ const SESS_OPERATOR    = 'sess_b5f60a2e'; // operator review session — Restric
 
 // ── Policy definitions ────────────────────────────────────────────────────────
 const POLICIES = [
-  { id: 'aegis/no-force-push',           cel: 'tool == "Bash" && request.args.command.matches(".*push.*--force.*|.*--force.*push.*")' },
-  { id: 'aegis/no-rm-rf',               cel: 'tool == "Bash" && request.args.command.matches(".*rm\\s+-rf.*")' },
-  { id: 'aegis/protect-etc',            cel: 'tool in ["Write","Edit","FileDelete"] && request.args.path.startsWith("/etc/")' },
-  { id: 'aegis/require-approval-prod',  cel: 'tool == "DatabaseQuery" && request.args.db.startsWith("prod-")' },
-  { id: 'aegis/audit-secret-reads',     cel: 'tool == "Read" && request.args.path.matches(".*(secret|api.key|passwd|shadow).*")' },
-  { id: 'aegis/no-secret-transmission', cel: '!response.contains_secret || verdict == "deny"' },
+  { id: 'nixis/no-force-push',           cel: 'tool == "Bash" && request.args.command.matches(".*push.*--force.*|.*--force.*push.*")' },
+  { id: 'nixis/no-rm-rf',               cel: 'tool == "Bash" && request.args.command.matches(".*rm\\s+-rf.*")' },
+  { id: 'nixis/protect-etc',            cel: 'tool in ["Write","Edit","FileDelete"] && request.args.path.startsWith("/etc/")' },
+  { id: 'nixis/require-approval-prod',  cel: 'tool == "DatabaseQuery" && request.args.db.startsWith("prod-")' },
+  { id: 'nixis/audit-secret-reads',     cel: 'tool == "Read" && request.args.path.matches(".*(secret|api.key|passwd|shadow).*")' },
+  { id: 'nixis/no-secret-transmission', cel: '!response.contains_secret || verdict == "deny"' },
 ];
 
 // ── Imported policy sample — real community policies from DEMO_EXAMPLES.md ───
@@ -156,7 +156,7 @@ const IMPORTED_POLICIES = [
 ];
 
 // ── Direct policy export — bypasses ingestion pipeline Zod validation ────────
-// Returns ALL imported policies (700+) plus the 6 core aegis policies.
+// Returns ALL imported policies (700+) plus the 6 core nixis policies.
 // Called from App.tsx when demo mode starts so CEL expressions are immediately visible.
 export function getDemoPolicies(bundleVersion: number = 1): import('../stores/policy-store').PolicySummary[] {
   const imported = getAllImportedPoliciesSync(bundleVersion);
@@ -164,12 +164,12 @@ export function getDemoPolicies(bundleVersion: number = 1): import('../stores/po
   // Prepend the 6 core demo policies (they may also exist in imported but these have richer demo CEL)
   const core: import('../stores/policy-store').PolicySummary[] = POLICIES.map(p => ({
     id: p.id,
-    name: p.id.replace(/^aegis\//, ''),
+    name: p.id.replace(/^nixis\//, ''),
     layer: 'cel' as const,
     enabled: true,
     bundleVersion,
     celExpression: p.cel,
-    description: 'Core Aegis policy',
+    description: 'Core Nixis policy',
   }));
 
   // Merge: core policies first (by id), then imported (deduped)
@@ -186,11 +186,11 @@ function ce(type: string, data: Record<string, unknown>, overrideSeq?: number): 
   return JSON.stringify({
     specversion: '1.0',
     type,
-    source: 'aegis-demo/local',
+    source: 'nixis-demo/local',
     id: `demo-${s}`,
     time: new Date().toISOString(),
     datacontenttype: 'application/json',
-    aegissequence: s,
+    nixissequence: s,
     data,
   });
 }
@@ -217,7 +217,7 @@ function policyEval(opts: {
     decision: {
       action: opts.action,
       reason: opts.reason ?? '',
-      policy_id: opts.policyId ?? 'aegis/default-allow',
+      policy_id: opts.policyId ?? 'nixis/default-allow',
       enforcing_layer: opts.layer ?? 'cel',
       labels: opts.label ?? L_UNCLASSIFIED,
       cel_expression: opts.cel ?? '',
@@ -256,7 +256,7 @@ export function buildDemoScenario(): DemoStep[] {
         tool: 'Read',
         sessionId: SESS_MAIN,
         action: 'allow',
-        policyId: 'aegis/default-allow',
+        policyId: 'nixis/default-allow',
         cel: 'tool == "Read"',
         label: L_UNCLASSIFIED,
         latencyNs: 92_000,
@@ -330,7 +330,7 @@ export function buildDemoScenario(): DemoStep[] {
         sessionId: SESS_SUBDELEGATE,
         action: 'deny',
         reason: 'Delegation ceiling exceeded: session ceiling is Unclassified, resource requires Internal',
-        policyId: 'aegis/delegate-ceiling',
+        policyId: 'nixis/delegate-ceiling',
         cel: 'delegation.ceiling.confidentiality >= resource.classification.confidentiality',
         label: L_UNCLASSIFIED,
         layer: 'delegation',
@@ -346,7 +346,7 @@ export function buildDemoScenario(): DemoStep[] {
         tool: 'Read',
         sessionId: SESS_DELEGATE,
         action: 'allow',
-        policyId: 'aegis/delegate-ceiling',
+        policyId: 'nixis/delegate-ceiling',
         label: L_INTERNAL,
         layer: 'delegation',
         latencyNs: 54_000,
@@ -361,7 +361,7 @@ export function buildDemoScenario(): DemoStep[] {
         tool: 'Bash',
         sessionId: SESS_MAIN,
         action: 'allow',
-        policyId: 'aegis/default-allow',
+        policyId: 'nixis/default-allow',
         cel: '!(tool == "Bash" && request.args.command.matches(".*rm\\s+-rf.*|.*--force.*"))',
         label: L_UNCLASSIFIED,
         latencyNs: 115_000,
@@ -376,7 +376,7 @@ export function buildDemoScenario(): DemoStep[] {
         tool: 'Write',
         sessionId: SESS_MAIN,
         action: 'allow',
-        policyId: 'aegis/default-allow',
+        policyId: 'nixis/default-allow',
         cel: '!(tool in ["Write","Edit","FileDelete"] && request.args.path.startsWith("/etc/"))',
         label: L_UNCLASSIFIED,
         latencyNs: 104_000,
@@ -488,7 +488,7 @@ export function buildDemoScenario(): DemoStep[] {
         sessionId: SESS_MAIN,
         action: 'audit',
         reason: 'Sensitive path read — audit trail required',
-        policyId: 'aegis/audit-secret-reads',
+        policyId: 'nixis/audit-secret-reads',
         cel: 'tool == "Read" && request.args.path.matches(".*(secret|api.key|passwd|shadow).*")',
         label: L_UNCLASSIFIED,
         latencyNs: 3_200_000,
@@ -709,7 +709,7 @@ export function buildDemoScenario(): DemoStep[] {
       json: ce('audit.checkpoint', {
         sequence: 20,
         hash: 'sha256:aabbcc1122334455aabbcc1122334455aabbcc1122334455aabbcc1122334455',
-        prev_hash: 'sha256:genesis00000000000000000000000000000000000000000000000000000000',
+        prev_hash: null,
         events_since_prev: 20,
         merkle_root: 'sha256:2a8c1e5b9d3f7a4c8e2b6d0f4a1e7c3b9f5d2a8c4e1b7d5f9a3c7e1b4d8f2a5',
       }),
@@ -1083,7 +1083,7 @@ export function buildDemoScenario(): DemoStep[] {
         tool: 'Write',
         sessionId: SESS_MAIN,
         action: 'allow',
-        policyId: 'aegis/default-allow',
+        policyId: 'nixis/default-allow',
         label: L_RESTRICTED,
         labelState: 'tainted_by_secret',
         latencyNs: 97_000,
@@ -1107,7 +1107,7 @@ export interface DemoInput {
   tool?: string;           // undefined for local-inject steps
   args?: Record<string, unknown>;
   sessionId?: string;
-  localJson?: string;      // if set: dispatch as aegis:mock-event instead of POST /simulate
+  localJson?: string;      // if set: dispatch as nixis:mock-event instead of POST /simulate
 }
 
 // Maps steps with requestArgs from buildDemoScenario() to CheckRequest-compatible inputs.
@@ -1199,7 +1199,7 @@ export function runLiveDemoScenario(apiBase: string, onError: (err: Error) => vo
       if (cancelled) return;
       if (input.localJson) {
         // Inject directly into the pipeline — no simulate call needed
-        window.dispatchEvent(new CustomEvent('aegis:mock-event', { detail: input.localJson }));
+        window.dispatchEvent(new CustomEvent('nixis:mock-event', { detail: input.localJson }));
       } else if (input.tool) {
         fetch(`${apiBase}/simulate`, {
           method: 'POST',

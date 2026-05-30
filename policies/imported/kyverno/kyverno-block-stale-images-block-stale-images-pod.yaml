@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-block-stale-images-block-stale-images-pod
     annotations:
-        aegis.io/imported-from: aegis-import-1593357127.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-1593357127.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Other
 spec:
     description: Images that are old usually have some open security vulnerabilities which are not patched. This policy checks the contents of every container image and inspects them for the create time. If it finds any image which was built more than 6 months ago this policy blocks the deployment.

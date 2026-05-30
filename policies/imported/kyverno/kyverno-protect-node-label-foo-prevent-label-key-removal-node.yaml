@@ -1,12 +1,12 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-protect-node-label-foo-prevent-label-key-removal-node
     annotations:
-        aegis.io/imported-from: aegis-import-3654250224.yaml
-        aegis.io/severity: low
-        aegis.io/llm-confidence: low
+        nixis.io/imported-from: nixis-import-3654250224.yaml
+        nixis.io/severity: low
+        nixis.io/llm-confidence: low
         kyverno.io/category: Sample
 spec:
     description: 'Node labels are critical pieces of metadata upon which many other applications and logic may depend and should not be altered or removed by regular users. This policy prevents changes or deletions to a label called `foo` on cluster Nodes. Use of this policy requires removal of the Node resource filter in the Kyverno ConfigMap ([Node,*,*]). Due to Kubernetes CVE-2021-25735, this policy requires, at minimum, one of the following versions of Kubernetes: v1.18.18, v1.19.10, v1.20.6, or v1.21.0.'

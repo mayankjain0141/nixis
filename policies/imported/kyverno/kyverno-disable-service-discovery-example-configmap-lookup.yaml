@@ -1,12 +1,12 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-disable-service-discovery-example-configmap-lookup
     annotations:
-        aegis.io/imported-from: aegis-import-1350869897.yaml
-        aegis.io/severity: low
-        aegis.io/llm-confidence: medium
+        nixis.io/imported-from: nixis-import-1350869897.yaml
+        nixis.io/severity: low
+        nixis.io/llm-confidence: medium
         kyverno.io/category: Other, EKS Best Practices
 spec:
     description: Not all Pods require communicating with other Pods or resolving in-cluster Services. For those, disabling service discovery can increase security as the Pods are limited to what they can see. This policy mutates Pods to set dnsPolicy to `Default` and enableServiceLinks to `false`.
@@ -14,6 +14,6 @@ spec:
         tools: []
     validations:
         - expression: 'false'
-          message: 'Mutate rule (disable service discovery) — Aegis cannot mutate requests; verify pods that do not need cluster service discovery set dnsPolicy to None and define explicit dnsConfig'
+          message: 'Mutate rule (disable service discovery) — Nixis cannot mutate requests; verify pods that do not need cluster service discovery set dnsPolicy to None and define explicit dnsConfig'
           action: AUDIT
     defaultAction: ALLOW

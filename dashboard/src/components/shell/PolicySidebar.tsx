@@ -22,10 +22,10 @@ const COUNT_BADGE: React.CSSProperties = {
   fontSize: '11px',
 };
 
-type PolicySource = 'falco' | 'kyverno' | 'catalog' | 'aegis' | 'other';
+type PolicySource = 'falco' | 'kyverno' | 'catalog' | 'nixis' | 'other';
 
 function getPolicySource(id: string): PolicySource {
-  if (id.startsWith('aegis/')) return 'aegis';
+  if (id.startsWith('nixis/')) return 'nixis';
   if (id.startsWith('falco-')) return 'falco';
   if (id.startsWith('kyverno-')) return 'kyverno';
   if (id.startsWith('catalog-')) return 'catalog';
@@ -45,8 +45,8 @@ function deduplicateSegments(text: string): string {
 
 function formatPolicyName(id: string): string {
   const source = getPolicySource(id);
-  if (source === 'aegis') {
-    return id.slice('aegis/'.length);
+  if (source === 'nixis') {
+    return id.slice('nixis/'.length);
   }
   if (source === 'falco') {
     const stripped = id.slice('falco-'.length);
@@ -70,7 +70,7 @@ const SOURCE_BADGE_STYLES: Record<PolicySource, { bg: string; color: string; lab
   falco:   { bg: '#0969da', color: '#cae8ff', label: 'F' },
   kyverno: { bg: '#953800', color: '#ffddb0', label: 'K' },
   catalog: { bg: '#1b6633', color: '#aff5b4', label: 'C' },
-  aegis:   { bg: '#5a3e9c', color: '#e2ccff', label: 'A' },
+  nixis:   { bg: '#5a3e9c', color: '#e2ccff', label: 'A' },
   other:   { bg: '#30363d', color: '#8b949e', label: '?' },
 };
 
@@ -98,10 +98,10 @@ function SourceBadge({ source }: { source: PolicySource }): React.ReactElement {
   );
 }
 
-const SOURCE_ORDER: PolicySource[] = ['aegis', 'falco', 'kyverno', 'catalog', 'other'];
+const SOURCE_ORDER: PolicySource[] = ['nixis', 'falco', 'kyverno', 'catalog', 'other'];
 
 const SOURCE_DISPLAY_NAME: Record<PolicySource, string> = {
-  aegis:   'Aegis',
+  nixis:   'Nixis',
   falco:   'Falco',
   kyverno: 'Kyverno',
   catalog: 'Catalog',

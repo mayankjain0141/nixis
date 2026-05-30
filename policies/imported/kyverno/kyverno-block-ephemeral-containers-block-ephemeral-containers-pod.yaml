@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-block-ephemeral-containers-block-ephemeral-containers-pod
     annotations:
-        aegis.io/imported-from: aegis-import-2962672472.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-2962672472.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Other
 spec:
     description: Ephemeral containers, enabled by default in Kubernetes 1.23, allow users to use the `kubectl debug` functionality and attach a temporary container to an existing Pod. This may potentially be used to gain access to unauthorized information executing inside one or more containers in that Pod. This policy blocks the use of ephemeral containers.

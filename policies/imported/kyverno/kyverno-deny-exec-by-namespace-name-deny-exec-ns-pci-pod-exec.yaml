@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-deny-exec-by-namespace-name-deny-exec-ns-pci-pod-exec
     annotations:
-        aegis.io/imported-from: aegis-import-293108184.yaml
-        aegis.io/severity: low
+        nixis.io/imported-from: nixis-import-293108184.yaml
+        nixis.io/severity: low
         kyverno.io/category: Sample
 spec:
     description: The `exec` command may be used to gain shell access, or run other commands, in a Pod's container. While this can be useful for troubleshooting purposes, it could represent an attack vector and is discouraged. This policy blocks Pod exec commands to Pods in a Namespace called `pci`.

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	policy "github.com/mayjain/aegis/internal/policy"
+	policy "github.com/mayjain/nixis/internal/policy"
 )
 
 // BenchmarkSecret_ScanTypical benchmarks a scan of clean content (no secrets)

@@ -1,12 +1,12 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-add-linkerd-mesh-injection-add-mesh-annotations
     annotations:
-        aegis.io/imported-from: aegis-import-3361401364.yaml
-        aegis.io/severity: medium
-        aegis.io/llm-confidence: medium
+        nixis.io/imported-from: nixis-import-3361401364.yaml
+        nixis.io/severity: medium
+        nixis.io/llm-confidence: medium
         kyverno.io/category: Linkerd
 spec:
     description: Sidecar proxy injection in Linkerd may be handled at the Namespace level by setting the annotation `linkerd.io/inject` to `enabled`. In addition, a second annotation may be applied which controls the Pod startup behavior. This policy sets the annotations, if not present, `linkerd.io/inject` and `config.linkerd.io/proxy-await` to `enabled` on all new Namespaces.
@@ -14,6 +14,6 @@ spec:
         tools: []
     validations:
         - expression: 'false'
-          message: 'Mutate rule (Linkerd sidecar injection annotation) — Aegis cannot mutate requests; verify namespaces have linkerd.io/inject=enabled and config.linkerd.io/proxy-await=enabled annotations'
+          message: 'Mutate rule (Linkerd sidecar injection annotation) — Nixis cannot mutate requests; verify namespaces have linkerd.io/inject=enabled and config.linkerd.io/proxy-await=enabled annotations'
           action: AUDIT
     defaultAction: ALLOW

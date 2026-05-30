@@ -8,13 +8,13 @@
 # Cloud metadata confirmation: curl 169.254.169.254/... triggers conf=2000, CatSecurityKey
 # (verified in internal/label/labeler_test.go case 20 and internal/label/labeler.go lines 420-430).
 ---
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: semantic-cloud-metadata-deny
   annotations:
-    aegis.io/default-enabled: "true"
-    aegis.io/bundle: builtin
+    nixis.io/default-enabled: "true"
+    nixis.io/bundle: builtin
 spec:
   description: "Deny exec operations targeting cloud metadata endpoints (resource_type=cloud_metadata, resource_conf>=2000). Covers 169.254.169.254 and similar."
   validations:
@@ -29,34 +29,34 @@ spec:
 # Policy 1: Credential-access exec — REQUIRE_APPROVAL
 # label.hasCategory replaces (resource_cat & CatCredentials) != 0 — CEL lacks bitwise & operator.
 # CatCredentials = 1 (bit 0), TaintBit = 2147483648 (bit 31), CatSecurityKey = 1073741824 (bit 30).
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: semantic-credential-exec
   annotations:
-    aegis.io/default-enabled: "true"
-    aegis.io/bundle: builtin
-    aegis.io/engine-fix-required: "REQUIRE_APPROVAL-from-CEL"
+    nixis.io/default-enabled: "true"
+    nixis.io/bundle: builtin
+    nixis.io/engine-fix-required: "REQUIRE_APPROVAL-from-CEL"
 spec:
   description: "Require approval for any exec targeting a credential-labeled resource (CatCredentials)"
   validations:
     - expression: >-
         label.hasCategory(resource_cat, 1) &&
         effects.exists(e, e == "exec_process")
-      message: "Exec targeting credential resource requires approval (CatCredentials). Legitimate use: use aegis allowlist or approval."
+      message: "Exec targeting credential resource requires approval (CatCredentials). Legitimate use: use nixis allowlist or approval."
       action: REQUIRE_APPROVAL
   defaultAction: ALLOW
 ---
 # Policy 2: Security key access — REQUIRE_APPROVAL
 # CatSecurityKey = 1073741824 (bit 30). Covers cloud metadata, SSH keys, GPG keys, kernel devices.
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: semantic-security-key-access
   annotations:
-    aegis.io/default-enabled: "true"
-    aegis.io/bundle: builtin
-    aegis.io/engine-fix-required: "REQUIRE_APPROVAL-from-CEL"
+    nixis.io/default-enabled: "true"
+    nixis.io/bundle: builtin
+    nixis.io/engine-fix-required: "REQUIRE_APPROVAL-from-CEL"
 spec:
   description: "Require approval for any access to security key resources (CatSecurityKey)"
   validations:
@@ -68,14 +68,14 @@ spec:
 ---
 # Policy 4: Tainted session network write — REQUIRE_APPROVAL (WebFetch/WebSearch exempted as read-only)
 # TaintBit = 2147483648 (bit 31). categories holds the session-level category bitmask.
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: semantic-tainted-network-write
   annotations:
-    aegis.io/default-enabled: "true"
-    aegis.io/bundle: builtin
-    aegis.io/engine-fix-required: "REQUIRE_APPROVAL-from-CEL"
+    nixis.io/default-enabled: "true"
+    nixis.io/bundle: builtin
+    nixis.io/engine-fix-required: "REQUIRE_APPROVAL-from-CEL"
 spec:
   description: "Require approval for network write operations from tainted sessions (WebFetch/WebSearch exempted as read-only)"
   validations:
@@ -90,14 +90,14 @@ spec:
 # Policy 5: Credential write — REQUIRE_APPROVAL
 # Uses CatCredentials (bit 0) — no labeler rule assigns CatCryptographic.
 # matchConstraints.tools narrows to Write/Edit; write_files effect confirms mutating intent.
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: semantic-credential-write
   annotations:
-    aegis.io/default-enabled: "true"
-    aegis.io/bundle: builtin
-    aegis.io/engine-fix-required: "REQUIRE_APPROVAL-from-CEL"
+    nixis.io/default-enabled: "true"
+    nixis.io/bundle: builtin
+    nixis.io/engine-fix-required: "REQUIRE_APPROVAL-from-CEL"
 spec:
   description: "Require approval for Write/Edit operations on credential-classified resources"
   matchConstraints:

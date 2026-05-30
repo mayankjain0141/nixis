@@ -1,14 +1,14 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-ptrace-attached-to-process
     annotations:
-        aegis.io/falco-tags: maturity_stable,host,container,process,mitre_privilege_escalation,T1055.008
-        aegis.io/imported-from: aegis-import-999705196.yaml
-        aegis.io/severity: medium
-        aegis.io/llm-confidence: medium
-        aegis.io/source-rule: PTRACE attached to process
+        nixis.io/falco-tags: maturity_stable,host,container,process,mitre_privilege_escalation,T1055.008
+        nixis.io/imported-from: nixis-import-999705196.yaml
+        nixis.io/severity: medium
+        nixis.io/llm-confidence: medium
+        nixis.io/source-rule: PTRACE attached to process
 spec:
     description: |
         Detect an attempt to inject potentially malicious code into a process using PTRACE in order to evade process-based defenses or elevate privileges. Common anti-patterns are debuggers. Additionally, profiling your environment via the known_ptrace_procs template macro can reduce noise. A successful ptrace syscall generates multiple logs at once.

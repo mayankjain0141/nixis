@@ -4,8 +4,8 @@ package resource
 import (
 	"testing"
 
-	"github.com/mayjain/aegis/internal/ifc"
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/internal/ifc"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 func TestRuleBasedLabeler_Label(t *testing.T) {
@@ -212,32 +212,32 @@ func TestRuleBasedLabeler_IsSink(t *testing.T) {
 func TestIsSecretCategory(t *testing.T) {
 	tests := []struct {
 		name  string
-		label aegis.SecurityLabel
+		label nixis.SecurityLabel
 		want  bool
 	}{
 		{
 			name:  "CatCredentials -> true",
-			label: aegis.SecurityLabel{Category: ifc.CatCredentials},
+			label: nixis.SecurityLabel{Category: ifc.CatCredentials},
 			want:  true,
 		},
 		{
 			name:  "CatSecurityKey -> true",
-			label: aegis.SecurityLabel{Category: ifc.CatSecurityKey},
+			label: nixis.SecurityLabel{Category: ifc.CatSecurityKey},
 			want:  true,
 		},
 		{
 			name:  "Both -> true",
-			label: aegis.SecurityLabel{Category: ifc.CatCredentials | ifc.CatSecurityKey},
+			label: nixis.SecurityLabel{Category: ifc.CatCredentials | ifc.CatSecurityKey},
 			want:  true,
 		},
 		{
 			name:  "CatInternal only -> false",
-			label: aegis.SecurityLabel{Category: ifc.CatInternal},
+			label: nixis.SecurityLabel{Category: ifc.CatInternal},
 			want:  false,
 		},
 		{
 			name:  "zero label -> false",
-			label: aegis.SecurityLabel{},
+			label: nixis.SecurityLabel{},
 			want:  false,
 		},
 	}

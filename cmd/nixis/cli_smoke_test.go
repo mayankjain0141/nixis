@@ -45,15 +45,15 @@ func TestCLI_Smoke_AllCommandsExitCleanly(t *testing.T) {
 	}
 }
 
-// buildAegisBinary compiles the aegis CLI binary into a temp dir and returns its path.
+// buildAegisBinary compiles the nixis CLI binary into a temp dir and returns its path.
 // The test is skipped if go build fails (e.g., missing dependencies in CI).
 func buildAegisBinary(t *testing.T) string {
 	t.Helper()
 
 	dir := t.TempDir()
-	binaryName := "aegis"
+	binaryName := "nixis"
 	if runtime.GOOS == "windows" {
-		binaryName = "aegis.exe"
+		binaryName = "nixis.exe"
 	}
 	binaryPath := filepath.Join(dir, binaryName)
 

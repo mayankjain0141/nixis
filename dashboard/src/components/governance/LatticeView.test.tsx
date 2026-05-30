@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { LatticeView } from './LatticeView';
 import { useLatticeStore } from '../../stores/lattice-store';
 import type { LabelState } from '../../types/events';
-import type { SecurityLabel } from '../../types/aegis';
+import type { SecurityLabel } from '../../types/nixis';
 
 function makeLabel(overrides: Partial<SecurityLabel> = {}): SecurityLabel {
   return { confidentiality: 0, integrity: 0, categories: 0, ...overrides };

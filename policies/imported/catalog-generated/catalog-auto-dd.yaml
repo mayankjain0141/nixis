@@ -1,13 +1,13 @@
-# auto-generated from pkg/adapters/catalog.json via aegis policy generate-from-catalog
-apiVersion: aegis.io/v1
+# auto-generated from pkg/adapters/catalog.json via nixis policy generate-from-catalog
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: catalog-auto-dd
     annotations:
-        aegis.io/family: bash
-        aegis.io/risk-level: high
-        aegis.io/severity: high
-        aegis.io/source: pkg/adapters/catalog.json
+        nixis.io/family: bash
+        nixis.io/risk-level: high
+        nixis.io/severity: high
+        nixis.io/source: pkg/adapters/catalog.json
 spec:
     description: 'Require approval for dd (bash risk level: high)'
     matchConstraints:

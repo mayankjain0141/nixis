@@ -1,21 +1,21 @@
-package aegis_test
+package nixis_test
 
 import (
 	"encoding/json"
 	"testing"
 
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 func TestAction_ZeroValue(t *testing.T) {
-	var a aegis.Action
-	if a != aegis.ActionDeny {
+	var a nixis.Action
+	if a != nixis.ActionDeny {
 		t.Fatalf("zero value of Action must be ActionDeny (0), got %d", a)
 	}
 }
 
 func TestSecurityLabel_ZeroIsMinPrivilege(t *testing.T) {
-	var label aegis.SecurityLabel
+	var label nixis.SecurityLabel
 	if label.Confidentiality != 0 || label.Integrity != 0 || label.Category != 0 {
 		t.Fatal("zero-value SecurityLabel must have all fields = 0 (minimum privilege)")
 	}
@@ -23,13 +23,13 @@ func TestSecurityLabel_ZeroIsMinPrivilege(t *testing.T) {
 
 func TestAction_MarshalJSON(t *testing.T) {
 	cases := []struct {
-		action aegis.Action
+		action nixis.Action
 		want   string
 	}{
-		{aegis.ActionDeny, `"deny"`},
-		{aegis.ActionAllow, `"allow"`},
-		{aegis.ActionRequireApproval, `"require_approval"`},
-		{aegis.ActionAudit, `"audit"`},
+		{nixis.ActionDeny, `"deny"`},
+		{nixis.ActionAllow, `"allow"`},
+		{nixis.ActionRequireApproval, `"require_approval"`},
+		{nixis.ActionAudit, `"audit"`},
 	}
 	for _, c := range cases {
 		got, err := json.Marshal(c.action)
@@ -45,15 +45,15 @@ func TestAction_MarshalJSON(t *testing.T) {
 func TestAction_UnmarshalJSON(t *testing.T) {
 	cases := []struct {
 		wire string
-		want aegis.Action
+		want nixis.Action
 	}{
-		{`"deny"`, aegis.ActionDeny},
-		{`"allow"`, aegis.ActionAllow},
-		{`"require_approval"`, aegis.ActionRequireApproval},
-		{`"audit"`, aegis.ActionAudit},
+		{`"deny"`, nixis.ActionDeny},
+		{`"allow"`, nixis.ActionAllow},
+		{`"require_approval"`, nixis.ActionRequireApproval},
+		{`"audit"`, nixis.ActionAudit},
 	}
 	for _, c := range cases {
-		var a aegis.Action
+		var a nixis.Action
 		if err := json.Unmarshal([]byte(c.wire), &a); err != nil {
 			t.Fatalf("UnmarshalJSON(%s): %v", c.wire, err)
 		}
@@ -64,18 +64,18 @@ func TestAction_UnmarshalJSON(t *testing.T) {
 }
 
 func TestAction_UnmarshalJSON_Unknown(t *testing.T) {
-	var a aegis.Action
+	var a nixis.Action
 	if err := json.Unmarshal([]byte(`"unknown"`), &a); err != nil {
 		t.Fatalf("UnmarshalJSON(unknown): unexpected error %v", err)
 	}
-	if a != aegis.ActionDeny {
+	if a != nixis.ActionDeny {
 		t.Errorf("UnmarshalJSON(unknown) = %v, want ActionDeny (fail-secure)", a)
 	}
 }
 
 func TestDecision_LabelsIsScalar(t *testing.T) {
-	d := aegis.Decision{
-		Labels: aegis.SecurityLabel{Confidentiality: 1, Integrity: 1},
+	d := nixis.Decision{
+		Labels: nixis.SecurityLabel{Confidentiality: 1, Integrity: 1},
 	}
 	_ = d.Labels.Confidentiality
 }

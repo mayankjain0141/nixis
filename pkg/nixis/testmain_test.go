@@ -1,4 +1,4 @@
-package aegis_test
+package nixis_test
 
 import (
 	"testing"

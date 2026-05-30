@@ -123,8 +123,8 @@ describe('createWebSocketManager', () => {
     const mgr = createWebSocketManager('ws://localhost:9090/ws');
     mgr.connect();
     await Promise.resolve();
-    // Simulate a message with aegissequence.
-    lastSocket?.simulateMessage('{"type":"decision","aegissequence":42}');
+    // Simulate a message with nixissequence.
+    lastSocket?.simulateMessage('{"type":"decision","nixissequence":42}');
     lastSocket?.simulateClose();
     vi.advanceTimersByTime(1100);
     await Promise.resolve();
@@ -236,7 +236,7 @@ describe('createWebSocketManager', () => {
       // Receive an event so lastSequenceId > 0
       lastSocket?.simulateMessage(JSON.stringify({
         type: 'policy.evaluated',
-        aegissequence: 100,
+        nixissequence: 100,
       }));
 
       // Daemon restarts — connection closes

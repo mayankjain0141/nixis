@@ -7,28 +7,28 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mayjain/aegis/internal/cel"
-	"github.com/mayjain/aegis/internal/classify"
-	"github.com/mayjain/aegis/internal/ifc"
-	"github.com/mayjain/aegis/pkg/adapters"
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/internal/cel"
+	"github.com/mayjain/nixis/internal/classify"
+	"github.com/mayjain/nixis/internal/ifc"
+	"github.com/mayjain/nixis/pkg/adapters"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 // hitScanner is a mock SecretScanner that always reports one finding.
 type hitScanner struct{}
 
 func (h *hitScanner) ShouldScan(_ []string, _ BoundaryType) bool { return true }
-func (h *hitScanner) ScanBoundary(_ context.Context, _ string, _ BoundaryType) ([]Finding, aegis.SecurityLabel) {
+func (h *hitScanner) ScanBoundary(_ context.Context, _ string, _ BoundaryType) ([]Finding, nixis.SecurityLabel) {
 	return []Finding{{Rule: "aws-access-key", Boundary: BoundaryToolArgs}},
-		aegis.SecurityLabel{Confidentiality: 3}
+		nixis.SecurityLabel{Confidentiality: 3}
 }
 
 // missScanner is a mock SecretScanner that never reports findings.
 type missScanner struct{}
 
 func (m *missScanner) ShouldScan(_ []string, _ BoundaryType) bool { return true }
-func (m *missScanner) ScanBoundary(_ context.Context, _ string, _ BoundaryType) ([]Finding, aegis.SecurityLabel) {
-	return nil, aegis.SecurityLabel{}
+func (m *missScanner) ScanBoundary(_ context.Context, _ string, _ BoundaryType) ([]Finding, nixis.SecurityLabel) {
+	return nil, nixis.SecurityLabel{}
 }
 
 // captureScanner records the content passed to ScanBoundary.
@@ -37,9 +37,9 @@ type captureScanner struct {
 }
 
 func (c *captureScanner) ShouldScan(_ []string, _ BoundaryType) bool { return true }
-func (c *captureScanner) ScanBoundary(_ context.Context, content string, _ BoundaryType) ([]Finding, aegis.SecurityLabel) {
+func (c *captureScanner) ScanBoundary(_ context.Context, content string, _ BoundaryType) ([]Finding, nixis.SecurityLabel) {
 	c.captured = content
-	return nil, aegis.SecurityLabel{}
+	return nil, nixis.SecurityLabel{}
 }
 
 // makeWriteEngine builds a PolicyEngine with the given SecretScanner and a
@@ -59,7 +59,7 @@ func makeWriteEngine(t *testing.T, scanner SecretScanner) *PolicyEngine {
 	}
 	classifier := classify.NewClassifier(catalog)
 	snap := &engineSnapshot{
-		public:     aegis.EngineSnapshot{Version: 1},
+		public:     nixis.EngineSnapshot{Version: 1},
 		classifier: classifier,
 		programs:   &cel.ProgramCache{},
 		bindingIdx: bindingIndex{},
@@ -86,15 +86,15 @@ func editArgs(filePath, oldStr, newStr string) json.RawMessage {
 // detected secret returns ActionRequireApproval, not ActionDeny.
 func TestScanner_ActionIsRequireApproval_NotDeny(t *testing.T) {
 	engine := makeWriteEngine(t, &hitScanner{})
-	resp := engine.Evaluate(context.Background(), aegis.CheckRequest{
+	resp := engine.Evaluate(context.Background(), nixis.CheckRequest{
 		Tool:      "Write",
 		SessionID: "s1",
 		Args:      writeArgs("/project/main.go", "AKIAIOSFODNN7EXAMPLE123"),
 	})
-	if resp.Decision.Action != aegis.ActionRequireApproval {
+	if resp.Decision.Action != nixis.ActionRequireApproval {
 		t.Errorf("Action = %v, want ActionRequireApproval", resp.Decision.Action)
 	}
-	if resp.EnforcingLayer != aegis.EnforcingLayerSecretScan {
+	if resp.EnforcingLayer != nixis.EnforcingLayerSecretScan {
 		t.Errorf("EnforcingLayer = %v, want EnforcingLayerSecretScan", resp.EnforcingLayer)
 	}
 	if resp.Decision.PolicyID != "builtin:secret-scan" {
@@ -106,12 +106,12 @@ func TestScanner_ActionIsRequireApproval_NotDeny(t *testing.T) {
 // _test.go file skips secret scanning entirely.
 func TestScanner_ExemptPath_TestGo_SkipsScanning(t *testing.T) {
 	engine := makeWriteEngine(t, &hitScanner{})
-	resp := engine.Evaluate(context.Background(), aegis.CheckRequest{
+	resp := engine.Evaluate(context.Background(), nixis.CheckRequest{
 		Tool:      "Write",
 		SessionID: "s1",
 		Args:      writeArgs("/project/internal/foo/bar_test.go", "AKIAIOSFODNN7EXAMPLE123"),
 	})
-	if resp.Decision.Action != aegis.ActionAllow {
+	if resp.Decision.Action != nixis.ActionAllow {
 		t.Errorf("Action = %v, want ActionAllow for _test.go path", resp.Decision.Action)
 	}
 }
@@ -120,12 +120,12 @@ func TestScanner_ExemptPath_TestGo_SkipsScanning(t *testing.T) {
 // testdata directory skips secret scanning.
 func TestScanner_ExemptPath_Testdata_SkipsScanning(t *testing.T) {
 	engine := makeWriteEngine(t, &hitScanner{})
-	resp := engine.Evaluate(context.Background(), aegis.CheckRequest{
+	resp := engine.Evaluate(context.Background(), nixis.CheckRequest{
 		Tool:      "Write",
 		SessionID: "s1",
 		Args:      writeArgs("/project/testdata/bundle_signing_key.pem", "-----BEGIN RSA PRIVATE KEY-----"),
 	})
-	if resp.Decision.Action != aegis.ActionAllow {
+	if resp.Decision.Action != nixis.ActionAllow {
 		t.Errorf("Action = %v, want ActionAllow for testdata path", resp.Decision.Action)
 	}
 }
@@ -135,12 +135,12 @@ func TestScanner_ExemptPath_Testdata_SkipsScanning(t *testing.T) {
 func TestScanner_PartialScan_OversizedContent_RequiresApproval(t *testing.T) {
 	engine := makeWriteEngine(t, &missScanner{})
 	bigContent := strings.Repeat("a", (1<<20)+1) // 1MB + 1 byte, no secrets
-	resp := engine.Evaluate(context.Background(), aegis.CheckRequest{
+	resp := engine.Evaluate(context.Background(), nixis.CheckRequest{
 		Tool:      "Write",
 		SessionID: "s1",
 		Args:      writeArgs("/project/main.go", bigContent),
 	})
-	if resp.Decision.Action != aegis.ActionRequireApproval {
+	if resp.Decision.Action != nixis.ActionRequireApproval {
 		t.Errorf("Action = %v, want ActionRequireApproval for oversized content", resp.Decision.Action)
 	}
 	if !strings.Contains(resp.Decision.Reason, "1MB scan limit") {
@@ -153,12 +153,12 @@ func TestScanner_PartialScan_OversizedContent_RequiresApproval(t *testing.T) {
 func TestScanner_EditNewStringOnly_OldStringIgnored(t *testing.T) {
 	cap := &captureScanner{}
 	engine := makeWriteEngine(t, cap)
-	resp := engine.Evaluate(context.Background(), aegis.CheckRequest{
+	resp := engine.Evaluate(context.Background(), nixis.CheckRequest{
 		Tool:      "Edit",
 		SessionID: "s1",
 		Args:      editArgs("/project/main.go", "AKIAIOSFODNN7EXAMPLE", "clean replacement"),
 	})
-	if resp.Decision.Action != aegis.ActionAllow {
+	if resp.Decision.Action != nixis.ActionAllow {
 		t.Errorf("Action = %v, want ActionAllow when new_string is clean", resp.Decision.Action)
 	}
 	if strings.Contains(cap.captured, "AKIAIOSFODNN7EXAMPLE") {

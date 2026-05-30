@@ -9,32 +9,32 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 // --- mock evaluators for HTTP tests ---
 
 type mockAllowEvaluator struct{}
 
-func (mockAllowEvaluator) Evaluate(_ context.Context, _ aegis.CheckRequest) aegis.CheckResponse {
-	return aegis.CheckResponse{
-		Decision:       aegis.Decision{Action: aegis.ActionAllow},
+func (mockAllowEvaluator) Evaluate(_ context.Context, _ nixis.CheckRequest) nixis.CheckResponse {
+	return nixis.CheckResponse{
+		Decision:       nixis.Decision{Action: nixis.ActionAllow},
 		LatencyNs:      1234,
-		EnforcingLayer: aegis.EnforcingLayerAdapter,
+		EnforcingLayer: nixis.EnforcingLayerAdapter,
 	}
 }
 
 type mockDenyEvaluator struct{}
 
-func (mockDenyEvaluator) Evaluate(_ context.Context, req aegis.CheckRequest) aegis.CheckResponse {
-	return aegis.CheckResponse{
-		Decision: aegis.Decision{
-			Action:   aegis.ActionDeny,
+func (mockDenyEvaluator) Evaluate(_ context.Context, req nixis.CheckRequest) nixis.CheckResponse {
+	return nixis.CheckResponse{
+		Decision: nixis.Decision{
+			Action:   nixis.ActionDeny,
 			Reason:   "blocked by policy",
 			PolicyID: "block-dangerous-ops",
 		},
 		LatencyNs:      5678,
-		EnforcingLayer: aegis.EnforcingLayerCEL,
+		EnforcingLayer: nixis.EnforcingLayerCEL,
 	}
 }
 

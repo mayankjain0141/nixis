@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/mayjain/aegis/internal/bundle"
+	"github.com/mayjain/nixis/internal/bundle"
 )
 
 // --- helpers ---
@@ -468,7 +468,7 @@ func TestCLI_BundleRollback_ActivatesBundle(t *testing.T) {
 
 	// Point bundleSocket at a non-existent socket so activateBundle fails at connect,
 	// not at parse (the bundle dirs contain no YAML files so 0 templates are parsed).
-	bundleSocket = "/tmp/aegis-nonexistent-rollback-test.sock"
+	bundleSocket = "/tmp/nixis-nonexistent-rollback-test.sock"
 
 	outBuf := &bytes.Buffer{}
 	errBuf := &bytes.Buffer{}
@@ -513,19 +513,19 @@ func TestCLI_AuditTail_Follow_WebSocket(t *testing.T) {
 		"specversion":     "1.0",
 		"id":              "evt-1",
 		"type":            "policy.evaluated",
-		"source":          "aegis-daemon/test",
+		"source":          "nixis-daemon/test",
 		"time":            time.Now().UTC().Format(time.RFC3339Nano),
 		"datacontenttype": "application/json",
-		"aegissequence":   1,
+		"nixissequence":   1,
 		"data":            map[string]interface{}{"tool": "bash", "session_id": "s1"},
 	}
 	heartbeat := map[string]interface{}{
 		"specversion":   "1.0",
 		"id":            "hb-1",
 		"type":          "stream.heartbeat",
-		"source":        "aegis-daemon/test",
+		"source":        "nixis-daemon/test",
 		"time":          time.Now().UTC().Format(time.RFC3339Nano),
-		"aegissequence": 2,
+		"nixissequence": 2,
 		"data":          map[string]interface{}{"serverTime": 0},
 	}
 

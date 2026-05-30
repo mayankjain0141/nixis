@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-jobs-restrict-job-from-cronjob-job
     annotations:
-        aegis.io/imported-from: aegis-import-804955016.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-804955016.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Other
 spec:
     description: Jobs can be created directly and indirectly via a CronJob controller. In some cases, users may want to only allow Jobs if they are created via a CronJob. This policy restricts Jobs so they may only be created by a CronJob.

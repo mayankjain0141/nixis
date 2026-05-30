@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/mayjain/aegis/internal/cel"
-	"github.com/mayjain/aegis/internal/classify"
-	"github.com/mayjain/aegis/internal/label"
-	aegis "github.com/mayjain/aegis/pkg/aegis"
-	policy_types "github.com/mayjain/aegis/pkg/policy/types"
+	"github.com/mayjain/nixis/internal/cel"
+	"github.com/mayjain/nixis/internal/classify"
+	"github.com/mayjain/nixis/internal/label"
+	nixis "github.com/mayjain/nixis/pkg/nixis"
+	policy_types "github.com/mayjain/nixis/pkg/policy/types"
 )
 
 // TestINV_014_PathCanonicalization verifies path.isWithinProject rejects
@@ -58,7 +58,7 @@ func TestINV_014_PathCanonicalization(t *testing.T) {
 
 	// Path inside project: expression must evaluate to true.
 	insideArgs := argsJSON(t, map[string]any{"target": inside, "root": root})
-	insideReq := aegis.CheckRequest{Tool: "ReadFile", Args: insideArgs}
+	insideReq := nixis.CheckRequest{Tool: "ReadFile", Args: insideArgs}
 	insideVal, err := builder.Evaluate(context.Background(), prog, insideReq, verdict, decodeArgs(t, insideArgs), label.LabeledRequest{}, nil, "")
 	if err != nil {
 		t.Fatalf("evaluate inside: %v", err)
@@ -69,7 +69,7 @@ func TestINV_014_PathCanonicalization(t *testing.T) {
 
 	// Path via symlink escaping root: expression must evaluate to false.
 	escapeRaw, _ := json.Marshal(map[string]any{"target": escapePath, "root": root})
-	escapeReq := aegis.CheckRequest{Tool: "ReadFile", Args: escapeRaw}
+	escapeReq := nixis.CheckRequest{Tool: "ReadFile", Args: escapeRaw}
 	escapeVal, err := builder.Evaluate(context.Background(), prog, escapeReq, verdict, decodeArgs(t, escapeRaw), label.LabeledRequest{}, nil, "")
 	if err != nil {
 		t.Fatalf("evaluate escape: %v", err)

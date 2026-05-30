@@ -1,12 +1,12 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-add-labels-add-labels
     annotations:
-        aegis.io/imported-from: aegis-import-2637384430.yaml
-        aegis.io/severity: medium
-        aegis.io/llm-confidence: medium
+        nixis.io/imported-from: nixis-import-2637384430.yaml
+        nixis.io/severity: medium
+        nixis.io/llm-confidence: medium
         kyverno.io/category: Sample
 spec:
     description: Labels are used as an important source of metadata describing objects in various ways or triggering other functionality. Labels are also a very basic concept and should be used throughout Kubernetes. This policy performs a simple mutation which adds a label `foo=bar` to Pods, Services, ConfigMaps, and Secrets.

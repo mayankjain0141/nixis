@@ -1,12 +1,12 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-add-castai-removal-disabled-do-not-evict-jobs
     annotations:
-        aegis.io/imported-from: aegis-import-2195082470.yaml
-        aegis.io/severity: medium
-        aegis.io/llm-confidence: medium
+        nixis.io/imported-from: nixis-import-2195082470.yaml
+        nixis.io/severity: medium
+        nixis.io/llm-confidence: medium
         kyverno.io/category: CAST AI
 spec:
     description: 'CAST AI will not downscale a node that includes a pod with the  autoscaling.cast.ai/removal-disabled="true" label on it, this protects sensitive workloads from being evicted and can be attributed to any pod to protect against unwanted downscaling. This policy will mutate jobs and  cronjobs to add the removal-disabled label to protect against eviction. '

@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-allowed-base-images-allowed-base-images-pod
     annotations:
-        aegis.io/imported-from: aegis-import-75841845.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-75841845.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Other
 spec:
     description: Building images which specify a base as their origin is a good start to improving supply chain security, but over time organizations may want to build an allow list of specific base images which are allowed to be used when constructing containers. This policy ensures that a container's base, found in an OCI annotation, is in a cluster-wide allow list.

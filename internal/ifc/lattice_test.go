@@ -4,15 +4,15 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 // ── Pure lattice function tests ──────────────────────────────────────────────
 
 func TestIFC_Join_IntegrityGoesDown(t *testing.T) {
 	// Spec mandates: Join({C:5,I:7}, {C:3,I:3}).Integrity == 3
-	a := aegis.SecurityLabel{Confidentiality: 5, Integrity: 7, Category: 0}
-	b := aegis.SecurityLabel{Confidentiality: 3, Integrity: 3, Category: 0}
+	a := nixis.SecurityLabel{Confidentiality: 5, Integrity: 7, Category: 0}
+	b := nixis.SecurityLabel{Confidentiality: 3, Integrity: 3, Category: 0}
 	got := Join(a, b)
 	if got.Integrity != 3 {
 		t.Errorf("Join.Integrity: want 3, got %d", got.Integrity)
@@ -23,8 +23,8 @@ func TestIFC_Join_IntegrityGoesDown(t *testing.T) {
 }
 
 func TestIFC_Join_ConfidentialityGoesUp(t *testing.T) {
-	a := aegis.SecurityLabel{Confidentiality: 3, Integrity: 7}
-	b := aegis.SecurityLabel{Confidentiality: 9, Integrity: 2}
+	a := nixis.SecurityLabel{Confidentiality: 3, Integrity: 7}
+	b := nixis.SecurityLabel{Confidentiality: 9, Integrity: 2}
 	got := Join(a, b)
 	if got.Confidentiality != 9 {
 		t.Errorf("Join.Confidentiality: want 9, got %d", got.Confidentiality)
@@ -35,8 +35,8 @@ func TestIFC_Join_ConfidentialityGoesUp(t *testing.T) {
 }
 
 func TestIFC_Join_CategoryUnion(t *testing.T) {
-	a := aegis.SecurityLabel{Category: CatCredentials}
-	b := aegis.SecurityLabel{Category: CatFinance}
+	a := nixis.SecurityLabel{Category: CatCredentials}
+	b := nixis.SecurityLabel{Category: CatFinance}
 	got := Join(a, b)
 	if got.Category != (CatCredentials | CatFinance) {
 		t.Errorf("Join.Category: want %b, got %b", CatCredentials|CatFinance, got.Category)
@@ -44,8 +44,8 @@ func TestIFC_Join_CategoryUnion(t *testing.T) {
 }
 
 func TestIFC_Meet_IntegrityGoesUp(t *testing.T) {
-	a := aegis.SecurityLabel{Confidentiality: 5, Integrity: 3}
-	b := aegis.SecurityLabel{Confidentiality: 3, Integrity: 7}
+	a := nixis.SecurityLabel{Confidentiality: 5, Integrity: 3}
+	b := nixis.SecurityLabel{Confidentiality: 3, Integrity: 7}
 	got := Meet(a, b)
 	if got.Integrity != 7 {
 		t.Errorf("Meet.Integrity: want 7, got %d", got.Integrity)
@@ -56,8 +56,8 @@ func TestIFC_Meet_IntegrityGoesUp(t *testing.T) {
 }
 
 func TestIFC_Meet_CategoryIntersection(t *testing.T) {
-	a := aegis.SecurityLabel{Category: CatCredentials | CatFinance}
-	b := aegis.SecurityLabel{Category: CatFinance | CatPersonalData}
+	a := nixis.SecurityLabel{Category: CatCredentials | CatFinance}
+	b := nixis.SecurityLabel{Category: CatFinance | CatPersonalData}
 	got := Meet(a, b)
 	if got.Category != CatFinance {
 		t.Errorf("Meet.Category: want %b, got %b", CatFinance, got.Category)
@@ -67,44 +67,44 @@ func TestIFC_Meet_CategoryIntersection(t *testing.T) {
 func TestIFC_Dominates(t *testing.T) {
 	tests := []struct {
 		name    string
-		subject aegis.SecurityLabel
-		object  aegis.SecurityLabel
+		subject nixis.SecurityLabel
+		object  nixis.SecurityLabel
 		want    bool
 	}{
 		{
 			name:    "subject dominates object — all dimensions",
-			subject: aegis.SecurityLabel{Confidentiality: 10, Integrity: 10, Category: CatCredentials | CatFinance},
-			object:  aegis.SecurityLabel{Confidentiality: 5, Integrity: 5, Category: CatCredentials},
+			subject: nixis.SecurityLabel{Confidentiality: 10, Integrity: 10, Category: CatCredentials | CatFinance},
+			object:  nixis.SecurityLabel{Confidentiality: 5, Integrity: 5, Category: CatCredentials},
 			want:    true,
 		},
 		{
 			name:    "subject fails confidentiality check",
-			subject: aegis.SecurityLabel{Confidentiality: 4, Integrity: 10, Category: CatCredentials},
-			object:  aegis.SecurityLabel{Confidentiality: 5, Integrity: 5, Category: CatCredentials},
+			subject: nixis.SecurityLabel{Confidentiality: 4, Integrity: 10, Category: CatCredentials},
+			object:  nixis.SecurityLabel{Confidentiality: 5, Integrity: 5, Category: CatCredentials},
 			want:    false,
 		},
 		{
 			name:    "subject fails integrity check",
-			subject: aegis.SecurityLabel{Confidentiality: 10, Integrity: 4, Category: CatCredentials},
-			object:  aegis.SecurityLabel{Confidentiality: 5, Integrity: 5, Category: CatCredentials},
+			subject: nixis.SecurityLabel{Confidentiality: 10, Integrity: 4, Category: CatCredentials},
+			object:  nixis.SecurityLabel{Confidentiality: 5, Integrity: 5, Category: CatCredentials},
 			want:    false,
 		},
 		{
 			name:    "subject fails category superset check",
-			subject: aegis.SecurityLabel{Confidentiality: 10, Integrity: 10, Category: CatCredentials},
-			object:  aegis.SecurityLabel{Confidentiality: 5, Integrity: 5, Category: CatCredentials | CatFinance},
+			subject: nixis.SecurityLabel{Confidentiality: 10, Integrity: 10, Category: CatCredentials},
+			object:  nixis.SecurityLabel{Confidentiality: 5, Integrity: 5, Category: CatCredentials | CatFinance},
 			want:    false,
 		},
 		{
 			name:    "equal labels — dominates (reflexive)",
-			subject: aegis.SecurityLabel{Confidentiality: 5, Integrity: 5, Category: CatCredentials},
-			object:  aegis.SecurityLabel{Confidentiality: 5, Integrity: 5, Category: CatCredentials},
+			subject: nixis.SecurityLabel{Confidentiality: 5, Integrity: 5, Category: CatCredentials},
+			object:  nixis.SecurityLabel{Confidentiality: 5, Integrity: 5, Category: CatCredentials},
 			want:    true,
 		},
 		{
 			name:    "zero subject dominates zero object",
-			subject: aegis.SecurityLabel{},
-			object:  aegis.SecurityLabel{},
+			subject: nixis.SecurityLabel{},
+			object:  nixis.SecurityLabel{},
 			want:    true,
 		},
 	}
@@ -122,8 +122,8 @@ func TestIFC_Dominates(t *testing.T) {
 // different results for the same inputs, specifically on the Integrity dimension.
 // This is the P0-09 fix test: the two operations MUST NOT be conflated.
 func TestLattice_JoinDistinctFromElevate(t *testing.T) {
-	session := aegis.SecurityLabel{Confidentiality: 5, Integrity: 3, Category: 0}
-	resource := aegis.SecurityLabel{Confidentiality: 3, Integrity: 7, Category: 0}
+	session := nixis.SecurityLabel{Confidentiality: 5, Integrity: 3, Category: 0}
+	resource := nixis.SecurityLabel{Confidentiality: 3, Integrity: 7, Category: 0}
 
 	joined := Join(session, resource)
 	elevated := elevateLabel(session, resource)
@@ -157,8 +157,8 @@ func TestLattice_JoinDistinctFromElevate(t *testing.T) {
 // The critical property is that Join.Integrity never EXCEEDS either input (it goes down).
 
 func TestIFC_Join_ConfidentialityNeverLess(t *testing.T) {
-	a := aegis.SecurityLabel{Confidentiality: 8, Integrity: 12, Category: CatCredentials}
-	b := aegis.SecurityLabel{Confidentiality: 4, Integrity: 6, Category: CatFinance}
+	a := nixis.SecurityLabel{Confidentiality: 8, Integrity: 12, Category: CatCredentials}
+	b := nixis.SecurityLabel{Confidentiality: 4, Integrity: 6, Category: CatFinance}
 	j := Join(a, b)
 	if j.Confidentiality < a.Confidentiality {
 		t.Errorf("Join.Confidentiality %d < a.Confidentiality %d", j.Confidentiality, a.Confidentiality)
@@ -170,8 +170,8 @@ func TestIFC_Join_ConfidentialityNeverLess(t *testing.T) {
 
 func TestIFC_Join_IntegrityNeverGreater(t *testing.T) {
 	// Join.Integrity = min — never exceeds either input
-	a := aegis.SecurityLabel{Integrity: 12}
-	b := aegis.SecurityLabel{Integrity: 6}
+	a := nixis.SecurityLabel{Integrity: 12}
+	b := nixis.SecurityLabel{Integrity: 6}
 	j := Join(a, b)
 	if j.Integrity > a.Integrity {
 		t.Errorf("Join.Integrity %d > a.Integrity %d", j.Integrity, a.Integrity)
@@ -186,7 +186,7 @@ func TestIFC_Join_IntegrityNeverGreater(t *testing.T) {
 func TestIFC_Elevate_IntegrityGoesUp(t *testing.T) {
 	s := &SessionLabels{}
 	// Start from zero label; elevate with high-I resource.
-	resource := aegis.SecurityLabel{Confidentiality: 5, Integrity: 7, Category: 0}
+	resource := nixis.SecurityLabel{Confidentiality: 5, Integrity: 7, Category: 0}
 	got := s.Elevate("sess-1", resource)
 	if got.Integrity != 7 {
 		t.Errorf("Elevate.Integrity: want 7, got %d", got.Integrity)
@@ -203,16 +203,16 @@ func TestIFC_Elevate_ConcurrentSafe(t *testing.T) {
 
 	var wg sync.WaitGroup
 	wg.Add(n)
-	inputs := make([]aegis.SecurityLabel, n)
+	inputs := make([]nixis.SecurityLabel, n)
 	for i := range inputs {
-		inputs[i] = aegis.SecurityLabel{
+		inputs[i] = nixis.SecurityLabel{
 			Confidentiality: uint16(i),
 			Integrity:       uint16(n - i),
 			Category:        uint32(i % 4),
 		}
 	}
 	for i := 0; i < n; i++ {
-		go func(lbl aegis.SecurityLabel) {
+		go func(lbl nixis.SecurityLabel) {
 			defer wg.Done()
 			s.Elevate(sessionID, lbl)
 		}(inputs[i])
@@ -220,7 +220,7 @@ func TestIFC_Elevate_ConcurrentSafe(t *testing.T) {
 	wg.Wait()
 
 	// Compute expected: fold elevateLabel over all inputs starting from zero.
-	expected := aegis.SecurityLabel{}
+	expected := nixis.SecurityLabel{}
 	for _, lbl := range inputs {
 		expected = elevateLabel(expected, lbl)
 	}
@@ -242,7 +242,7 @@ func TestIFC_Declassify_LabelNotLowered(t *testing.T) {
 	sessionID := "declassify-sess"
 
 	// Elevate the session to a non-zero label.
-	high := aegis.SecurityLabel{Confidentiality: 100, Integrity: 50, Category: CatCredentials}
+	high := nixis.SecurityLabel{Confidentiality: 100, Integrity: 50, Category: CatCredentials}
 	s.Elevate(sessionID, high)
 
 	before := s.Current(sessionID)
@@ -274,7 +274,7 @@ func TestIFC_LabelState_Transitions(t *testing.T) {
 	}
 
 	// escalated: after normal resource access
-	s.Elevate("escalated-sess", aegis.SecurityLabel{Confidentiality: 5, Integrity: 5})
+	s.Elevate("escalated-sess", nixis.SecurityLabel{Confidentiality: 5, Integrity: 5})
 	if state := s.LabelState("escalated-sess"); state != LabelStateEscalated {
 		t.Errorf("after normal elevate: want escalated, got %q", state)
 	}
@@ -286,7 +286,7 @@ func TestIFC_LabelState_Transitions(t *testing.T) {
 	}
 
 	// declassified: after DeclassificationGate.Apply
-	s.Elevate("declassified-sess", aegis.SecurityLabel{Confidentiality: 1})
+	s.Elevate("declassified-sess", nixis.SecurityLabel{Confidentiality: 1})
 	gate := &DeclassificationGate{AuditRef: "ref"}
 	gate.Apply(s, "declassified-sess")
 	if state := s.LabelState("declassified-sess"); state != LabelStateDeclassified {
@@ -308,7 +308,7 @@ func TestIFC_TaintWithSecret_SetsTaintBit(t *testing.T) {
 // ── Packing round-trip ────────────────────────────────────────────────────────
 
 func TestPackUnpack_RoundTrip(t *testing.T) {
-	labels := []aegis.SecurityLabel{
+	labels := []nixis.SecurityLabel{
 		{Confidentiality: 0, Integrity: 0, Category: 0},
 		{Confidentiality: 65535, Integrity: 65535, Category: 0xFFFFFFFF},
 		{Confidentiality: 24576, Integrity: 32768, Category: CatCredentials | CatSecurityKey},

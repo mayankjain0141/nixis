@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mayjain/aegis/internal/delegation"
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/internal/delegation"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 // newDelegEngine creates a delegation.Engine with a fresh ephemeral key pair.
@@ -49,7 +49,7 @@ func registerTestChain(t *testing.T, eng *delegation.Engine, priv ed25519.Privat
 	if err != nil {
 		t.Fatalf("marshal token: %v", err)
 	}
-	refs := []aegis.DelegationRef{{TokenID: string(raw), Issuer: tok.Issuer}}
+	refs := []nixis.DelegationRef{{TokenID: string(raw), Issuer: tok.Issuer}}
 	chain, err := eng.ValidateChain(refs, time.Now())
 	if err != nil {
 		t.Fatalf("ValidateChain: %v", err)

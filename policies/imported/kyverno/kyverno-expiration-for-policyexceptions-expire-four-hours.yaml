@@ -1,12 +1,12 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-expiration-for-policyexceptions-expire-four-hours
     annotations:
-        aegis.io/imported-from: aegis-import-3182253499.yaml
-        aegis.io/severity: medium
-        aegis.io/llm-confidence: medium
+        nixis.io/imported-from: nixis-import-3182253499.yaml
+        nixis.io/severity: medium
+        nixis.io/llm-confidence: medium
         kyverno.io/category: Other
 spec:
     description: In situations where Ops/Platform teams want to allow exceptions on a temporary basis, there must be a way to remove the PolicyException once the expiration time has been reached. After the exception is removed, the rule(s) for which the exception is granted go back into full effect. This policy generates a ClusterCleanupPolicy with a four hour expiration time after which the PolicyException is deleted. It may be necessary to grant both the Kyverno as well as cleanup controller ServiceAccounts additional permissions to operate this policy.
@@ -14,6 +14,6 @@ spec:
         tools: []
     validations:
         - expression: 'false'
-          message: 'Generate rule — Aegis does not generate resources — manual review required'
+          message: 'Generate rule — Nixis does not generate resources — manual review required'
           action: AUDIT
     defaultAction: ALLOW

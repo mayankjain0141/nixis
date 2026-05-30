@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-only-trustworthy-registries-set-root-only-allow-trusted-images-pod
     annotations:
-        aegis.io/imported-from: aegis-import-2949015748.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-2949015748.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Other, EKS Best Practices
 spec:
     description: Some containers must be built to run as root in order to function properly, but use of those images should be carefully restricted to prevent unneeded privileges. This policy blocks any image that runs as root if it does not come from a trustworthy registry, `ghcr.io` in this case.

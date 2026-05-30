@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-deployment-replicas-higher-than-pdb-deployment-replicas-greater-minavailable-poddisruptionbudget
     annotations:
-        aegis.io/imported-from: aegis-import-2199851802.yaml
-        aegis.io/severity: low
+        nixis.io/imported-from: nixis-import-2199851802.yaml
+        nixis.io/severity: low
         kyverno.io/category: Other
 spec:
     description: PodDisruptionBudget resources are useful to ensuring minimum availability is maintained at all times. Introducing a PDB where there are already matching Pod controllers may pose a problem if the author is unaware of the existing replica count. This policy ensures that the minAvailable value is not greater not equal to the replica count of any matching existing Deployment. If other Pod controllers should also be included in this check, additional rules may be added to the policy which match those controllers.

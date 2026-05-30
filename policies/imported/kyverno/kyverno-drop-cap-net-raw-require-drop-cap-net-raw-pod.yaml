@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-drop-cap-net-raw-require-drop-cap-net-raw-pod
     annotations:
-        aegis.io/imported-from: aegis-import-310810296.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-310810296.yaml
+        nixis.io/severity: medium
         kyverno.io/category: Best Practices
 spec:
     description: Capabilities permit privileged actions without giving full root access. The CAP_NET_RAW capability, enabled by default, allows processes in a container to forge packets and bind to any interface potentially leading to MitM attacks. This policy ensures that all containers explicitly drop the CAP_NET_RAW ability. Note that this policy also illustrates how to cover drop entries in any case although this may not strictly conform to the Pod Security Standards.

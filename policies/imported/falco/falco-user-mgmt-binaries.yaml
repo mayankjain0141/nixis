@@ -1,13 +1,13 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-user-mgmt-binaries
     annotations:
-        aegis.io/falco-tags: maturity_incubating,host,users,software_mgmt,mitre_persistence,T1098
-        aegis.io/imported-from: aegis-import-2621062960.yaml
-        aegis.io/severity: low
-        aegis.io/source-rule: User mgmt binaries
+        nixis.io/falco-tags: maturity_incubating,host,users,software_mgmt,mitre_persistence,T1098
+        nixis.io/imported-from: nixis-import-2621062960.yaml
+        nixis.io/severity: low
+        nixis.io/source-rule: User mgmt binaries
 spec:
     description: |
         Detect activity by any programs that can manage users, passwords, or permissions (such as login, systemd, usermod, deluser, adduser, chpasswd, and others). sudo and su are excluded. Activity in containers is also excluded -- some containers create custom users on top of a base linux distribution at startup. Some innocuous command lines that don't actually change anything are excluded. You might want to consider applying this rule to container actions as well.

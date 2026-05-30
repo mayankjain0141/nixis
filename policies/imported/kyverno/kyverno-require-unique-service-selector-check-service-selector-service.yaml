@@ -1,10 +1,10 @@
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-require-unique-service-selector-check-service-selector-service
     annotations:
-        aegis.io/imported-from: aegis-import-263464822.yaml
-        aegis.io/severity: low
+        nixis.io/imported-from: nixis-import-263464822.yaml
+        nixis.io/severity: low
         kyverno.io/category: Other
 spec:
     description: Services select eligible Pods by way of label matches. Having multiple Service apply based on same labels can cause conflicts and have unintended consequences. This policy ensures that within the same Namespace a Service has a unique set of labels as a selector.

@@ -15,13 +15,13 @@
 #
 # Enforcement code: internal/mcp/proxy.go handleToolCall() → IntegrityTracker.IsDrifted()
 
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: mcp-tool-integrity
   annotations:
-    aegis.io/bundle: builtin
-    aegis.io/enforcement-layer: proxy
+    nixis.io/bundle: builtin
+    nixis.io/enforcement-layer: proxy
 spec:
   description: "MCP tool integrity baseline — drift detection enforced at proxy layer, not CEL"
   matchConstraints:

@@ -6,17 +6,17 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/mayjain/aegis/internal/cel"
-	policy_types "github.com/mayjain/aegis/pkg/policy/types"
+	"github.com/mayjain/nixis/internal/cel"
+	policy_types "github.com/mayjain/nixis/pkg/policy/types"
 )
 
-const bashUnmatchedNetworkCmdYAML = `apiVersion: aegis.io/v1
+const bashUnmatchedNetworkCmdYAML = `apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: bash-unmatched-network-cmd
   annotations:
-    aegis.io/default-enabled: "true"
-    aegis.io/bundle: builtin
+    nixis.io/default-enabled: "true"
+    nixis.io/bundle: builtin
 spec:
   description: "Require approval when unrecognized Bash command uses a network-capable binary (excludes plain git commands)"
   matchConstraints:
@@ -32,13 +32,13 @@ spec:
   defaultAction: ALLOW
 `
 
-const readUnmatchedSensitivePathYAML = `apiVersion: aegis.io/v1
+const readUnmatchedSensitivePathYAML = `apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: read-unmatched-sensitive-path
   annotations:
-    aegis.io/default-enabled: "true"
-    aegis.io/bundle: builtin
+    nixis.io/default-enabled: "true"
+    nixis.io/bundle: builtin
 spec:
   description: "Require approval for Read on unrecognized paths matching credential file name patterns"
   matchConstraints:
@@ -55,13 +55,13 @@ spec:
   defaultAction: ALLOW
 `
 
-const bashUnmatchedLongCommandYAML = `apiVersion: aegis.io/v1
+const bashUnmatchedLongCommandYAML = `apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: bash-unmatched-long-command
   annotations:
-    aegis.io/default-enabled: "true"
-    aegis.io/bundle: builtin
+    nixis.io/default-enabled: "true"
+    nixis.io/bundle: builtin
 spec:
   description: "Require approval for unusually long unrecognized Bash commands — possible obfuscation"
   matchConstraints:

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
-// aegis-hook is the per-invocation hook binary for Claude Code, Cursor IDE,
+// nixis-hook is the per-invocation hook binary for Claude Code, Cursor IDE,
 // and any IDE that exposes a tool-call hook.
 //
 // It is invoked for every tool call. It reads raw JSON from stdin, detects
-// the IDE via an adapter registry, evaluates the request against aegis-daemon,
+// the IDE via an adapter registry, evaluates the request against nixis-daemon,
 // and writes IDE-specific output to stdout.
 //
 // Wire format: 4-byte big-endian uint32 length + JSON payload (shared with daemon).
@@ -23,8 +23,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/mayjain/aegis/internal/otel"
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/internal/otel"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 // totalBudget is the wall-clock deadline for the entire hook invocation.
@@ -79,7 +79,7 @@ type ClaudeCodeHookSpecific struct {
 	PermissionDecisionReason string `json:"permissionDecisionReason,omitempty"`
 }
 
-// FailOpenEntry is appended to AEGIS_FAILOPEN_LOG when the hook fails open.
+// FailOpenEntry is appended to NIXIS_FAILOPEN_LOG when the hook fails open.
 type FailOpenEntry struct {
 	Ts               time.Time `json:"ts"`
 	SessionID        string    `json:"session_id"`
@@ -91,14 +91,14 @@ type FailOpenEntry struct {
 
 func main() {
 	otelCfg := otel.Config{
-		Enabled:      os.Getenv("AEGIS_OTEL_ENDPOINT") != "",
-		Endpoint:     os.Getenv("AEGIS_OTEL_ENDPOINT"),
-		ServiceName:  "aegis-hook",
+		Enabled:      os.Getenv("NIXIS_OTEL_ENDPOINT") != "",
+		Endpoint:     os.Getenv("NIXIS_OTEL_ENDPOINT"),
+		ServiceName:  "nixis-hook",
 		BatchTimeout: 500 * time.Millisecond,
 	}
 	otelShutdown, err := otel.Initialize(otelCfg)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "aegis-hook: OTel init warning: %v\n", err)
+		fmt.Fprintf(os.Stderr, "nixis-hook: OTel init warning: %v\n", err)
 		otelShutdown = func(context.Context) error { return nil }
 	}
 	defer func() {
@@ -170,7 +170,7 @@ func main() {
 		os.Exit(exitCode)
 	}
 
-	var resp aegis.CheckResponse
+	var resp nixis.CheckResponse
 	if err := json.Unmarshal(respBytes, &resp); err != nil {
 		stdout, exitCode := adapter.FormatFailOpen("response_parse_error", rawInput)
 		_, _ = os.Stdout.Write(stdout)
@@ -186,34 +186,34 @@ func main() {
 
 // buildCheckRequest constructs a CheckRequest from parsed HookInput.
 // Retained for test compatibility.
-func buildCheckRequest(h HookInput, timestampNs int64) aegis.CheckRequest {
-	return aegis.CheckRequest{
+func buildCheckRequest(h HookInput, timestampNs int64) nixis.CheckRequest {
+	return nixis.CheckRequest{
 		Tool:            h.Tool,
 		Args:            h.GetInput(),
 		SessionID:       h.GetSessionID(),
 		Timestamp:       timestampNs,
-		SpawnToken:      os.Getenv("AEGIS_SPAWN_TOKEN"),
-		ParentSessionID: os.Getenv("AEGIS_PARENT_SESSION_ID"),
-		ProjectRoot:     os.Getenv("AEGIS_PROJECT_ROOT"),
+		SpawnToken:      os.Getenv("NIXIS_SPAWN_TOKEN"),
+		ParentSessionID: os.Getenv("NIXIS_PARENT_SESSION_ID"),
+		ProjectRoot:     os.Getenv("NIXIS_PROJECT_ROOT"),
 	}
 }
 
 // translateToClaudeCode converts a CheckResponse into a ClaudeCodeHookOutput.
 // Retained for test compatibility.
-func translateToClaudeCode(resp aegis.CheckResponse, eventName string) ClaudeCodeHookOutput {
+func translateToClaudeCode(resp nixis.CheckResponse, eventName string) ClaudeCodeHookOutput {
 	specific := ClaudeCodeHookSpecific{
 		HookEventName: eventName,
 	}
 	switch resp.Decision.Action {
-	case aegis.ActionAllow:
+	case nixis.ActionAllow:
 		specific.PermissionDecision = "allow"
-	case aegis.ActionDeny:
+	case nixis.ActionDeny:
 		specific.PermissionDecision = "deny"
 		specific.PermissionDecisionReason = resp.Decision.Reason
-	case aegis.ActionRequireApproval:
+	case nixis.ActionRequireApproval:
 		specific.PermissionDecision = "ask"
 		specific.PermissionDecisionReason = resp.Decision.Reason
-	case aegis.ActionAudit:
+	case nixis.ActionAudit:
 		specific.PermissionDecision = "allow"
 	default:
 		specific.PermissionDecision = "deny"
@@ -224,22 +224,22 @@ func translateToClaudeCode(resp aegis.CheckResponse, eventName string) ClaudeCod
 
 // translateResponse converts a CheckResponse into a CursorHookOutput.
 // Retained for test compatibility.
-func translateResponse(resp aegis.CheckResponse) CursorHookOutput {
+func translateResponse(resp nixis.CheckResponse) CursorHookOutput {
 	var out CursorHookOutput
 	out.LatencyNs = resp.LatencyNs
 
 	switch resp.Decision.Action {
-	case aegis.ActionAllow:
+	case nixis.ActionAllow:
 		out.Decision.Action = "allow"
-	case aegis.ActionDeny:
+	case nixis.ActionDeny:
 		out.Decision.Action = "deny"
 		out.Decision.Reason = resp.Decision.Reason
 		out.Decision.PolicyID = resp.Decision.PolicyID
-	case aegis.ActionRequireApproval:
+	case nixis.ActionRequireApproval:
 		out.Decision.Action = "require_approval"
 		out.Decision.Reason = resp.Decision.Reason
 		out.Decision.PolicyID = resp.Decision.PolicyID
-	case aegis.ActionAudit:
+	case nixis.ActionAudit:
 		out.Decision.Action = "audit"
 	default:
 		out.Decision.Action = "deny"
@@ -267,35 +267,35 @@ func logFailOpen(reason, tool string, args json.RawMessage, deadlineExceeded boo
 
 // socketPath returns the daemon Unix socket path.
 func socketPath() string {
-	if v := os.Getenv("AEGIS_SOCKET_PATH"); v != "" {
+	if v := os.Getenv("NIXIS_SOCKET_PATH"); v != "" {
 		return v
 	}
 	if xdg := os.Getenv("XDG_RUNTIME_DIR"); xdg != "" {
-		return xdg + "/aegis/aegis.sock"
+		return xdg + "/nixis/nixis.sock"
 	}
-	return "/tmp/aegis.sock"
+	return "/tmp/nixis.sock"
 }
 
 // failOpenLogPath returns the fail-open log path.
 func failOpenLogPath() string {
-	if v := os.Getenv("AEGIS_FAILOPEN_LOG"); v != "" {
+	if v := os.Getenv("NIXIS_FAILOPEN_LOG"); v != "" {
 		return v
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "/tmp/aegis-failopen.log"
+		return "/tmp/nixis-failopen.log"
 	}
-	return home + "/.aegis/failopen.log"
+	return home + "/.nixis/failopen.log"
 }
 
-// readStdin reads all of stdin up to aegis.MaxMessageSize before the deadline.
+// readStdin reads all of stdin up to nixis.MaxMessageSize before the deadline.
 func readStdin(deadline time.Time) ([]byte, error) {
 	remaining := time.Until(deadline)
 	if remaining <= 0 {
 		return nil, fmt.Errorf("deadline exceeded before stdin read")
 	}
 
-	limited := io.LimitReader(os.Stdin, int64(aegis.MaxMessageSize))
+	limited := io.LimitReader(os.Stdin, int64(nixis.MaxMessageSize))
 	var buf []byte
 	reader := bufio.NewReader(limited)
 
@@ -352,7 +352,7 @@ func readFramed(conn net.Conn, deadline time.Time) ([]byte, error) {
 		return nil, err
 	}
 	length := binary.BigEndian.Uint32(hdr[:])
-	if int(length) > aegis.MaxMessageSize {
+	if int(length) > nixis.MaxMessageSize {
 		return nil, fmt.Errorf("response exceeds MaxMessageSize")
 	}
 	payload := make([]byte, length)

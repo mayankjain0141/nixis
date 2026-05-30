@@ -1,18 +1,18 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-label-nodes-all-label-node-foo
     annotations:
-        aegis.io/imported-from: aegis-import-1117556485.yaml
-        aegis.io/severity: low
-        aegis.io/llm-confidence: medium
+        nixis.io/imported-from: nixis-import-1117556485.yaml
+        nixis.io/severity: low
+        nixis.io/llm-confidence: medium
 spec:
     description: label-nodes-all
     matchConstraints:
         tools: []
     validations:
         - expression: 'false'
-          message: 'Mutate rule — Aegis does not mutate requests — manual review required'
+          message: 'Mutate rule — Nixis does not mutate requests — manual review required'
           action: AUDIT
     defaultAction: ALLOW

@@ -12,8 +12,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/mayjain/aegis/internal/bundle"
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/internal/bundle"
+	"github.com/mayjain/nixis/pkg/nixis"
 	"github.com/spf13/cobra"
 )
 
@@ -52,15 +52,15 @@ var bundleRollbackCmd = &cobra.Command{
 func defaultBundleStoreDir() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "/tmp/aegis/bundles"
+		return "/tmp/nixis/bundles"
 	}
-	return filepath.Join(home, ".aegis", "bundles")
+	return filepath.Join(home, ".nixis", "bundles")
 }
 
 func init() {
-	bundleActivateCmd.Flags().StringVar(&bundleSocket, "socket", "", "Daemon socket path (default: $AEGIS_SOCKET_PATH or /tmp/aegis.sock)")
-	bundleListCmd.Flags().StringVar(&bundleListStoreDir, "store-dir", "", "Bundle store directory (default: ~/.aegis/bundles/)")
-	bundleRollbackCmd.Flags().StringVar(&bundleRollbackStoreDir, "store-dir", "", "Bundle store directory (default: ~/.aegis/bundles/)")
+	bundleActivateCmd.Flags().StringVar(&bundleSocket, "socket", "", "Daemon socket path (default: $NIXIS_SOCKET_PATH or /tmp/nixis.sock)")
+	bundleListCmd.Flags().StringVar(&bundleListStoreDir, "store-dir", "", "Bundle store directory (default: ~/.nixis/bundles/)")
+	bundleRollbackCmd.Flags().StringVar(&bundleRollbackStoreDir, "store-dir", "", "Bundle store directory (default: ~/.nixis/bundles/)")
 	bundleCmd.AddCommand(bundleActivateCmd)
 	bundleCmd.AddCommand(bundleListCmd)
 	bundleCmd.AddCommand(bundleRollbackCmd)
@@ -97,7 +97,7 @@ func activateBundle(cmd *cobra.Command, bundlePath string) error {
 	}
 
 	// Step 2: notify the daemon via the standard CheckRequest wire protocol
-	// (same framing as `aegis simulate`) so it can trigger a policy reload.
+	// (same framing as `nixis simulate`) so it can trigger a policy reload.
 	sockPath := bundleSocket
 	if sockPath == "" {
 		sockPath = daemonSocketPath()
@@ -116,7 +116,7 @@ func activateBundle(cmd *cobra.Command, bundlePath string) error {
 	if err != nil {
 		return fmt.Errorf("marshal args: %w", err)
 	}
-	req := aegis.CheckRequest{
+	req := nixis.CheckRequest{
 		Tool:      "bundle_reload",
 		Args:      json.RawMessage(argsJSON),
 		Timestamp: time.Now().UnixNano(),
@@ -138,7 +138,7 @@ func activateBundle(cmd *cobra.Command, bundlePath string) error {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "bundle activated (no daemon ack — daemon may need restart)\n")
 		return nil
 	}
-	var resp aegis.CheckResponse
+	var resp nixis.CheckResponse
 	if jsonErr := json.Unmarshal(respBytes, &resp); jsonErr != nil {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "bundle activated\n")
 		return nil

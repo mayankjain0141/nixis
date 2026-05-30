@@ -1,12 +1,12 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-require-pdb-require-pdb-deployment
     annotations:
-        aegis.io/imported-from: aegis-import-1992861709.yaml
-        aegis.io/severity: low
-        aegis.io/llm-confidence: medium
+        nixis.io/imported-from: nixis-import-1992861709.yaml
+        nixis.io/severity: low
+        nixis.io/llm-confidence: medium
         kyverno.io/category: Sample, EKS Best Practices
 spec:
     description: 'PodDisruptionBudget resources are useful to ensuring minimum availability is maintained at all times. This policy checks all incoming Deployments and StatefulSets to ensure they have a matching, preexisting PodDisruptionBudget. Note: This policy must be run in `enforce` mode to ensure accuracy.'

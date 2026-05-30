@@ -1,8 +1,8 @@
 #!/bin/sh
 set -euo pipefail
 
-REPO="mayjain/aegis"
-INSTALL_DIR="${AEGIS_INSTALL_DIR:-$HOME/.aegis}"
+REPO="mayjain/nixis"
+INSTALL_DIR="${NIXIS_INSTALL_DIR:-$HOME/.nixis}"
 
 info() { printf "\033[1;34m==>\033[0m %s\n" "$1"; }
 warn() { printf "\033[1;33mWARN:\033[0m %s\n" "$1"; }
@@ -25,8 +25,8 @@ detect_platform() {
 }
 
 get_version() {
-    if [ -n "${AEGIS_VERSION:-}" ]; then
-        VERSION="$AEGIS_VERSION"
+    if [ -n "${NIXIS_VERSION:-}" ]; then
+        VERSION="$NIXIS_VERSION"
         info "Using specified version: $VERSION"
         return
     fi
@@ -37,7 +37,7 @@ get_version() {
         | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/')
 
     if [ -z "$VERSION" ]; then
-        err "Failed to determine latest version. Set AEGIS_VERSION manually."
+        err "Failed to determine latest version. Set NIXIS_VERSION manually."
     fi
     info "Latest version: $VERSION"
 }
@@ -84,12 +84,12 @@ install_binaries() {
     info "Installing to ${INSTALL_DIR}..."
     mkdir -p "$INSTALL_DIR"
     tar -xzf "${TMPDIR}/${TARBALL}" -C "$INSTALL_DIR"
-    chmod +x "${INSTALL_DIR}/aegis" "${INSTALL_DIR}/aegis-hook"
+    chmod +x "${INSTALL_DIR}/nixis" "${INSTALL_DIR}/nixis-hook"
 }
 
 print_success() {
-    printf "\n\033[1;32m✓ Aegis installed successfully!\033[0m\n\n"
-    printf "  Binaries: %s/aegis, %s/aegis-hook\n" "$INSTALL_DIR" "$INSTALL_DIR"
+    printf "\n\033[1;32m✓ Nixis installed successfully!\033[0m\n\n"
+    printf "  Binaries: %s/nixis, %s/nixis-hook\n" "$INSTALL_DIR" "$INSTALL_DIR"
     printf "  Version:  %s\n\n" "$VERSION"
 
     case ":${PATH}:" in
@@ -100,11 +100,11 @@ print_success() {
             ;;
     esac
 
-    printf "  Run 'aegis setup' to configure.\n\n"
+    printf "  Run 'nixis setup' to configure.\n\n"
 }
 
 main() {
-    info "Installing Aegis..."
+    info "Installing Nixis..."
     detect_platform
     info "Platform: ${OS}/${ARCH}"
     get_version

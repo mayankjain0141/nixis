@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-k10-policy-hourly-rpo-k10-policy-hourly-rpo-config-kio-kasten-io-v1alpha1-policy
     annotations:
-        aegis.io/imported-from: aegis-import-3762704852.yaml
-        aegis.io/severity: low
+        nixis.io/imported-from: nixis-import-3762704852.yaml
+        nixis.io/severity: low
         kyverno.io/category: Kasten K10 by Veeam in CEL
 spec:
     description: 'K10 Policy resources can be educated to adhere to common Recovery Point Objective (RPO) best practices. This policy is advising to use an RPO frequency that with hourly granularity if it has the appPriority: Mission Critical'
@@ -13,6 +13,6 @@ spec:
         tools: []
     validations:
         - expression: 'false'
-          message: 'Generate rule — Aegis does not generate resources — manual review required'
+          message: 'Generate rule — Nixis does not generate resources — manual review required'
           action: AUDIT
     defaultAction: ALLOW

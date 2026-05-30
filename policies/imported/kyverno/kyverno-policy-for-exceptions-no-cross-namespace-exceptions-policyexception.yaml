@@ -1,12 +1,12 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-policy-for-exceptions-no-cross-namespace-exceptions-policyexception
     annotations:
-        aegis.io/imported-from: aegis-import-641170263.yaml
-        aegis.io/severity: low
-        aegis.io/llm-confidence: medium
+        nixis.io/imported-from: nixis-import-641170263.yaml
+        nixis.io/severity: low
+        nixis.io/llm-confidence: medium
         kyverno.io/category: Sample
 spec:
     description: A PolicyException grants the applicable resource(s) or subject(s) the ability to bypass an existing Kyverno policy. Care should be taken to ensure that the allowed PolicyExceptions are scoped fine enough and according to your organization's operation. This is a Kyverno policy intended to provide guardrails for Kyverno PolicyExceptions and contains a number of rules which may help with these scoping best practices. These rules may be changed/removed depending on the exception practices to be implemented.

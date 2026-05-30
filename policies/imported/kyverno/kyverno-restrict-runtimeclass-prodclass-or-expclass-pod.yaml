@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-runtimeclass-prodclass-or-expclass-pod
     annotations:
-        aegis.io/imported-from: aegis-import-2979482207.yaml
-        aegis.io/severity: low
+        nixis.io/imported-from: nixis-import-2979482207.yaml
+        nixis.io/severity: low
         kyverno.io/category: PSP Migration
 spec:
     description: The runtimeClass field of a Pod spec defines which container engine runtime should be used. In the previous Pod Security Policy controller, defining restrictions on which classes were allowed was permitted. Limiting runtime classes to only those which have been defined can prevent unintended running states or Pods which may not come online. This policy restricts the runtimeClass field to the values `prodclass` or `expclass`.

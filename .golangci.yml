@@ -1,4 +1,4 @@
-# Aegis V4 — golangci-lint configuration
+# Nixis V4 — golangci-lint configuration
 # Required before G1 passes (see FINAL_SPEC_HARDENING.md §11)
 
 version: "2"
@@ -81,7 +81,7 @@ linters:
             - $all
           allow:
             - $gostd
-            - github.com/mayjain/aegis
+            - github.com/mayjain/nixis
             - github.com/google/uuid
             - github.com/gorilla/websocket
             - github.com/zricethezav/gitleaks/v8

@@ -1,10 +1,10 @@
-apiVersion: aegis.io/v1
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
   name: block-packet-capture
   annotations:
-    aegis.io/default-enabled: "true"
-    aegis.io/bundle: builtin
+    nixis.io/default-enabled: "true"
+    nixis.io/bundle: builtin
 spec:
   description: "Deny MITM/attack tools; require approval for legitimate packet capture debug tools"
   matchConstraints:

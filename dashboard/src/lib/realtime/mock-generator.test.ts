@@ -32,7 +32,7 @@ describe('TestMock_DeterministicSequence', () => {
     expect(run2.length).toBe(50);
     for (let i = 0; i < run1.length; i++) {
       expect(run1[i].type).toBe(run2[i].type);
-      expect(run1[i].envelope.aegissequence).toBe(run2[i].envelope.aegissequence);
+      expect(run1[i].envelope.nixissequence).toBe(run2[i].envelope.nixissequence);
     }
   });
 
@@ -149,8 +149,8 @@ describe('createMockGenerator', () => {
     expect(batch).toHaveLength(12);
     for (const e of batch) {
       expect(typeof e.type).toBe('string');
-      expect(typeof e.envelope.aegissequence).toBe('number');
-      expect(e.envelope.aegissequence).toBeGreaterThan(0);
+      expect(typeof e.envelope.nixissequence).toBe('number');
+      expect(e.envelope.nixissequence).toBeGreaterThan(0);
     }
   });
 
@@ -160,11 +160,11 @@ describe('createMockGenerator', () => {
     expect(types.size).toBe(12);
   });
 
-  it('aegissequence is strictly increasing within a batch', () => {
+  it('nixissequence is strictly increasing within a batch', () => {
     const events = generateBatch(50, 42);
     for (let i = 1; i < events.length; i++) {
-      expect(events[i].envelope.aegissequence).toBeGreaterThan(
-        events[i - 1].envelope.aegissequence
+      expect(events[i].envelope.nixissequence).toBeGreaterThan(
+        events[i - 1].envelope.nixissequence
       );
     }
   });

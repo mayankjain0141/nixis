@@ -1,13 +1,13 @@
-# imported from: rules via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: rules via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: falco-non-sudo-setuid
     annotations:
-        aegis.io/falco-tags: maturity_incubating,host,container,users,mitre_privilege_escalation,T1548.001
-        aegis.io/imported-from: aegis-import-2621062960.yaml
-        aegis.io/severity: low
-        aegis.io/source-rule: Non sudo setuid
+        nixis.io/falco-tags: maturity_incubating,host,container,users,mitre_privilege_escalation,T1548.001
+        nixis.io/imported-from: nixis-import-2621062960.yaml
+        nixis.io/severity: low
+        nixis.io/source-rule: Non sudo setuid
 spec:
     description: |
         Detect attempts to change users through the use of setuid, with exceptions for sudo/su. The users "root" and "nobody" using setuid on themselves are also excluded, as setuid calls in these cases typically involve reducing privileges. By setting the setuid bit, an attacker could execute code in a different user's context, potentially with higher privileges. One drawback is the potential for noise, as many applications legitimately use this approach.

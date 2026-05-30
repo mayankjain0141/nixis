@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-restrict-certificatesigningrequests-approve-prevention-clusterrole
     annotations:
-        aegis.io/imported-from: aegis-import-restrict-csr-approve.yaml
-        aegis.io/severity: high
+        nixis.io/imported-from: nixis-import-restrict-csr-approve.yaml
+        nixis.io/severity: high
         kyverno.io/category: Security
 spec:
     description: This policy prevents approve operations on CertificateSigningRequests via kubectl. Approving CertificateSigningRequests issues new credentials for any user or group, which is equivalent to granting cluster-admin privileges. This operation must go through an approved change management process.

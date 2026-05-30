@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-pdb-maxunavailable-with-deployments-pdb-maxunavailable-poddisruptionbudget
     annotations:
-        aegis.io/imported-from: aegis-import-587405239.yaml
-        aegis.io/severity: low
+        nixis.io/imported-from: nixis-import-587405239.yaml
+        nixis.io/severity: low
         kyverno.io/category: Other
 spec:
     description: A PodDisruptionBudget which sets its maxUnavailable value to zero prevents all voluntary evictions including Node drains which may impact maintenance tasks. This may be acceptable if there are no matching controllers, but if there are then creation of such a PDB could allow unintended disruption. This policy enforces that a PodDisruptionBudget may not specify the maxUnavailable field as zero if there are any existing matching Deployments having greater than zero replicas.

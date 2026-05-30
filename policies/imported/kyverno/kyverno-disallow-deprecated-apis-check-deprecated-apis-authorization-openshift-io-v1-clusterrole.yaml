@@ -1,11 +1,11 @@
-# imported from: policies via aegis policy import
-apiVersion: aegis.io/v1
+# imported from: policies via nixis policy import
+apiVersion: nixis.io/v1
 kind: PolicyTemplate
 metadata:
     name: kyverno-disallow-deprecated-apis-check-deprecated-apis-authorization-openshift-io-v1-clusterrole
     annotations:
-        aegis.io/imported-from: aegis-import-1792288289.yaml
-        aegis.io/severity: medium
+        nixis.io/imported-from: nixis-import-1792288289.yaml
+        nixis.io/severity: medium
         kyverno.io/category: OpenShift
 spec:
     description: 'OpenShift APIs are sometimes deprecated and removed after a few releases. As a best practice, older API versions should be replaced with newer versions. This policy validates for APIs that are deprecated or scheduled for removal. Note that checking for some of these resources may require modifying the Kyverno ConfigMap to remove filters.      '

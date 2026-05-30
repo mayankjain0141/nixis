@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-// Package stream implements the WebSocket streaming server for the Aegis dashboard.
+// Package stream implements the WebSocket streaming server for the Nixis dashboard.
 // It receives governance events via the StreamTap interface and fans them out
 // to connected dashboard clients over WebSocket (RFC 6455), CloudEvents v1.0 format.
 //
 // Import constraint: this package MUST NOT import internal/audit or internal/policy.
-// All integration is via pkg/aegis interfaces (StreamTap, SnapshotReader).
+// All integration is via pkg/nixis interfaces (StreamTap, SnapshotReader).
 package stream
 
 import (
@@ -22,8 +22,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/mayjain/aegis/internal/otel"
-	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/mayjain/nixis/internal/otel"
+	"github.com/mayjain/nixis/pkg/nixis"
 )
 
 type ipLimiter struct {
@@ -82,7 +82,7 @@ const (
 // Evaluator can evaluate a single CheckRequest. Implemented by *policy.PolicyEngine.
 // Injected via WithEvaluator so stream does not import internal/policy.
 type Evaluator interface {
-	Evaluate(ctx context.Context, req aegis.CheckRequest) aegis.CheckResponse
+	Evaluate(ctx context.Context, req nixis.CheckRequest) nixis.CheckResponse
 }
 
 // PolicyInfo is the JSON wire format for GET /policies.
@@ -106,7 +106,7 @@ func WithEvaluator(e Evaluator) Option {
 }
 
 // WithPolicyLister injects a policy lister, enabling the GET /policies endpoint.
-func WithPolicyLister(l aegis.PolicyLister) Option {
+func WithPolicyLister(l nixis.PolicyLister) Option {
 	return func(s *StreamServer) {
 		s.policyLister = l
 	}
@@ -156,9 +156,9 @@ type cloudEvent struct {
 	Subject         string          `json:"subject,omitempty"`
 	Time            string          `json:"time"`
 	DataContentType string          `json:"datacontenttype"`
-	AegisSequence   uint64          `json:"aegissequence"`
-	MerklePrev      string          `json:"aegismerkleprev,omitempty"`
-	MerkleSelf      string          `json:"aegismerkleself,omitempty"`
+	NixisSequence   uint64          `json:"nixissequence"`
+	MerklePrev      string          `json:"nixismerkleprev,omitempty"`
+	MerkleSelf      string          `json:"nixismerkleself,omitempty"`
 	Data            json.RawMessage `json:"data"`
 }
 
@@ -203,16 +203,16 @@ type subscribeFilter struct {
 var droppedTotal atomic.Uint64
 
 // StreamServer is the WebSocket fan-out hub.
-// It implements aegis.StreamTap (Emit) and aegis.SnapshotReader (LoadSnapshot).
+// It implements nixis.StreamTap (Emit) and nixis.SnapshotReader (LoadSnapshot).
 type StreamServer struct {
 	addr         string
-	tap          aegis.StreamTap // upstream tap (may be nil in tests — server IS the tap)
-	reader       aegis.SnapshotReader
+	tap          nixis.StreamTap // upstream tap (may be nil in tests — server IS the tap)
+	reader       nixis.SnapshotReader
 	evaluator    Evaluator          // injected via WithEvaluator; nil disables /simulate
-	policyLister aegis.PolicyLister // injected via WithPolicyLister; nil disables GET /policies
+	policyLister nixis.PolicyLister // injected via WithPolicyLister; nil disables GET /policies
 	clients      sync.Map           // string → *client
 	seq          sequenceCounter
-	events       chan aegis.StreamEvent // internal fan-out queue
+	events       chan nixis.StreamEvent // internal fan-out queue
 	httpSrv      *http.Server
 	limiter      *ipLimiter
 	ready        atomic.Bool // true after the TCP listener is fully bound
@@ -228,8 +228,8 @@ type StreamServer struct {
 // NewStreamServer constructs a StreamServer.
 // tap: upstream event source (may be nil; callers may Emit directly).
 // reader: provides current EngineSnapshot for state.snapshot on connect.
-func NewStreamServer(tap aegis.StreamTap, reader aegis.SnapshotReader, opts ...Option) *StreamServer {
-	addr := os.Getenv("AEGIS_DASHBOARD_ADDR")
+func NewStreamServer(tap nixis.StreamTap, reader nixis.SnapshotReader, opts ...Option) *StreamServer {
+	addr := os.Getenv("NIXIS_DASHBOARD_ADDR")
 	if addr == "" {
 		addr = defaultAddr
 	}
@@ -237,7 +237,7 @@ func NewStreamServer(tap aegis.StreamTap, reader aegis.SnapshotReader, opts ...O
 		addr:    addr,
 		tap:     tap,
 		reader:  reader,
-		events:  make(chan aegis.StreamEvent, 512),
+		events:  make(chan nixis.StreamEvent, 512),
 		limiter: newIPLimiter(),
 	}
 	for _, opt := range opts {
@@ -307,10 +307,10 @@ func resolveLoopbackAddr(addr string) string {
 	return "127.0.0.1:" + port
 }
 
-// Emit implements aegis.StreamTap. It is non-blocking: events are enqueued
+// Emit implements nixis.StreamTap. It is non-blocking: events are enqueued
 // to the internal fan-out channel. Overflow events are dropped.
-// aegissequence is assigned in the fan-out goroutine, not here.
-func (s *StreamServer) Emit(ctx context.Context, event aegis.StreamEvent) {
+// nixissequence is assigned in the fan-out goroutine, not here.
+func (s *StreamServer) Emit(ctx context.Context, event nixis.StreamEvent) {
 	// Validate event type at entry — unknown types are rejected.
 	if !validEventTypes[event.Type] {
 		return
@@ -323,8 +323,8 @@ func (s *StreamServer) Emit(ctx context.Context, event aegis.StreamEvent) {
 	}
 }
 
-// LoadSnapshot implements aegis.SnapshotReader.
-func (s *StreamServer) LoadSnapshot() *aegis.EngineSnapshot {
+// LoadSnapshot implements nixis.SnapshotReader.
+func (s *StreamServer) LoadSnapshot() *nixis.EngineSnapshot {
 	if s.reader != nil {
 		return s.reader.LoadSnapshot()
 	}
@@ -332,7 +332,7 @@ func (s *StreamServer) LoadSnapshot() *aegis.EngineSnapshot {
 }
 
 // fanOut reads from the internal event channel and dispatches to all clients.
-// aegissequence is assigned here (per STREAMING_PROTOCOL.md §7).
+// nixissequence is assigned here (per STREAMING_PROTOCOL.md §7).
 func (s *StreamServer) fanOut(ctx context.Context) {
 	for {
 		select {
@@ -395,10 +395,10 @@ func (s *StreamServer) heartbeat(ctx context.Context) {
 				SpecVersion:     "1.0",
 				ID:              fmt.Sprintf("hb-%d", seq),
 				Type:            "stream.heartbeat",
-				Source:          "aegis-daemon/instance-001",
+				Source:          "nixis-daemon/instance-001",
 				Time:            now.UTC().Format(time.RFC3339Nano),
 				DataContentType: "application/json",
-				AegisSequence:   seq,
+				NixisSequence:   seq,
 				Data:            raw,
 			}
 			payload, err := json.Marshal(evt)
@@ -484,7 +484,7 @@ func (s *StreamServer) handleSimulate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	r.Body = http.MaxBytesReader(w, r.Body, simulateBodyLimit)
-	var req aegis.CheckRequest
+	var req nixis.CheckRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid JSON body", http.StatusBadRequest)
 		return
@@ -505,12 +505,12 @@ func (s *StreamServer) handleSimulate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	eventType := "policy.evaluated"
-	if resp.Decision.Action == aegis.ActionDeny {
+	if resp.Decision.Action == nixis.ActionDeny {
 		eventType = "policy.denied"
 	}
-	s.Emit(r.Context(), aegis.StreamEvent{
+	s.Emit(r.Context(), nixis.StreamEvent{
 		Type:           eventType,
-		AegisSequence:  0, // assigned in fan-out goroutine
+		NixisSequence:  0, // assigned in fan-out goroutine
 		SessionID:      req.SessionID,
 		Tool:           req.Tool,
 		Action:         resp.Decision.Action,
@@ -819,10 +819,10 @@ func (s *StreamServer) sendSystemError(c *client, reason, msg string) {
 		SpecVersion:     "1.0",
 		ID:              fmt.Sprintf("err-%d", seq),
 		Type:            "system.error",
-		Source:          "aegis-daemon/instance-001",
+		Source:          "nixis-daemon/instance-001",
 		Time:            time.Now().UTC().Format(time.RFC3339Nano),
 		DataContentType: "application/json",
-		AegisSequence:   seq,
+		NixisSequence:   seq,
 		Data:            raw,
 	}
 	payload, err := json.Marshal(evt)
@@ -859,10 +859,10 @@ func (s *StreamServer) EmitBundleActivated(_ context.Context, version uint64, ha
 		SpecVersion:     "1.0",
 		ID:              fmt.Sprintf("bundle-%d", seq),
 		Type:            "bundle.activated",
-		Source:          "aegis-daemon/instance-001",
+		Source:          "nixis-daemon/instance-001",
 		Time:            time.Now().UTC().Format(time.RFC3339Nano),
 		DataContentType: "application/json",
-		AegisSequence:   seq,
+		NixisSequence:   seq,
 		Data:            raw,
 	}
 	payload, err := json.Marshal(evt)
@@ -896,10 +896,10 @@ func (s *StreamServer) EmitAuditCheckpoint(_ context.Context, seq int64, hash, p
 		SpecVersion:     "1.0",
 		ID:              fmt.Sprintf("ckpt-%d", wseq),
 		Type:            "audit.checkpoint",
-		Source:          "aegis-daemon/instance-001",
+		Source:          "nixis-daemon/instance-001",
 		Time:            time.Now().UTC().Format(time.RFC3339Nano),
 		DataContentType: "application/json",
-		AegisSequence:   wseq,
+		NixisSequence:   wseq,
 		MerkleSelf:      hash,
 		MerklePrev:      prevHash,
 		Data:            raw,
@@ -913,10 +913,10 @@ func (s *StreamServer) EmitAuditCheckpoint(_ context.Context, seq int64, hash, p
 }
 
 // buildCloudEvent marshals a StreamEvent into a CloudEvents v1.0 JSON payload.
-// seq is the aegissequence assigned in the fan-out goroutine.
+// seq is the nixissequence assigned in the fan-out goroutine.
 // The data payload uses the nested structure expected by the dashboard Zod schema:
 // { session_id, tool, decision: { action, reason, policy_id, enforcing_layer, labels }, label_state, latency_ns }
-func buildCloudEvent(event aegis.StreamEvent, seq uint64) ([]byte, error) {
+func buildCloudEvent(event nixis.StreamEvent, seq uint64) ([]byte, error) {
 	wireType := event.Type
 	if !validEventTypes[wireType] {
 		wireType = normalizeEventType(wireType)
@@ -958,11 +958,11 @@ func buildCloudEvent(event aegis.StreamEvent, seq uint64) ([]byte, error) {
 		SpecVersion:     "1.0",
 		ID:              id,
 		Type:            wireType,
-		Source:          "aegis-daemon/instance-001",
+		Source:          "nixis-daemon/instance-001",
 		Subject:         event.Tool,
 		Time:            time.Unix(0, event.Timestamp).UTC().Format(time.RFC3339Nano),
 		DataContentType: "application/json",
-		AegisSequence:   seq,
+		NixisSequence:   seq,
 		Data:            raw,
 	}
 

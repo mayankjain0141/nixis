@@ -33,13 +33,15 @@ interface CardProps {
 function ThreatCard({ threat, onAcknowledge }: CardProps) {
   function handleShowInDag() {
     window.dispatchEvent(
-      new CustomEvent('aegis:highlight-event', {
-        detail: { aegisSequence: threat.aegisSequence },
-      }),
+      new CustomEvent('nixis:navigate', { detail: { panel: 'dag' } }),
     );
-    window.dispatchEvent(
-      new CustomEvent('aegis:navigate', { detail: { panel: 'dag' } }),
-    );
+    setTimeout(() => {
+      window.dispatchEvent(
+        new CustomEvent('nixis:highlight-event', {
+          detail: { nixisSequence: threat.nixisSequence, tool: threat.tool },
+        }),
+      );
+    }, 50);
   }
 
   const severityLabel = threat.severity.toUpperCase();
