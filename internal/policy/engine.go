@@ -91,6 +91,9 @@ type engineSnapshot struct {
 	bindingIdx     bindingIndex
 	compiledAt     int64
 	sourceHash     [32]byte
+	// templateParams maps TemplateID → resolved params map (from PolicyTemplate.Params).
+	// Nil map means empty params; always safe to pass to Evaluate.
+	templateParams map[string]map[string]any
 }
 
 // compiledBinding pairs a policy binding with its pre-resolved scope key.
@@ -401,7 +404,8 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 			continue
 		}
 
-		val, err := e.activationBuilder.Evaluate(ctx, prog, req, verdict, decodedArgs, labeled)
+		policyParams := snap.templateParams[cb.binding.TemplateID]
+		val, err := e.activationBuilder.Evaluate(ctx, prog, req, verdict, decodedArgs, labeled, policyParams)
 		if err != nil {
 			log.Printf("WARN: policy %s eval error (skipping): %v", cb.binding.TemplateID, err)
 			continue
@@ -544,6 +548,15 @@ func (e *PolicyEngine) buildSnapshot(
 		return nil, nil, err
 	}
 
+	// Build templateParams index: TemplateID → params map.
+	templateParams := make(map[string]map[string]any, len(bundle.Templates))
+	for i := range bundle.Templates {
+		t := &bundle.Templates[i]
+		if t.Params != nil {
+			templateParams[t.ID] = t.Params
+		}
+	}
+
 	compiled := make([]compiledBinding, 0, len(bundle.Bindings))
 	for i := range bundle.Bindings {
 		b := &bundle.Bindings[i]
@@ -566,11 +579,12 @@ func (e *PolicyEngine) buildSnapshot(
 		public: aegis.EngineSnapshot{
 			Version: version,
 		},
-		bindings:   compiled,
-		programs:   programs,
-		bindingIdx: idx,
-		compiledAt: time.Now().UnixNano(),
-		sourceHash: bundle.Hash,
+		bindings:       compiled,
+		programs:       programs,
+		bindingIdx:     idx,
+		compiledAt:     time.Now().UnixNano(),
+		sourceHash:     bundle.Hash,
+		templateParams: templateParams,
 	}
 	return snap, skipped, nil
 }

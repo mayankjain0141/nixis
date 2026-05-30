@@ -2,6 +2,7 @@
 package bundle
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -35,8 +36,15 @@ type policyManifest struct {
 			Message    string `yaml:"message"`
 			Action     string `yaml:"action"`
 		} `yaml:"validations"`
-		DefaultAction string `yaml:"defaultAction"`
+		DefaultAction string                     `yaml:"defaultAction"`
+		Params        map[string]paramDefinition `yaml:"params"`
 	} `yaml:"spec"`
+}
+
+// paramDefinition holds the YAML schema for a single policy parameter.
+type paramDefinition struct {
+	Type    string `yaml:"type"`
+	Default any    `yaml:"default"`
 }
 
 // ParsePolicyFile parses a single YAML policy file and returns a PolicyTemplate and PolicyBinding.
@@ -67,11 +75,17 @@ func ParsePolicyFile(path string) (*policy_types.PolicyTemplate, *policy_types.P
 		return nil, nil, nil
 	}
 
+	params, err := resolveParams(manifest.Spec.Params, path)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	template := &policy_types.PolicyTemplate{
 		ID:          manifest.Metadata.Name,
 		Name:        manifest.Metadata.Name,
 		Description: strings.TrimRight(manifest.Spec.Description, "\n\r "),
 		Expression:  expr,
+		Params:      params,
 		SourceFile:  path,
 		SourceLine:  1,
 	}
@@ -92,6 +106,54 @@ func ParsePolicyFile(path string) (*policy_types.PolicyTemplate, *policy_types.P
 	}
 
 	return template, binding, nil
+}
+
+// resolveParams converts the raw YAML params map into a resolved map[string]any
+// with defaults applied and type validation performed.
+//
+// For array-typed params containing integers, each element is validated to be in
+// the range 1024–65535. Well-known ports (< 1024) are rejected with an error.
+func resolveParams(defs map[string]paramDefinition, sourceFile string) (map[string]any, error) {
+	if len(defs) == 0 {
+		return nil, nil
+	}
+	result := make(map[string]any, len(defs))
+	for name, def := range defs {
+		if def.Default == nil {
+			result[name] = nil
+			continue
+		}
+		switch def.Type {
+		case "array":
+			raw, ok := def.Default.([]any)
+			if !ok {
+				return nil, fmt.Errorf("bundle: %s: param %q type=array but default is not a sequence", sourceFile, name)
+			}
+			// For integer arrays, validate each element.
+			resolved := make([]any, 0, len(raw))
+			allInts := true
+			for _, v := range raw {
+				switch n := v.(type) {
+				case int:
+					if n < 1024 {
+						return nil, fmt.Errorf("bundle: %s: param %q devPorts contains well-known port %d: use explicit policy for ports < 1024", sourceFile, name, n)
+					}
+					if n > 65535 {
+						return nil, fmt.Errorf("bundle: %s: param %q devPorts contains out-of-range port %d (max 65535)", sourceFile, name, n)
+					}
+					resolved = append(resolved, int64(n))
+				default:
+					allInts = false
+					resolved = append(resolved, v)
+				}
+			}
+			_ = allInts
+			result[name] = resolved
+		default:
+			result[name] = def.Default
+		}
+	}
+	return result, nil
 }
 
 // buildCombinedExpression builds a single CEL expression from policy validations.
