@@ -1,0 +1,110 @@
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: block-persistence
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Block persistence mechanisms: cron jobs, shell profile modification, init scripts, and SSH key injection"
+  matchConstraints:
+    tools: ["Bash", "Write", "Edit"]
+  variables:
+    - name: isCrontabEdit
+      # crontab -e interactive edit, or crontab - (piped install)
+      expression: >-
+        tool == "Bash" && (
+          request.args.command.matches("(?i).*\\bcrontab\\s+-e\\b.*") ||
+          request.args.command.matches("(?i).*\\bcrontab\\s+-\\b.*")
+        )
+    - name: isWritingCronPath
+      # Writing/editing to cron directories or spool via Write/Edit tool
+      expression: >-
+        (tool == "Write" || tool == "Edit") && (
+          request.args.file_path.matches(".*/etc/cron\\.d/.*") ||
+          request.args.file_path.matches(".*/etc/cron\\.(daily|weekly|monthly|hourly)/.*") ||
+          request.args.file_path.matches(".*/etc/crontab$") ||
+          request.args.file_path.matches(".*/var/spool/cron/.*")
+        )
+    - name: isBashWritingCronPath
+      # Bash redirecting to cron paths
+      expression: >-
+        tool == "Bash" && (
+          request.args.command.matches("(?i).*>\\s*/etc/cron\\.d/.*") ||
+          request.args.command.matches("(?i).*>\\s*/etc/cron(tab|\\.daily|\\.weekly|\\.monthly|\\.hourly)/.*") ||
+          request.args.command.matches("(?i).*>\\s*/var/spool/cron/.*")
+        )
+    - name: isShellProfileWrite
+      # Writing to shell init files via Write/Edit tool
+      expression: >-
+        (tool == "Write" || tool == "Edit") && (
+          request.args.file_path.matches(".*/(\\.|)bashrc$") ||
+          request.args.file_path.matches(".*/(\\.|)bash_profile$") ||
+          request.args.file_path.matches(".*/(\\.|)bash_login$") ||
+          request.args.file_path.matches(".*/(\\.|)profile$") ||
+          request.args.file_path.matches(".*/(\\.|)zshrc$") ||
+          request.args.file_path.matches(".*/(\\.|)zprofile$") ||
+          request.args.file_path.matches(".*/(\\.|)zlogin$") ||
+          request.args.file_path.matches(".*/etc/profile$") ||
+          request.args.file_path.matches(".*/etc/profile\\.d/.*")
+        )
+    - name: isInitScriptWrite
+      # Writing to init.d, systemd units, or rc.local via Write/Edit tool
+      expression: >-
+        (tool == "Write" || tool == "Edit") && (
+          request.args.file_path.matches(".*/etc/init\\.d/.*") ||
+          request.args.file_path.matches(".*/etc/systemd/system/.*") ||
+          request.args.file_path.matches(".*/etc/rc\\.local$") ||
+          request.args.file_path.matches(".*/etc/rc[0-9S]\\.d/.*") ||
+          request.args.file_path.matches(".*/lib/systemd/system/.*") ||
+          request.args.file_path.matches(".*/usr/lib/systemd/system/.*")
+        )
+    - name: isBashInitScriptWrite
+      # Bash writing to init paths
+      expression: >-
+        tool == "Bash" && (
+          request.args.command.matches("(?i).*>\\s*/etc/init\\.d/.*") ||
+          request.args.command.matches("(?i).*>\\s*/etc/systemd/system/.*") ||
+          request.args.command.matches("(?i).*>\\s*/etc/rc\\.local\\b.*") ||
+          request.args.command.matches("(?i).*\\bsystemctl\\s+(enable|daemon-reload)\\b.*")
+        )
+    - name: isAuthorizedKeysWrite
+      # Writing to SSH authorized_keys via Write/Edit tool — backdoor SSH access
+      expression: >-
+        (tool == "Write" || tool == "Edit") && (
+          request.args.file_path.matches(".*\\.ssh/authorized_keys$") ||
+          request.args.file_path.matches(".*/authorized_keys$")
+        )
+    - name: isBashAuthorizedKeysWrite
+      # Bash appending to authorized_keys
+      expression: >-
+        tool == "Bash" && (
+          request.args.command.matches("(?i).*(>>|tee\\s+-a)\\s*.*\\.ssh/authorized_keys\\b.*") ||
+          request.args.command.matches("(?i).*\\bssh-copy-id\\b.*")
+        )
+  validations:
+    - expression: 'isCrontabEdit'
+      message: "Blocked: interactive crontab editing is not permitted"
+      action: DENY
+    - expression: 'isWritingCronPath'
+      message: "Blocked: writing to cron directories is not permitted"
+      action: DENY
+    - expression: 'isBashWritingCronPath'
+      message: "Blocked: redirecting to cron paths is not permitted"
+      action: DENY
+    - expression: 'isShellProfileWrite'
+      message: "Blocked: writing to shell profile/rc files is not permitted — potential persistence"
+      action: DENY
+    - expression: 'isInitScriptWrite'
+      message: "Blocked: writing to init scripts or systemd units is not permitted"
+      action: DENY
+    - expression: 'isBashInitScriptWrite'
+      message: "Blocked: writing to init paths or enabling systemd units is not permitted"
+      action: DENY
+    - expression: 'isAuthorizedKeysWrite'
+      message: "Blocked: writing to authorized_keys is not permitted — potential SSH backdoor"
+      action: DENY
+    - expression: 'isBashAuthorizedKeysWrite'
+      message: "Blocked: appending to authorized_keys is not permitted — potential SSH backdoor"
+      action: DENY
+  defaultAction: ALLOW
