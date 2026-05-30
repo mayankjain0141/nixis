@@ -25,8 +25,6 @@ import (
 	"github.com/mayjain/aegis/pkg/aegis"
 )
 
-// Daemon manages the lifecycle of the Aegis governance daemon.
-//
 // Lifecycle state machine:
 //
 //	INITIALIZING → LISTENING → DRAINING → FLUSHING → STOPPED
@@ -40,14 +38,9 @@ type Daemon struct {
 	delegAPI     *DelegationAPI     // nil disables delegation HTTP endpoints
 	taintHistory *ifc.TaintHistory  // nil disables taint history pruning
 
-	// mode tracks the current operational mode (normal, degraded, deny_all, read_only).
-	mode modeState
-
-	// evaluations counts the total number of CheckRequests handled.
+	mode        modeState
 	evaluations atomic.Int64
-
-	// startTime records when the daemon started, used for uptime calculation.
-	startTime time.Time
+	startTime   time.Time
 
 	// inFlight tracks the number of in-progress connection goroutines.
 	// Graceful shutdown waits for this WaitGroup before closing the audit channel.
@@ -61,7 +54,6 @@ type Daemon struct {
 	auditCancel context.CancelFunc
 	auditDone   <-chan struct{}
 
-	// readyCh is closed once the listener is bound. Used in tests.
 	readyCh chan struct{}
 }
 
@@ -84,8 +76,6 @@ func New(cfg Config, engine aegis.Engine, aw *audit.Writer, streamSrv *stream.St
 	return d
 }
 
-// readyCh is closed by Run() once the listener is bound and accepting connections.
-// Tests use this to avoid polling for the socket file.
 func (d *Daemon) setReadyCh(ch chan struct{}) {
 	d.readyCh = ch
 }
@@ -112,7 +102,7 @@ func (d *Daemon) Evaluations() int64 {
 
 // Run starts the daemon and blocks until the context is cancelled or a signal is received.
 //
-// Shutdown order (per WS-07 spec §2.8):
+// Shutdown order:
 //  1. Stop listener (no new connections accepted).
 //  2. Wait for in-flight connections to complete.
 //  3. Close audit writer channel.
@@ -390,7 +380,7 @@ func (d *Daemon) runHealthChecks() []Check {
 }
 
 // reconcileFailOpenLog reads the fail-open log from the last daemon run and
-// emits a warning for each entry. This fulfils the RISK-004 reconciliation requirement.
+// emits a warning for each entry.
 func (d *Daemon) reconcileFailOpenLog() error {
 	f, err := os.Open(d.cfg.FailOpenLog)
 	if err != nil {

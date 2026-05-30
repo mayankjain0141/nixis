@@ -8,8 +8,6 @@ import (
 	"github.com/mayjain/aegis/pkg/aegis"
 )
 
-// buildAuditRecord converts a CheckRequest + CheckResponse into an AuditRecord
-// suitable for the audit.Writer. The args are sanitized inside WriteRecord.
 func buildAuditRecord(req aegis.CheckRequest, resp aegis.CheckResponse) audit.AuditRecord {
 	return audit.AuditRecord{
 		Timestamp:      time.Now().UnixNano(),

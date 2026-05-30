@@ -22,7 +22,6 @@ var validEffects = map[string]bool{
 	"message_content":      true,
 }
 
-// approvalRequest is the JSON body for POST /api/v1/sessions/{sessionID}/approve.
 type approvalRequest struct {
 	Effect          string `json:"effect"`
 	ResourcePattern string `json:"resource_pattern"`
@@ -30,13 +29,11 @@ type approvalRequest struct {
 	GrantedBy       string `json:"granted_by"`
 }
 
-// approvalResponse is the JSON body returned on success.
 type approvalResponse struct {
 	StandingRuleID string `json:"standing_rule_id"`
 	ExpiresAt      string `json:"expires_at"`
 }
 
-// handleApprove handles POST /api/v1/sessions/{sessionID}/approve.
 func (d *Daemon) handleApprove(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
