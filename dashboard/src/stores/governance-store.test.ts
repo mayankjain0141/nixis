@@ -129,6 +129,54 @@ describe('useGovernanceStore', () => {
     });
   });
 
+  describe('setFilterSession', () => {
+    it('sets filterSession to the given id', () => {
+      useGovernanceStore.getState().setFilterSession('sess-abc');
+      expect(useGovernanceStore.getState().filterSession).toBe('sess-abc');
+    });
+
+    it('calling with same id twice clears to null on second call via external toggle', () => {
+      useGovernanceStore.getState().setFilterSession('sess-abc');
+      const current = useGovernanceStore.getState().filterSession;
+      useGovernanceStore.getState().setFilterSession(current === 'sess-abc' ? null : 'sess-abc');
+      expect(useGovernanceStore.getState().filterSession).toBeNull();
+    });
+
+    it('clears filterSession when called with null', () => {
+      useGovernanceStore.getState().setFilterSession('sess-abc');
+      useGovernanceStore.getState().setFilterSession(null);
+      expect(useGovernanceStore.getState().filterSession).toBeNull();
+    });
+
+    it('initialises to null', () => {
+      expect(useGovernanceStore.getState().filterSession).toBeNull();
+    });
+  });
+
+  describe('setFilterPolicy', () => {
+    it('sets filterPolicy to the given id', () => {
+      useGovernanceStore.getState().setFilterPolicy('pol-xyz');
+      expect(useGovernanceStore.getState().filterPolicy).toBe('pol-xyz');
+    });
+
+    it('calling with same id twice clears to null on second call via external toggle', () => {
+      useGovernanceStore.getState().setFilterPolicy('pol-xyz');
+      const current = useGovernanceStore.getState().filterPolicy;
+      useGovernanceStore.getState().setFilterPolicy(current === 'pol-xyz' ? null : 'pol-xyz');
+      expect(useGovernanceStore.getState().filterPolicy).toBeNull();
+    });
+
+    it('clears filterPolicy when called with null', () => {
+      useGovernanceStore.getState().setFilterPolicy('pol-xyz');
+      useGovernanceStore.getState().setFilterPolicy(null);
+      expect(useGovernanceStore.getState().filterPolicy).toBeNull();
+    });
+
+    it('initialises to null', () => {
+      expect(useGovernanceStore.getState().filterPolicy).toBeNull();
+    });
+  });
+
   // TestStore_ElevateSemantics: updateLabel({conf:3}, {conf:5}) → result {conf:5}, never {conf:3}
   describe('TestStore_ElevateSemantics', () => {
     it('updateLabel({conf:3}, {conf:5}) → confidentiality becomes 5, never reverts to 3', () => {
