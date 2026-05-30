@@ -12,9 +12,9 @@ function withFlow(children: ReactNode) {
 }
 
 describe('GovernanceDAG', () => {
-  it('TestDAG_AllNodeTypesExist: governanceNodeTypes has exactly 8 keys', () => {
+  it('TestDAG_AllNodeTypesExist: governanceNodeTypes has exactly 10 keys', () => {
     const keys = Object.keys(governanceNodeTypes);
-    expect(keys).toHaveLength(8);
+    expect(keys).toHaveLength(10);
     expect(keys).toContain('agent');
     expect(keys).toContain('hook');
     expect(keys).toContain('daemon');
@@ -23,6 +23,8 @@ describe('GovernanceDAG', () => {
     expect(keys).toContain('policy');
     expect(keys).toContain('audit');
     expect(keys).toContain('tool');
+    expect(keys).toContain('secret');
+    expect(keys).toContain('delegation');
   });
 
   it('TestDAG_NodeTypesAreComponents: each node type is a function/component', () => {

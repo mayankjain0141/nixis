@@ -1,11 +1,15 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import {
   ReactFlow,
   Background,
   Controls,
+  Panel,
+  useNodesState,
+  useEdgesState,
   type NodeTypes,
   type Node,
   type Edge,
+  type NodeMouseHandler,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useGovernanceStore } from '../../../stores/governance-store';
@@ -17,7 +21,8 @@ import { IFCNode } from './nodes/IFCNode';
 import { PolicyNode } from './nodes/PolicyNode';
 import { AuditNode } from './nodes/AuditNode';
 import { ToolNode } from './nodes/ToolNode';
-import type { NodeMouseHandler } from '@xyflow/react';
+import { SecretNode } from './nodes/SecretNode';
+import { DelegationNode } from './nodes/DelegationNode';
 
 export const governanceNodeTypes: NodeTypes = {
   agent: AgentNode,
@@ -28,27 +33,108 @@ export const governanceNodeTypes: NodeTypes = {
   policy: PolicyNode,
   audit: AuditNode,
   tool: ToolNode,
+  secret: SecretNode,
+  delegation: DelegationNode,
 } as const;
 
-// Mulberry32 seeded PRNG — same seed = same layout
-function mulberry32(seed: number) {
-  return function () {
-    seed |= 0;
-    seed = (seed + 0x6d2b79f5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+const STORAGE_KEY = 'nixis-dag-positions';
+const PIPELINE_Y = 120;
+const PIPELINE_GAP = 160;
+
+interface PipelineStage {
+  id: string;
+  type: string;
+  label: string;
 }
 
-function hashNodeIds(ids: string[]): number {
-  const str = [...ids].sort().join('|');
-  let h = 0x811c9dc5;
-  for (let i = 0; i < str.length; i++) {
-    h ^= str.charCodeAt(i);
-    h = Math.imul(h, 0x01000193) >>> 0;
+const PIPELINE_STAGES: PipelineStage[] = [
+  { id: 'pipeline-agent', type: 'agent', label: 'Agent' },
+  { id: 'pipeline-hook', type: 'hook', label: 'nixis-hook' },
+  { id: 'pipeline-classify', type: 'classification', label: 'Classify' },
+  { id: 'pipeline-ifc', type: 'ifc', label: 'IFC Lattice' },
+  { id: 'pipeline-cel', type: 'daemon', label: 'CEL Engine' },
+  { id: 'pipeline-secret', type: 'secret', label: 'Secret Scan' },
+  { id: 'pipeline-delegation', type: 'delegation', label: 'Delegation' },
+  { id: 'pipeline-audit', type: 'audit', label: 'Audit Chain' },
+];
+
+function loadPositions(): Record<string, { x: number; y: number }> {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  } catch {
+    return {};
   }
-  return h;
+}
+
+function savePositions(nodes: Node[]) {
+  const positions: Record<string, { x: number; y: number }> = {};
+  for (const n of nodes) positions[n.id] = n.position;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(positions));
+}
+
+function buildLayout(events: { tool: string; policyId?: string | null }[]) {
+  const savedPositions = loadPositions();
+
+  const pipelineNodes: Node[] = PIPELINE_STAGES.map((stage, i) => ({
+    id: stage.id,
+    type: stage.type,
+    position: savedPositions[stage.id] ?? { x: i * PIPELINE_GAP, y: PIPELINE_Y },
+    data: { label: stage.label },
+  }));
+
+  const pipelineEdges: Edge[] = PIPELINE_STAGES.slice(1).map((stage, i) => ({
+    id: `pipe-${PIPELINE_STAGES[i].id}-${stage.id}`,
+    source: PIPELINE_STAGES[i].id,
+    target: stage.id,
+    animated: true,
+    style: { stroke: 'var(--allow, #2da44e)', strokeWidth: 2 },
+  }));
+
+  const tools = [...new Set(events.map((e) => e.tool))];
+  const policies = [...new Set(events.map((e) => e.policyId).filter(Boolean))] as string[];
+
+  const toolNodes: Node[] = tools.map((tool, i) => ({
+    id: `tool-${tool}`,
+    type: 'tool',
+    position: savedPositions[`tool-${tool}`] ?? {
+      x: 2 * PIPELINE_GAP + i * 100,
+      y: PIPELINE_Y + 100 + i * 60,
+    },
+    data: { label: tool },
+  }));
+
+  const policyNodes: Node[] = policies.map((policy, i) => ({
+    id: `policy-${policy}`,
+    type: 'policy',
+    position: savedPositions[`policy-${policy}`] ?? {
+      x: 4 * PIPELINE_GAP + i * 80,
+      y: PIPELINE_Y + 100 + i * 50,
+    },
+    data: { label: policy, policyId: policy },
+  }));
+
+  const dynamicEdges: Edge[] = [
+    ...tools.map((tool) => ({
+      id: `edge-hook-tool-${tool}`,
+      source: 'pipeline-hook',
+      target: `tool-${tool}`,
+      animated: false,
+      style: { stroke: '#4f46e5', opacity: 0.5 },
+    })),
+    ...policies.map((policy) => ({
+      id: `edge-cel-policy-${policy}`,
+      source: 'pipeline-cel',
+      sourceHandle: 'children',
+      target: `policy-${policy}`,
+      animated: false,
+      style: { stroke: '#d97706', opacity: 0.5 },
+    })),
+  ];
+
+  return {
+    nodes: [...pipelineNodes, ...toolNodes, ...policyNodes],
+    edges: [...pipelineEdges, ...dynamicEdges],
+  };
 }
 
 export function GovernanceDAG() {
@@ -56,6 +142,33 @@ export function GovernanceDAG() {
   const filterPolicy = useGovernanceStore((s) => s.filterPolicy);
   const setFilterPolicy = useGovernanceStore((s) => s.setFilterPolicy);
   const [highlightedIds, setHighlightedIds] = useState<Set<string>>(new Set());
+
+  const layout = useMemo(() => buildLayout(events), [events]);
+
+  const [nodes, setNodes, onNodesChange] = useNodesState(layout.nodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(layout.edges);
+
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setNodes(layout.nodes);
+    setEdges(layout.edges);
+  }, [layout, setNodes, setEdges]);
+
+  const handleNodesChange = useCallback(
+    (changes: Parameters<typeof onNodesChange>[0]) => {
+      onNodesChange(changes);
+
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        setNodes((current) => {
+          savePositions(current);
+          return current;
+        });
+      }, 500);
+    },
+    [onNodesChange, setNodes],
+  );
 
   useEffect(() => {
     function handler(e: Event) {
@@ -69,90 +182,6 @@ export function GovernanceDAG() {
     return () => window.removeEventListener('nixis:highlight-event', handler);
   }, []);
 
-  const { nodes, edges } = useMemo(() => {
-    const tools = [...new Set(events.map((e) => e.tool))];
-    const policies = [...new Set(events.map((e) => e.policyId).filter(Boolean))];
-
-    const nodeIds = [
-      'daemon',
-      'ifc',
-      'audit',
-      ...tools.map((t) => `tool-${t}`),
-      ...policies.map((p) => `policy-${p}`),
-    ];
-    const seed = hashNodeIds(nodeIds);
-    const rand = mulberry32(seed);
-
-    // Horizontal layout — pipeline flows left → right
-    // Stage 0 (x=0):   Daemon + IFC
-    // Stage 1 (x=240): Tool nodes  (spread vertically)
-    // Stage 2 (x=500): Policy nodes (spread vertically)
-    // Stage 3 (x=780): Audit
-    const toolGap = 72;
-    const policyGap = 48;
-    const totalToolH = Math.max(tools.length * toolGap, 160);
-    const totalPolicyH = Math.max(policies.length * policyGap, 160);
-    const canvasH = Math.max(totalToolH, totalPolicyH) + 80;
-
-    const nodes: Node[] = [
-      { id: 'daemon', type: 'daemon', position: { x: 0, y: canvasH / 2 - 50 }, data: { label: 'nixis-daemon' } },
-      { id: 'ifc',    type: 'ifc',    position: { x: 0, y: canvasH / 2 + 50 }, data: { label: 'IFC Lattice' } },
-      { id: 'audit',  type: 'audit',  position: { x: 780, y: canvasH / 2 - 20 }, data: { label: 'Audit Chain' } },
-      ...tools.map((tool, i) => ({
-        id: `tool-${tool}`,
-        type: 'tool' as const,
-        position: {
-          x: 240 + rand() * 10,
-          y: (canvasH - totalToolH) / 2 + i * toolGap + rand() * 8,
-        },
-        data: { label: tool },
-      })),
-      ...policies.map((policy, i) => ({
-        id: `policy-${policy}`,
-        type: 'policy' as const,
-        position: {
-          x: 500 + rand() * 10,
-          y: (canvasH - totalPolicyH) / 2 + i * policyGap + rand() * 8,
-        },
-        data: { label: policy, policyId: policy },
-      })),
-    ];
-
-    const edges: Edge[] = [
-      {
-        id: 'ifc-daemon',
-        source: 'ifc',
-        target: 'daemon',
-        animated: true,
-        style: { stroke: 'var(--allow, #2da44e)' },
-      },
-      {
-        id: 'daemon-audit',
-        source: 'daemon',
-        target: 'audit',
-        animated: false,
-      },
-      ...tools.flatMap((tool) =>
-        policies.map((policy) => ({
-          id: `${tool}-${policy}`,
-          source: `tool-${tool}`,
-          target: `policy-${policy}`,
-          animated: true,
-          style: { stroke: 'var(--allow, #2da44e)' },
-        }))
-      ),
-      ...policies.map((policy) => ({
-        id: `${policy}-daemon`,
-        source: `policy-${policy}`,
-        target: 'daemon',
-        animated: true,
-        style: { stroke: 'var(--allow, #2da44e)' },
-      })),
-    ];
-
-    return { nodes, edges };
-  }, [events]);
-
   const highlightedNodes = useMemo(
     () =>
       nodes.map((node) =>
@@ -163,6 +192,13 @@ export function GovernanceDAG() {
     [nodes, highlightedIds],
   );
 
+  const handleResetLayout = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEY);
+    const fresh = buildLayout(events);
+    setNodes(fresh.nodes);
+    setEdges(fresh.edges);
+  }, [events, setNodes, setEdges]);
+
   if (events.length === 0) {
     return (
       <div style={{
@@ -171,12 +207,11 @@ export function GovernanceDAG() {
       }}>
         <div style={{ fontSize: 24, opacity: 0.3 }}>&#x2B21;</div>
         <div>Governance DAG will populate as events arrive</div>
-        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Start the demo to see the evaluation graph</div>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Start the demo to see the evaluation pipeline</div>
       </div>
     );
   }
 
-  // LOD: >500 nodes → skeleton view
   if (nodes.length > 500) {
     return (
       <div style={{ height: 400, padding: 16, color: 'var(--text-secondary)', fontSize: 12 }}>
@@ -198,6 +233,8 @@ export function GovernanceDAG() {
         nodes={highlightedNodes}
         edges={edges}
         nodeTypes={governanceNodeTypes}
+        onNodesChange={handleNodesChange}
+        onEdgesChange={onEdgesChange}
         fitView
         fitViewOptions={{ padding: 0.15 }}
         onlyRenderVisibleElements={nodes.length > 200}
@@ -205,6 +242,23 @@ export function GovernanceDAG() {
       >
         <Background />
         <Controls />
+        <Panel position="top-right">
+          <button
+            onClick={handleResetLayout}
+            style={{
+              padding: '4px 10px',
+              fontSize: 11,
+              background: '#21262d',
+              border: '1px solid #30363d',
+              borderRadius: 4,
+              color: '#8b949e',
+              cursor: 'pointer',
+            }}
+            title="Reset node positions to default layout"
+          >
+            Reset Layout
+          </button>
+        </Panel>
       </ReactFlow>
     </div>
   );

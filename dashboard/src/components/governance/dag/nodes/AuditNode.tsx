@@ -16,7 +16,7 @@ export function AuditNode({ data }: NodeProps) {
     >
       <div style={{ fontSize: 9, color: '#9ca3af', marginBottom: 2, fontWeight: 600 }}>AUDIT</div>
       <div>{String(data.label ?? '')}</div>
-      <Handle type="target" position={Position.Top} />
+      <Handle type="target" position={Position.Left} />
     </div>
   );
 }
