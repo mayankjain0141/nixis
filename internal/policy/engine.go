@@ -137,6 +137,7 @@ type PolicyEngine struct {
 	delegationValidator DelegationValidator
 	activationBuilder   *cel.ActivationBuilder
 	labeler             label.Labeler
+	selfProtect         *SelfProtectGuard
 	// buildSnapshotFunc is injected for testing failed reload scenarios.
 	// If nil, the default buildSnapshot is used.
 	buildSnapshotFunc snapshotBuilder
@@ -196,6 +197,7 @@ func NewPolicyEngine(
 		secretScanner:       &noopSecretScanner{},
 		delegationValidator: &noopDelegationValidator{},
 		activationBuilder:   cel.NewActivationBuilder(),
+		selfProtect:         NewSelfProtectGuard(),
 	}
 	for _, opt := range opts {
 		opt(e)
@@ -211,6 +213,15 @@ func NewPolicyEngine(
 //   - Never returns an error — failures encode as Deny decisions.
 func (e *PolicyEngine) Evaluate(ctx context.Context, req aegis.CheckRequest) aegis.CheckResponse {
 	startNs := time.Now().UnixNano()
+
+	if e.selfProtect != nil {
+		if decision := e.selfProtect.Check(req); decision != nil {
+			return aegis.CheckResponse{
+				Decision:  *decision,
+				LatencyNs: time.Now().UnixNano() - startNs,
+			}
+		}
+	}
 
 	snap := e.snapshot.Load()
 	if snap == nil {

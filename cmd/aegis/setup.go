@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -308,12 +307,7 @@ func isYAML(name string) bool {
 }
 
 func settingsJSONPath(homeDir string) string {
-	switch runtime.GOOS {
-	case "darwin":
-		return filepath.Join(homeDir, "Library", "Application Support", "Claude", "settings.json")
-	default:
-		return filepath.Join(homeDir, ".config", "claude", "settings.json")
-	}
+	return filepath.Join(homeDir, ".claude", "settings.json")
 }
 
 func patchSettingsJSON(w io.Writer, homeDir, hookPath string) error {
