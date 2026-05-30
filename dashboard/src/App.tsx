@@ -540,13 +540,13 @@ export default function App() {
     const fallbackTimer = setTimeout(() => {
       if (wsManager.getState() !== 'CONNECTED' && !useMock) {
         if (import.meta.env.PROD) {
-          // Never silently degrade to mock in production — show explicit error instead.
           setConnectionState('ERROR');
         } else {
+          console.warn('[nixis] daemon not reachable after 5s — running offline demo');
           startMock();
         }
       }
-    }, 2000);
+    }, 5000);
 
     return () => {
       clearTimeout(fallbackTimer);

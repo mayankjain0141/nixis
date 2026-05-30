@@ -208,51 +208,6 @@ function createLruSet(capacity: number) {
   };
 }
 
-// ── Sequence tracker with reorder buffer ─────────────────────────────────────
-
-const REORDER_BUFFER_MAX = 200;
-const BACKFILL_DEBOUNCE_MS = 500;
-
-function createSequenceTracker(
-  onOrdered: (event: ValidatedEvent) => void,
-  onBackfillNeeded: (from: number, to: number) => void,
-) {
-  let nextExpected = 0;
-  const buffer = new Map<number, ValidatedEvent>();
-  let backfillTimer: ReturnType<typeof setTimeout> | null = null;
-  let pendingGapStart = 0;
-  let pendingGapEnd = 0;
-
-  function drain(): void {
-    while (buffer.has(nextExpected)) {
-      const next = buffer.get(nextExpected)!;
-      buffer.delete(nextExpected);
-      nextExpected++;
-      onOrdered(next);
-    }
-  }
-
-  return {
-    submit(event: ValidatedEvent): void {
-      const seq = event.envelope.nixissequence;
-
-      if (nextExpected === 0) { nextExpected = seq + 1; onOrdered(event); return; }
-      if (seq === nextExpected) { nextExpected++; onOrdered(event); drain(); return; }
-      if (seq < nextExpected) return; // already delivered
-
-      if (buffer.size < REORDER_BUFFER_MAX) buffer.set(seq, event);
-
-      pendingGapStart = nextExpected;
-      pendingGapEnd = seq - 1;
-      if (backfillTimer !== null) clearTimeout(backfillTimer);
-      backfillTimer = setTimeout(() => {
-        backfillTimer = null;
-        onBackfillNeeded(pendingGapStart, pendingGapEnd);
-      }, BACKFILL_DEBOUNCE_MS);
-    },
-  };
-}
-
 // ── Per-type validation dispatch ─────────────────────────────────────────────
 
 function parseValidatedEvent(envelope: Envelope): ValidatedEvent | null {
@@ -277,7 +232,7 @@ function parseValidatedEvent(envelope: Envelope): ValidatedEvent | null {
 // ── Public factory ────────────────────────────────────────────────────────────
 
 export function createEventIngestionPipeline(
-  wsManager: Pick<IWebSocketManager, 'send'>,
+  _wsManager: Pick<IWebSocketManager, 'send'>,
 ): IEventIngestionPipeline {
   const bloom = createBloomFilter();
   const lruSet = createLruSet(10_000);
@@ -286,10 +241,6 @@ export function createEventIngestionPipeline(
   function emit(event: ValidatedEvent): void {
     for (const h of handlers) h(event);
   }
-
-  const tracker = createSequenceTracker(emit, (from, to) => {
-    wsManager.send({ type: 'backfill.request', from, to });
-  });
 
   function dedupKey(envelope: Envelope): string {
     return envelope.id ?? String(envelope.nixissequence);
@@ -311,7 +262,7 @@ export function createEventIngestionPipeline(
 
       const event = parseValidatedEvent(envelope);
       if (event === null) return;
-      tracker.submit(event);
+      emit(event);
     },
 
     onValidated(handler) {
