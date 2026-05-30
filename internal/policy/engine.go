@@ -306,11 +306,30 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 		}
 	}
 
+	// [5a] Arg schema validation — type-level enforcement before CEL.
+	// Only runs when args were actually decoded (non-nil map). If the hook sends no
+	// args at all, decodedArgs is nil and we skip validation rather than requiring
+	// required fields to be present in a missing payload.
+	schemaResult := classify.CheckArgSchema(req.Tool, decodedArgs)
+	if decodedArgs != nil && schemaResult.Err != nil {
+		return aegis.CheckResponse{
+			Decision: aegis.Decision{
+				Action:   aegis.ActionDeny,
+				Reason:   schemaResult.Err.Error(),
+				PolicyID: "builtin:arg-schema",
+			},
+			LatencyNs:      time.Now().UnixNano() - startNs,
+			EnforcingLayer: aegis.EnforcingLayerArgSchema,
+			ThreatSeverity: "medium",
+		}
+	}
+
 	// [5b] Resource labeling — must happen BEFORE maybeTaint to get accurate resource classification
 	var labeled label.LabeledRequest
 	if e.labeler != nil {
 		labeled = e.labeler.Label(req, verdict)
 	}
+	labeled.UnknownTool = schemaResult.UnknownTool
 
 	// [6] Resource label for IFC check — use labeled.ResourceLabel when labeler is configured
 	resourceLabel := labeled.ResourceLabel

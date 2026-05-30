@@ -40,6 +40,10 @@ type LabeledRequest struct {
 
 	// ContainsNetworkCmd is true if a Bash command contains a network-capable binary.
 	ContainsNetworkCmd bool
+
+	// UnknownTool is true when no arg schema is registered for this tool.
+	// Set by the policy engine after CheckArgSchema; not populated by the labeler.
+	UnknownTool bool
 }
 
 // Labeler derives LabeledRequest from a CheckRequest.
