@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-// DaemonMode represents the operational mode of the daemon.
 // Values are ordered from most permissive (ModeNormal) to most restrictive (ModeReadOnly).
 type DaemonMode int32
 
