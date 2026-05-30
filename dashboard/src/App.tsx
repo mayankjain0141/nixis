@@ -38,6 +38,34 @@ const DAEMON_WS_URL = (() => {
   }
 })();
 
+const IMPACT_TEMPLATES: Record<string, string> = {
+  'secret.detected.aws': 'Session escalated to Restricted. Bash and network tools now require approval.',
+  'secret.detected.generic': 'Session escalated to Restricted. Tool access restricted until declassification.',
+  'mcp.tool_drift': 'MCP tool definition changed unexpectedly. Possible supply-chain modification. Review tool before use.',
+  'policy.denied.critical': 'Critical policy violation. The requested operation was blocked.',
+};
+
+function getImpact(threatType: string, data: Record<string, unknown>): string {
+  if (threatType === 'secret.detected') {
+    const key = String(data.key ?? data.secretKey ?? '');
+    if (key.includes('AWS') || key.includes('aws')) return IMPACT_TEMPLATES['secret.detected.aws'];
+    return IMPACT_TEMPLATES['secret.detected.generic'];
+  }
+  if (threatType === 'mcp.tool_drift') return IMPACT_TEMPLATES['mcp.tool_drift'];
+  if (threatType === 'policy.denied') return IMPACT_TEMPLATES['policy.denied.critical'];
+  return 'Potential security event. Review the details and take action if needed.';
+}
+
+function getHumanDescription(threatType: string, data: Record<string, unknown>): string {
+  if (threatType === 'secret.detected') {
+    const key = String(data.key ?? data.secretKey ?? data.type ?? 'Unknown');
+    return `Secret Detected: ${key}`;
+  }
+  if (threatType === 'mcp.tool_drift') return 'MCP Tool Definition Changed';
+  if (threatType === 'policy.denied') return 'Policy Violation Blocked';
+  return 'Security Event';
+}
+
 function buildPolicyUpdate(
   event: ValidatedEvent & { type: 'policy.evaluated' | 'policy.denied' },
   appendEvent: (ev: GovernanceEvent) => void,
@@ -166,11 +194,16 @@ function routeEvents(
       case 'mcp.tool_drift': {
         const d = event.data;
         const tool = 'tool' in d ? (d.tool as string) : '';
+        const sessionId = 'session_id' in d ? (d.session_id as string) : '';
+        const dataAsRecord = d as Record<string, unknown>;
+        const humanDescription = getHumanDescription(event.type, dataAsRecord);
+        const impact = getImpact(event.type, dataAsRecord);
+        const relatedSessionName = useGovernanceStore.getState().sessionDisplayNames.get(sessionId) ?? 'Unknown Session';
         orchestrator.dispatchUpdate(atomicUpdate('IMMEDIATE', event.type, () => {
           useThreatStore.getState().appendThreat({
             id: `threat-${event.envelope.aegissequence}`,
             type: 'secret.found',
-            sessionId: 'session_id' in d ? (d.session_id as string) : '',
+            sessionId,
             tool,
             severity: 'critical',
             description: event.type,
@@ -179,9 +212,9 @@ function routeEvents(
               ? new Date(event.envelope.time).getTime()
               : Date.now(),
             acknowledged: false,
-            humanDescription: '',
-            impact: '',
-            relatedSessionName: '',
+            humanDescription,
+            impact,
+            relatedSessionName,
           });
           updateLastSequence(event.envelope.aegissequence);
         }));
@@ -192,24 +225,33 @@ function routeEvents(
         const d = event.data;
         const seq = d.sequence ?? event.envelope.aegissequence;
         const hash = d.hash;
-        const prevHash = d.prev_hash ?? d.prevHash ?? '';
+        const prevHash = d.prev_hash ?? d.prevHash ?? null;
+        const eventCount = d.events_since_prev ?? d.eventCount ?? 0;
+        const checkpointTimestamp = event.envelope.time
+          ? new Date(event.envelope.time).getTime()
+          : Date.now();
         orchestrator.dispatchUpdate(atomicUpdate('FRAME', event.type, () => {
+          useGovernanceStore.getState().appendAuditCheckpoint({
+            sequence: seq,
+            hash,
+            prevHash,
+            eventCount,
+            timestamp: checkpointTimestamp,
+          });
           appendEvent({
             id: event.envelope.id ?? `audit-${event.envelope.aegissequence}`,
             sessionId: 'audit',
             tool: 'audit',
             verdict: 'audit',
-            reason: `Checkpoint #${seq} — ${d.events_since_prev ?? d.eventCount ?? 0} events`,
+            reason: `Checkpoint #${seq} — ${eventCount} events`,
             policyId: 'audit.checkpoint',
             enforcingLayer: 'audit',
             label: { confidentiality: 0, integrity: 0, categories: 0 },
             labelState: 'fresh',
             latencyNs: 0,
             aegisSequence: event.envelope.aegissequence,
-            timestamp: event.envelope.time
-              ? new Date(event.envelope.time).getTime() * 1_000_000
-              : Date.now() * 1_000_000,
-            celExpression: `hash:${hash.slice(0, 16)} prev:${prevHash.slice(0, 16)}`,
+            timestamp: checkpointTimestamp * 1_000_000,
+            celExpression: `hash:${hash.slice(0, 16)} prev:${(prevHash ?? '').slice(0, 16)}`,
           });
           updateLastSequence(event.envelope.aegissequence);
         }));
@@ -227,16 +269,36 @@ function routeEvents(
         break;
 
       case 'delegation.created': {
-        const d = event.data as { session_id?: string; delegator_id?: string; delegatee_id?: string; granted_label?: unknown; ceiling_label?: unknown; expires_at?: number };
-        if (d.session_id && d.delegator_id) {
+        const d = event.data as { session_id?: string; delegator_id?: string; delegatee_id?: string; granted_label?: unknown; ceiling_label?: unknown; expires_at?: number; reason?: string; capabilities?: string[] };
+        const delegateeId = d.delegatee_id ?? d.session_id;
+        const delegatorId = d.delegator_id;
+        if (delegateeId && delegatorId) {
+          const store = useGovernanceStore.getState();
+          const reason = d.reason;
+          const capabilities = d.capabilities;
+
+          // Compute display name: use reason if short, else ordinal
+          const existingCount = store.sessionDisplayNames.size;
+          const displayName = (reason && reason.length < 30)
+            ? reason
+            : `Agent ${existingCount + 1}`;
+
           orchestrator.dispatchUpdate(atomicUpdate('FRAME', event.type, () => {
-            useGovernanceStore.getState().updateDelegationChain(d.session_id!, [{
+            const gs = useGovernanceStore.getState();
+            // Set root session display name if not yet assigned
+            if (!gs.sessionDisplayNames.has(delegatorId)) {
+              gs.setSessionDisplayName(delegatorId, 'You (main)');
+            }
+            gs.setSessionDisplayName(delegateeId, displayName);
+            gs.updateDelegationChain(delegateeId, [{
               hopIndex: 0,
-              delegatorId: d.delegator_id!,
-              delegateeId: d.session_id!,
+              delegatorId,
+              delegateeId,
               grantedLabel: (d.granted_label as { confidentiality: number; integrity: number; categories: number }) ?? { confidentiality: 0, integrity: 0, categories: 0 },
               ceilingLabel: (d.ceiling_label as { confidentiality: number; integrity: number; categories: number }) ?? { confidentiality: 0, integrity: 0, categories: 0 },
               expiresAt: d.expires_at,
+              reason,
+              capabilities,
             }]);
             updateLastSequence(event.envelope.aegissequence);
           }));
