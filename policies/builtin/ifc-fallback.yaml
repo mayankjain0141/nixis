@@ -1,0 +1,205 @@
+# CEL fallback policies for resource-labeled requests.
+# These policies rely on resource_* CEL variables populated by label.Labeler.
+# Bundle: builtin — default-enabled.
+
+---
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: block-path-traversal
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Block path traversal patterns in Read/Write/Edit/Bash"
+  matchConstraints:
+    tools: ["Read", "Write", "Edit", "Bash"]
+  variables:
+    - name: hasTraversal
+      expression: >-
+        (has(args.file_path) && args.file_path.contains("/../")) ||
+        (has(args.path) && args.path.contains("/../")) ||
+        (has(args.command) && args.command.contains("/../"))
+  validations:
+    - expression: 'hasTraversal'
+      message: 'Path traversal pattern detected (../)'
+      action: DENY
+  defaultAction: ALLOW
+
+---
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: block-kernel-special-access
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Block direct access to /proc/<pid>/ and kernel memory devices"
+  matchConstraints:
+    tools: ["Read", "Bash"]
+  variables:
+    - name: isProcAccess
+      expression: >-
+        (has(args.file_path) && args.file_path.matches("/proc/[0-9]+/")) ||
+        (has(args.command) && args.command.matches(".*/proc/[0-9]+/.*"))
+    - name: isKernelMem
+      expression: >-
+        (has(args.file_path) && (
+          args.file_path == "/dev/mem" ||
+          args.file_path == "/dev/kmem" ||
+          args.file_path == "/dev/port"
+        )) ||
+        (has(args.command) && (
+          args.command.contains("/dev/mem") ||
+          args.command.contains("/dev/kmem") ||
+          args.command.contains("/dev/port")
+        ))
+  validations:
+    - expression: 'isProcAccess'
+      message: 'Direct /proc/<pid>/ access blocked (may expose process secrets)'
+      action: DENY
+    - expression: 'isKernelMem'
+      message: 'Kernel memory device access blocked'
+      action: DENY
+  defaultAction: ALLOW
+
+---
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: block-cloud-metadata-url
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Block Bash commands targeting cloud metadata endpoints"
+  matchConstraints:
+    tools: ["Bash"]
+  variables:
+    - name: isCloudMetadata
+      expression: >-
+        has(args.command) && (
+          args.command.contains("169.254.169.254") ||
+          args.command.contains("metadata.google.internal") ||
+          args.command.contains("100.100.100.200") ||
+          args.command.contains("metadata.azure.com") ||
+          args.command.contains("fd00:ec2::254")
+        )
+  validations:
+    - expression: 'isCloudMetadata'
+      message: 'Cloud metadata endpoint access blocked — credential theft risk'
+      action: DENY
+  defaultAction: ALLOW
+
+---
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: block-system-dir-write
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Block Write/Edit to /etc/ or system binary directories"
+  matchConstraints:
+    tools: ["Write", "Edit"]
+  variables:
+    - name: isSystemPath
+      expression: >-
+        has(args.file_path) && (
+          args.file_path.startsWith("/etc/") ||
+          args.file_path.startsWith("/usr/bin/") ||
+          args.file_path.startsWith("/usr/sbin/") ||
+          args.file_path.startsWith("/bin/") ||
+          args.file_path.startsWith("/sbin/")
+        )
+  validations:
+    - expression: 'isSystemPath'
+      message: 'Write to system directory blocked'
+      action: DENY
+  defaultAction: ALLOW
+
+---
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: bash-unmatched-credential-keywords
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Require approval for unmatched Bash commands containing credential-related keywords"
+  matchConstraints:
+    tools: ["Bash"]
+  variables:
+    - name: hasCredentialKeyword
+      expression: >-
+        has(args.command) && (
+          args.command.contains("shadow") ||
+          args.command.contains("passwd") ||
+          args.command.contains(".aws") ||
+          args.command.contains(".ssh")
+        )
+  validations:
+    - expression: '!resource_matched && hasCredentialKeyword'
+      message: 'Unrecognized Bash command contains credential-related keywords'
+      action: REQUIRE_APPROVAL
+  defaultAction: ALLOW
+
+---
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: bash-base64-exec-pattern
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Require approval for Bash commands with base64 decode piped to execution"
+  matchConstraints:
+    tools: ["Bash"]
+  variables:
+    - name: isBase64Exec
+      expression: >-
+        has(args.command) && args.command.contains("base64") && (
+          args.command.contains("| sh") ||
+          args.command.contains("| bash") ||
+          args.command.contains("|sh") ||
+          args.command.contains("|bash") ||
+          args.command.contains("| /bin/sh") ||
+          args.command.contains("| /bin/bash")
+        )
+  validations:
+    - expression: 'isBase64Exec'
+      message: 'Base64 decode to shell execution pattern detected'
+      action: REQUIRE_APPROVAL
+  defaultAction: ALLOW
+
+---
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: block-webfetch-metadata
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Block WebFetch to cloud metadata IP ranges"
+  matchConstraints:
+    tools: ["WebFetch"]
+  variables:
+    - name: isMetadataIP
+      expression: >-
+        has(args.url) && (
+          args.url.contains("169.254.169.254") ||
+          args.url.contains("metadata.google.internal") ||
+          args.url.contains("100.100.100.200") ||
+          args.url.contains("metadata.azure.com") ||
+          args.url.contains("fd00:ec2::254")
+        )
+  validations:
+    - expression: 'isMetadataIP'
+      message: 'WebFetch to cloud metadata IP range blocked'
+      action: DENY
+  defaultAction: ALLOW
