@@ -1,0 +1,92 @@
+# Source: security research — permanent git history deletion patterns
+# Gate: G4 (CEL function tests)
+# Default: ENABLED — shipped as default-on in the built-in bundle
+#
+# Covers the "permanent history erasure" sequence that AI agents must not
+# execute without approval. Each command is individually gated; together
+# they permanently and irrecoverably destroy git history.
+#
+# Behavior:
+#   git update-ref -d refs/original/...  → REQUIRE_APPROVAL (deletes filter-branch backup refs)
+#   git reflog expire --expire=now       → REQUIRE_APPROVAL (makes commits unrecoverable)
+#   git gc --prune=now                   → REQUIRE_APPROVAL (permanently GCs unreachable objects)
+#   git remote remove <name>             → REQUIRE_APPROVAL (severs upstream connection)
+#   git filter-branch ...                → REQUIRE_APPROVAL (rewrites history)
+#   git filter-repo ...                  → REQUIRE_APPROVAL (rewrites history, modern variant)
+#
+# Note: uses .matches() rather than .startsWith() because these often appear
+# mid-pipeline in chained && commands.
+
+apiVersion: nixis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: block-git-history-destruction
+  annotations:
+    nixis.io/default-enabled: "true"
+    nixis.io/bundle: builtin
+spec:
+  description: "Require approval for git commands that permanently destroy history or sever remotes"
+  matchConstraints:
+    tools: ["Bash"]
+  variables:
+    - name: isUpdateRefDelete
+      # git update-ref -d <ref> — deletes backup refs left by filter-branch
+      expression: >-
+        request.args.command.matches("(?i)\\bgit\\b.*\\bupdate-ref\\b.*\\s-d\\s")
+    - name: isReflogExpireNow
+      # git reflog expire --expire=now — makes unreachable commits immediately GC-eligible
+      expression: >-
+        request.args.command.matches("(?i)\\bgit\\b.*\\breflog\\b.*\\bexpire\\b.*--expire=now")
+    - name: isGcPruneNow
+      # git gc --prune=now — permanently deletes unreachable objects
+      expression: >-
+        request.args.command.matches("(?i)\\bgit\\b.*\\bgc\\b.*--prune=now")
+    - name: isRemoteRemove
+      # git remote remove <name> or git remote rm <name>
+      expression: >-
+        request.args.command.matches("(?i)\\bgit\\b.*\\bremote\\b.*\\b(remove|rm)\\b")
+    - name: isFilterBranch
+      # git filter-branch — history rewriting (creates backup refs in refs/original/)
+      expression: >-
+        request.args.command.matches("(?i)\\bgit\\b.*\\bfilter-branch\\b")
+    - name: isFilterRepo
+      # git filter-repo — modern history rewriting tool
+      expression: >-
+        request.args.command.matches("(?i)\\bgit\\b.*\\bfilter-repo\\b")
+  validations:
+    - expression: 'isUpdateRefDelete'
+      message: >-
+        git update-ref -d deletes backup refs created by filter-branch. Combined with
+        reflog expire and gc --prune=now this permanently destroys git history.
+        Approval required.
+      action: REQUIRE_APPROVAL
+    - expression: 'isReflogExpireNow'
+      message: >-
+        git reflog expire --expire=now makes all unreachable commits immediately
+        eligible for garbage collection — recovery becomes impossible after gc runs.
+        Approval required.
+      action: REQUIRE_APPROVAL
+    - expression: 'isGcPruneNow'
+      message: >-
+        git gc --prune=now permanently deletes all unreachable git objects.
+        If run after reflog expire, deleted commits cannot be recovered.
+        Approval required.
+      action: REQUIRE_APPROVAL
+    - expression: 'isRemoteRemove'
+      message: >-
+        git remote remove severs the connection to the upstream repository.
+        Approval required.
+      action: REQUIRE_APPROVAL
+    - expression: 'isFilterBranch'
+      message: >-
+        git filter-branch rewrites commit history. This is often the first step
+        in a sequence that permanently destroys the original history.
+        Approval required.
+      action: REQUIRE_APPROVAL
+    - expression: 'isFilterRepo'
+      message: >-
+        git filter-repo rewrites commit history. This permanently alters git history
+        and cannot be undone without a remote backup.
+        Approval required.
+      action: REQUIRE_APPROVAL
+  defaultAction: ALLOW
