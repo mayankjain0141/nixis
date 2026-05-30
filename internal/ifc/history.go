@@ -9,7 +9,6 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// TaintRecord represents a single taint event in history.
 type TaintRecord struct {
 	SessionID string
 	Resource  string
@@ -18,8 +17,8 @@ type TaintRecord struct {
 }
 
 // TaintHistory provides cross-session taint forensics via SQLite persistence.
-// A session that accessed critical credentials should remain "suspicious" even
-// if the session is GC'd and a new one starts.
+// A session that accessed critical credentials should remain suspicious even
+// if GC'd and a new one starts.
 type TaintHistory struct {
 	db *sql.DB
 }

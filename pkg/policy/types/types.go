@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 package types
 
-// PolicyTemplate is a reusable policy pattern.
 type PolicyTemplate struct {
 	ID            string
 	Name          string
@@ -13,7 +12,6 @@ type PolicyTemplate struct {
 	DefaultAction string         // "DENY" opts into fail-secure on CEL compile/runtime error
 }
 
-// PolicyBinding binds a template to a scope.
 type PolicyBinding struct {
 	TemplateID      string
 	Scope           PolicyScope
@@ -24,14 +22,12 @@ type PolicyBinding struct {
 	DefaultAction   string // "DENY" opts into fail-secure on CEL runtime error
 }
 
-// PolicyScope defines which tools/sessions a binding applies to.
 type PolicyScope struct {
 	Tools    []string // empty = all tools
 	Sessions []string // empty = all sessions
 	Effects  []string // empty = all effects; if specified, binding only applies when tool has ALL listed effects
 }
 
-// PolicySet is the full set of active policies.
 type PolicySet struct {
 	Templates []PolicyTemplate
 	Bindings  []PolicyBinding
