@@ -1,0 +1,56 @@
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: block-kubernetes-attacks
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Block destructive and unauthorized Kubernetes operations: exec, delete pods, drain nodes, RBAC escalation"
+  matchConstraints:
+    tools: ["Bash"]
+  validations:
+    - expression: >-
+        request.args.command.matches("(?i)\\bkubectl\\s+exec\\b") &&
+        (request.args.command.matches("(?i)\\b(sh|bash|dash|ash)\\b") ||
+         request.args.command.matches("(?i)\\bkube-system\\b"))
+      message: "Blocked: kubectl exec into shell or kube-system pods"
+      action: DENY
+    - expression: 'request.args.command.matches("(?i)\\bkubectl\\s+delete\\s+pod\\b.*--all\\b")'
+      message: "Blocked: kubectl delete all pods — service disruption attack"
+      action: DENY
+    - expression: 'request.args.command.matches("(?i)\\bkubectl\\s+drain\\b")'
+      message: "Blocked: kubectl drain evicts all workloads from a node"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bkubectl\\s+(patch|create)\\s+clusterrole") ||
+        request.args.command.matches("(?i)\\bkubectl\\s+create\\s+clusterrolebinding")
+      message: "Blocked: modifying ClusterRole or ClusterRoleBinding is a privilege escalation"
+      action: DENY
+    - expression: 'request.args.command.matches("(?i)\\bcrictl\\s+exec\\b")'
+      message: "Blocked: crictl exec bypasses Kubernetes RBAC"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bdocker\\b.*(--net=host|--pid=host|--ipc=host)") ||
+        request.args.command.matches("(?i)\\bdocker\\b.*--privileged")
+      message: "Blocked: Docker with host namespace sharing or privileged mode"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bdocker\\s+exec\\b") &&
+        request.args.command.matches("(?i)\\b(production|prod|live)\\b")
+      message: "Blocked: docker exec into production containers"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bnsenter\\b.*-t\\s+1\\b") ||
+        request.args.command.matches("(?i)\\bnsenter\\b.*(-m|-u|-i|-n|-p).*--\\s*bash")
+      message: "Blocked: nsenter PID 1 namespace escape from container"
+      action: DENY
+    - expression: 'request.args.command.matches("(?i)\\bunshare\\b.*(--pid|--mount-proc)\\b")'
+      message: "Blocked: unshare creating new PID/mount namespaces for escape"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\beksctl\\s+delete\\s+cluster\\b") ||
+        request.args.command.matches("(?i)\\bkubectl\\s+delete\\s+cluster\\b")
+      message: "Blocked: deleting production EKS/Kubernetes clusters"
+      action: DENY
+  defaultAction: ALLOW
