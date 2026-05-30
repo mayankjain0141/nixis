@@ -27,7 +27,7 @@ type programMeta struct {
 
 // ProgramCache holds compiled CEL programs keyed by policy ID.
 //
-// VALUE TYPE — NOT an atomic.Pointer (INV-008). ProgramCache is embedded in
+// VALUE TYPE — NOT an atomic.Pointer. ProgramCache is embedded in
 // EngineSnapshot and swapped atomically as part of the whole snapshot.
 // Copying a ProgramCache copies the map header; the underlying program pointers
 // and source metadata are immutable after CompileAll returns.
@@ -92,7 +92,7 @@ type SkippedPolicy struct {
 // Called only during snapshot reload — NEVER on the hot path.
 //
 // Fail-closed: on the first compile failure, returns an error with policy ID and
-// source location. The caller (WS-05 policy engine) retains the previous EngineSnapshot.
+// source location. The caller retains the previous EngineSnapshot.
 //
 // Skipped returns policies that were skipped because their expressions reference
 // undeclared CEL variables or functions. Skipping is not an error — the caller should
@@ -127,8 +127,6 @@ func CompileAll(env *CELEnvironment, templates []policy_types.PolicyTemplate) (*
 		}
 
 		// Phase 2: type-check — skip policies referencing undeclared variables or functions.
-		// Phase 2 will register session.* and path.isWithinProject full-arg variants;
-		// those policies are deferred rather than aborting the entire startup load.
 		ast, checkIssues := env.env.Check(parsedAst)
 		if checkIssues != nil && checkIssues.Err() != nil {
 			log.Printf("WARN: policy %q skipped — undeclared CEL variable or function in expression %q: %v. Register missing functions in Phase 2 to activate this policy.", t.ID, t.Expression, checkIssues.Err())
@@ -152,7 +150,7 @@ func CompileAll(env *CELEnvironment, templates []policy_types.PolicyTemplate) (*
 
 		// Enforce cost budget via static analysis at compile time.
 		// cel.CostLimit() as a ProgramOption adds OptTrackCost, which allocates a
-		// cost-tracker struct on every ContextEval() call — violates INV-007.
+		// cost-tracker struct on every ContextEval() call — violates the zero-alloc hot path.
 		// Static estimation enforces the budget at compile time: policies are immutable
 		// after build, so a statically-safe expression is safe at runtime.
 		cost, costErr := env.env.EstimateCost(ast, conservativeSizeEstimator{})
@@ -175,7 +173,7 @@ func CompileAll(env *CELEnvironment, templates []policy_types.PolicyTemplate) (*
 
 		// InterruptCheckFrequency enables context cancellation checks inside evaluation.
 		// Without it, ContextEval ignores ctx.Done() during expression evaluation — the
-		// 50ms deadline (ENGINEERING_STANDARDS §5.5) would only be checked at program entry.
+		// 50ms deadline would only be checked at program entry.
 		// Value 100 means: check for cancellation every 100 evaluation steps.
 		prog, err := env.env.Program(ast, celgo.InterruptCheckFrequency(100))
 		if err != nil {
@@ -187,7 +185,6 @@ func CompileAll(env *CELEnvironment, templates []policy_types.PolicyTemplate) (*
 			}
 		}
 
-		// Store as *celgo.Program per the spec's Get() return type.
 		// Allocating a pointer here is acceptable: this is compile time, not hot path.
 		cache.programs[t.ID] = programMeta{
 			prog:       &prog,

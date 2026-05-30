@@ -40,14 +40,12 @@ type ActivationFSM struct {
 	mu    sync.Mutex
 }
 
-// NewActivationFSM returns an FSM in StateIdle.
 func NewActivationFSM() *ActivationFSM {
 	f := &ActivationFSM{}
 	f.state.Store(StateIdle)
 	return f
 }
 
-// State returns the current ActivationState.
 func (f *ActivationFSM) State() ActivationState {
 	s, ok := f.state.Load().(ActivationState)
 	if !ok {
@@ -89,8 +87,6 @@ type KeySource struct {
 	keys []ed25519.PublicKey
 }
 
-// NewKeySource creates a KeySource from one or more public keys.
-// At least one key is required; an empty call returns an error.
 func NewKeySource(keys ...ed25519.PublicKey) (*KeySource, error) {
 	if len(keys) == 0 {
 		return nil, errors.New("bundle: KeySource requires at least one public key")
@@ -116,7 +112,7 @@ func (k *KeySource) Verify(message, sig []byte) bool {
 
 // RawBundle is the output of a successful bundle load.
 // Verification precedes parsing — callers may trust that Data has been
-// signature-checked before any content is inspected. (INV-009)
+// signature-checked before any content is inspected.
 type RawBundle struct {
 	Data    []byte // raw bundle bytes (tar.gz)
 	Etag    string // HTTP ETag for conditional GET
@@ -127,7 +123,7 @@ type RawBundle struct {
 // The name avoids collision with the concrete BundleLoader struct below.
 type BundleLoaderIface interface {
 	// Load fetches a bundle from sourceURL and verifies its signature with keys
-	// before returning the raw bytes. Verification happens BEFORE parsing (INV-009).
+	// before returning the raw bytes. Verification happens BEFORE parsing.
 	Load(ctx context.Context, sourceURL string, keys *KeySource) (*RawBundle, error)
 }
 
