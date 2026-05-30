@@ -6,6 +6,7 @@ import (
 
 	"github.com/mayjain/aegis/internal/cel"
 	"github.com/mayjain/aegis/internal/classify"
+	"github.com/mayjain/aegis/internal/label"
 	aegis "github.com/mayjain/aegis/pkg/aegis"
 	policy_types "github.com/mayjain/aegis/pkg/policy/types"
 )
@@ -48,7 +49,7 @@ func BenchmarkCEL_EvalSimple(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, _ = builder.Evaluate(context.Background(), prog, req, verdict, decodedArgs)
+		_, _ = builder.Evaluate(context.Background(), prog, req, verdict, decodedArgs, label.LabeledRequest{})
 	}
 }
 
@@ -96,6 +97,6 @@ func BenchmarkCEL_EvalComplex(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, _ = builder.Evaluate(context.Background(), prog, req, verdict, decodedArgs)
+		_, _ = builder.Evaluate(context.Background(), prog, req, verdict, decodedArgs, label.LabeledRequest{})
 	}
 }

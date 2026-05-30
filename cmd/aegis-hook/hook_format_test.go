@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/mayjain/aegis/pkg/aegis"
+	"os"
 )
 
 func TestHookInput_ClaudeCodeFormat(t *testing.T) {
@@ -131,6 +132,62 @@ func TestTranslateToClaudeCode_RequireApproval(t *testing.T) {
 	if out.HookSpecificOutput.PermissionDecisionReason != "requires human approval" {
 		t.Errorf("PermissionDecisionReason = %q, want reason from response", out.HookSpecificOutput.PermissionDecisionReason)
 	}
+}
+
+// TestBuildCheckRequest_SpawnTokenFromEnv verifies that buildCheckRequest reads
+// AEGIS_SPAWN_TOKEN and AEGIS_PARENT_SESSION_ID from the environment and
+// populates the corresponding CheckRequest fields. Both env vars are optional —
+// empty string is the correct value for root (non-delegated) sessions.
+func TestBuildCheckRequest_SpawnTokenFromEnv(t *testing.T) {
+	h := HookInput{
+		Tool:      "Bash",
+		ToolInput: json.RawMessage(`{"command":"ls"}`),
+		SessionID: "sess-child-001",
+	}
+
+	t.Run("token_and_parent_present", func(t *testing.T) {
+		t.Setenv("AEGIS_SPAWN_TOKEN", "tok-abc123")
+		t.Setenv("AEGIS_PARENT_SESSION_ID", "sess-parent-001")
+
+		req := buildCheckRequest(h, 42)
+
+		if req.SpawnToken != "tok-abc123" {
+			t.Errorf("SpawnToken = %q, want %q", req.SpawnToken, "tok-abc123")
+		}
+		if req.ParentSessionID != "sess-parent-001" {
+			t.Errorf("ParentSessionID = %q, want %q", req.ParentSessionID, "sess-parent-001")
+		}
+		if req.SessionID != "sess-child-001" {
+			t.Errorf("SessionID = %q, want %q", req.SessionID, "sess-child-001")
+		}
+		if req.Tool != "Bash" {
+			t.Errorf("Tool = %q, want Bash", req.Tool)
+		}
+		if req.Timestamp != 42 {
+			t.Errorf("Timestamp = %d, want 42", req.Timestamp)
+		}
+	})
+
+	t.Run("root_session_no_env_vars", func(t *testing.T) {
+		os.Unsetenv("AEGIS_SPAWN_TOKEN")
+		os.Unsetenv("AEGIS_PARENT_SESSION_ID")
+
+		req := buildCheckRequest(h, 0)
+
+		if req.SpawnToken != "" {
+			t.Errorf("SpawnToken = %q for root session, want empty", req.SpawnToken)
+		}
+		if req.ParentSessionID != "" {
+			t.Errorf("ParentSessionID = %q for root session, want empty", req.ParentSessionID)
+		}
+	})
+}
+
+// TestBuildCheckRequest_FieldTypes is a compile-time assertion that SpawnToken and
+// ParentSessionID on CheckRequest are string fields, exercised here to catch any
+// future type mismatch.
+var _ = func() aegis.CheckRequest {
+	return aegis.CheckRequest{SpawnToken: "", ParentSessionID: ""}
 }
 
 // TestHookInput_MixedFormat verifies that when both field names are present,

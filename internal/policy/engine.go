@@ -35,6 +35,7 @@ import (
 	"github.com/mayjain/aegis/internal/cel"
 	"github.com/mayjain/aegis/internal/classify"
 	"github.com/mayjain/aegis/internal/ifc"
+	"github.com/mayjain/aegis/internal/label"
 	"github.com/mayjain/aegis/internal/sink"
 	"github.com/mayjain/aegis/pkg/aegis"
 	policy_types "github.com/mayjain/aegis/pkg/policy/types"
@@ -130,6 +131,7 @@ type PolicyEngine struct {
 	secretScanner       SecretScanner
 	delegationValidator DelegationValidator
 	activationBuilder   *cel.ActivationBuilder
+	labeler             label.Labeler
 	// buildSnapshotFunc is injected for testing failed reload scenarios.
 	// If nil, the default buildSnapshot is used.
 	buildSnapshotFunc snapshotBuilder
@@ -167,6 +169,13 @@ func WithDelegationValidator(v DelegationValidator) Option {
 func WithTaintHistory(h *ifc.TaintHistory) Option {
 	return func(e *PolicyEngine) {
 		e.taintHistory = h
+	}
+}
+
+// WithLabeler sets the resource labeler used to populate resource_* CEL variables.
+func WithLabeler(l label.Labeler) Option {
+	return func(e *PolicyEngine) {
+		e.labeler = l
 	}
 }
 
@@ -289,15 +298,27 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 		}
 	}
 
-	// [6] Resource label for IFC check
-	// NOTE: In the full IFC implementation, resourceLabel comes from the Labeler which
-	// classifies file paths and URLs. Until the Labeler is integrated, we use req.SecurityLabel.
-	resourceLabel := req.SecurityLabel
+	// [5b] Resource labeling — must happen BEFORE maybeTaint to get accurate resource classification
+	var labeled label.LabeledRequest
+	if e.labeler != nil {
+		labeled = e.labeler.Label(req, verdict)
+	}
+
+	// [6] Resource label for IFC check — use labeled.ResourceLabel when labeler is configured
+	resourceLabel := labeled.ResourceLabel
+	if resourceLabel == (aegis.SecurityLabel{}) {
+		resourceLabel = req.SecurityLabel
+	}
 
 	// [6b] TAINT WRITE-BACK — fires BEFORE sink snapshot to close concurrent eval window
 	// The maybeTaint function checks if the resource category triggers session taint.
 	// This enables subsequent sink enforcement to gate exfiltration attempts.
-	resourcePath := extractResourcePath(req.Tool, decodedArgs)
+	var resourcePath string
+	if len(labeled.ResourcePaths) > 0 {
+		resourcePath = labeled.ResourcePaths[0]
+	} else {
+		resourcePath = extractResourcePath(req.Tool, decodedArgs)
+	}
 	e.maybeTaint(req.SessionID, resourceLabel, resourcePath)
 
 	// [7] Session label lookup (now includes any taint from step 6)
@@ -334,18 +355,21 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 	if e.sessions != nil {
 		sinkSnap := e.sessions.Snapshot(req.SessionID)
 
-		// Check for network command in Bash
-		containsNetworkCmd := false
-		if commandText != "" {
+		// Use labeled.ContainsNetworkCmd when labeler is configured, else detect from commandText
+		containsNetworkCmd := labeled.ContainsNetworkCmd
+		if !containsNetworkCmd && commandText != "" {
 			containsNetworkCmd = containsNetworkBinary(commandText)
 		}
 
-		// Extract ALL resource paths for standing rule matching
-		resources := extractResourcePaths(req.Tool, decodedArgs)
+		// Use labeled.ResourcePaths when labeler is configured, else extract from args
+		resources := labeled.ResourcePaths
+		if len(resources) == 0 {
+			resources = extractResourcePaths(req.Tool, decodedArgs)
+		}
 
 		sinkAction := sink.Decision(sinkSnap, verdict.Effects, resources, containsNetworkCmd)
 		if sinkAction == aegis.ActionRequireApproval {
-			effectName := sink.FindRestrictedEffect(verdict.Effects, containsNetworkCmd)
+			effectName := findRestrictedEffect(verdict.Effects, containsNetworkCmd)
 			return aegis.CheckResponse{
 				Decision: aegis.Decision{
 					Action:   aegis.ActionRequireApproval,
@@ -377,7 +401,7 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 			continue
 		}
 
-		val, err := e.activationBuilder.Evaluate(ctx, prog, req, verdict, decodedArgs)
+		val, err := e.activationBuilder.Evaluate(ctx, prog, req, verdict, decodedArgs, labeled)
 		if err != nil {
 			log.Printf("WARN: policy %s eval error (skipping): %v", cb.binding.TemplateID, err)
 			continue
@@ -907,6 +931,20 @@ func approvalStateString(state ifc.ApprovalState) string {
 	default:
 		return "unknown"
 	}
+}
+
+// findRestrictedEffect returns the first restricted effect from the effects list,
+// or "network_egress" if containsNetworkCmd is true. Used for error messages.
+func findRestrictedEffect(effects []string, containsNetworkCmd bool) string {
+	if containsNetworkCmd {
+		return classify.EffectNetworkEgress
+	}
+	for _, eff := range effects {
+		if sink.IsRestrictedEffect(eff) {
+			return eff
+		}
+	}
+	return "restricted_sink"
 }
 
 // compile-time interface assertion
