@@ -4,10 +4,10 @@
 // Hot path contract: Evaluate() must not allocate. Activation maps are pooled via sync.Pool.
 // Banned in this package: fmt.Sprintf, encoding/json.Marshal (golangci-lint enforced).
 //
-// ProgramCache is a VALUE TYPE embedded in EngineSnapshot (INV-008). It is NOT a separately-
-// swapped atomic.Pointer — the whole EngineSnapshot is swapped atomically by WS-05.
+// ProgramCache is a VALUE TYPE embedded in EngineSnapshot. It is NOT a separately-
+// swapped atomic.Pointer — the whole EngineSnapshot is swapped atomically.
 //
-// CEL evaluation is PURE (INV-10): same inputs → same outputs. time.Now(), math/rand,
+// CEL evaluation is PURE: same inputs → same outputs. time.Now(), math/rand,
 // goroutine scheduling, and I/O are forbidden inside CEL custom functions.
 package cel
 
@@ -43,8 +43,6 @@ type CELEnvironment struct {
 	env *cel.Env
 }
 
-// RawEnv returns the underlying *cel.Env for callers that need direct access
-// (e.g., CLI cost estimation). The returned value is immutable after construction.
 func RawEnv(e *CELEnvironment) *cel.Env {
 	return e.env
 }
@@ -667,7 +665,7 @@ func bashIsGitBranchDelete(cmd string) bool {
 // bashFindSearchRoot extracts the search root directory from a `find` command and resolves
 // symlinks. Returns empty string if not a find command or if path resolution fails.
 //
-// Fail-secure (INV-014): on any filepath.EvalSymlinks error (path does not exist, broken
+// Fail-secure: on any filepath.EvalSymlinks error (path does not exist, broken
 // symlink, permission denied), the function returns "" rather than a raw unresolved path.
 // A policy comparing the result to a project root would then treat the unknown location
 // conservatively (outside project), rather than making a decision based on an unverified path.
@@ -683,9 +681,8 @@ func bashFindSearchRoot(cmd string) string {
 		}
 		resolved, err := filepath.EvalSymlinks(filepath.Clean(t))
 		if err != nil {
-			// Fail-secure: do NOT return filepath.Clean(t).
-			// An unresolved path returned to a policy is indistinguishable from a real path,
-			// and could allow boundary-check bypass if the policy uses string prefix matching.
+			// Fail-secure: do not return filepath.Clean(t) — an unresolved path is
+			// indistinguishable from a real path and could allow boundary-check bypass.
 			return ""
 		}
 		return resolved
@@ -694,7 +691,7 @@ func bashFindSearchRoot(cmd string) string {
 }
 
 // pathIsWithinProject returns true if path is within root after canonicalization.
-// Returns false on any symlink resolution error (fail-secure, INV-014).
+// Returns false on any symlink resolution error (fail-secure).
 func pathIsWithinProject(path, root string) bool {
 	canonicalSearch, err := filepath.EvalSymlinks(filepath.Clean(path))
 	if err != nil {
