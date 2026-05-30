@@ -15,26 +15,39 @@ export function PolicyPlayground() {
   const [daemonError, setDaemonError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  function buildArgs(toolName: string, argsValue: string): Record<string, string> {
+    const pathTools = new Set(['Read', 'Write', 'Edit', 'FileDelete']);
+    if (pathTools.has(toolName)) return { path: argsValue };
+    if (toolName === 'WebFetch' || toolName === 'WebSearch') return { url: argsValue };
+    return { command: argsValue };
+  }
+
   async function handleEvaluate() {
     if (!args.trim()) return;
     setDaemonError(null);
     setResult(null);
     setLoading(true);
     try {
-      const expression = celExpression.trim() || (policies[0]?.celExpression ?? '');
       const resp = await fetch(`${getDaemonApiBase()}/simulate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          tool,
-          args: JSON.stringify(args),
-          session_id: crypto.randomUUID(),
-          timestamp: Date.now(),
-          cel_expression: expression,
+          Tool: tool,
+          Args: buildArgs(tool, args),
+          SessionID: crypto.randomUUID(),
+          Timestamp: Date.now() * 1_000_000,
         }),
       });
       if (!resp.ok) throw new Error(`daemon: HTTP ${resp.status}`);
-      setResult(await resp.json() as SimulateResult);
+      const raw = await resp.json() as {
+        Decision?: { Action?: string; Reason?: string; PolicyID?: string };
+        LatencyNs?: number;
+      };
+      setResult({
+        verdict: (raw.Decision?.Action ?? 'allow').toLowerCase(),
+        explanation: raw.Decision?.Reason || raw.Decision?.PolicyID || '',
+        latencyNs: raw.LatencyNs ?? 0,
+      });
     } catch (err) {
       setDaemonError(err instanceof Error ? err.message : String(err));
     } finally {
