@@ -1,158 +1,128 @@
-import { useLatticeStore } from '../../stores/lattice-store';
 import { useGovernanceStore } from '../../stores/governance-store';
+import { useLatticeStore } from '../../stores/lattice-store';
 
-const IFC_LEVELS = [
-  { id: 'restricted',   label: 'RES', color: 'var(--deny)',         minConf: 49152 },
-  { id: 'confidential', label: 'CON', color: 'var(--escalate)',     minConf: 24576 },
-  { id: 'internal',     label: 'INT', color: 'var(--info-blue)',    minConf: 8192 },
-  { id: 'unclassified', label: 'UNC', color: 'var(--allow)',        minConf: 0 },
-];
-
-function confToLevel(c: number) {
-  return IFC_LEVELS.find(l => c >= l.minConf) ?? IFC_LEVELS[3];
-}
-
-const STATE_LABELS: Record<string, { label: string; color: string }> = {
-  tainted_by_secret: { label: '! TAINTED BY SECRET', color: 'var(--deny)' },
-  escalated:         { label: 'Escalated',           color: 'var(--escalate)' },
-  ceiling_hit:       { label: 'Ceiling hit',         color: 'var(--audit-purple)' },
-  fresh:             { label: 'Active',               color: 'var(--allow)' },
-  declassified:      { label: 'Declassified',         color: 'var(--text-muted)' },
+const DOT_COLORS: Record<string, string> = {
+  tainted_by_secret: 'var(--deny)',
+  escalated:         'var(--escalate)',
+  ceiling_hit:       '#a855f7',
+  fresh:             'var(--allow)',
+  declassified:      'var(--text-muted)',
 };
 
 export function SessionCards() {
-  const latticeNodes = useLatticeStore((s) => s.nodes);
+  const sessionDisplayNames = useGovernanceStore((s) => s.sessionDisplayNames);
+  const sessionCounters = useGovernanceStore((s) => s.sessionCounters);
   const sessionLabels = useGovernanceStore((s) => s.sessionLabels);
-  const events = useGovernanceStore((s) => s.events);
   const filterSession = useGovernanceStore((s) => s.filterSession);
+  const latticeNodes = useLatticeStore((s) => s.nodes);
 
-  type SessionEntry = {
-    sessionId: string;
-    confidentiality: number;
-    state: string;
-    lastEvent?: (typeof events)[0];
-  };
+  // Collect all known session IDs
+  const allIds = new Set<string>();
+  for (const [id] of sessionDisplayNames) allIds.add(id);
+  for (const [id] of sessionCounters) allIds.add(id);
+  for (const [id] of sessionLabels) allIds.add(id);
+  for (const [id] of latticeNodes) allIds.add(id);
 
-  const sessionMap = new Map<string, SessionEntry>();
-
-  // Populate from governance sessionLabels first
-  for (const [id, sl] of sessionLabels) {
-    sessionMap.set(id, {
-      sessionId: id,
-      confidentiality: sl.label.confidentiality,
-      state: sl.state ?? 'fresh',
-    });
-  }
-
-  // Lattice store takes priority (has escalation data)
-  for (const [id, node] of latticeNodes) {
-    sessionMap.set(id, {
-      sessionId: id,
-      confidentiality: node.label.confidentiality,
-      state: node.state,
-    });
-  }
-
-  // Attach last event per session
-  for (const event of [...events].reverse()) {
-    if (event.sessionId && sessionMap.has(event.sessionId)) {
-      const s = sessionMap.get(event.sessionId)!;
-      if (!s.lastEvent) s.lastEvent = event;
-    }
-  }
-
-  const sessions = Array.from(sessionMap.values()).slice(0, 8);
-
-  if (sessions.length === 0) {
+  if (allIds.size === 0) {
     return (
-      <div style={{ padding: 16, color: 'var(--text-muted)', fontSize: 12, textAlign: 'center' }}>
-        No active sessions
+      <div style={{ padding: '8px 10px' }}>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>No sessions</p>
       </div>
     );
   }
 
+  interface Row {
+    sessionId: string;
+    name: string;
+    labelState: string;
+    allows: number;
+    denies: number;
+  }
+
+  const rows: Row[] = Array.from(allIds).map((id) => {
+    const latticeNode = latticeNodes.get(id);
+    const sessionLabel = sessionLabels.get(id);
+    const counters = sessionCounters.get(id) ?? { allows: 0, denies: 0 };
+    const name = sessionDisplayNames.get(id) ?? `…${id.slice(-8)}`;
+    const labelState = latticeNode?.state ?? sessionLabel?.state ?? 'fresh';
+
+    return {
+      sessionId: id,
+      name,
+      labelState,
+      allows: counters.allows,
+      denies: counters.denies,
+    };
+  });
+
+  function dotSymbol(state: string): string {
+    if (state === 'tainted_by_secret') return '▓';
+    return '●';
+  }
+
   return (
-    <div style={{ padding: 8 }}>
+    <div style={{ padding: '8px 6px' }}>
+      {/* Header */}
       <div style={{
-        padding: '4px 8px 6px',
+        padding: '2px 4px 6px',
         fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600,
         textTransform: 'uppercase' as const, letterSpacing: '0.06em',
         display: 'flex', justifyContent: 'space-between',
       }}>
-        <span>Sessions</span>
+        <span>Agents</span>
         <span style={{ background: 'var(--bg-overlay)', borderRadius: 10, padding: '0 6px' }}>
-          {sessions.length}
+          {rows.length}
         </span>
       </div>
 
-      {sessions.map(s => {
-        const level = confToLevel(s.confidentiality)!;
-        const stateInfo = STATE_LABELS[s.state] ?? STATE_LABELS.fresh;
-        const isTainted = s.state === 'tainted_by_secret';
+      {/* Rows — scroll when more than 4 agents */}
+      <div style={{ maxHeight: rows.length > 4 ? 128 : undefined, overflowY: rows.length > 4 ? 'auto' : undefined }}>
+        {rows.map((row) => {
+          const isSelected = filterSession === row.sessionId;
+          const dotColor = DOT_COLORS[row.labelState] ?? DOT_COLORS.fresh;
 
-        const isActive = filterSession === s.sessionId;
-
-        return (
-          <div
-            key={s.sessionId}
-            onClick={() => {
-              const current = useGovernanceStore.getState().filterSession;
-              useGovernanceStore.getState().setFilterSession(
-                current === s.sessionId ? null : s.sessionId,
-              );
-            }}
-            style={{
-              marginBottom: 6, borderRadius: 6, overflow: 'hidden',
-              border: `1px solid ${isTainted ? 'rgba(207,34,46,0.3)' : 'var(--border)'}`,
-              background: isTainted ? 'rgba(207,34,46,0.04)' : 'var(--bg-surface)',
-              cursor: 'pointer',
-              borderLeft: isActive
-                ? '2px solid #2da44e'
-                : `1px solid ${isTainted ? 'rgba(207,34,46,0.3)' : 'var(--border)'}`,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px 4px' }}>
-              <span style={{
-                background: level.color, color: '#fff', borderRadius: 3,
-                padding: '1px 6px', fontSize: 10, fontWeight: 700,
-                fontFamily: 'monospace', flexShrink: 0,
-              }}>
-                {level.label}
-              </span>
-              <span style={{
-                fontFamily: 'monospace', fontSize: 11, color: 'var(--text-primary)',
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const,
-              }}>
-                {s.sessionId.slice(-12)}
-              </span>
-            </div>
-
-            <div style={{ padding: '0 10px 4px', fontSize: 11, color: stateInfo.color, fontWeight: 500 }}>
-              {stateInfo.label}
-            </div>
-
-            {s.lastEvent && (
-              <div style={{
-                padding: '0 10px 7px', fontSize: 11, color: 'var(--text-muted)',
+          return (
+            <div
+              key={row.sessionId}
+              onClick={() => {
+                useGovernanceStore.getState().setFilterSession(
+                  filterSession === row.sessionId ? null : row.sessionId,
+                );
+              }}
+              style={{
                 display: 'flex', alignItems: 'center', gap: 6,
+                padding: '4px 6px',
+                borderRadius: 4,
+                cursor: 'pointer',
+                background: isSelected ? 'rgba(255,255,255,0.10)' : 'transparent',
+                borderLeft: isSelected ? '2px solid var(--info-blue)' : '2px solid transparent',
+                marginBottom: 1,
+              }}
+              onMouseEnter={(e) => {
+                if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.04)';
+              }}
+              onMouseLeave={(e) => {
+                if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = 'transparent';
+              }}
+            >
+              <span style={{ color: dotColor, fontSize: 11, flexShrink: 0 }}>
+                {dotSymbol(row.labelState)}
+              </span>
+              <span style={{
+                fontSize: 12,
+                color: 'var(--text-primary)',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const,
+                flex: 1,
               }}>
-                <span style={{
-                  width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-                  background: (
-                    s.lastEvent.verdict === 'deny' ? 'var(--deny)' :
-                    s.lastEvent.verdict === 'allow' ? 'var(--allow)' :
-                    s.lastEvent.verdict === 'require_approval' ? 'var(--escalate)' :
-                    'var(--audit-purple)'
-                  ),
-                }} />
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
-                  {s.lastEvent.verdict.toUpperCase()} {s.lastEvent.tool}
-                </span>
-              </div>
-            )}
-          </div>
-        );
-      })}
+                {row.name}
+              </span>
+              <span style={{ fontSize: 11, color: 'var(--text-secondary)', flexShrink: 0, fontFamily: 'monospace' }}>
+                {row.allows}/{row.denies}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
