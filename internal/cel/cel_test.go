@@ -896,8 +896,8 @@ func TestCompileAll_SkippedPoliciesReported(t *testing.T) {
 		t.Fatalf("CompileAll returned unexpected error: %v", err)
 	}
 
-	if len(skipped) != 1 || skipped[0] != "undeclared-var" {
-		t.Errorf("expected skipped=[\"undeclared-var\"], got %v", skipped)
+	if len(skipped) != 1 || skipped[0].TemplateID != "undeclared-var" {
+		t.Errorf("expected skipped=[{undeclared-var}], got %v", skipped)
 	}
 
 	if _, ok := cache.Get("valid-policy"); !ok {

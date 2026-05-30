@@ -81,20 +81,28 @@ func itoa(n int) string {
 	return string(buf[pos:])
 }
 
+// SkippedPolicy records a policy template that failed CEL type-checking and was skipped.
+type SkippedPolicy struct {
+	TemplateID    string
+	DefaultAction string
+	CompileErr    error
+}
+
 // CompileAll compiles all policy templates into a ProgramCache.
 // Called only during snapshot reload — NEVER on the hot path.
 //
 // Fail-closed: on the first compile failure, returns an error with policy ID and
 // source location. The caller (WS-05 policy engine) retains the previous EngineSnapshot.
 //
-// Skipped returns the IDs of policies that were skipped because their expressions
-// reference undeclared CEL variables or functions. Skipping is not an error — the
-// caller should log the skipped IDs so operators know which policies are inactive.
-func CompileAll(env *CELEnvironment, templates []policy_types.PolicyTemplate) (*ProgramCache, []string, error) {
+// Skipped returns policies that were skipped because their expressions reference
+// undeclared CEL variables or functions. Skipping is not an error — the caller should
+// log the skipped IDs so operators know which policies are inactive. Callers must
+// inspect SkippedPolicy.DefaultAction: if "DENY", refuse to load the bundle.
+func CompileAll(env *CELEnvironment, templates []policy_types.PolicyTemplate) (*ProgramCache, []SkippedPolicy, error) {
 	cache := &ProgramCache{
 		programs: make(map[string]programMeta, len(templates)),
 	}
-	var skipped []string
+	var skipped []SkippedPolicy
 
 	for i := range templates {
 		t := &templates[i]
@@ -124,7 +132,11 @@ func CompileAll(env *CELEnvironment, templates []policy_types.PolicyTemplate) (*
 		ast, checkIssues := env.env.Check(parsedAst)
 		if checkIssues != nil && checkIssues.Err() != nil {
 			log.Printf("WARN: policy %q skipped — undeclared CEL variable or function in expression %q: %v. Register missing functions in Phase 2 to activate this policy.", t.ID, t.Expression, checkIssues.Err())
-			skipped = append(skipped, t.ID)
+			skipped = append(skipped, SkippedPolicy{
+				TemplateID:    t.ID,
+				DefaultAction: t.DefaultAction,
+				CompileErr:    checkIssues.Err(),
+			})
 			continue
 		}
 
@@ -187,7 +199,9 @@ func CompileAll(env *CELEnvironment, templates []policy_types.PolicyTemplate) (*
 	return cache, skipped, nil
 }
 
-// CompileError is returned by CompileAll on the first compile failure.
+// CompileError is returned by CompileAll on a hard compile failure (syntax error,
+// AST depth exceeded, cost budget exceeded). Distinct from SkippedPolicy, which
+// records soft failures (undeclared variable/function) where skipping is acceptable.
 type CompileError struct {
 	PolicyID   string
 	SourceFile string
