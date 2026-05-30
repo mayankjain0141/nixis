@@ -1,0 +1,80 @@
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: block-evasion-encoding
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Block encoding/obfuscation evasion: base64|sh, xxd decode+exec, here-string bash, eval patterns"
+  matchConstraints:
+    tools: ["Bash"]
+  validations:
+    - expression: >-
+        request.args.command.matches("(?i)\\bbase64\\s+-d\\b.*\\|.*\\b(sh|bash)\\b") ||
+        request.args.command.matches("(?i)\\bbase64\\s+--decode\\b.*\\|.*\\b(sh|bash)\\b")
+      message: "Blocked: base64 decode piped to shell execution"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bxxd\\s+-r\\b.*\\|.*\\b(sh|bash)\\b") ||
+        request.args.command.matches("(?i)\\bxxd\\s+-r\\s+-p\\b.*\\|.*\\b(sh|bash)\\b")
+      message: "Blocked: hex decode piped to shell execution"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bgunzip\\b.*\\|.*\\b(sh|bash)\\b") ||
+        request.args.command.matches("(?i)\\bbase64\\s+-d.*\\|.*gunzip.*\\|.*\\b(sh|bash)\\b")
+      message: "Blocked: gzip decompression piped to shell (common obfuscation)"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bbash\\s+<<<") &&
+        (request.args.command.matches("(?i)/etc/shadow") ||
+         request.args.command.matches("(?i)/etc/passwd") ||
+         request.args.command.matches("(?i)curl"))
+      message: "Blocked: bash here-string executing dangerous payload"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\beval\\b.*\\$") &&
+        (request.args.command.matches("(?i)/etc/shadow") ||
+         request.args.command.matches("(?i)/etc/passwd") ||
+         request.args.command.matches("(?i)cat\\s+/") ||
+         request.args.command.matches("(?i)curl"))
+      message: "Blocked: eval executing variable-stored dangerous command"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\becho\\b.*\\|.*\\btr\\b.*\\|.*\\bbash\\b") ||
+        request.args.command.matches("(?i)\\becho\\b.*\\|.*\\brev\\b.*\\|.*\\bbash\\b")
+      message: "Blocked: encoded command piped through character transform then to bash"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bbash\\b.*<\\(curl") ||
+        request.args.command.matches("(?i)\\bbash\\b.*<\\(wget")
+      message: "Blocked: bash process substitution fetching and executing remote content"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\btar\\b.*--checkpoint-action=exec") ||
+        request.args.command.matches("(?i)\\btar\\b.*--checkpoint-action=sh")
+      message: "Blocked: tar checkpoint-action arbitrary command execution"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bsed\\b.*-[ne].*'?[0-9]*e\\b") &&
+        request.args.command.matches("(?i)/etc/(shadow|passwd)")
+      message: "Blocked: sed -e flag executing shell commands on credential files"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bawk\\b.*system\\(") &&
+        (request.args.command.matches("(?i)/etc/shadow") ||
+         request.args.command.matches("(?i)/etc/passwd"))
+      message: "Blocked: awk system() call reading credential files"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bprintf\\b.*\\|.*\\bbash\\b") &&
+        request.args.command.matches("(?i)\\\\[0-9]{3}")
+      message: "Blocked: printf octal encoding piped to bash (obfuscated command execution)"
+      action: DENY
+    - expression: >-
+        (request.args.command.matches("(?i)\\bwget\\b") ||
+         request.args.command.matches("(?i)\\bcurl\\b")) &&
+        request.args.command.matches("(?i)\\|\\s*(tee\\s+.*\\|\\s*)?\\bbash\\b")
+      message: "Blocked: downloading remote content and piping to bash"
+      action: DENY
+  defaultAction: ALLOW

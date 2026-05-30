@@ -1,0 +1,53 @@
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: block-process-attacks
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Block process-level attacks: killing init, killing all processes, and fork bombs"
+  matchConstraints:
+    tools: ["Bash"]
+  variables:
+    - name: isKillInit
+      # kill -9 1, kill -KILL 1, kill -SIGKILL 1 — killing PID 1 (init/systemd)
+      expression: >-
+        request.args.command.matches("(?i).*\\bkill\\s+(-(9|KILL|SIGKILL)\\s+1|1\\s+-(9|KILL|SIGKILL))\\b.*")
+    - name: isKillAll
+      # kill -9 -1 — sends SIGKILL to all processes the user can signal
+      expression: >-
+        request.args.command.matches("(?i).*\\bkill\\s+-(9|KILL|SIGKILL)\\s+-1\\b.*")
+    - name: isForkBomb
+      # Classic fork bomb pattern: :(){ :|:& };: and variants
+      # Also catches the common bash/sh -c variants
+      expression: >-
+        request.args.command.matches(".*:\\s*\\(\\s*\\)\\s*\\{.*:\\s*\\|\\s*:.*\\}.*") ||
+        request.args.command.matches("(?i).*fork.?bomb.*")
+    - name: isPkillSigkill
+      # pkill -9 without a specific process name is extremely destructive
+      expression: >-
+        request.args.command.matches("(?i).*\\bpkill\\s+-9\\s*$") ||
+        request.args.command.matches("(?i).*\\bpkill\\s+-(KILL|SIGKILL)\\s*$")
+    - name: isUlimitRemove
+      # ulimit -n unlimited or removing process limits — enables fork bomb amplification
+      expression: >-
+        request.args.command.matches("(?i).*\\bulimit\\b.*(unlimited|-1).*") &&
+        request.args.command.matches("(?i).*\\bulimit\\b.*(-u\\b|--max-user-processes).*")
+  validations:
+    - expression: 'isKillInit'
+      message: "Blocked: killing PID 1 (init/systemd) would crash the system"
+      action: DENY
+    - expression: 'isKillAll'
+      message: "Blocked: kill -9 -1 sends SIGKILL to all processes and is not permitted"
+      action: DENY
+    - expression: 'isForkBomb'
+      message: "Blocked: fork bomb pattern detected — this would exhaust system process table"
+      action: DENY
+    - expression: 'isPkillSigkill'
+      message: "Blocked: pkill -9 with no target is not permitted — too destructive"
+      action: DENY
+    - expression: 'isUlimitRemove'
+      message: "Blocked: removing process count limits enables fork bomb attacks"
+      action: DENY
+  defaultAction: ALLOW

@@ -1,0 +1,54 @@
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: block-kernel-attacks
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Block kernel module manipulation, namespace escapes, and disk-wiping operations"
+  matchConstraints:
+    tools: ["Bash"]
+  variables:
+    - name: isKernelModuleOp
+      # insmod, rmmod, modprobe — kernel module loading/unloading
+      expression: >-
+        request.args.command.matches("(?i).*\\b(insmod|rmmod|modprobe)\\b.*")
+    - name: isNamespaceEscape
+      # unshare --user or -U creates user namespaces (container escape vector)
+      # nsenter enters existing namespaces
+      expression: >-
+        request.args.command.matches("(?i).*\\bunshare\\b.*(--user|-U).*") ||
+        request.args.command.matches("(?i).*\\bnsenter\\b.*")
+    - name: isDangerousMount
+      # mount --bind, or mounting /proc /sys /dev into unexpected locations
+      expression: >-
+        request.args.command.matches("(?i).*\\bmount\\b.*--bind.*") ||
+        request.args.command.matches("(?i).*\\bmount\\b.*(\\s/proc|\\s/sys|\\s/dev)\\b.*")
+    - name: isDiskWipe
+      # dd writing to block devices or reading from /dev/random|zero to disk
+      expression: >-
+        request.args.command.matches("(?i).*\\bdd\\b.*of=/dev/(sd|hd|vd|nvme|xvd)[a-z][0-9]*\\b.*") ||
+        request.args.command.matches("(?i).*\\bdd\\b.*if=/dev/(random|zero|urandom)\\s+of=/dev/(sd|hd|vd|nvme|xvd).*") ||
+        request.args.command.matches("(?i).*\\bshred\\b.*/dev/(sd|hd|vd|nvme|xvd)[a-z].*")
+    - name: isSysctlKernelWrite
+      # Writing dangerous kernel parameters via sysctl
+      expression: >-
+        request.args.command.matches("(?i).*\\bsysctl\\b.*-w.*kernel\\.(nmi_watchdog|perf_event_paranoid|kptr_restrict|dmesg_restrict).*=.*0.*")
+  validations:
+    - expression: 'isKernelModuleOp'
+      message: "Blocked: kernel module operations (insmod/rmmod/modprobe) are not permitted"
+      action: DENY
+    - expression: 'isNamespaceEscape'
+      message: "Blocked: user namespace creation and namespace entry are not permitted"
+      action: DENY
+    - expression: 'isDangerousMount'
+      message: "Blocked: bind mounts and mounting kernel filesystems are not permitted"
+      action: DENY
+    - expression: 'isDiskWipe'
+      message: "Blocked: direct block device write operations are not permitted"
+      action: DENY
+    - expression: 'isSysctlKernelWrite'
+      message: "Blocked: disabling kernel security parameters is not permitted"
+      action: DENY
+  defaultAction: ALLOW

@@ -1,0 +1,200 @@
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: aa-block-dangerous-shell-exec
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "DENY: pipe-to-shell with dangerous payloads, encoding obfuscation exec, and interpreter exec of credentials/destruction. Evaluated first (aa- prefix) before require-approval policies."
+  matchConstraints:
+    tools: ["Bash"]
+  validations:
+    - expression: >-
+        request.args.command.matches("(?i)\\bbase64\\s*-d\\b.*\\|.*(sh|bash)\\b") ||
+        request.args.command.matches("(?i)\\bbase64\\s*--decode\\b.*\\|.*(sh|bash)\\b")
+      message: "Blocked: base64 decode piped to shell"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bxxd\\s+-r\\b.*\\|.*(sh|bash)\\b")
+      message: "Blocked: hex decode piped to shell"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bgunzip\\b.*\\|.*(sh|bash)\\b")
+      message: "Blocked: gzip-compressed payload piped to shell"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\becho\\b.*\\|.*\\btr\\b.*\\|.*(sh|bash)\\b") ||
+        request.args.command.matches("(?i)\\becho\\b.*\\|.*\\brev\\b.*\\|.*(sh|bash)\\b") ||
+        request.args.command.matches("(?i)\\bprintf\\b.*\\|.*(sh|bash)\\b")
+      message: "Blocked: encoded command piped through character transform to shell"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bprintf\\b.*\\|.*(sh|bash)\\b") &&
+        request.args.command.matches("(?i)\\\\[0-9]{3}")
+      message: "Blocked: printf octal encoding piped to shell"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\b(wget|curl)\\b.*\\|.*(tee\\b.*\\|.*)?(sh|bash)\\b") ||
+        request.args.command.matches("(?i)\\bbash\\s+<\\(curl\\b") ||
+        request.args.command.matches("(?i)\\bbash\\s+<\\(wget\\b")
+      message: "Blocked: remote content fetched and piped to shell"
+      action: DENY
+    - expression: >-
+        resource_interpreter_exec &&
+        (request.args.command.matches("(?i)/etc/(shadow|gshadow|passwd)") ||
+         request.args.command.matches("(?i)/root/\\.(ssh|gnupg|bash_history)") ||
+         request.args.command.matches("(?i)\\bcat\\s+/etc/(shadow|passwd|gshadow)\\b"))
+      message: "Blocked: interpreter executing credential file access"
+      action: DENY
+    - expression: >-
+        resource_interpreter_exec &&
+        request.args.command.matches("(?i)\\brm\\s+-rf\\s+/(var/log|home|etc|opt|data|root|usr|var|srv)")
+      message: "Blocked: interpreter executing destructive filesystem deletion"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\beval\\b.*\\$\\w+") &&
+        (request.args.command.matches("(?i)/etc/(shadow|passwd)") ||
+         request.args.command.matches("(?i)curl") ||
+         request.args.command.matches("(?i)rm\\s+-rf"))
+      message: "Blocked: eval executing variable-stored dangerous command"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bbash\\s+<<<.*\\b(shadow|curl|rm\\s+-rf)\\b")
+      message: "Blocked: bash here-string executing dangerous payload"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\btar\\b.*--checkpoint-action=exec") ||
+        request.args.command.matches("(?i)\\btar\\b.*--checkpoint-action=sh")
+      message: "Blocked: tar checkpoint-action arbitrary command execution"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bsed\\b.*-[ne].*\\be\\b.*/etc/(shadow|passwd)")
+      message: "Blocked: sed -e flag executing commands on credential files"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bawk\\b.*system\\(.*(/etc/(shadow|passwd)|curl)") ||
+        (request.args.command.matches("(?i)\\bawk\\b") &&
+         request.args.command.matches("(?i)system\\(") &&
+         request.args.command.matches("(?i)/etc/(shadow|passwd)"))
+      message: "Blocked: awk system() executing dangerous commands"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bmake\\b.*-f\\s+<\\(") &&
+        request.args.command.matches("(?i)(shadow|passwd|curl)")
+      message: "Blocked: make with process substitution executing dangerous payload"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bnohup\\b") &&
+        request.args.command.matches("(?i)\\bcurl\\b.*\\|.*(sh|bash)\\b")
+      message: "Blocked: nohup detaching remote payload execution"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bwatch\\b.*curl.*\\|.*(sh|bash)\\b") ||
+        (request.args.command.matches("(?i)\\bwatch\\b") &&
+         request.args.command.matches("(?i)-n\\s+[0-9]+.*curl"))
+      message: "Blocked: watch repeatedly executing remote C2 payload"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bwhile\\s+true\\b") &&
+        request.args.command.matches("(?i)\\bcurl\\b.*\\|.*(sh|bash)\\b")
+      message: "Blocked: infinite loop fetching and executing remote payload"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bscreen\\b.*-dm\\b") &&
+        (request.args.command.matches("(?i)\\bcurl\\b") ||
+         request.args.command.matches("(?i)/etc/shadow") ||
+         request.args.command.matches("(?i)\\bnc\\b.*evil"))
+      message: "Blocked: screen -dm detaching dangerous payload"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bsystemd-run\\b") &&
+        request.args.command.matches("(?i)\\bcurl\\b.*\\|.*(sh|bash)\\b")
+      message: "Blocked: systemd-run scheduling remote payload"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bat\\b.*(now|midnight|noon|\\+)") &&
+        (request.args.command.matches("(?i)/etc/shadow") ||
+         request.args.command.matches("(?i)\\bcurl\\b") ||
+         request.args.command.matches("(?i)\\bshred\\b"))
+      message: "Blocked: at scheduler executing dangerous deferred payload"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bbatch\\b") &&
+        (request.args.command.matches("(?i)\\bcurl\\b") ||
+         request.args.command.matches("(?i)/etc/shadow"))
+      message: "Blocked: batch queue executing dangerous payload"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bperl\\b.*sleep.*system.*shred") ||
+        (request.args.command.matches("(?i)\\bperl\\b") &&
+         request.args.command.matches("(?i)\\bsleep\\b") &&
+         request.args.command.matches("(?i)\\bshred\\b"))
+      message: "Blocked: perl timed data destruction"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bpython3?\\b") &&
+        request.args.command.matches("(?i)\\bftplib\\b") &&
+        request.args.command.matches("(?i)evil\\.com")
+      message: "Blocked: Python ftplib exfiltration to attacker server"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bpython3?\\b") &&
+        request.args.command.matches("(?i)\\burllib\\b") &&
+        request.args.command.matches("(?i)\\bos\\.system\\b") &&
+        request.args.command.matches("(?i)rm")
+      message: "Blocked: Python URL-decoding and executing destructive command"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bdocker\\b.*run\\b") &&
+        (request.args.command.matches("(?i)-v\\s+/proc:/") ||
+         request.args.command.matches("(?i)-v\\s+/sys:/") ||
+         request.args.command.matches("(?i)-v\\s+/:/"))
+      message: "Blocked: Docker mounting /proc, /sys, or root filesystem (container escape)"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bunshare\\b") &&
+        (request.args.command.matches("(?i)--pid\\b") ||
+         request.args.command.matches("(?i)--mount-proc\\b"))
+      message: "Blocked: unshare creating new PID/mount namespace (container escape)"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bprintf\\b.*>\\s*/tmp/.*\\.sh") &&
+        request.args.command.matches("(?i)&&.*chmod.*\\+x") &&
+        request.args.command.matches("(?i)&&.*/tmp/")
+      message: "Blocked: write-then-execute script in /tmp"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bperl\\b.*exec\\(") &&
+        (request.args.command.matches("(?i)\\b(netcat|nc)\\b.*evil") ||
+         request.args.command.matches("(?i)evil\\.com") ||
+         request.args.command.matches("(?i)-e\\s+/bin/(bash|sh)"))
+      message: "Blocked: perl exec() launching reverse shell"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bterraform\\s+apply\\b") &&
+        request.args.command.matches("(?i)\\b-auto-approve\\b") &&
+        (request.args.command.matches("(?i)block_public=false") ||
+         request.args.command.matches("(?i)publicly[_-]accessible") ||
+         request.args.command.matches("(?i)public.?access"))
+      message: "Blocked: terraform apply --auto-approve enabling public access"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bcat\\s+>\\s+/etc/systemd/system/") ||
+        (request.args.command.matches("(?i)\\bcat\\b") &&
+         request.args.command.matches("(?i)>\\s+/etc/systemd/system/"))
+      message: "Blocked: writing systemd units via shell redirection"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bkill\\b.*-9.*\\$\\(pgrep") ||
+        request.args.command.matches("(?i)\\bkillall\\b.*-9.*\\b(nginx|apache|postgres|mysql|redis|mongodb)\\b")
+      message: "Blocked: force-killing production service processes"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bpython3?\\b.*-c\\b") &&
+        (request.args.command.matches("(?i)\\bftplib\\b") ||
+         request.args.command.matches("(?i)\\bsmtplib\\b")) &&
+        request.args.command.matches("(?i)evil\\.com")
+      message: "Blocked: Python one-liner exfiltrating data to attacker server"
+      action: DENY
+  defaultAction: ALLOW

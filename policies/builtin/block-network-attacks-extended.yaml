@@ -1,0 +1,54 @@
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: block-network-attacks-extended
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Block network attack tools: socat shell relay, hydra/john/hashcat cracking, ettercap/arpspoof MITM, DoS tools"
+  matchConstraints:
+    tools: ["Bash"]
+  validations:
+    - expression: >-
+        request.args.command.matches("(?i)\\bsocat\\b.*EXEC.*(/bin/bash|/bin/sh)") ||
+        request.args.command.matches("(?i)\\bsocat\\b.*TCP-LISTEN.*EXEC")
+      message: "Blocked: socat TCP-to-shell relay creates a persistent backdoor"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\b(hydra|medusa|ncrack)\\b.*\\b(ssh|ftp|rdp|smtp|mysql|http)://") ||
+        request.args.command.matches("(?i)\\b(hydra|medusa|ncrack)\\b.*-[Pp]\\s+.*wordlist")
+      message: "Blocked: credential brute-forcing tools"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\b(john|hashcat)\\b.*--wordlist") ||
+        request.args.command.matches("(?i)\\b(john|hashcat)\\b.*-m\\s+[0-9]")
+      message: "Blocked: offline password cracking tools"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bettercap\\b") ||
+        request.args.command.matches("(?i)\\barpspoof\\b") ||
+        request.args.command.matches("(?i)\\barping\\b.*-[rR]")
+      message: "Blocked: ARP spoofing and MITM attack tools"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bhping3\\b.*(--flood|-F|-S|-R|-A)") ||
+        request.args.command.matches("(?i)\\bhping3\\b.*--rand-source")
+      message: "Blocked: hping3 packet flood / DoS attack"
+      action: DENY
+    - expression: 'request.args.command.matches("(?i)\\baircrack-ng\\b")'
+      message: "Blocked: aircrack-ng WiFi password cracking"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bstrace\\b.*-p\\s") &&
+        (request.args.command.matches("(?i)\\bsshd\\b") ||
+         request.args.command.matches("(?i)pgrep.*\\b(login|sshd|su)\\b"))
+      message: "Blocked: strace attached to authentication processes to intercept credentials"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bpython3?\\s+-m\\s+http\\.server\\b") &&
+        (request.args.command.matches("0\\.0\\.0\\.0") ||
+         request.args.command.matches("(?i)--directory\\s+/"))
+      message: "Blocked: Python HTTP server exposing root filesystem or binding to all interfaces"
+      action: DENY
+  defaultAction: ALLOW

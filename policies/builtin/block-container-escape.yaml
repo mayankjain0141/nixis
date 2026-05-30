@@ -1,0 +1,73 @@
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: block-container-escape
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Block container escape techniques: privileged containers, host mounts, and exec into pods"
+  matchConstraints:
+    tools: ["Bash"]
+  variables:
+    - name: isDockerPrivileged
+      # docker run --privileged — full host access
+      expression: >-
+        request.args.command.matches("(?i).*\\bdocker\\s+run\\b.*--privileged\\b.*")
+    - name: isDockerHostMount
+      # docker run -v /:/host or mounting sensitive host paths
+      expression: >-
+        request.args.command.matches("(?i).*\\bdocker\\s+run\\b.*-v\\s+/[^:]*:/.*") ||
+        request.args.command.matches("(?i).*\\bdocker\\s+run\\b.*--volume\\s+/[^:]*:/.*")
+    - name: isDockerHostNetwork
+      # docker run --net=host or --network=host — bypasses network isolation
+      expression: >-
+        request.args.command.matches("(?i).*\\bdocker\\s+run\\b.*(--net(work)?=host)\\b.*")
+    - name: isDockerExecPrivileged
+      # docker exec with --privileged flag
+      expression: >-
+        request.args.command.matches("(?i).*\\bdocker\\s+exec\\b.*--privileged\\b.*")
+    - name: isKubectlExec
+      # kubectl exec into any pod — interactive shell access
+      expression: >-
+        request.args.command.matches("(?i).*\\bkubectl\\s+exec\\b.*")
+    - name: isKubectlDelete
+      # kubectl delete — destructive cluster operations
+      expression: >-
+        request.args.command.matches("(?i).*\\bkubectl\\s+delete\\b.*")
+    - name: isContainerdEscape
+      # crictl exec, ctr run with --privileged — containerd escape vectors
+      expression: >-
+        request.args.command.matches("(?i).*\\bcrictl\\s+exec\\b.*") ||
+        request.args.command.matches("(?i).*\\bctr\\b.*(run|task\\s+exec)\\b.*--privileged\\b.*")
+    - name: isDockerSocketAccess
+      # Accessing the Docker socket directly — grants full Docker daemon control
+      expression: >-
+        request.args.command.matches("(?i).*\\bcurl\\b.*(/var/run/docker\\.sock|/run/docker\\.sock).*") ||
+        request.args.command.matches("(?i).*\\bnc\\b.*-U.*/docker\\.sock.*")
+  validations:
+    - expression: 'isDockerPrivileged'
+      message: "Blocked: --privileged containers grant full host access and are not permitted"
+      action: DENY
+    - expression: 'isDockerHostMount'
+      message: "Blocked: mounting host root or sensitive paths into containers is not permitted"
+      action: DENY
+    - expression: 'isDockerHostNetwork'
+      message: "Blocked: host networking mode bypasses container network isolation"
+      action: DENY
+    - expression: 'isDockerExecPrivileged'
+      message: "Blocked: privileged docker exec is not permitted"
+      action: DENY
+    - expression: 'isKubectlExec'
+      message: "Blocked: kubectl exec into pods is not permitted"
+      action: DENY
+    - expression: 'isKubectlDelete'
+      message: "Blocked: kubectl delete operations are not permitted"
+      action: DENY
+    - expression: 'isContainerdEscape'
+      message: "Blocked: privileged containerd/crictl exec is not permitted"
+      action: DENY
+    - expression: 'isDockerSocketAccess'
+      message: "Blocked: direct Docker socket access grants daemon-level control and is not permitted"
+      action: DENY
+  defaultAction: ALLOW
