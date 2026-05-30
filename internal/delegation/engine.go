@@ -20,7 +20,6 @@ const maxChainDepth = 8
 // If nil, events are logged only.
 type EmitFn func(eventType string, chainID string, reason string)
 
-// Engine validates Ed25519 delegation chains and tracks active chains for TTL expiry.
 type Engine struct {
 	trustedKeys  []ed25519.PublicKey
 	mu           sync.RWMutex

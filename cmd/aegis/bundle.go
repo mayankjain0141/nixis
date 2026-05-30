@@ -70,7 +70,6 @@ func runBundleActivate(cmd *cobra.Command, args []string) error {
 	return activateBundle(cmd, args[0])
 }
 
-// activateBundle parses the bundle at bundlePath, connects to the daemon, and sends a reload trigger.
 func activateBundle(cmd *cobra.Command, bundlePath string) error {
 	// Step 1: parse and validate the bundle.
 	if _, err := os.Stat(bundlePath); err != nil {
@@ -245,13 +244,11 @@ func runBundleRollback(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-// bundleReloadMsg is sent to the daemon to trigger a policy reload.
 type bundleReloadMsg struct {
 	Type    string `json:"type"`
 	BundleP string `json:"bundle_path"`
 }
 
-// sendBundleReload connects to the daemon socket and sends a bundle_reload message.
 func sendBundleReload(bundlePath, sockPath string) error {
 	conn, err := net.DialTimeout("unix", sockPath, 5*time.Second)
 	if err != nil {

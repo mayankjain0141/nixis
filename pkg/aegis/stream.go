@@ -20,7 +20,7 @@ type StreamEvent struct {
 	LatencyNs      int64         // evaluation duration in nanoseconds for decision events; 0 otherwise
 }
 
-// Canonical stream event type constants (15 total — fixed per ADR-011).
+// Canonical stream event type constants (15 total — fixed wire format).
 //
 // Event types:
 //   - decision: tool call evaluated; carries Action, Tool, PolicyID, LatencyNs

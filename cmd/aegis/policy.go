@@ -84,7 +84,6 @@ func runPolicyCost(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// simpleSizeEstimator implements checker.CostEstimator for the CLI cost command.
 type simpleSizeEstimator struct{}
 
 func (simpleSizeEstimator) EstimateSize(_ checker.AstNode) *checker.SizeEstimate {
