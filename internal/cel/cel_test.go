@@ -10,6 +10,7 @@ import (
 	"github.com/mayjain/aegis/internal/cel"
 	"github.com/mayjain/aegis/internal/classify"
 	"github.com/mayjain/aegis/internal/ifc"
+	"github.com/mayjain/aegis/internal/label"
 	aegis "github.com/mayjain/aegis/pkg/aegis"
 	policy_types "github.com/mayjain/aegis/pkg/policy/types"
 )
@@ -117,7 +118,7 @@ func TestCEL_Evaluate_AllowRule(t *testing.T) {
 	}
 	verdict := classify.VerdictEntry{RiskLevel: classify.RiskLow}
 
-	val, err := builder.Evaluate(context.Background(), prog, req, verdict, decodeArgs(t, req.Args))
+	val, err := builder.Evaluate(context.Background(), prog, req, verdict, decodeArgs(t, req.Args), label.LabeledRequest{})
 	if err != nil {
 		t.Fatalf("Evaluate: %v", err)
 	}
@@ -135,7 +136,7 @@ func TestCEL_Evaluate_AllowRule_FalseForOtherTool(t *testing.T) {
 	prog, _ := cache.Get("allow-read")
 	builder := cel.NewActivationBuilder()
 	req := aegis.CheckRequest{Tool: "Bash", Args: argsJSON(t, map[string]any{"command": "ls"}), SessionID: "s"}
-	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{RiskLevel: classify.RiskLow}, decodeArgs(t, req.Args))
+	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{RiskLevel: classify.RiskLow}, decodeArgs(t, req.Args), label.LabeledRequest{})
 	if err != nil {
 		t.Fatalf("Evaluate: %v", err)
 	}
@@ -158,7 +159,7 @@ func TestCEL_Evaluate_DenyRule(t *testing.T) {
 	req := aegis.CheckRequest{Tool: "Bash", Args: argsJSON(t, map[string]any{"command": "rm -rf /"}), SessionID: "s"}
 	verdict := classify.VerdictEntry{RiskLevel: classify.RiskCritical}
 
-	val, err := builder.Evaluate(context.Background(), prog, req, verdict, decodeArgs(t, req.Args))
+	val, err := builder.Evaluate(context.Background(), prog, req, verdict, decodeArgs(t, req.Args), label.LabeledRequest{})
 	if err != nil {
 		t.Fatalf("Evaluate: %v", err)
 	}
@@ -180,7 +181,7 @@ func TestCEL_Evaluate_CustomFunctions(t *testing.T) {
 		prog, _ := cache.Get("dom-true")
 		builder := cel.NewActivationBuilder()
 		req := aegis.CheckRequest{Tool: "Read", SessionID: "s"}
-		val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args))
+		val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{})
 		if err != nil {
 			t.Fatalf("Evaluate: %v", err)
 		}
@@ -197,7 +198,7 @@ func TestCEL_Evaluate_CustomFunctions(t *testing.T) {
 		prog, _ := cache.Get("dom-false")
 		builder := cel.NewActivationBuilder()
 		req := aegis.CheckRequest{Tool: "Read", SessionID: "s"}
-		val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args))
+		val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{})
 		if err != nil {
 			t.Fatalf("Evaluate: %v", err)
 		}
@@ -214,7 +215,7 @@ func TestCEL_Evaluate_CustomFunctions(t *testing.T) {
 		prog, _ := cache.Get("join-list")
 		builder := cel.NewActivationBuilder()
 		req := aegis.CheckRequest{Tool: "Read", SessionID: "s"}
-		val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args))
+		val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{})
 		if err != nil {
 			t.Fatalf("Evaluate: %v", err)
 		}
@@ -346,7 +347,7 @@ func TestCEL_BashTargetPort_LsofPipe(t *testing.T) {
 		Args:      argsJSON(t, map[string]any{"command": "lsof -ti:7474 | xargs kill -9"}),
 		SessionID: "s",
 	}
-	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args))
+	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{})
 	if err != nil {
 		t.Fatalf("Evaluate: %v", err)
 	}
@@ -368,7 +369,7 @@ func TestCEL_BashTargetPort_Subshell(t *testing.T) {
 		Args:      argsJSON(t, map[string]any{"command": "kill -9 $(lsof -ti:5173)"}),
 		SessionID: "s",
 	}
-	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args))
+	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{})
 	if err != nil {
 		t.Fatalf("Evaluate: %v", err)
 	}
@@ -390,7 +391,7 @@ func TestCEL_BashTargetPort_NoPatch(t *testing.T) {
 		Args:      argsJSON(t, map[string]any{"command": "kill -9 12345"}),
 		SessionID: "s",
 	}
-	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args))
+	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{})
 	if err != nil {
 		t.Fatalf("Evaluate: %v", err)
 	}
@@ -412,7 +413,7 @@ func TestCEL_BashTargetUrl_CurlExtraction(t *testing.T) {
 		Args:      argsJSON(t, map[string]any{"command": `curl -H "Authorization: Bearer sk-abc" http://localhost:8000/health`}),
 		SessionID: "s",
 	}
-	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args))
+	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{})
 	if err != nil {
 		t.Fatalf("Evaluate: %v", err)
 	}
@@ -434,7 +435,7 @@ func TestCEL_GitBranchTarget_BranchD(t *testing.T) {
 		Args:      argsJSON(t, map[string]any{"command": "git branch -D feature-x"}),
 		SessionID: "s",
 	}
-	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args))
+	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{})
 	if err != nil {
 		t.Fatalf("Evaluate: %v", err)
 	}
@@ -456,7 +457,7 @@ func TestCEL_GitBranchTarget_PushForce(t *testing.T) {
 		Args:      argsJSON(t, map[string]any{"command": "git push --force origin main"}),
 		SessionID: "s",
 	}
-	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args))
+	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{})
 	if err != nil {
 		t.Fatalf("Evaluate: %v", err)
 	}
@@ -478,7 +479,7 @@ func TestCEL_GitBranchTarget_PlusRefspec(t *testing.T) {
 		Args:      argsJSON(t, map[string]any{"command": "git push origin +main"}),
 		SessionID: "s",
 	}
-	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args))
+	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{})
 	if err != nil {
 		t.Fatalf("Evaluate: %v", err)
 	}
@@ -500,7 +501,7 @@ func TestCEL_GitBranchTarget_ColonDelete(t *testing.T) {
 		Args:      argsJSON(t, map[string]any{"command": "git push origin :main"}),
 		SessionID: "s",
 	}
-	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args))
+	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{})
 	if err != nil {
 		t.Fatalf("Evaluate: %v", err)
 	}
@@ -529,7 +530,7 @@ func TestCEL_GitBranchTarget_HeadRefspec(t *testing.T) {
 			Args:      argsJSON(t, map[string]any{"command": cmd}),
 			SessionID: "s",
 		}
-		val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args))
+		val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{})
 		if err != nil {
 			t.Fatalf("Evaluate(%q): %v", cmd, err)
 		}
@@ -561,7 +562,7 @@ func TestCEL_IsGitForcePush_AllForms(t *testing.T) {
 			Args:      argsJSON(t, map[string]any{"command": cmd}),
 			SessionID: "s",
 		}
-		val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args))
+		val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{})
 		if err != nil {
 			t.Fatalf("Evaluate(%q): %v", cmd, err)
 		}
@@ -592,7 +593,7 @@ func TestCEL_IsGitBranchDelete_AllForms(t *testing.T) {
 			Args:      argsJSON(t, map[string]any{"command": cmd}),
 			SessionID: "s",
 		}
-		val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args))
+		val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{})
 		if err != nil {
 			t.Fatalf("Evaluate(%q): %v", cmd, err)
 		}
@@ -623,7 +624,7 @@ func TestCEL_BranchProtection_CaseInsensitive(t *testing.T) {
 			Args:      argsJSON(t, map[string]any{"command": cmd}),
 			SessionID: "s",
 		}
-		val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args))
+		val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{})
 		if err != nil {
 			t.Fatalf("Evaluate(%q): %v", cmd, err)
 		}
@@ -657,7 +658,7 @@ func TestCEL_FindSearchRoot_AbsolutePath(t *testing.T) {
 		Args:      argsJSON(t, map[string]any{"command": `find ` + searchPath + ` -name "*.env"`}),
 		SessionID: "s",
 	}
-	val, evalErr := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args))
+	val, evalErr := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{})
 	if evalErr != nil {
 		t.Fatalf("Evaluate: %v", evalErr)
 	}
@@ -675,7 +676,7 @@ func TestCEL_PathIsWithinProject_True(t *testing.T) {
 	prog, _ := cache.Get("within-project")
 	builder := cel.NewActivationBuilder()
 	req := aegis.CheckRequest{Tool: "Bash", SessionID: "s"}
-	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args))
+	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{})
 	if err != nil {
 		t.Fatalf("Evaluate: %v", err)
 	}
@@ -693,7 +694,7 @@ func TestCEL_PathIsWithinProject_False(t *testing.T) {
 	prog, _ := cache.Get("not-within")
 	builder := cel.NewActivationBuilder()
 	req := aegis.CheckRequest{Tool: "Bash", SessionID: "s"}
-	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args))
+	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{})
 	if err != nil {
 		t.Fatalf("Evaluate: %v", err)
 	}
@@ -712,7 +713,7 @@ func TestCEL_PathIsWithinProject_Symlink_FailSecure(t *testing.T) {
 	prog, _ := cache.Get("symlink-fail")
 	builder := cel.NewActivationBuilder()
 	req := aegis.CheckRequest{Tool: "Bash", SessionID: "s"}
-	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args))
+	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{})
 	if err != nil {
 		t.Fatalf("Evaluate: %v", err)
 	}
@@ -739,7 +740,7 @@ func TestCEL_BashIsSafeReadOnly(t *testing.T) {
 			Args:      argsJSON(t, map[string]any{"command": cmd}),
 			SessionID: "s",
 		}
-		val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args))
+		val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{})
 		if err != nil {
 			t.Fatalf("Evaluate(%q): %v", cmd, err)
 		}
@@ -764,7 +765,7 @@ func TestCEL_BashExtractTool(t *testing.T) {
 		Args:      argsJSON(t, map[string]any{"command": "git push --force origin main"}),
 		SessionID: "s",
 	}
-	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args))
+	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{})
 	if err != nil {
 		t.Fatalf("Evaluate: %v", err)
 	}
@@ -788,7 +789,7 @@ func TestCEL_BashHasFlag(t *testing.T) {
 		Args:      argsJSON(t, map[string]any{"command": "git push --force origin main"}),
 		SessionID: "s",
 	}
-	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args))
+	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{})
 	if err != nil {
 		t.Fatalf("Evaluate: %v", err)
 	}
@@ -812,7 +813,7 @@ func TestCEL_BashArgCount(t *testing.T) {
 		Args:      argsJSON(t, map[string]any{"command": "git push origin main"}),
 		SessionID: "s",
 	}
-	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args))
+	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{})
 	if err != nil {
 		t.Fatalf("Evaluate: %v", err)
 	}
@@ -842,7 +843,7 @@ func TestCEL_EvalDeterministic(t *testing.T) {
 	decodedArgs := decodeArgs(t, req.Args)
 	var prev string
 	for i := 0; i < 1000; i++ {
-		val, err := builder.Evaluate(context.Background(), prog, req, verdict, decodedArgs)
+		val, err := builder.Evaluate(context.Background(), prog, req, verdict, decodedArgs, label.LabeledRequest{})
 		if err != nil {
 			t.Fatalf("iteration %d: %v", i, err)
 		}
@@ -928,7 +929,7 @@ func TestCEL_FindSearchRoot_NonExistentPath_FailSecure(t *testing.T) {
 		Args:      argsJSON(t, map[string]any{"command": `find /this/path/does/not/exist -name "*.env"`}),
 		SessionID: "s",
 	}
-	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args))
+	val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{})
 	if err != nil {
 		t.Fatalf("Evaluate: %v", err)
 	}
@@ -984,7 +985,7 @@ func TestCEL_LabelJoin_ReturnsCorrectValues(t *testing.T) {
 		if !ok {
 			t.Fatalf("program %q not found", tmpl.ID)
 		}
-		val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args))
+		val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{})
 		if err != nil {
 			t.Fatalf("%s: Evaluate: %v", tmpl.ID, err)
 		}
@@ -1024,7 +1025,7 @@ func TestCEL_SetSessionLabels_ConcurrentSafe(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		go func() {
 			for j := 0; j < 20; j++ {
-				_, _ = builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args))
+				_, _ = builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{})
 			}
 		}()
 	}
@@ -1055,7 +1056,7 @@ func TestCEL_GitBranchTarget_PushNoRefspec(t *testing.T) {
 			Args:      argsJSON(t, map[string]any{"command": cmd}),
 			SessionID: "s",
 		}
-		val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args))
+		val, err := builder.Evaluate(context.Background(), prog, req, classify.VerdictEntry{}, decodeArgs(t, req.Args), label.LabeledRequest{})
 		if err != nil {
 			t.Fatalf("Evaluate(%q): %v", cmd, err)
 		}
