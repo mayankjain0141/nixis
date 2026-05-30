@@ -80,6 +80,10 @@ type sessionData struct {
 	// RWMutex: concurrent reads allowed during sink checks, exclusive on add/prune.
 	rulesMu       sync.RWMutex
 	standingRules []StandingRule
+
+	// === PROJECT ROOT (immutable once set — first non-empty write wins) ===
+	projectRoot     string    // filesystem root of the project; immutable after first set
+	projectRootOnce sync.Once // ensures projectRoot is written exactly once
 }
 
 // SessionLabels is a concurrent-safe registry of per-session IFC labels.
@@ -407,6 +411,28 @@ func (s *SessionLabels) PruneExpiredRules() {
 		}
 		return true
 	})
+}
+
+// SetProjectRoot sets the project root for a session if not already set.
+// Idempotent — only the first call with a non-empty root takes effect.
+// Subsequent calls (including concurrent ones) are no-ops.
+func (s *SessionLabels) SetProjectRoot(sessionID, root string) {
+	if root == "" {
+		return
+	}
+	entry := s.getOrCreate(sessionID)
+	entry.projectRootOnce.Do(func() {
+		entry.projectRoot = root
+	})
+}
+
+// ProjectRoot returns the project root for a session, or empty string if not set.
+func (s *SessionLabels) ProjectRoot(sessionID string) string {
+	v, ok := s.entries.Load(sessionID)
+	if !ok {
+		return ""
+	}
+	return v.(*sessionData).projectRoot
 }
 
 // matchesPattern implements our glob semantics for standing rule matching.

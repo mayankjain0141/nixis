@@ -49,7 +49,7 @@ func BenchmarkCEL_EvalSimple(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, _ = builder.Evaluate(context.Background(), prog, req, verdict, decodedArgs, label.LabeledRequest{})
+		_, _ = builder.Evaluate(context.Background(), prog, req, verdict, decodedArgs, label.LabeledRequest{}, "")
 	}
 }
 
@@ -97,6 +97,6 @@ func BenchmarkCEL_EvalComplex(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, _ = builder.Evaluate(context.Background(), prog, req, verdict, decodedArgs, label.LabeledRequest{})
+		_, _ = builder.Evaluate(context.Background(), prog, req, verdict, decodedArgs, label.LabeledRequest{}, "")
 	}
 }
