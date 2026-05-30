@@ -1,0 +1,187 @@
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: block-docker-data-destruction
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Block Docker/Podman/Compose data destruction: volume prune, system prune --volumes, container rm -v, kubectl PVC/secret/namespace delete"
+  matchConstraints:
+    tools: ["Bash"]
+  variables:
+    - name: isDockerSystemPruneWithVolumes
+      # docker system prune --volumes — removes all stopped containers, networks, images, AND volumes
+      expression: >-
+        request.args.command.matches("(?i).*\\bdocker\\s+system\\s+prune\\b.*--volumes\\b.*")
+    - name: isDockerVolumePrune
+      # docker volume prune — removes all unused local volumes
+      expression: >-
+        request.args.command.matches("(?i).*\\bdocker\\s+volume\\s+prune\\b.*")
+    - name: isDockerVolumeRm
+      # docker volume rm <name> — removes a named volume
+      expression: >-
+        request.args.command.matches("(?i).*\\bdocker\\s+volume\\s+rm\\b.*")
+    - name: isDockerContainerPrune
+      # docker container prune — removes all stopped containers (may include those with anonymous volumes)
+      expression: >-
+        request.args.command.matches("(?i).*\\bdocker\\s+container\\s+prune\\b.*")
+    - name: isDockerImagePruneAll
+      # docker image prune -a / --all — removes ALL unused images, not just dangling ones
+      expression: >-
+        request.args.command.matches("(?i).*\\bdocker\\s+image\\s+prune\\b.*(-a|--all)\\b.*")
+    - name: isDockerBuilderPruneAll
+      # docker builder prune --all — removes all build cache entries
+      expression: >-
+        request.args.command.matches("(?i).*\\bdocker\\s+builder\\s+prune\\b.*--all\\b.*")
+    - name: isDockerRmWithVolumes
+      # docker rm -v / --volumes — removes container AND its anonymous volumes
+      expression: >-
+        request.args.command.matches("(?i).*\\bdocker\\s+rm\\b.*(-v|--volumes)\\b.*")
+    - name: isDockerComposeDownRmi
+      # docker compose down --rmi all / --rmi local — removes service images on teardown
+      expression: >-
+        request.args.command.matches("(?i).*\\bdocker[- ]compose\\s+down\\b.*--rmi\\s+(all|local)\\b.*") ||
+        request.args.command.matches("(?i).*\\bdocker\\s+compose\\s+down\\b.*--rmi\\s+(all|local)\\b.*")
+    - name: isDockerComposeRmForce
+      # docker-compose rm -f / docker compose rm --force — force-removes stopped containers
+      # docker compose rm --force --stop -v — also removes associated volumes
+      expression: >-
+        request.args.command.matches("(?i).*\\bdocker[- ]compose\\s+rm\\b.*(-f|--force)\\b.*") ||
+        request.args.command.matches("(?i).*\\bdocker\\s+compose\\s+rm\\b.*(-f|--force)\\b.*")
+    - name: isDockerComposeDownVolumes
+      # docker compose down -v / --volumes — removes named volumes declared in the compose file
+      expression: >-
+        request.args.command.matches("(?i).*\\bdocker[- ]compose\\s+down\\b.*(-v|--volumes)\\b.*") ||
+        request.args.command.matches("(?i).*\\bdocker\\s+compose\\s+down\\b.*(-v|--volumes)\\b.*")
+    - name: isPodmanSystemPrune
+      # podman system prune -af — removes all unused podman objects (all + force)
+      expression: >-
+        request.args.command.matches("(?i).*\\bpodman\\s+system\\s+prune\\b.*")
+    - name: isPodmanVolumePrune
+      # podman volume prune — removes all unused podman volumes
+      expression: >-
+        request.args.command.matches("(?i).*\\bpodman\\s+volume\\s+prune\\b.*")
+    - name: isPodmanVolumeRm
+      # podman volume rm <name> — removes a named podman volume
+      expression: >-
+        request.args.command.matches("(?i).*\\bpodman\\s+volume\\s+rm\\b.*")
+    - name: isPodmanNetworkRm
+      # podman network rm <name> — removes a podman network (may orphan container data)
+      expression: >-
+        request.args.command.matches("(?i).*\\bpodman\\s+network\\s+rm\\b.*")
+    - name: isPodmanPodRmAll
+      # podman pod rm --all — removes all pods and their containers
+      expression: >-
+        request.args.command.matches("(?i).*\\bpodman\\s+pod\\s+rm\\b.*--all\\b.*")
+    - name: isPodmanComposeDown
+      # podman-compose down -v — removes containers and associated volumes
+      expression: >-
+        request.args.command.matches("(?i).*\\bpodman[- ]compose\\s+down\\b.*(-v|--volumes)\\b.*")
+    - name: isKubectlDeletePvc
+      # kubectl delete pvc <name> — deletes Persistent Volume Claim, causing data loss
+      expression: >-
+        request.args.command.matches("(?i).*\\bkubectl\\s+delete\\s+pvc\\b.*")
+    - name: isKubectlDeletePv
+      # kubectl delete pv <name> — deletes Persistent Volume, causing data loss
+      expression: >-
+        request.args.command.matches("(?i).*\\bkubectl\\s+delete\\s+pv\\b.*")
+    - name: isKubectlDeleteSecret
+      # kubectl delete secret <name> — deletes Kubernetes secret (credentials/keys lost)
+      expression: >-
+        request.args.command.matches("(?i).*\\bkubectl\\s+delete\\s+secret\\b.*")
+    - name: isKubectlDeleteConfigmap
+      # kubectl delete configmap <name> — deletes configuration data
+      expression: >-
+        request.args.command.matches("(?i).*\\bkubectl\\s+delete\\s+configmap\\b.*")
+    - name: isKubectlDeleteNamespace
+      # kubectl delete namespace <name> — deletes namespace and ALL resources inside it
+      expression: >-
+        request.args.command.matches("(?i).*\\bkubectl\\s+delete\\s+namespace\\b.*") ||
+        request.args.command.matches("(?i).*\\bkubectl\\s+delete\\s+ns\\b.*")
+    - name: isKubectlDeleteAll
+      # kubectl delete --all — deletes all resources of a given type in a namespace
+      expression: >-
+        request.args.command.matches("(?i).*\\bkubectl\\s+delete\\b.*--all\\b.*")
+    - name: isCraneDelete
+      # crane delete — removes images from container registries (Google crane tool)
+      expression: >-
+        request.args.command.matches("(?i).*\\bcrane\\s+delete\\b.*")
+    - name: isEcrBatchDeleteImage
+      # aws ecr batch-delete-image — bulk-deletes images from AWS ECR
+      expression: >-
+        request.args.command.matches("(?i).*\\baws\\s+ecr\\s+batch-delete-image\\b.*")
+  validations:
+    - expression: 'isDockerSystemPruneWithVolumes'
+      message: "Blocked: docker system prune --volumes removes ALL volumes, networks, images, and containers — irreversible data loss"
+      action: REQUIRE_APPROVAL
+    - expression: 'isDockerVolumePrune'
+      message: "Blocked: docker volume prune removes all unused volumes — irreversible data loss"
+      action: REQUIRE_APPROVAL
+    - expression: 'isDockerVolumeRm'
+      message: "Blocked: docker volume rm destroys named volume data permanently"
+      action: REQUIRE_APPROVAL
+    - expression: 'isDockerContainerPrune'
+      message: "Blocked: docker container prune removes all stopped containers including those with anonymous volumes"
+      action: REQUIRE_APPROVAL
+    - expression: 'isDockerImagePruneAll'
+      message: "Blocked: docker image prune --all removes all unused images (not just dangling) — large re-download required"
+      action: REQUIRE_APPROVAL
+    - expression: 'isDockerBuilderPruneAll'
+      message: "Blocked: docker builder prune --all removes all build cache — forces full rebuild"
+      action: REQUIRE_APPROVAL
+    - expression: 'isDockerRmWithVolumes'
+      message: "Blocked: docker rm -v/--volumes removes the container AND its anonymous volumes — data cannot be recovered"
+      action: REQUIRE_APPROVAL
+    - expression: 'isDockerComposeDownRmi'
+      message: "Blocked: docker compose down --rmi removes service images — requires re-pull or rebuild"
+      action: REQUIRE_APPROVAL
+    - expression: 'isDockerComposeRmForce'
+      message: "Blocked: docker compose rm --force removes stopped service containers; with -v also destroys volumes"
+      action: REQUIRE_APPROVAL
+    - expression: 'isDockerComposeDownVolumes'
+      message: "Blocked: docker compose down -v/--volumes destroys all named volumes declared in the compose file"
+      action: REQUIRE_APPROVAL
+    - expression: 'isPodmanSystemPrune'
+      message: "Blocked: podman system prune removes all unused podman objects — irreversible"
+      action: REQUIRE_APPROVAL
+    - expression: 'isPodmanVolumePrune'
+      message: "Blocked: podman volume prune removes all unused volumes — irreversible data loss"
+      action: REQUIRE_APPROVAL
+    - expression: 'isPodmanVolumeRm'
+      message: "Blocked: podman volume rm destroys a named volume permanently"
+      action: REQUIRE_APPROVAL
+    - expression: 'isPodmanNetworkRm'
+      message: "Blocked: podman network rm removes a network, potentially orphaning containers"
+      action: REQUIRE_APPROVAL
+    - expression: 'isPodmanPodRmAll'
+      message: "Blocked: podman pod rm --all removes all pods and their containers"
+      action: REQUIRE_APPROVAL
+    - expression: 'isPodmanComposeDown'
+      message: "Blocked: podman-compose down -v destroys containers and associated volumes"
+      action: REQUIRE_APPROVAL
+    - expression: 'isKubectlDeletePvc'
+      message: "Blocked: kubectl delete pvc destroys the Persistent Volume Claim and may cause immediate data loss"
+      action: REQUIRE_APPROVAL
+    - expression: 'isKubectlDeletePv'
+      message: "Blocked: kubectl delete pv destroys the Persistent Volume — data may be unrecoverable"
+      action: REQUIRE_APPROVAL
+    - expression: 'isKubectlDeleteSecret'
+      message: "Blocked: kubectl delete secret removes credentials or keys; recovery requires re-issuing secrets"
+      action: REQUIRE_APPROVAL
+    - expression: 'isKubectlDeleteConfigmap'
+      message: "Blocked: kubectl delete configmap removes application configuration — service disruption risk"
+      action: REQUIRE_APPROVAL
+    - expression: 'isKubectlDeleteNamespace'
+      message: "Blocked: kubectl delete namespace removes the namespace AND all resources inside it — irreversible mass deletion"
+      action: REQUIRE_APPROVAL
+    - expression: 'isKubectlDeleteAll'
+      message: "Blocked: kubectl delete --all deletes all resources of the specified type — requires explicit human approval"
+      action: REQUIRE_APPROVAL
+    - expression: 'isCraneDelete'
+      message: "Blocked: crane delete removes images from container registries — requires human approval"
+      action: REQUIRE_APPROVAL
+    - expression: 'isEcrBatchDeleteImage'
+      message: "Blocked: aws ecr batch-delete-image bulk-deletes ECR images — irreversible registry data loss"
+      action: REQUIRE_APPROVAL
+  defaultAction: ALLOW
