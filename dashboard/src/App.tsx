@@ -492,7 +492,6 @@ export default function App() {
         // Daemon is reachable — use live evaluation
         mockGenRef.current?.stop();
         mockGenRef.current = null;
-        useStreamStore.getState().setConnectionState('CONNECTING');
         const cancel = runLiveDemoScenario(apiBase, (err) => console.error('demo error:', err));
         mockGenRef.current = { stop: cancel };
       })
