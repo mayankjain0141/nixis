@@ -1,14 +1,16 @@
-import { useRef, useEffect, useState, useCallback } from 'react';
-import { useGovernanceStore } from '../../stores/governance-store';
+import { useEffect, useState, useCallback } from 'react';
+import type { CSSProperties } from 'react';
+import { List, useListRef } from 'react-window';
+import type { RowComponentProps } from 'react-window';
+import { useGovernanceStore, type GovernanceEvent } from '../../stores/governance-store';
 import { useUIStore } from '../../stores/ui-store';
-
-const MAX_VISIBLE = 25;
 
 const VERDICT_STYLE: Record<string, { bg: string; color: string; label: string }> = {
   deny:             { bg: 'var(--deny)',         color: '#fff',     label: 'DENY' },
   allow:            { bg: 'var(--allow)',         color: '#fff',     label: 'ALLOW' },
   require_approval: { bg: 'var(--escalate)',      color: '#1a1a1a', label: 'APPR' },
   audit:            { bg: 'var(--audit-purple)',  color: '#fff',     label: 'AUDIT' },
+  fail_open:        { bg: '#d29922',              color: '#1a1a1a', label: 'OPEN' },
 };
 
 function formatLatency(ns: number): string {
@@ -23,70 +25,206 @@ function formatAgo(ts: number): string {
   return `${Math.floor(sec / 60)}m`;
 }
 
+interface RowData {
+  filtered: GovernanceEvent[];
+  inspectorTarget: string | null;
+  openInspector: (id: string) => void;
+}
+
+type EventRowProps = RowComponentProps<RowData>;
+
+function EventRow({ ariaAttributes, index, style, filtered, inspectorTarget, openInspector }: EventRowProps) {
+  const event = filtered[index];
+  if (!event) return null;
+
+  const verdictStyle = VERDICT_STYLE[event.verdict] ?? { bg: '#6e7681', color: '#fff', label: event.verdict.toUpperCase() };
+  const isSelected = event.id === inspectorTarget;
+  const requestArgs = event.requestArgs;
+  const hasArgs = Boolean(requestArgs);
+
+  return (
+    <div {...ariaAttributes} style={style}>
+      <div
+        data-verdict={event.verdict}
+        onClick={() => openInspector(event.id)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          minHeight: hasArgs ? 52 : 36,
+          borderBottom: '1px solid #21262d',
+          borderLeft: isSelected ? '2px solid var(--info-blue, #58a6ff)' : '2px solid transparent',
+          background: isSelected ? '#1f2937' : undefined,
+          padding: '0 8px',
+          gap: 8,
+          cursor: 'pointer',
+          boxSizing: 'border-box',
+        }}
+        onMouseEnter={(e) => {
+          if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = '#161b22';
+        }}
+        onMouseLeave={(e) => {
+          if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = '';
+        }}
+      >
+        {/* Verdict badge */}
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            useGovernanceStore.getState().setFilterVerdict(event.verdict);
+          }}
+          style={{
+            width: 52,
+            flexShrink: 0,
+            background: verdictStyle.bg,
+            color: verdictStyle.color,
+            borderRadius: 4,
+            fontSize: 10,
+            fontWeight: 700,
+            textAlign: 'center',
+            padding: '2px 0',
+            letterSpacing: '0.04em',
+            alignSelf: 'center',
+            cursor: 'pointer',
+          }}
+        >
+          {verdictStyle.label}
+        </div>
+
+        {/* Tool + command stacked */}
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2 }}>
+          <div style={{
+            fontFamily: 'monospace', fontSize: 12, color: '#e6edf3',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {event.tool}
+          </div>
+          {hasArgs && (
+            <div style={{
+              fontFamily: 'monospace', fontSize: 11,
+              color: event.verdict === 'deny' ? 'var(--deny, #cf222e)' : '#8b949e',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {requestArgs}
+            </div>
+          )}
+        </div>
+
+        {/* Session (last 8 chars) */}
+        <div style={{
+          width: 72,
+          flexShrink: 0,
+          fontFamily: 'monospace',
+          fontSize: 11,
+          color: '#8b949e',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          alignSelf: 'center',
+        }}>
+          {event.sessionId.slice(-8)}
+        </div>
+
+        {/* Policy */}
+        <div style={{
+          width: 120,
+          flexShrink: 0,
+          fontSize: 11,
+          color: '#8b949e',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          alignSelf: 'center',
+        }}>
+          {(event.policyId ?? '').replace(/^aegis\/|^gatekeeper\/|^falco\/|^kyverno\/|^agentwall\/|^sigma\/|^catalog\//, '')}
+        </div>
+
+        {/* Latency */}
+        <div style={{
+          width: 60,
+          flexShrink: 0,
+          fontSize: 11,
+          color: '#8b949e',
+          textAlign: 'right',
+        }}>
+          {formatLatency(event.latencyNs)}
+        </div>
+
+        {/* Time */}
+        <div style={{
+          width: 48,
+          flexShrink: 0,
+          fontSize: 11,
+          color: '#8b949e',
+          textAlign: 'right',
+        }}>
+          {formatAgo(event.timestamp)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function EventStreamList() {
   const events = useGovernanceStore((s) => s.events);
   const filterVerdict = useGovernanceStore((s) => s.filterVerdict);
+  const filterSession = useGovernanceStore((s) => s.filterSession);
+  const filterPolicy = useGovernanceStore((s) => s.filterPolicy);
   const inspectorTarget = useUIStore((s) => s.inspectorTarget);
   const openInspector = useUIStore((s) => s.openInspector);
   const isPaused = useUIStore((s) => s.isPaused);
   const togglePause = useUIStore((s) => s.togglePause);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const isUserScrolled = useRef(false);
+  const listRef = useListRef(null);
+  const isUserScrolledRef = { current: false };
   const [showNewBadge, setShowNewBadge] = useState(false);
 
-  const filtered = filterVerdict ? events.filter(e => e.verdict === filterVerdict) : events;
-  const visible = filtered.slice(-MAX_VISIBLE);
+  let filtered = filterVerdict ? events.filter(e => e.verdict === filterVerdict) : [...events];
+  if (filterSession) filtered = filtered.filter(e => e.sessionId === filterSession);
+  if (filterPolicy) filtered = filtered.filter(e => e.policyId === filterPolicy);
 
-  const handleScroll = useCallback(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 20;
-    if (atBottom) {
-      isUserScrolled.current = false;
-      setShowNewBadge(false);
-    } else {
-      isUserScrolled.current = true;
-    }
-  }, []);
+  const getRowHeight = (index: number, _rowProps: RowData): number =>
+    (filtered[index]?.requestArgs ? 52 : 36);
 
   useEffect(() => {
     if (isPaused) {
       setShowNewBadge(true);
       return;
     }
-    if (!isUserScrolled.current) {
-      bottomRef.current?.scrollIntoView({ behavior: 'instant' });
+    if (!isUserScrolledRef.current) {
+      listRef.current?.scrollToRow({ index: filtered.length - 1, align: 'end' });
       setShowNewBadge(false);
     } else {
       setShowNewBadge(true);
     }
-  }, [visible, isPaused]);
+  }, [filtered.length, isPaused]);
 
   const scrollToBottom = useCallback(() => {
-    isUserScrolled.current = false;
+    isUserScrolledRef.current = false;
     setShowNewBadge(false);
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, []);
+    listRef.current?.scrollToRow({ index: filtered.length - 1, align: 'end' });
+  }, [filtered.length]);
 
   useEffect(() => {
     function handleScrollToBottom() {
-      isUserScrolled.current = false;
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      isUserScrolledRef.current = false;
       setShowNewBadge(false);
+      listRef.current?.scrollToRow({ index: filtered.length - 1, align: 'end' });
     }
     window.addEventListener('aegis:scroll-to-bottom', handleScrollToBottom);
     return () => window.removeEventListener('aegis:scroll-to-bottom', handleScrollToBottom);
-  }, []);
+  }, [filtered.length]);
 
-  if (visible.length === 0) {
+  if (filtered.length === 0) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#8b949e', fontSize: 13 }}>
         Waiting for events…
       </div>
     );
   }
+
+  const rowData: RowData = { filtered, inspectorTarget, openInspector };
+
+  const listStyle: CSSProperties = { flex: 1, background: '#0d1117' };
 
   return (
     <div aria-label="Live event stream" style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -100,6 +238,38 @@ export function EventStreamList() {
           <span>Filtering: {filterVerdict.toUpperCase()} — {filtered.length} events</span>
           <button
             onClick={() => useGovernanceStore.getState().setFilterVerdict(null)}
+            style={{ background: 'none', border: 'none', color: 'var(--info-blue)', cursor: 'pointer', fontSize: 11 }}
+          >
+            ✕ clear
+          </button>
+        </div>
+      )}
+      {filterSession && (
+        <div style={{
+          padding: '4px 12px', background: 'rgba(88,166,255,0.1)',
+          borderBottom: '1px solid rgba(88,166,255,0.2)',
+          fontSize: 11, color: 'var(--info-blue)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <span>Session: …{filterSession.slice(-8)} — {filtered.length} events</span>
+          <button
+            onClick={() => useGovernanceStore.getState().setFilterSession(null)}
+            style={{ background: 'none', border: 'none', color: 'var(--info-blue)', cursor: 'pointer', fontSize: 11 }}
+          >
+            ✕ clear
+          </button>
+        </div>
+      )}
+      {filterPolicy && (
+        <div style={{
+          padding: '4px 12px', background: 'rgba(88,166,255,0.1)',
+          borderBottom: '1px solid rgba(88,166,255,0.2)',
+          fontSize: 11, color: 'var(--info-blue)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <span>Policy: {filterPolicy.replace(/^aegis\/|^gatekeeper\/|^falco\/|^kyverno\/|^agentwall\/|^sigma\/|^catalog\//, '')} — {filtered.length} events</span>
+          <button
+            onClick={() => useGovernanceStore.getState().setFilterPolicy(null)}
             style={{ background: 'none', border: 'none', color: 'var(--info-blue)', cursor: 'pointer', fontSize: 11 }}
           >
             ✕ clear
@@ -126,137 +296,24 @@ export function EventStreamList() {
           </button>
         </div>
       )}
-      <div
-        ref={containerRef}
-        onScroll={handleScroll}
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          background: '#0d1117',
+      <List
+        listRef={listRef}
+        rowComponent={EventRow}
+        rowCount={filtered.length}
+        rowHeight={getRowHeight}
+        rowProps={rowData}
+        overscanCount={5}
+        style={listStyle}
+        onRowsRendered={(visibleRows) => {
+          const atBottom = visibleRows.stopIndex >= filtered.length - 2;
+          if (atBottom) {
+            isUserScrolledRef.current = false;
+            setShowNewBadge(false);
+          } else {
+            isUserScrolledRef.current = true;
+          }
         }}
-      >
-        {visible.map((event) => {
-          const verdictStyle = VERDICT_STYLE[event.verdict] ?? { bg: '#6e7681', color: '#fff', label: event.verdict.toUpperCase() };
-          const isSelected = event.id === inspectorTarget;
-
-          const requestArgs = event.requestArgs;
-          const hasArgs = Boolean(requestArgs);
-
-          return (
-            <div
-              key={event.id}
-              data-verdict={event.verdict}
-              onClick={() => openInspector(event.id)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                minHeight: hasArgs ? 52 : 36,
-                borderBottom: '1px solid #21262d',
-                borderLeft: isSelected ? '2px solid var(--info-blue, #58a6ff)' : '2px solid transparent',
-                background: isSelected ? '#1f2937' : undefined,
-                padding: '0 8px',
-                gap: 8,
-                cursor: 'pointer',
-                boxSizing: 'border-box',
-              }}
-              onMouseEnter={(e) => {
-                if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = '#161b22';
-              }}
-              onMouseLeave={(e) => {
-                if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = '';
-              }}
-            >
-              {/* Verdict badge */}
-              <div style={{
-                width: 52,
-                flexShrink: 0,
-                background: verdictStyle.bg,
-                color: verdictStyle.color,
-                borderRadius: 4,
-                fontSize: 10,
-                fontWeight: 700,
-                textAlign: 'center',
-                padding: '2px 0',
-                letterSpacing: '0.04em',
-                alignSelf: 'center',
-              }}>
-                {verdictStyle.label}
-              </div>
-
-              {/* Tool + command stacked */}
-              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2 }}>
-                <div style={{
-                  fontFamily: 'monospace', fontSize: 12, color: '#e6edf3',
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>
-                  {event.tool}
-                </div>
-                {hasArgs && (
-                  <div style={{
-                    fontFamily: 'monospace', fontSize: 11,
-                    color: event.verdict === 'deny' ? 'var(--deny, #cf222e)' : '#8b949e',
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  }}>
-                    {requestArgs}
-                  </div>
-                )}
-              </div>
-
-              {/* Session (last 8 chars) */}
-              <div style={{
-                width: 72,
-                flexShrink: 0,
-                fontFamily: 'monospace',
-                fontSize: 11,
-                color: '#8b949e',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                alignSelf: 'center',
-              }}>
-                {event.sessionId.slice(-8)}
-              </div>
-
-              {/* Policy */}
-              <div style={{
-                width: 120,
-                flexShrink: 0,
-                fontSize: 11,
-                color: '#8b949e',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                alignSelf: 'center',
-              }}>
-                {(event.policyId ?? '').replace(/^aegis\/|^gatekeeper\/|^falco\/|^kyverno\/|^agentwall\/|^sigma\/|^catalog\//, '')}
-              </div>
-
-              {/* Latency */}
-              <div style={{
-                width: 60,
-                flexShrink: 0,
-                fontSize: 11,
-                color: '#8b949e',
-                textAlign: 'right',
-              }}>
-                {formatLatency(event.latencyNs)}
-              </div>
-
-              {/* Time */}
-              <div style={{
-                width: 48,
-                flexShrink: 0,
-                fontSize: 11,
-                color: '#8b949e',
-                textAlign: 'right',
-              }}>
-                {formatAgo(event.timestamp)}
-              </div>
-            </div>
-          );
-        })}
-        <div ref={bottomRef} />
-      </div>
+      />
 
       {showNewBadge && (
         <div
