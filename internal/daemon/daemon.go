@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -34,9 +35,10 @@ type Daemon struct {
 	engine      aegis.Engine
 	auditWriter *audit.Writer
 	listener    net.Listener
-	streamSrv   aegis.StreamTap    // nil disables streaming
-	sessions    *ifc.SessionLabels // nil disables session label persistence
-	delegAPI    *DelegationAPI     // nil disables delegation HTTP endpoints
+	streamSrv    aegis.StreamTap    // nil disables streaming
+	sessions     *ifc.SessionLabels // nil disables session label persistence
+	delegAPI     *DelegationAPI     // nil disables delegation HTTP endpoints
+	taintHistory *ifc.TaintHistory  // nil disables taint history pruning
 
 	// mode tracks the current operational mode (normal, degraded, deny_all, read_only).
 	mode modeState
@@ -136,6 +138,9 @@ func (d *Daemon) Run(ctx context.Context) error {
 
 	// Start the /healthz endpoint.
 	go d.serveHealthz(ctx)
+
+	// Start periodic maintenance: prune expired standing rules and taint history.
+	go d.runMaintenanceLoop(ctx)
 
 	// Accept loop in a background goroutine — returns when listener is closed.
 	acceptDone := make(chan struct{})
@@ -258,6 +263,38 @@ func (d *Daemon) SetDelegationEngine(engine *delegation.Engine) {
 	d.delegAPI = NewDelegationAPI(engine)
 }
 
+// SetTaintHistory wires a TaintHistory into the daemon for periodic pruning.
+func (d *Daemon) SetTaintHistory(h *ifc.TaintHistory) {
+	d.taintHistory = h
+}
+
+// runMaintenanceLoop runs periodic cleanup tasks:
+// - Prune expired standing rules from all sessions every 5 minutes
+// - Prune old taint history records older than 7 days every hour
+func (d *Daemon) runMaintenanceLoop(ctx context.Context) {
+	ruleTicker := time.NewTicker(5 * time.Minute)
+	historyTicker := time.NewTicker(1 * time.Hour)
+	defer ruleTicker.Stop()
+	defer historyTicker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ruleTicker.C:
+			if d.sessions != nil {
+				d.sessions.PruneExpiredRules()
+			}
+		case <-historyTicker.C:
+			if d.taintHistory != nil {
+				if _, err := d.taintHistory.PruneOlderThan(7 * 24 * time.Hour); err != nil {
+					log.Printf("WARN: taint history prune failed: %v", err)
+				}
+			}
+		}
+	}
+}
+
 // HealthResponse is the structured JSON response for /healthz.
 type HealthResponse struct {
 	Status      string  `json:"status"`                // "healthy", "degraded", "unhealthy"
@@ -285,6 +322,7 @@ func (d *Daemon) serveHealthz(ctx context.Context) {
 	if d.delegAPI != nil {
 		d.delegAPI.RegisterRoutes(mux)
 	}
+	d.registerApprovalRoutes(mux)
 	srv := &http.Server{
 		Addr:         d.cfg.HealthzAddr,
 		Handler:      mux,
