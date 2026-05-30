@@ -9,6 +9,7 @@ import struct
 import sys
 import threading
 import time
+import uuid
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
@@ -65,10 +66,13 @@ def _eval_case(sock_path: str, case: dict, timeout_s: float) -> dict:
     """Evaluate one test case. Thread-safe — no shared mutable state."""
     case_id  = case.get("id", "UNKNOWN")
     desc     = case.get("description", "")
-    request  = case.get("request", {})
+    request  = dict(case.get("request", {}))
     expected = case.get("expected_decision", "deny")
     exp_layer = case.get("expected_layer")
     category = case.get("category", "")
+
+    # Unique session per case prevents taint bleed when cases share session IDs in JSONL.
+    request["session_id"] = f"eval-{case_id}-{uuid.uuid4().hex[:8]}"
 
     try:
         response, latency_ms = _send_recv(sock_path, request, timeout_s)
