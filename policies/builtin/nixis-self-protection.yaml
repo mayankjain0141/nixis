@@ -1,0 +1,85 @@
+# Layer 1 (CEL) self-protection policy — defense-in-depth complement to the
+# hardcoded SelfProtectGuard (Layer 2) in internal/policy/selfprotect.go.
+#
+# This policy is evaluated by the CEL engine as a normal policy. Even if the
+# hardcoded guard is somehow bypassed (e.g., future refactor removes it), this
+# CEL policy provides independent coverage.
+#
+# The hardcoded guard is Layer 2 — it runs BEFORE CEL and cannot be disabled
+# by editing YAML. This YAML is Layer 1 — it enforces the same rules via CEL
+# and is additionally useful for audit logging and policy transparency.
+#
+# Behavior:
+#   Write("~/.nixis/policies/...")     → DENY
+#   Write("~/.claude/settings.json")   → DENY
+#   Shell("kill $(pgrep nixis)")       → DENY
+#   Shell("rm -rf ~/.nixis/")          → DENY
+#   Shell("launchctl bootout ...")     → DENY
+#   Shell("nixis daemon stop")         → DENY
+#   Shell("ls -la ~/.nixis/")          → ALLOW
+#   Write("/tmp/foo.txt")              → ALLOW
+
+apiVersion: nixis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: nixis-self-protection
+  annotations:
+    nixis.io/default-enabled: "true"
+    nixis.io/bundle: builtin
+    nixis.io/layer: "self-protection"
+spec:
+  description: "Prevent AI agents from modifying Nixis governance configuration"
+  matchConstraints:
+    tools: ["Write", "Edit", "StrReplace", "MultiEdit", "Delete", "Shell", "Bash", "Terminal"]
+  variables:
+    - name: isWriteToNixisPath
+      expression: >-
+        (has(args.path) && (
+          args.path.matches("(?i)(\\.nixis/|\\.nixis$)") ||
+          args.path.matches("(?i)\\.claude/settings\\.json$")
+        ))
+    - name: isWriteToNixisFilePath
+      expression: >-
+        (has(args.file_path) && (
+          args.file_path.matches("(?i)(\\.nixis/|\\.nixis$)") ||
+          args.file_path.matches("(?i)\\.claude/settings\\.json$")
+        ))
+    - name: isWriteToNixisTarget
+      expression: >-
+        (has(args.target_file) && (
+          args.target_file.matches("(?i)(\\.nixis/|\\.nixis$)") ||
+          args.target_file.matches("(?i)\\.claude/settings\\.json$")
+        ))
+    - name: isShellKillNixis
+      expression: >-
+        has(args.command) && args.command.matches("(?i)(kill|pkill|killall).*nixis")
+    - name: isShellLaunchctlNixis
+      expression: >-
+        has(args.command) && args.command.matches("(?i)launchctl.*(bootout|remove|unload).*nixis")
+    - name: isShellSystemctlNixis
+      expression: >-
+        has(args.command) && args.command.matches("(?i)systemctl.*(stop|disable|mask).*nixis")
+    - name: isShellRmNixis
+      expression: >-
+        has(args.command) && args.command.matches("(?i)(rm|mv|chmod|chown).*[/.]nixis")
+    - name: isShellCliNixis
+      expression: >-
+        has(args.command) && args.command.matches("(?i)nixis.*(daemon|setup).*(stop|restart|uninstall|remove)")
+    - name: isShellRedirectNixis
+      expression: >-
+        has(args.command) && args.command.matches("(?i)(echo|cat|tee|sed|awk).*>.*[/.]nixis")
+    - name: isShellCrontabNixis
+      expression: >-
+        has(args.command) && args.command.matches("(?i)crontab.*nixis")
+    - name: isShellTargetingNixis
+      expression: >-
+        isShellKillNixis || isShellLaunchctlNixis || isShellSystemctlNixis ||
+        isShellRmNixis || isShellCliNixis || isShellRedirectNixis || isShellCrontabNixis
+  validations:
+    - expression: 'isWriteToNixisPath || isWriteToNixisFilePath || isWriteToNixisTarget'
+      message: "Nixis self-protection: agents cannot modify governance files. Edit ~/.nixis/policies/custom/ directly in your terminal."
+      action: DENY
+    - expression: 'isShellTargetingNixis'
+      message: "Nixis self-protection: agents cannot manage the Nixis daemon. Run nixis commands in your own terminal."
+      action: DENY
+  defaultAction: ALLOW
