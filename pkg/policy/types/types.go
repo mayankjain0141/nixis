@@ -6,9 +6,10 @@ type PolicyTemplate struct {
 	ID          string
 	Name        string
 	Description string
-	Expression  string // CEL expression
-	SourceFile  string // policy source file path for policySourceLocation in CheckResponse
-	SourceLine  int    // policy source line number
+	Expression  string         // CEL expression
+	Params      map[string]any // resolved param values (defaults applied at parse time)
+	SourceFile  string         // policy source file path for policySourceLocation in CheckResponse
+	SourceLine  int            // policy source line number
 }
 
 // PolicyBinding binds a template to a scope.

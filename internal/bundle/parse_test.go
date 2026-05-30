@@ -474,3 +474,160 @@ spec:
 		t.Errorf("expected 1 binding, got %d", len(bindings))
 	}
 }
+
+// TestParsePolicyFile_Params_ExtractsDefaults verifies that a policy with a params:
+// section has its defaults resolved and stored in PolicyTemplate.Params.
+func TestParsePolicyFile_Params_ExtractsDefaults(t *testing.T) {
+	content := `apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: params-policy
+spec:
+  description: "Policy with params"
+  matchConstraints:
+    tools: ["Bash"]
+  validations:
+    - expression: '!(targetPort in params.devPorts) && targetPort > 0'
+      message: 'requires approval'
+      action: REQUIRE_APPROVAL
+  defaultAction: AUDIT
+  params:
+    devPorts:
+      type: array
+      default: [3000, 5173, 8080]
+`
+	dir := t.TempDir()
+	path := filepath.Join(dir, "params-policy.yaml")
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	tmpl, _, err := ParsePolicyFile(path)
+	if err != nil {
+		t.Fatalf("ParsePolicyFile: %v", err)
+	}
+	if tmpl == nil {
+		t.Fatal("expected non-nil template")
+	}
+	if tmpl.Params == nil {
+		t.Fatal("expected non-nil Params, got nil")
+	}
+	devPorts, ok := tmpl.Params["devPorts"]
+	if !ok {
+		t.Fatal("expected devPorts in Params")
+	}
+	ports, ok := devPorts.([]any)
+	if !ok {
+		t.Fatalf("expected devPorts to be []any, got %T", devPorts)
+	}
+	if len(ports) != 3 {
+		t.Fatalf("expected 3 ports, got %d", len(ports))
+	}
+	// Ports are stored as int64 after validation.
+	want := []int64{3000, 5173, 8080}
+	for i, p := range ports {
+		n, ok := p.(int64)
+		if !ok {
+			t.Errorf("port[%d] is %T, want int64", i, p)
+			continue
+		}
+		if n != want[i] {
+			t.Errorf("port[%d] = %d, want %d", i, n, want[i])
+		}
+	}
+}
+
+// TestParsePolicyFile_Params_NoParams verifies that a policy without params:
+// produces a nil Params field (no allocation for param-free policies).
+func TestParsePolicyFile_Params_NoParams(t *testing.T) {
+	content := `apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: no-params-policy
+spec:
+  description: "No params"
+  matchConstraints:
+    tools: ["Bash"]
+  validations:
+    - expression: 'tool == "Bash"'
+      action: DENY
+`
+	dir := t.TempDir()
+	path := filepath.Join(dir, "no-params.yaml")
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	tmpl, _, err := ParsePolicyFile(path)
+	if err != nil {
+		t.Fatalf("ParsePolicyFile: %v", err)
+	}
+	if tmpl == nil {
+		t.Fatal("expected non-nil template")
+	}
+	if tmpl.Params != nil {
+		t.Errorf("expected nil Params for policy without params:, got %v", tmpl.Params)
+	}
+}
+
+// TestParsePolicyFile_Params_RejectsWellKnownPorts verifies that devPorts values
+// below 1024 (well-known ports) cause ParsePolicyFile to return an error.
+func TestParsePolicyFile_Params_RejectsWellKnownPorts(t *testing.T) {
+	content := `apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: bad-ports-policy
+spec:
+  description: "Bad ports"
+  matchConstraints:
+    tools: ["Bash"]
+  validations:
+    - expression: 'true'
+      action: AUDIT
+  params:
+    devPorts:
+      type: array
+      default: [443, 3000, 8080]
+`
+	dir := t.TempDir()
+	path := filepath.Join(dir, "bad-ports.yaml")
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	_, _, err := ParsePolicyFile(path)
+	if err == nil {
+		t.Fatal("expected error for well-known port 443, got nil")
+	}
+	if !strings.Contains(err.Error(), "well-known port") {
+		t.Errorf("error message should mention 'well-known port', got: %v", err)
+	}
+}
+
+// TestParsePolicyFile_DevPortCleanup_LoadsWithParams verifies that the real
+// dev-port-cleanup builtin policy loads without error and has non-nil Params.
+func TestParsePolicyFile_DevPortCleanup_LoadsWithParams(t *testing.T) {
+	path := "../../policies/builtin/dev-port-cleanup.yaml"
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		t.Skip("dev-port-cleanup.yaml not found")
+	}
+
+	tmpl, binding, err := ParsePolicyFile(path)
+	if err != nil {
+		t.Fatalf("ParsePolicyFile: %v", err)
+	}
+	if tmpl == nil || binding == nil {
+		t.Fatal("expected non-nil template and binding")
+	}
+	if tmpl.Params == nil {
+		t.Error("dev-port-cleanup should have non-nil Params (it declares devPorts)")
+	}
+	devPorts, ok := tmpl.Params["devPorts"]
+	if !ok {
+		t.Error("dev-port-cleanup Params should contain devPorts")
+	}
+	ports, ok := devPorts.([]any)
+	if !ok || len(ports) == 0 {
+		t.Errorf("devPorts should be a non-empty []any, got %T len=%d", devPorts, len(ports))
+	}
+}

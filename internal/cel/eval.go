@@ -45,6 +45,10 @@ func NewActivationBuilder() *ActivationBuilder {
 // Never written to; sharing across goroutines is safe.
 var emptyArgs = map[string]any{}
 
+// emptyParams is a shared immutable empty map used when params is nil.
+// Never written to; sharing across goroutines is safe.
+var emptyParams = map[string]any{}
+
 // Evaluate evaluates a compiled CEL program against a CheckRequest and VerdictEntry.
 //
 // Hot path contract (INV-007 zero-alloc, ENGINEERING_STANDARDS §5.5):
@@ -67,12 +71,16 @@ func (a *ActivationBuilder) Evaluate(
 	verdictEntry classify.VerdictEntry,
 	decodedArgs map[string]any,
 	labeled label.LabeledRequest,
+	params map[string]any,
 ) (ref.Val, error) {
 	mp := a.pool.Get().(*map[string]any)
 	m := *mp
 
 	if decodedArgs == nil {
 		decodedArgs = emptyArgs
+	}
+	if params == nil {
+		params = emptyParams
 	}
 
 	m["tool"] = req.Tool
@@ -89,6 +97,7 @@ func (a *ActivationBuilder) Evaluate(
 	m["resource_type"] = types.String(labeled.ResourceType)
 	m["resource_path"] = types.String(labeled.ResourcePath)
 	m["resource_network_cmd"] = types.Bool(labeled.ContainsNetworkCmd)
+	m["params"] = params
 
 	val, _, err := (*prog).ContextEval(ctx, m)
 
@@ -118,12 +127,16 @@ func Eval(
 	snap *aegis.EngineSnapshot,
 	decodedArgs map[string]any,
 	labeled label.LabeledRequest,
+	params map[string]any,
 ) (ref.Val, error) {
 	mp := activationPool.Get().(*map[string]any)
 	m := *mp
 
 	if decodedArgs == nil {
 		decodedArgs = emptyArgs
+	}
+	if params == nil {
+		params = emptyParams
 	}
 
 	m["tool"] = req.Tool
@@ -140,6 +153,7 @@ func Eval(
 	m["resource_type"] = types.String(labeled.ResourceType)
 	m["resource_path"] = types.String(labeled.ResourcePath)
 	m["resource_network_cmd"] = types.Bool(labeled.ContainsNetworkCmd)
+	m["params"] = params
 
 	_ = snap // available for WS-05 to use; no-op at this layer
 

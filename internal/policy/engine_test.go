@@ -811,3 +811,133 @@ func TestPolicyEngine_Reload_WithBuiltinPolicies(t *testing.T) {
 		t.Errorf("expected 1 Bash binding in index, got %d", len(bashBindings))
 	}
 }
+
+// TestPolicyEngine_ParamsFlowToCEL verifies that PolicyTemplate.Params are passed
+// into CEL evaluation so expressions referencing params.devPorts work correctly.
+//
+// Test cases mirror the dev-port-cleanup policy spec:
+//   - Port in devPorts → ALLOW (expression false → no REQUIRE_APPROVAL)
+//   - Port not in devPorts → REQUIRE_APPROVAL (expression true)
+//   - No port pattern (targetPort=0) → ALLOW (targetPort > 0 is false)
+func TestPolicyEngine_ParamsFlowToCEL(t *testing.T) {
+	sessions := &ifc.SessionLabels{}
+	celEnv, err := cel.NewCELEnvironment()
+	if err != nil {
+		t.Fatalf("NewCELEnvironment: %v", err)
+	}
+	engine := NewPolicyEngine(sessions, celEnv)
+
+	// Expression mirrors dev-port-cleanup after variable inlining and wrapping by parse.go.
+	// The bundle parser wraps non-DENY validations with !(...): when the wrapped expression
+	// is false, the engine DENYs. So the full compiled expression for dev-port-cleanup is:
+	//   !(!(targetPort in devPorts) && targetPort > 0)
+	// true  → engine allows (port is in devPorts, or no port pattern)
+	// false → engine denies (port is not in devPorts and > 0)
+	expr := `!(!(bash.targetPort(args["command"]) in params.devPorts) && bash.targetPort(args["command"]) > 0)`
+	templates := []policy_types.PolicyTemplate{
+		{
+			ID:         "dev-port-test",
+			Name:       "dev-port-test",
+			Expression: expr,
+			Params: map[string]any{
+				"devPorts": []any{int64(3000), int64(5173), int64(7474), int64(8080)},
+			},
+		},
+	}
+	bindings := []policy_types.PolicyBinding{
+		{
+			TemplateID: "dev-port-test",
+			Scope:      policy_types.PolicyScope{Tools: []string{"Bash"}},
+			Layer:      "cel",
+		},
+	}
+	bundle := &aegis.CompiledBundle{
+		Version:   1,
+		Templates: templates,
+		Bindings:  bindings,
+	}
+	if err := engine.Reload(context.Background(), bundle); err != nil {
+		t.Fatalf("Reload: %v", err)
+	}
+
+	makeReq := func(cmd string) aegis.CheckRequest {
+		args, _ := json.Marshal(map[string]any{"command": cmd})
+		return aegis.CheckRequest{
+			Tool:      "Bash",
+			Args:      args,
+			SessionID: "test-session",
+		}
+	}
+
+	// Port in devPorts → expression false → ALLOW.
+	resp := engine.Evaluate(context.Background(), makeReq("lsof -ti:7474 | xargs kill -9"))
+	if resp.Decision.Action != aegis.ActionAllow {
+		t.Errorf("port 7474 in devPorts: expected Allow, got %v (reason: %s)", resp.Decision.Action, resp.Decision.Reason)
+	}
+
+	// Port not in devPorts → expression true → DENY.
+	resp = engine.Evaluate(context.Background(), makeReq("lsof -ti:443 | xargs kill -9"))
+	if resp.Decision.Action != aegis.ActionDeny {
+		t.Errorf("port 443 not in devPorts: expected Deny, got %v", resp.Decision.Action)
+	}
+
+	// No port pattern → targetPort=0 → && 0 > 0 is false → ALLOW.
+	resp = engine.Evaluate(context.Background(), makeReq("kill -9 12345"))
+	if resp.Decision.Action != aegis.ActionAllow {
+		t.Errorf("no port pattern: expected Allow, got %v", resp.Decision.Action)
+	}
+
+	// Another devPort (fuser pattern).
+	resp = engine.Evaluate(context.Background(), makeReq("fuser -k 3000/tcp"))
+	if resp.Decision.Action != aegis.ActionAllow {
+		t.Errorf("port 3000 in devPorts (fuser): expected Allow, got %v", resp.Decision.Action)
+	}
+}
+
+// TestPolicyEngine_DevPortCleanup_NotSkipped verifies that the dev-port-cleanup builtin
+// policy is NOT in the SkippedPolicies list after loading the builtin bundle.
+// Before params support, this policy was skipped because params was an undeclared CEL variable.
+func TestPolicyEngine_DevPortCleanup_NotSkipped(t *testing.T) {
+	sessions := &ifc.SessionLabels{}
+	celEnv, err := cel.NewCELEnvironment()
+	if err != nil {
+		t.Fatalf("NewCELEnvironment: %v", err)
+	}
+	engine := NewPolicyEngine(sessions, celEnv)
+
+	// Build a minimal bundle that exercises the dev-port-cleanup expression with params.
+	// Expression uses the wrapped form produced by parse.go's buildCombinedExpression.
+	expr := `!(!(bash.targetPort(args["command"]) in params.devPorts) && bash.targetPort(args["command"]) > 0)`
+	templates := []policy_types.PolicyTemplate{
+		{
+			ID:         "dev-port-cleanup",
+			Name:       "dev-port-cleanup",
+			Expression: expr,
+			Params: map[string]any{
+				"devPorts": []any{int64(3000), int64(3001), int64(5173), int64(7474), int64(8000), int64(8080), int64(9000)},
+			},
+		},
+	}
+	bindings := []policy_types.PolicyBinding{
+		{
+			TemplateID: "dev-port-cleanup",
+			Scope:      policy_types.PolicyScope{Tools: []string{"Bash"}},
+			Layer:      "cel",
+		},
+	}
+	bundle := &aegis.CompiledBundle{
+		Version:   1,
+		Templates: templates,
+		Bindings:  bindings,
+	}
+	if err := engine.Reload(context.Background(), bundle); err != nil {
+		t.Fatalf("Reload: %v", err)
+	}
+
+	skipped := engine.SkippedPolicies()
+	for _, id := range skipped {
+		if id == "dev-port-cleanup" {
+			t.Error("dev-port-cleanup was skipped — params variable not declared in CEL environment")
+		}
+	}
+}
