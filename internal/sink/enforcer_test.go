@@ -137,7 +137,7 @@ func TestDecision(t *testing.T) {
 			},
 			effects:   []string{classify.EffectNetworkEgress},
 			resources: []string{"evil.com"},
-			want:      aegis.ActionRequireApproval,
+			want:      aegis.ActionDeny, // external resource → deny, not require-approval
 		},
 		{
 			name: "tainted_standing_rule_effect_mismatch",
@@ -148,7 +148,7 @@ func TestDecision(t *testing.T) {
 			},
 			effects:   []string{classify.EffectContentPublish},
 			resources: []string{"api.github.com"},
-			want:      aegis.ActionRequireApproval,
+			want:      aegis.ActionDeny, // external resource → deny regardless of effect mismatch
 		},
 		{
 			name: "tainted_standing_rule_expired",
@@ -159,7 +159,7 @@ func TestDecision(t *testing.T) {
 			},
 			effects:   []string{classify.EffectNetworkEgress},
 			resources: []string{"api.github.com"},
-			want:      aegis.ActionRequireApproval,
+			want:      aegis.ActionDeny, // external resource → deny (expired rule = no coverage)
 		},
 
 		// --- tainted + multi-resource ---
@@ -183,7 +183,7 @@ func TestDecision(t *testing.T) {
 			},
 			effects:   []string{classify.EffectNetworkEgress},
 			resources: []string{"api.github.com", "evil.com"},
-			want:      aegis.ActionRequireApproval,
+			want:      aegis.ActionDeny, // evil.com is external → deny
 		},
 		{
 			name: "tainted_empty_resources_require_approval",
@@ -211,7 +211,7 @@ func TestDecision(t *testing.T) {
 			snap:               ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone},
 			effects:            []string{classify.EffectExecProcess},
 			containsNetworkCmd: true,
-			want:               aegis.ActionRequireApproval,
+			want:               aegis.ActionDeny, // network cmd + no extractable resource → deny conservatively
 		},
 		{
 			name:               "tainted_bash_no_network_cmd_allowed",
@@ -285,6 +285,134 @@ func TestPatternMatches(t *testing.T) {
 			got := sink.PatternMatches(tt.pattern, tt.resource)
 			if got != tt.want {
 				t.Errorf("PatternMatches(%q, %q) = %v, want %v", tt.pattern, tt.resource, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestDecision_TaintedLocalhost_Allow(t *testing.T) {
+	localhostResources := []struct {
+		name      string
+		resources []string
+	}{
+		{"localhost_url", []string{"http://localhost:8080/healthz"}},
+		{"localhost_bare", []string{"localhost"}},
+		{"loopback_ipv4", []string{"http://127.0.0.1:9200"}},
+		{"loopback_ipv6", []string{"http://[::1]:8080"}},
+		{"private_192", []string{"http://192.168.1.100:8080"}},
+		{"private_10", []string{"http://10.0.0.1/api"}},
+		{"private_172", []string{"http://172.16.5.1/metrics"}},
+		{"host_docker_internal", []string{"http://host.docker.internal:3000"}},
+	}
+
+	snap := ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone}
+	effects := []string{classify.EffectNetworkEgress}
+
+	for _, tc := range localhostResources {
+		t.Run(tc.name, func(t *testing.T) {
+			got := sink.Decision(snap, effects, tc.resources, false)
+			if got != aegis.ActionAllow {
+				t.Errorf("Decision() = %v, want ActionAllow for internal resource %v", got, tc.resources)
+			}
+		})
+	}
+}
+
+func TestDecision_TaintedExternal_Deny(t *testing.T) {
+	externalResources := []struct {
+		name      string
+		resources []string
+	}{
+		{"mining_pool_domain", []string{"https://pool.supportxmr.com/stratum"}},
+		{"evil_domain", []string{"https://evil.com/exfil"}},
+		{"plain_external_domain", []string{"external.example.com"}},
+		{"no_scheme_external", []string{"api.github.com"}},
+		{"public_ip", []string{"http://8.8.8.8/data"}},
+	}
+
+	snap := ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone}
+	effects := []string{classify.EffectNetworkEgress}
+
+	for _, tc := range externalResources {
+		t.Run(tc.name, func(t *testing.T) {
+			got := sink.Decision(snap, effects, tc.resources, false)
+			if got != aegis.ActionDeny {
+				t.Errorf("Decision() = %v, want ActionDeny for external resource %v", got, tc.resources)
+			}
+		})
+	}
+}
+
+func TestDecision_TaintedNetworkCmd_NoResource_Deny(t *testing.T) {
+	snap := ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone}
+	// Network binary detected but no resource extracted → deny conservatively
+	got := sink.Decision(snap, []string{classify.EffectExecProcess}, []string{}, true)
+	if got != aegis.ActionDeny {
+		t.Errorf("Decision() = %v, want ActionDeny for network cmd with no resource", got)
+	}
+}
+
+func TestDecision_TaintedNetworkCmd_LocalhostResource_Allow(t *testing.T) {
+	snap := ifc.SessionSnapshot{IsTainted: true, ApprovalState: ifc.ApprovalNone}
+	// Network binary detected but destination is localhost → allow
+	got := sink.Decision(snap, []string{classify.EffectNetworkEgress}, []string{"http://localhost:8080"}, true)
+	if got != aegis.ActionAllow {
+		t.Errorf("Decision() = %v, want ActionAllow for network cmd to localhost", got)
+	}
+}
+
+func TestIsExternal(t *testing.T) {
+	tests := []struct {
+		resource string
+		want     bool
+	}{
+		// Loopback
+		{"localhost", false},
+		{"http://localhost", false},
+		{"http://localhost:8080/health", false},
+		{"https://localhost:443", false},
+		{"sub.localhost", false},
+		{"127.0.0.1", false},
+		{"http://127.0.0.1:9200", false},
+		{"::1", false},
+		{"http://[::1]:8080", false},
+
+		// Private RFC-1918
+		{"192.168.1.1", false},
+		{"http://192.168.0.1:3000", false},
+		{"10.0.0.1", false},
+		{"http://10.255.255.255/api", false},
+		{"172.16.0.1", false},
+		{"http://172.31.255.255", false},
+
+		// Link-local
+		{"169.254.1.1", false},
+
+		// docker internal
+		{"host.docker.internal", false},
+		{"http://host.docker.internal:8080", false},
+
+		// External domains
+		{"example.com", true},
+		{"api.github.com", true},
+		{"https://pool.supportxmr.com/stratum", true},
+		{"evil.com", true},
+		{"https://evil.com/exfil", true},
+
+		// External IPs
+		{"8.8.8.8", true},
+		{"http://8.8.8.8/data", true},
+		{"1.1.1.1", true},
+
+		// Edge cases
+		{"", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.resource, func(t *testing.T) {
+			got := sink.IsExternal(tt.resource)
+			if got != tt.want {
+				t.Errorf("IsExternal(%q) = %v, want %v", tt.resource, got, tt.want)
 			}
 		})
 	}
