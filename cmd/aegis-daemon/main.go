@@ -28,6 +28,7 @@ import (
 	"github.com/mayjain/aegis/internal/delegation"
 	grpcauthz "github.com/mayjain/aegis/internal/grpc"
 	"github.com/mayjain/aegis/internal/ifc"
+	"github.com/mayjain/aegis/internal/label"
 	"github.com/mayjain/aegis/internal/otel"
 	"github.com/mayjain/aegis/internal/policy"
 	"github.com/mayjain/aegis/internal/reload"
@@ -98,6 +99,7 @@ func main() {
 		sessions,
 		celEnv,
 		policy.WithSecretScanner(secret.NewScanner()),
+		policy.WithLabeler(label.NewLabeler()),
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())
