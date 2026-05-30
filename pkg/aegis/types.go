@@ -64,6 +64,7 @@ const (
 	EnforcingLayerDelegation EnforcingLayer = "delegation"
 	EnforcingLayerAdapter    EnforcingLayer = "adapter"
 	EnforcingLayerSecretScan EnforcingLayer = "secret-scan"
+	EnforcingLayerSink       EnforcingLayer = "sink"
 )
 
 // DelegationRef is a reference in an authority chain.
@@ -84,6 +85,7 @@ type CheckRequest struct {
 	Tool           string          // exact tool name as declared by the hook (e.g. "Bash", "Write")
 	Args           json.RawMessage // tool arguments; only sha256:<hex> is stored in audit (INV-012)
 	SessionID      string          // stable session identifier propagated from the hook
+	SpawnToken     string          // one-time token from parent's Agent response for taint inheritance
 	SecurityLabel  SecurityLabel   // caller's current lattice label at request time
 	AuthorityChain []DelegationRef // delegation chain from session root to caller; may be empty
 	Nonce          [16]byte        // replay-prevention nonce; must be unique per request
