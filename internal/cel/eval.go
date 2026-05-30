@@ -8,9 +8,9 @@ import (
 	celgo "github.com/google/cel-go/cel"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
-	"github.com/mayjain/nixis/internal/classify"
-	"github.com/mayjain/nixis/internal/label"
-	nixis "github.com/mayjain/nixis/pkg/nixis"
+	"github.com/mayankjain0141/nixis/internal/classify"
+	"github.com/mayankjain0141/nixis/internal/label"
+	nixis "github.com/mayankjain0141/nixis/pkg/nixis"
 )
 
 // activationPool pools plain map[string]any values to avoid heap allocation on the hot path.

@@ -9,8 +9,8 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/mayjain/nixis/internal/classify"
-	"github.com/mayjain/nixis/pkg/adapters"
+	"github.com/mayankjain0141/nixis/internal/classify"
+	"github.com/mayankjain0141/nixis/pkg/adapters"
 	"github.com/spf13/cobra"
 )
 

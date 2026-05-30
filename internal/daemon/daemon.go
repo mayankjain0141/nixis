@@ -17,12 +17,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/mayjain/nixis/internal/audit"
-	"github.com/mayjain/nixis/internal/delegation"
-	"github.com/mayjain/nixis/internal/ifc"
-	"github.com/mayjain/nixis/internal/otel"
-	"github.com/mayjain/nixis/internal/stream"
-	"github.com/mayjain/nixis/pkg/nixis"
+	"github.com/mayankjain0141/nixis/internal/audit"
+	"github.com/mayankjain0141/nixis/internal/delegation"
+	"github.com/mayankjain0141/nixis/internal/ifc"
+	"github.com/mayankjain0141/nixis/internal/otel"
+	"github.com/mayankjain0141/nixis/internal/stream"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 )
 
 // Lifecycle state machine:

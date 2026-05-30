@@ -3,7 +3,7 @@ package nixis_test
 import (
 	"testing"
 
-	"github.com/mayjain/nixis/pkg/nixis"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 )
 
 // TestExtractScanTarget_SendMessage verifies that the "message" field is extracted

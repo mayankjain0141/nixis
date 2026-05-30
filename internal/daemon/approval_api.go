@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mayjain/nixis/internal/ifc"
+	"github.com/mayankjain0141/nixis/internal/ifc"
 	"github.com/google/uuid"
 )
 

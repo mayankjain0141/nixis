@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	nixisCEL "github.com/mayjain/nixis/internal/cel"
+	nixisCEL "github.com/mayankjain0141/nixis/internal/cel"
 )
 
 // anthropicURL is the endpoint for Claude API calls. Overridable in tests.

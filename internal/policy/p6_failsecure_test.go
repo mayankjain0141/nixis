@@ -6,12 +6,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mayjain/nixis/internal/cel"
-	"github.com/mayjain/nixis/internal/classify"
-	"github.com/mayjain/nixis/internal/ifc"
-	"github.com/mayjain/nixis/pkg/adapters"
-	"github.com/mayjain/nixis/pkg/nixis"
-	policy_types "github.com/mayjain/nixis/pkg/policy/types"
+	"github.com/mayankjain0141/nixis/internal/cel"
+	"github.com/mayankjain0141/nixis/internal/classify"
+	"github.com/mayankjain0141/nixis/internal/ifc"
+	"github.com/mayankjain0141/nixis/pkg/adapters"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
+	policy_types "github.com/mayankjain0141/nixis/pkg/policy/types"
 )
 
 // makeEngineWithDefaultAction builds a minimal engine with a single CEL policy

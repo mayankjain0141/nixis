@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	policy "github.com/mayjain/nixis/internal/policy"
+	policy "github.com/mayankjain0141/nixis/internal/policy"
 )
 
 // TestShouldScan_MessageContent verifies that ShouldScan triggers on the

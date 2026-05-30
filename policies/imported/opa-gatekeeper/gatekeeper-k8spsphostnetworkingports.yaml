@@ -18,6 +18,6 @@ spec:
             - Edit
     validations:
         - expression: '((tool == "Write" || tool == "Edit") && request.args.path.matches(".*\\.(yaml|yml|json)$") && request.args.content.contains("hostNetwork: true")) || (tool == "Bash" && request.args.command.contains("--host-network"))'
-          message: 'Pods must not use the host network namespace. Host networking bypasses network isolation and exposes the node's network stack.'
+          message: "Pods must not use the host network namespace. Host networking bypasses network isolation and exposes the node''s network stack."
           action: DENY
     defaultAction: ALLOW

@@ -18,10 +18,10 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 
-	grpcauthz "github.com/mayjain/nixis/internal/grpc"
-	"github.com/mayjain/nixis/internal/otel"
-	"github.com/mayjain/nixis/internal/reload"
-	"github.com/mayjain/nixis/pkg/nixis"
+	grpcauthz "github.com/mayankjain0141/nixis/internal/grpc"
+	"github.com/mayankjain0141/nixis/internal/otel"
+	"github.com/mayankjain0141/nixis/internal/reload"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 )
 
 // TestIntegration_HotReload verifies that the reload watcher fires when a YAML policy

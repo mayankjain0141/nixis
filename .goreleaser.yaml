@@ -51,7 +51,7 @@ brews:
       owner: mayjain
       name: homebrew-tap
     directory: Formula
-    homepage: https://github.com/mayjain/nixis
+    homepage: https://github.com/mayankjain0141/nixis
     description: "Real-time governance engine for AI coding agents"
     install: |
       bin.install "nixis"

@@ -33,13 +33,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/mayjain/nixis/internal/cel"
-	"github.com/mayjain/nixis/internal/classify"
-	"github.com/mayjain/nixis/internal/ifc"
-	"github.com/mayjain/nixis/internal/label"
-	"github.com/mayjain/nixis/internal/sink"
-	"github.com/mayjain/nixis/pkg/nixis"
-	policy_types "github.com/mayjain/nixis/pkg/policy/types"
+	"github.com/mayankjain0141/nixis/internal/cel"
+	"github.com/mayankjain0141/nixis/internal/classify"
+	"github.com/mayankjain0141/nixis/internal/ifc"
+	"github.com/mayankjain0141/nixis/internal/label"
+	"github.com/mayankjain0141/nixis/internal/sink"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
+	policy_types "github.com/mayankjain0141/nixis/pkg/policy/types"
 )
 
 // BoundaryType identifies the trust boundary for secret scanning.
@@ -826,7 +826,7 @@ func extractCommandText(args json.RawMessage) (string, bool) {
 
 // WARNING: The following implementations are MVP stubs — they always return success.
 // Secret scanning and delegation validation are NOT active in this build.
-// See: https://github.com/mayjain/nixis/issues (track implementation progress)
+// See: https://github.com/mayankjain0141/nixis/issues (track implementation progress)
 // Do NOT deploy in environments where these checks are expected to be enforced.
 
 type noopSecretScanner struct{}

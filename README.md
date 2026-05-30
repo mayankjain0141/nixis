@@ -75,21 +75,23 @@ flowchart LR
 
 ```bash
 # Clone and build
-git clone https://github.com/mayjain/nixis.git
+git clone https://github.com/mayankjain0141/nixis.git
 cd nixis
-go build -o bin/ ./cmd/...
+go build ./cmd/...
 
-# Start the daemon (uses built-in policies by default)
-./bin/nixis-daemon
+# Start the daemon with all policies (750+)
+make dev
+# → daemon on /tmp/nixis.sock, dashboard on http://localhost:5173
 
-# In another terminal — simulate a tool call
-./bin/nixis simulate Bash --args '{"command":"rm -rf /"}'
-# → action=deny policy=block-rm-rf layer=cel latency=1601000ns
-# → reason=Blocked: destructive rm -rf detected — potential prompt injection
+# Or manually:
+go run ./cmd/nixis-daemon/ -policy-dir ./policies &
+./nixis simulate Bash --args '{"command":"rm -rf /"}'
+# → action=require_approval policy=catalog-auto-rm--rf layer=cel latency=1602000ns
+# → reason=rm -rf requires approval — confirm this is the intended operation
 
-# Launch the dashboard
-cd dashboard && npm ci && npm run dev
-# → http://localhost:5173
+# Generate static policy bundle for dashboard
+make generate
+# → Exported 763 policies to ./dashboard/public/policies.json
 ```
 
 For IDE integration (Claude Code / Cursor hook configuration), see the [Getting Started Guide](docs/guide/getting-started.md).
@@ -124,7 +126,7 @@ spec:
   defaultAction: ALLOW
 ```
 
-**19 built-in policies** ship enabled by default, covering credential exfiltration, destructive commands, reverse shells, privilege escalation, supply chain attacks, and more. See [Policy Authoring Guide](docs/guide/policy-authoring.md).
+**44 built-in policies** ship enabled by default, covering credential exfiltration, destructive commands, reverse shells, privilege escalation, supply chain attacks, and more. An additional **700+ imported policies** (converted from Kyverno, Sigma, OPA Gatekeeper, AgentWall) are available in `policies/imported/`. See [Policy Authoring Guide](docs/guide/policy-authoring.md).
 
 ## Performance
 

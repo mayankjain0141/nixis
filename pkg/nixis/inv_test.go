@@ -3,7 +3,7 @@ package nixis_test
 import (
 	"testing"
 
-	"github.com/mayjain/nixis/pkg/nixis"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 )
 
 // TestINV_001_ActionDenyIsZeroValue verifies the zero value of Action is ActionDeny (fail-secure).

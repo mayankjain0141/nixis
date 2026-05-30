@@ -10,9 +10,9 @@ import (
 	"net"
 	"time"
 
-	"github.com/mayjain/nixis/internal/audit"
-	"github.com/mayjain/nixis/internal/otel"
-	"github.com/mayjain/nixis/pkg/nixis"
+	"github.com/mayankjain0141/nixis/internal/audit"
+	"github.com/mayankjain0141/nixis/internal/otel"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 )
 
 // headerSize is the byte length of the 4-byte big-endian length prefix.

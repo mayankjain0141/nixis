@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mayjain/nixis/internal/cel"
+	"github.com/mayankjain0141/nixis/internal/cel"
 )
 
 // TestP4Policy3_CloudMetadataDeny_ParsesCorrectly verifies that the semantic cloud

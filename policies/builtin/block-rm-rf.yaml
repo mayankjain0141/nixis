@@ -36,10 +36,10 @@ spec:
         request.args.command.matches("(?i).*\\brm\\b\\s+.*-[a-z]*f[a-z]*r[a-z]*\\s.*") ||
         request.args.command.matches("(?i).*\\brm\\b.*-r\\b.*")
     - name: isSystemPath
-      # targets /etc, /usr, /bin, /sbin, /lib, /lib64, /boot, /sys, /proc, /dev,
+      # targets /, /etc, /usr, /bin, /sbin, /lib, /lib64, /boot, /sys, /proc, /dev,
       # /root, /home (top-level), or a root-level wildcard
       expression: >-
-        request.args.command.matches("(?i).*(\\s/\\s|\\s/etc\\b|\\s/usr\\b|\\s/bin\\b|\\s/sbin\\b|\\s/lib\\b|\\s/lib64\\b|\\s/boot\\b|\\s/sys\\b|\\s/proc\\b|\\s/dev\\b|\\s/root\\b|\\s/home\\b|\\s/\\*|\\s/[a-z]+/\\*).*")
+        request.args.command.matches("(?i).*(\\s/\\s|\\s/$|\\s/etc\\b|\\s/usr\\b|\\s/bin\\b|\\s/sbin\\b|\\s/lib\\b|\\s/lib64\\b|\\s/boot\\b|\\s/sys\\b|\\s/proc\\b|\\s/dev\\b|\\s/root\\b|\\s/home\\b|\\s/\\*|\\s/[a-z]+/\\*).*")
   validations:
     - expression: 'isRmRecursive && isSystemPath'
       message: "Blocked: recursive deletion of system/critical path — potential prompt injection or accidental wipe"

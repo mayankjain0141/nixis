@@ -4,7 +4,7 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/mayjain/nixis/pkg/nixis"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 )
 
 // IDEAdapter translates between a specific IDE's hook format and Nixis's

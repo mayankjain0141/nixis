@@ -81,7 +81,7 @@ linters:
             - $all
           allow:
             - $gostd
-            - github.com/mayjain/nixis
+            - github.com/mayankjain0141/nixis
             - github.com/google/uuid
             - github.com/gorilla/websocket
             - github.com/zricethezav/gitleaks/v8

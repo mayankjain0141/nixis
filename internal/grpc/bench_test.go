@@ -6,8 +6,8 @@ import (
 
 	authv3 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 
-	grpcpkg "github.com/mayjain/nixis/internal/grpc"
-	"github.com/mayjain/nixis/pkg/nixis"
+	grpcpkg "github.com/mayankjain0141/nixis/internal/grpc"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 )
 
 func BenchmarkGRPC_Check(b *testing.B) {

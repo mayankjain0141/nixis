@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	nixisCEL "github.com/mayjain/nixis/internal/cel"
+	nixisCEL "github.com/mayankjain0141/nixis/internal/cel"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )

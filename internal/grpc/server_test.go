@@ -12,8 +12,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 
-	grpcpkg "github.com/mayjain/nixis/internal/grpc"
-	"github.com/mayjain/nixis/pkg/nixis"
+	grpcpkg "github.com/mayankjain0141/nixis/internal/grpc"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 )
 
 // mockEngine is a test double for GovernanceEngine.

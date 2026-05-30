@@ -1,4 +1,4 @@
-module github.com/mayjain/nixis
+module github.com/mayankjain0141/nixis
 
 go 1.25.0
 

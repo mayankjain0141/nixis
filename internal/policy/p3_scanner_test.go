@@ -7,11 +7,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mayjain/nixis/internal/cel"
-	"github.com/mayjain/nixis/internal/classify"
-	"github.com/mayjain/nixis/internal/ifc"
-	"github.com/mayjain/nixis/pkg/adapters"
-	"github.com/mayjain/nixis/pkg/nixis"
+	"github.com/mayankjain0141/nixis/internal/cel"
+	"github.com/mayankjain0141/nixis/internal/classify"
+	"github.com/mayankjain0141/nixis/internal/ifc"
+	"github.com/mayankjain0141/nixis/pkg/adapters"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 )
 
 // hitScanner is a mock SecretScanner that always reports one finding.

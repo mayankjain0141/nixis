@@ -1,8 +1,12 @@
-.PHONY: build generate test-keys dev lint test install uninstall release-local
+.PHONY: build generate test-keys dev lint test install uninstall release-local clean
 
-## build: compile all Go binaries
+## build: compile all Go binaries into bin/
 build:
-	go build ./...
+	go build -o bin/ ./cmd/...
+
+## clean: remove build artifacts and stale binaries
+clean:
+	rm -rf bin/
 
 ## generate: export policies.json for the dashboard static fallback (no daemon needed)
 generate:

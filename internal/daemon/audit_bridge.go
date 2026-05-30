@@ -4,8 +4,8 @@ package daemon
 import (
 	"time"
 
-	"github.com/mayjain/nixis/internal/audit"
-	"github.com/mayjain/nixis/pkg/nixis"
+	"github.com/mayankjain0141/nixis/internal/audit"
+	"github.com/mayankjain0141/nixis/pkg/nixis"
 )
 
 func buildAuditRecord(req nixis.CheckRequest, resp nixis.CheckResponse) audit.AuditRecord {
