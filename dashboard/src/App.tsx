@@ -307,7 +307,7 @@ export default function App() {
       const panel = (e as CustomEvent<{ panel: string }>).detail?.panel;
       // Tab panels — switch the secondary tab
       const tabMap: Record<string, MainTab> = {
-        dag: 'dag', playground: 'playground', audit: 'audit', delegation: 'delegation', threats: 'threats',
+        dag: 'dag', playground: 'playground', audit: 'audit', delegation: 'delegation', threats: 'threats', lattice: 'lattice',
       };
       if (panel && tabMap[panel]) {
         activeTabRef.setTab(tabMap[panel]);
@@ -320,8 +320,6 @@ export default function App() {
         document.querySelector('[aria-label="Inspector panel"]')?.scrollIntoView({ behavior: 'smooth' });
       } else if (panel === 'metrics') {
         activeTabRef.setTab('dag'); // metrics are in the DAG tab area
-      } else if (panel === 'lattice') {
-        activeTabRef.setTab('delegation'); // closest tab with session info — will be fixed by WS-08a
       }
     }
     window.addEventListener('aegis:navigate', handleNavigate);
