@@ -24,6 +24,7 @@ export function SessionCards() {
   const latticeNodes = useLatticeStore((s) => s.nodes);
   const sessionLabels = useGovernanceStore((s) => s.sessionLabels);
   const events = useGovernanceStore((s) => s.events);
+  const filterSession = useGovernanceStore((s) => s.filterSession);
 
   type SessionEntry = {
     sessionId: string;
@@ -89,12 +90,27 @@ export function SessionCards() {
         const stateInfo = STATE_LABELS[s.state] ?? STATE_LABELS.fresh;
         const isTainted = s.state === 'tainted_by_secret';
 
+        const isActive = filterSession === s.sessionId;
+
         return (
-          <div key={s.sessionId} style={{
-            marginBottom: 6, borderRadius: 6, overflow: 'hidden',
-            border: `1px solid ${isTainted ? 'rgba(207,34,46,0.3)' : 'var(--border)'}`,
-            background: isTainted ? 'rgba(207,34,46,0.04)' : 'var(--bg-surface)',
-          }}>
+          <div
+            key={s.sessionId}
+            onClick={() => {
+              const current = useGovernanceStore.getState().filterSession;
+              useGovernanceStore.getState().setFilterSession(
+                current === s.sessionId ? null : s.sessionId,
+              );
+            }}
+            style={{
+              marginBottom: 6, borderRadius: 6, overflow: 'hidden',
+              border: `1px solid ${isTainted ? 'rgba(207,34,46,0.3)' : 'var(--border)'}`,
+              background: isTainted ? 'rgba(207,34,46,0.04)' : 'var(--bg-surface)',
+              cursor: 'pointer',
+              borderLeft: isActive
+                ? '2px solid #2da44e'
+                : `1px solid ${isTainted ? 'rgba(207,34,46,0.3)' : 'var(--border)'}`,
+            }}
+          >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px 4px' }}>
               <span style={{
                 background: level.color, color: '#fff', borderRadius: 3,
