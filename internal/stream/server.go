@@ -26,6 +26,54 @@ import (
 	"github.com/mayjain/aegis/pkg/aegis"
 )
 
+// ipLimiter enforces per-IP WebSocket connection and upgrade-attempt limits.
+type ipLimiter struct {
+	mu       sync.Mutex
+	conns    map[string]int
+	attempts map[string][]time.Time
+}
+
+func newIPLimiter() *ipLimiter {
+	return &ipLimiter{
+		conns:    make(map[string]int),
+		attempts: make(map[string][]time.Time),
+	}
+}
+
+// allow returns true if the IP is within the per-IP connection and rate limits.
+// Max 4 concurrent WS connections, max 10 upgrade attempts per minute.
+func (l *ipLimiter) allow(ip string) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	now := time.Now()
+	prev := l.attempts[ip]
+	filtered := prev[:0]
+	for _, t := range prev {
+		if now.Sub(t) < time.Minute {
+			filtered = append(filtered, t)
+		}
+	}
+	filtered = append(filtered, now)
+	l.attempts[ip] = filtered
+	return l.conns[ip] < 4 && len(filtered) <= 10
+}
+
+// inc increments the connection count for an IP.
+func (l *ipLimiter) inc(ip string) {
+	l.mu.Lock()
+	l.conns[ip]++
+	l.mu.Unlock()
+}
+
+// dec decrements the connection count for an IP.
+func (l *ipLimiter) dec(ip string) {
+	l.mu.Lock()
+	if l.conns[ip] > 0 {
+		l.conns[ip]--
+	}
+	l.mu.Unlock()
+}
+
 const (
 	defaultAddr       = ":9090"
 	clientChanCap     = 100
@@ -122,6 +170,7 @@ type heartbeatData struct {
 	ServerTime     int64   `json:"serverTime"` // ms since Unix epoch
 	Lag            int     `json:"lag"`
 	Sequence       uint64  `json:"sequence"`
+	Seq            uint64  `json:"seq"` // monotonic per-server counter for replay detection
 	SamplingActive bool    `json:"sampling_active"`
 	SampleRate     float64 `json:"sample_rate"`
 }
@@ -158,6 +207,8 @@ type StreamServer struct {
 	seq          sequenceCounter
 	events       chan aegis.StreamEvent // internal fan-out queue
 	httpSrv      *http.Server
+	limiter      *ipLimiter
+	ready        atomic.Bool // true after the TCP listener is fully bound
 
 	// lastBundlePayload stores the most recent bundle.activated CloudEvent payload.
 	// Replayed to each new client on connect so the dashboard always shows loaded policies.
@@ -173,10 +224,11 @@ func NewStreamServer(tap aegis.StreamTap, reader aegis.SnapshotReader, opts ...O
 		addr = defaultAddr
 	}
 	s := &StreamServer{
-		addr:   addr,
-		tap:    tap,
-		reader: reader,
-		events: make(chan aegis.StreamEvent, 512),
+		addr:    addr,
+		tap:     tap,
+		reader:  reader,
+		events:  make(chan aegis.StreamEvent, 512),
+		limiter: newIPLimiter(),
 	}
 	for _, opt := range opts {
 		opt(s)
@@ -200,6 +252,7 @@ func (s *StreamServer) Start(ctx context.Context, addr string) error {
 	mux.HandleFunc("/ws", s.handleWebSocket)
 	mux.HandleFunc("/simulate", s.handleSimulate)
 	mux.HandleFunc("/policies", s.handlePolicies)
+	mux.HandleFunc("/healthz/ready", s.handleHealthzReady)
 
 	s.httpSrv = &http.Server{
 		Handler:      mux,
@@ -210,6 +263,9 @@ func (s *StreamServer) Start(ctx context.Context, addr string) error {
 
 	go s.fanOut(ctx)
 	go s.heartbeat(ctx)
+
+	// Mark the server ready after the listener is bound and Serve is starting.
+	s.ready.Store(true)
 
 	errCh := make(chan error, 1)
 	go func() {
@@ -313,6 +369,7 @@ func (s *StreamServer) heartbeat(ctx context.Context) {
 				ServerTime:     now.UnixMilli(),
 				Lag:            0,
 				Sequence:       seq,
+				Seq:            seq,
 				SamplingActive: false,
 				SampleRate:     0,
 			}
@@ -356,14 +413,18 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-// isAllowedOrigin returns true if the origin is localhost / 127.0.0.1.
+// isAllowedOrigin returns true if the origin is http(s)://localhost or http(s)://127.0.0.1.
+// Scheme check blocks file://, chrome-extension://, and other non-HTTP origins.
+// No port matching: dev dashboard (5173) and daemon (9090) use different ports.
 func isAllowedOrigin(origin, _ string) bool {
 	u, err := url.Parse(origin)
 	if err != nil {
 		return false
 	}
 	h := u.Hostname()
-	return h == "localhost" || h == "127.0.0.1"
+	scheme := u.Scheme
+	return (h == "localhost" || h == "127.0.0.1") &&
+		(scheme == "http" || scheme == "https")
 }
 
 // isLocalhostOrigin returns true if the Origin header is http://localhost:* or http://127.0.0.1:*.
@@ -500,14 +561,37 @@ func (s *StreamServer) handlePolicies(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleHealthzReady returns 200 once the TCP listener is bound, 503 before that.
+func (s *StreamServer) handleHealthzReady(w http.ResponseWriter, r *http.Request) {
+	if s.ready.Load() {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ready"))
+	} else {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = w.Write([]byte("starting"))
+	}
+}
+
 // handleWebSocket upgrades an HTTP connection to WebSocket, sends state.snapshot,
 // then pumps events to the client until disconnect.
 func (s *StreamServer) handleWebSocket(w http.ResponseWriter, r *http.Request) {
+	// Per-IP rate limiting: max 4 concurrent connections, max 10 upgrades/minute.
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		ip = r.RemoteAddr
+	}
+	if !s.limiter.allow(ip) {
+		http.Error(w, "too many requests", http.StatusTooManyRequests)
+		return
+	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		// Upgrade already wrote 403/400 response on failure.
 		return
 	}
+	s.limiter.inc(ip)
+	defer s.limiter.dec(ip)
 
 	c := &client{
 		id:   uuid.New().String(),
