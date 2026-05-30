@@ -116,6 +116,7 @@ type PolicyEngine struct {
 	secretScanner       SecretScanner
 	delegationValidator DelegationValidator
 	activationBuilder   *cel.ActivationBuilder
+	labeler             label.Labeler
 	// buildSnapshotFunc is injected for testing failed reload scenarios.
 	// If nil, the default buildSnapshot is used.
 	buildSnapshotFunc snapshotBuilder
@@ -139,6 +140,13 @@ func WithSecretScanner(s SecretScanner) Option {
 func WithDelegationValidator(v DelegationValidator) Option {
 	return func(e *PolicyEngine) {
 		e.delegationValidator = v
+	}
+}
+
+// WithLabeler sets the resource labeler used to populate resource_* CEL variables.
+func WithLabeler(l label.Labeler) Option {
+	return func(e *PolicyEngine) {
+		e.labeler = l
 	}
 }
 
@@ -264,6 +272,11 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 		}
 	}
 
+	var labeled label.LabeledRequest
+	if e.labeler != nil {
+		labeled = e.labeler.Label(req, verdict)
+	}
+
 	matchedBindings := snap.matchBindings(req.Tool, req.SessionID)
 	for _, cb := range matchedBindings {
 		// Check effects constraint: if binding specifies effects, all must be present.
@@ -276,7 +289,7 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 			continue
 		}
 
-		val, err := e.activationBuilder.Evaluate(ctx, prog, req, verdict, decodedArgs, label.LabeledRequest{})
+		val, err := e.activationBuilder.Evaluate(ctx, prog, req, verdict, decodedArgs, labeled)
 		if err != nil {
 			log.Printf("WARN: policy %s eval error (skipping): %v", cb.binding.TemplateID, err)
 			continue
