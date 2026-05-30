@@ -78,6 +78,7 @@ func NewCELEnvironment(protoTypes ...proto.Message) (*CELEnvironment, error) {
 		cel.Variable("resource_type", cel.StringType),
 		cel.Variable("resource_path", cel.StringType),
 		cel.Variable("resource_network_cmd", cel.BoolType),
+		cel.Variable("resource_unknown_tool", cel.BoolType),
 
 		// bash.* namespace
 		bashExtension(),

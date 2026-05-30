@@ -59,7 +59,7 @@ func TestEngine_RequireApprovalPolicy_ReturnsActionRequireApproval(t *testing.T)
 		Message:         "requires approval",
 	})
 
-	resp := engine.Evaluate(context.Background(), aegis.CheckRequest{Tool: "Bash", SessionID: "s1"})
+	resp := engine.Evaluate(context.Background(), aegis.CheckRequest{Tool: "Bash", Args: []byte(`{"command":"ls"}`), SessionID: "s1"})
 
 	if resp.Decision.Action != aegis.ActionRequireApproval {
 		t.Errorf("Action = %v, want ActionRequireApproval", resp.Decision.Action)
@@ -74,7 +74,7 @@ func TestEngine_DenyPolicy_StillReturnsDeny(t *testing.T) {
 		RequireApproval: false,
 	})
 
-	resp := engine.Evaluate(context.Background(), aegis.CheckRequest{Tool: "Bash", SessionID: "s1"})
+	resp := engine.Evaluate(context.Background(), aegis.CheckRequest{Tool: "Bash", Args: []byte(`{"command":"ls"}`), SessionID: "s1"})
 
 	if resp.Decision.Action != aegis.ActionDeny {
 		t.Errorf("Action = %v, want ActionDeny", resp.Decision.Action)
@@ -87,7 +87,7 @@ func TestEngine_PolicyMessage_UsedAsReason(t *testing.T) {
 		Message:         "human readable message",
 	})
 
-	resp := engine.Evaluate(context.Background(), aegis.CheckRequest{Tool: "Bash", SessionID: "s1"})
+	resp := engine.Evaluate(context.Background(), aegis.CheckRequest{Tool: "Bash", Args: []byte(`{"command":"ls"}`), SessionID: "s1"})
 
 	if resp.Decision.Reason != "human readable message" {
 		t.Errorf("Reason = %q, want %q", resp.Decision.Reason, "human readable message")
@@ -100,7 +100,7 @@ func TestEngine_PolicyNoMessage_FallbackReason(t *testing.T) {
 		Message:         "",
 	})
 
-	resp := engine.Evaluate(context.Background(), aegis.CheckRequest{Tool: "Bash", SessionID: "s1"})
+	resp := engine.Evaluate(context.Background(), aegis.CheckRequest{Tool: "Bash", Args: []byte(`{"command":"ls"}`), SessionID: "s1"})
 
 	if resp.Decision.Reason != "CEL policy evaluation returned false" {
 		t.Errorf("Reason = %q, want fallback string", resp.Decision.Reason)
