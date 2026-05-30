@@ -6,26 +6,26 @@ metadata:
     aegis.io/default-enabled: "true"
     aegis.io/bundle: builtin
 spec:
-  description: "Block network scanning and host discovery tools"
+  description: "Block internet-scale network scanners; require approval for local debug tools"
   matchConstraints:
     tools: ["Bash"]
   variables:
     - name: isNmap
-      # nmap with any arguments — port/host scanner
+      # nmap with any arguments — port/host scanner; legitimate for local service checks
       expression: >-
         request.args.command.matches("(?i).*\\bnmap\\b.*")
     - name: isArpScan
-      # arp-scan, arp scan (with space), netdiscover
+      # arp-scan, arp scan (with space), netdiscover — local network discovery
       expression: >-
         request.args.command.matches("(?i).*\\barp-scan\\b.*") ||
         request.args.command.matches("(?i).*\\barp\\s+scan\\b.*") ||
         request.args.command.matches("(?i).*\\bnetdiscover\\b.*")
     - name: isMasscan
-      # masscan — high-speed port scanner
+      # masscan — internet-scale high-speed port scanner; no legitimate dev use
       expression: >-
         request.args.command.matches("(?i).*\\bmasscan\\b.*")
     - name: isZmap
-      # zmap — internet-wide scanner
+      # zmap — internet-wide scanner; no legitimate dev use
       expression: >-
         request.args.command.matches("(?i).*\\bzmap\\b.*")
     - name: isUnicodeScanTool
@@ -33,19 +33,19 @@ spec:
       expression: >-
         request.args.command.matches("(?i).*\\b(unicornscan|hping3|dnsenum|dnsrecon|fierce|amass)\\b.*")
   validations:
-    - expression: 'isNmap'
-      message: "Blocked: nmap network scanning is not permitted"
-      action: DENY
-    - expression: 'isArpScan'
-      message: "Blocked: ARP-based network host discovery is not permitted"
-      action: DENY
     - expression: 'isMasscan'
-      message: "Blocked: masscan high-speed port scanning is not permitted"
+      message: "Blocked: masscan is an internet-scale port scanner with no dev workflow use"
       action: DENY
     - expression: 'isZmap'
-      message: "Blocked: zmap internet-wide scanning is not permitted"
+      message: "Blocked: zmap is an internet-wide scanner with no dev workflow use"
       action: DENY
+    - expression: 'isNmap'
+      message: "nmap requires approval — confirm target is a local/known host (e.g. nmap localhost -p 8080)"
+      action: REQUIRE_APPROVAL
+    - expression: 'isArpScan'
+      message: "ARP-based network discovery requires approval — confirm this is local network debugging"
+      action: REQUIRE_APPROVAL
     - expression: 'isUnicodeScanTool'
-      message: "Blocked: network reconnaissance tool detected"
-      action: DENY
+      message: "Network reconnaissance tool detected — requires approval before running"
+      action: REQUIRE_APPROVAL
   defaultAction: ALLOW

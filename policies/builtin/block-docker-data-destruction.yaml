@@ -122,14 +122,14 @@ spec:
       message: "Blocked: docker volume rm destroys named volume data permanently"
       action: REQUIRE_APPROVAL
     - expression: 'isDockerContainerPrune'
-      message: "Blocked: docker container prune removes all stopped containers including those with anonymous volumes"
-      action: REQUIRE_APPROVAL
+      message: "docker container prune removes stopped containers — logged for audit"
+      action: AUDIT
     - expression: 'isDockerImagePruneAll'
-      message: "Blocked: docker image prune --all removes all unused images (not just dangling) — large re-download required"
+      message: "docker image prune --all removes all unused images — requires approval (forces re-download)"
       action: REQUIRE_APPROVAL
     - expression: 'isDockerBuilderPruneAll'
-      message: "Blocked: docker builder prune --all removes all build cache — forces full rebuild"
-      action: REQUIRE_APPROVAL
+      message: "docker builder prune --all removes all build cache — logged for audit"
+      action: AUDIT
     - expression: 'isDockerRmWithVolumes'
       message: "Blocked: docker rm -v/--volumes removes the container AND its anonymous volumes — data cannot be recovered"
       action: REQUIRE_APPROVAL

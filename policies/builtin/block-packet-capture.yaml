@@ -6,20 +6,28 @@ metadata:
     aegis.io/default-enabled: "true"
     aegis.io/bundle: builtin
 spec:
-  description: "Block packet capture and traffic analysis tools"
+  description: "Deny MITM/attack tools; require approval for legitimate packet capture debug tools"
   matchConstraints:
     tools: ["Bash"]
   variables:
     - name: isTcpdump
-      # tcpdump with any arguments — raw packet capture
+      # tcpdump — raw packet capture, legitimate for local service debugging
       expression: >-
         request.args.command.matches("(?i).*\\btcpdump\\b.*")
     - name: isWireshark
-      # wireshark (GUI), tshark (CLI), dumpcap (capture engine)
+      # wireshark (GUI), tshark (CLI) — legitimate traffic analysis tools
       expression: >-
-        request.args.command.matches("(?i).*\\b(wireshark|tshark|dumpcap)\\b.*")
+        request.args.command.matches("(?i).*\\b(wireshark|tshark)\\b.*")
+    - name: isNgrep
+      # ngrep — network grep, legitimate for inspecting traffic patterns
+      expression: >-
+        request.args.command.matches("(?i).*\\bngrep\\b.*")
+    - name: isDumpcap
+      # dumpcap — capture engine behind wireshark, legitimate capture tool
+      expression: >-
+        request.args.command.matches("(?i).*\\bdumpcap\\b.*")
     - name: isNetworkMirror
-      # ettercap, dsniff — MITM and sniffing tools
+      # ettercap, arpspoof, dsniff, dnsspoof — MITM and active attack tools
       expression: >-
         request.args.command.matches("(?i).*\\b(ettercap|dsniff|arpspoof|dnsspoof)\\b.*")
     - name: isRawSocketCapture
@@ -28,15 +36,21 @@ spec:
         request.args.command.matches("(?i).*\\bscapy\\b.*\\bsniff\\b.*") ||
         request.args.command.matches("(?i).*\\bpython[23]?\\b.*\\bsniff\\s*\\(.*")
   validations:
-    - expression: 'isTcpdump'
-      message: "Blocked: tcpdump packet capture is not permitted"
-      action: DENY
-    - expression: 'isWireshark'
-      message: "Blocked: packet capture tools (wireshark/tshark/dumpcap) are not permitted"
-      action: DENY
     - expression: 'isNetworkMirror'
-      message: "Blocked: network interception tools (ettercap/dsniff/arpspoof) are not permitted"
+      message: "Blocked: ettercap/arpspoof/dsniff are MITM attack tools — not permitted"
       action: DENY
+    - expression: 'isTcpdump'
+      message: "tcpdump requires approval — confirm interface and filter are appropriate (e.g. -i lo port 8080)"
+      action: REQUIRE_APPROVAL
+    - expression: 'isWireshark'
+      message: "Wireshark/tshark requires approval — confirm capture scope before running"
+      action: REQUIRE_APPROVAL
+    - expression: 'isNgrep'
+      message: "ngrep requires approval — confirm network filter is scoped to local traffic"
+      action: REQUIRE_APPROVAL
+    - expression: 'isDumpcap'
+      message: "dumpcap requires approval — confirm capture interface and scope"
+      action: REQUIRE_APPROVAL
     - expression: 'isRawSocketCapture'
       message: "Blocked: raw socket packet capture via scapy is not permitted"
       action: DENY
