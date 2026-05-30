@@ -255,6 +255,11 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 		e.validateAndPropagateTaint(req.SessionID, req.SpawnToken)
 	}
 
+	// [1b] PROJECT ROOT TRACKING — set immutably on first request with non-empty root
+	if req.ProjectRoot != "" && e.sessions != nil {
+		e.sessions.SetProjectRoot(req.SessionID, req.ProjectRoot)
+	}
+
 	// [2] Extract commandText for Bash
 	var commandText string
 	if req.Tool == "Bash" {
@@ -326,8 +331,10 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 
 	// [7] Session label lookup (now includes any taint from step 6)
 	var sessionLabel aegis.SecurityLabel
+	var sessionProjectRoot string
 	if e.sessions != nil {
 		sessionLabel = e.sessions.Current(req.SessionID)
+		sessionProjectRoot = e.sessions.ProjectRoot(req.SessionID)
 	}
 
 	// [8] IFC Dominates check
@@ -405,7 +412,7 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 		}
 
 		policyParams := snap.templateParams[cb.binding.TemplateID]
-		val, err := e.activationBuilder.Evaluate(ctx, prog, req, verdict, decodedArgs, labeled, policyParams)
+		val, err := e.activationBuilder.Evaluate(ctx, prog, req, verdict, decodedArgs, labeled, policyParams, sessionProjectRoot)
 		if err != nil {
 			log.Printf("WARN: policy %s eval error (skipping): %v", cb.binding.TemplateID, err)
 			continue

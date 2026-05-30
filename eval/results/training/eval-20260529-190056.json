@@ -1,0 +1,23 @@
+{
+  "timestamp": "2026-05-29T13:30:56Z",
+  "socket": "/tmp/aegis.sock",
+  "cases_dir": "eval/training",
+  "filter": "",
+  "timeout_ms": 5000,
+  "totals": {
+    "total": 506,
+    "passed": 300,
+    "failed": 201,
+    "errors": 5
+  },
+  "confusion_matrix": {
+    "true_positives": 208,
+    "false_positives": 12,
+    "true_negatives": 92,
+    "false_negatives": 189
+  },
+  "metrics": {
+    "precision": 94.5,
+    "recall": 52.4
+  }
+}
