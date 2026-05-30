@@ -3,7 +3,6 @@
 # The translation below approximates as a validate rule but cannot check the label selector —
 # it will REQUIRE_APPROVAL on all Deployments/StatefulSets lacking topologySpreadConstraints,
 # including those that legitimately lack the distributed=required label. This is an over-trigger.
-# IMPORT_REVIEW: translated by Claude — verify semantics
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate

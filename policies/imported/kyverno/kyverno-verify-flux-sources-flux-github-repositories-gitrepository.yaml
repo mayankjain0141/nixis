@@ -1,4 +1,3 @@
-# IMPORT_REVIEW: translated by Claude — checks for verification field and HTTPS url; trusted-domain URL allowlist cannot be expressed without hardcoding; HTTPS check added as partial coverage
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate

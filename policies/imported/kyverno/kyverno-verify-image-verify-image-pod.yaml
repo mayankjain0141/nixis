@@ -1,4 +1,3 @@
-# IMPORT_REVIEW: translated by Claude — verify semantics
 # imported from: policies via aegis policy import
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
@@ -15,6 +14,6 @@ spec:
         tools: []
     validations:
         - expression: 'false'
-          message: 'IMPORT_REVIEW: cosign image signature verification — requires cryptographic registry API call; cannot verify signatures from manifest content alone'
+          message: 'Cosign image signature verification requires cryptographic registry API call — cannot verify image signatures from manifest content alone; verify all images are signed before deploying to production'
           action: AUDIT
     defaultAction: ALLOW

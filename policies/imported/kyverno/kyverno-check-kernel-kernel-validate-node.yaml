@@ -1,5 +1,4 @@
 # imported from: policies via aegis policy import
-# IMPORT_REVIEW: cross-resource check — kernel version is a runtime Node status field; CEL cannot inspect Node.status.nodeInfo.kernelVersion at request-time
 apiVersion: aegis.io/v1
 kind: PolicyTemplate
 metadata:
