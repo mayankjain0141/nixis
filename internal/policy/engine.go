@@ -444,29 +444,52 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 
 	// [12] Secret scan
 	if e.secretScanner.ShouldScan(verdict.Effects, BoundaryToolArgs) {
-		var content string
-		if commandText != "" {
-			content = commandText
-		} else if len(req.Args) > 0 {
-			content = string(aegis.ExtractScanTarget(req.Tool, req.Args))
-		}
+		filePath := extractFilePath(req.Tool, req.Args)
+		if !isExemptPath(filePath) {
+			var content string
+			if commandText != "" {
+				content = commandText
+			} else if len(req.Args) > 0 {
+				content = string(aegis.ExtractScanTarget(req.Tool, req.Args))
+			}
 
-		if content != "" {
-			findings, elevatedLabel := e.secretScanner.ScanBoundary(ctx, content, BoundaryToolArgs)
-			if len(findings) > 0 {
-				if e.sessions != nil {
-					e.sessions.TaintWithSecret(req.SessionID)
+			if content != "" {
+				const maxScanBytes = 1 << 20 // 1MB
+				partialScan := false
+				scanContent := content
+				if len(content) > maxScanBytes {
+					scanContent = content[:maxScanBytes]
+					partialScan = true
 				}
-				return aegis.CheckResponse{
-					Decision: aegis.Decision{
-						Action:   aegis.ActionDeny,
-						Reason:   "secret detected in tool arguments",
-						PolicyID: "builtin:secret-scan",
-						Labels:   elevatedLabel,
-					},
-					LatencyNs:      time.Now().UnixNano() - startNs,
-					EnforcingLayer: aegis.EnforcingLayerSecretScan,
-					ThreatSeverity: "high",
+
+				findings, elevatedLabel := e.secretScanner.ScanBoundary(ctx, scanContent, BoundaryToolArgs)
+				if len(findings) > 0 {
+					if e.sessions != nil {
+						e.sessions.TaintWithSecret(req.SessionID)
+					}
+					return aegis.CheckResponse{
+						Decision: aegis.Decision{
+							Action:   aegis.ActionRequireApproval,
+							Reason:   "secret pattern detected in content — human approval required",
+							PolicyID: "builtin:secret-scan",
+							Labels:   elevatedLabel,
+						},
+						LatencyNs:      time.Now().UnixNano() - startNs,
+						EnforcingLayer: aegis.EnforcingLayerSecretScan,
+						ThreatSeverity: "high",
+					}
+				}
+				if partialScan {
+					return aegis.CheckResponse{
+						Decision: aegis.Decision{
+							Action:   aegis.ActionRequireApproval,
+							Reason:   "content exceeds 1MB scan limit — remainder unverified for secrets",
+							PolicyID: "builtin:secret-scan-partial",
+						},
+						LatencyNs:      time.Now().UnixNano() - startNs,
+						EnforcingLayer: aegis.EnforcingLayerSecretScan,
+						ThreatSeverity: "medium",
+					}
 				}
 			}
 		}
@@ -706,6 +729,39 @@ func denyResponseWithVerdict(
 }
 
 // extractCommandText extracts the command text from Bash tool arguments.
+// isExemptPath returns true for paths that commonly contain example/test credentials.
+func isExemptPath(path string) bool {
+	if strings.HasSuffix(path, "_test.go") {
+		return true
+	}
+	if strings.Contains(path, "/testdata/") || strings.HasSuffix(path, "/testdata") {
+		return true
+	}
+	if strings.Contains(path, "/docs/") || strings.HasSuffix(path, "/docs") {
+		return true
+	}
+	if strings.HasSuffix(path, ".example") || strings.HasSuffix(path, ".sample") ||
+		strings.HasSuffix(path, ".template") || strings.HasSuffix(path, ".tmpl") {
+		return true
+	}
+	if strings.Contains(path, "/examples/") || strings.HasSuffix(path, "/examples") {
+		return true
+	}
+	base := filepath.Base(path)
+	return strings.HasPrefix(strings.ToUpper(base), "README")
+}
+
+// extractFilePath extracts the file_path arg from Write/Edit/Read tool calls.
+func extractFilePath(tool string, args []byte) string {
+	var a struct {
+		FilePath string `json:"file_path"`
+	}
+	if err := json.Unmarshal(args, &a); err != nil {
+		return ""
+	}
+	return a.FilePath
+}
+
 func extractCommandText(args json.RawMessage) (string, bool) {
 	if len(args) == 0 {
 		return "", false
