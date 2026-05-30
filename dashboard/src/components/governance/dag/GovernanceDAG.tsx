@@ -17,6 +17,7 @@ import { IFCNode } from './nodes/IFCNode';
 import { PolicyNode } from './nodes/PolicyNode';
 import { AuditNode } from './nodes/AuditNode';
 import { ToolNode } from './nodes/ToolNode';
+import type { NodeMouseHandler } from '@xyflow/react';
 
 export const governanceNodeTypes: NodeTypes = {
   agent: AgentNode,
@@ -52,6 +53,8 @@ function hashNodeIds(ids: string[]): number {
 
 export function GovernanceDAG() {
   const events = useGovernanceStore((s) => s.events);
+  const filterPolicy = useGovernanceStore((s) => s.filterPolicy);
+  const setFilterPolicy = useGovernanceStore((s) => s.setFilterPolicy);
 
   const { nodes, edges } = useMemo(() => {
     const tools = [...new Set(events.map((e) => e.tool))];
@@ -98,7 +101,7 @@ export function GovernanceDAG() {
           x: 500 + rand() * 10,
           y: (canvasH - totalPolicyH) / 2 + i * policyGap + rand() * 8,
         },
-        data: { label: policy },
+        data: { label: policy, policyId: policy },
       })),
     ];
 
@@ -160,6 +163,12 @@ export function GovernanceDAG() {
     );
   }
 
+  const handleNodeClick: NodeMouseHandler = (_event, node) => {
+    if (!node.id.startsWith('policy-')) return;
+    const policyId = node.id.slice('policy-'.length);
+    setFilterPolicy(filterPolicy === policyId ? null : policyId);
+  };
+
   return (
     <div style={{ width: '100%', height: '100%', minHeight: 420 }} aria-label="Governance evaluation DAG">
       <ReactFlow
@@ -169,6 +178,7 @@ export function GovernanceDAG() {
         fitView
         fitViewOptions={{ padding: 0.15 }}
         onlyRenderVisibleElements={nodes.length > 200}
+        onNodeClick={handleNodeClick}
       >
         <Background />
         <Controls />
