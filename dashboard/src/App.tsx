@@ -307,7 +307,7 @@ export default function App() {
       const panel = (e as CustomEvent<{ panel: string }>).detail?.panel;
       // Tab panels — switch the secondary tab
       const tabMap: Record<string, MainTab> = {
-        dag: 'dag', playground: 'playground', audit: 'audit', delegation: 'delegation',
+        dag: 'dag', playground: 'playground', audit: 'audit', delegation: 'delegation', threats: 'threats',
       };
       if (panel && tabMap[panel]) {
         activeTabRef.setTab(tabMap[panel]);
@@ -321,9 +321,7 @@ export default function App() {
       } else if (panel === 'metrics') {
         activeTabRef.setTab('dag'); // metrics are in the DAG tab area
       } else if (panel === 'lattice') {
-        activeTabRef.setTab('delegation'); // closest tab with session info
-      } else if (panel === 'threats') {
-        activeTabRef.setTab('audit'); // threats visible in audit tab
+        activeTabRef.setTab('delegation'); // closest tab with session info — will be fixed by WS-08a
       }
     }
     window.addEventListener('aegis:navigate', handleNavigate);
