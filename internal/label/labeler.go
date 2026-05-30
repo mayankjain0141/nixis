@@ -156,8 +156,6 @@ func (l *ruleBasedLabeler) Label(req aegis.CheckRequest, _ classify.VerdictEntry
 	return result
 }
 
-// extractBashPaths does broad path extraction from a Bash command, covering commands
-// not handled by resource.ExtractPaths (e.g., ls, chmod, find).
 func extractBashPaths(cmd string) []string {
 	tokens := strings.Fields(cmd)
 	if len(tokens) == 0 {
@@ -186,7 +184,6 @@ func extractBashPaths(cmd string) []string {
 	return paths
 }
 
-// looksLikePathToken returns true if a shell token looks like a file path.
 func looksLikePathToken(s string) bool {
 	if s == "" {
 		return false
@@ -194,7 +191,6 @@ func looksLikePathToken(s string) bool {
 	return s[0] == '/' || s[0] == '~' || s[0] == '.'
 }
 
-// mergePaths appends b to a, deduplicating exact matches.
 func mergePaths(a, b []string) []string {
 	if len(b) == 0 {
 		return a
@@ -225,7 +221,6 @@ func joinAll(labels []aegis.SecurityLabel) aegis.SecurityLabel {
 	return result
 }
 
-// extPathRule is the label package's own path rule with ResourceType.
 type extPathRule struct {
 	pattern string
 	matchFn func(path, pattern string) bool
@@ -237,7 +232,6 @@ func (r *extPathRule) matches(path string) bool {
 	return r.matchFn(path, r.pattern)
 }
 
-// extDomainRule is the label package's own domain rule with ResourceType.
 type extDomainRule struct {
 	pattern string
 	matchFn func(domain, pattern string) bool
