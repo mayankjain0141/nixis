@@ -25,3 +25,87 @@ spec:
       message: "Exec targeting cloud metadata endpoint denied unconditionally — credential theft risk."
       action: DENY
   defaultAction: ALLOW
+---
+# Policy 1: Credential-access exec — REQUIRE_APPROVAL
+# label.hasCategory replaces (resource_cat & CatCredentials) != 0 — CEL lacks bitwise & operator.
+# CatCredentials = 1 (bit 0), TaintBit = 2147483648 (bit 31), CatSecurityKey = 1073741824 (bit 30).
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: semantic-credential-exec
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+    aegis.io/engine-fix-required: "REQUIRE_APPROVAL-from-CEL"
+spec:
+  description: "Require approval for any exec targeting a credential-labeled resource (CatCredentials)"
+  validations:
+    - expression: >-
+        label.hasCategory(resource_cat, 1) &&
+        effects.exists(e, e == "exec_process")
+      message: "Exec targeting credential resource requires approval (CatCredentials). Legitimate use: use aegis allowlist or approval."
+      action: REQUIRE_APPROVAL
+  defaultAction: ALLOW
+---
+# Policy 2: Security key access — REQUIRE_APPROVAL
+# CatSecurityKey = 1073741824 (bit 30). Covers cloud metadata, SSH keys, GPG keys, kernel devices.
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: semantic-security-key-access
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+    aegis.io/engine-fix-required: "REQUIRE_APPROVAL-from-CEL"
+spec:
+  description: "Require approval for any access to security key resources (CatSecurityKey)"
+  validations:
+    - expression: >-
+        label.hasCategory(resource_cat, 1073741824)
+      message: "Access to security key resource requires approval (CatSecurityKey). Includes cloud metadata, SSH keys, GPG keys."
+      action: REQUIRE_APPROVAL
+  defaultAction: ALLOW
+---
+# Policy 4: Tainted session network write — REQUIRE_APPROVAL (WebFetch/WebSearch exempted as read-only)
+# TaintBit = 2147483648 (bit 31). categories holds the session-level category bitmask.
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: semantic-tainted-network-write
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+    aegis.io/engine-fix-required: "REQUIRE_APPROVAL-from-CEL"
+spec:
+  description: "Require approval for network write operations from tainted sessions (WebFetch/WebSearch exempted as read-only)"
+  validations:
+    - expression: >-
+        label.hasCategory(categories, 2147483648) &&
+        effects.exists(e, e == "network_egress") &&
+        !(tool == "WebFetch" || tool == "WebSearch")
+      message: "Network operation from tainted session requires approval (exfiltration risk). WebFetch/WebSearch exempted as read-only."
+      action: REQUIRE_APPROVAL
+  defaultAction: ALLOW
+---
+# Policy 5: Credential write — REQUIRE_APPROVAL
+# Uses CatCredentials (bit 0) — no labeler rule assigns CatCryptographic.
+# matchConstraints.tools narrows to Write/Edit; write_files effect confirms mutating intent.
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: semantic-credential-write
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+    aegis.io/engine-fix-required: "REQUIRE_APPROVAL-from-CEL"
+spec:
+  description: "Require approval for Write/Edit operations on credential-classified resources"
+  matchConstraints:
+    tools: ["Write", "Edit"]
+  validations:
+    - expression: >-
+        label.hasCategory(resource_cat, 1) &&
+        effects.exists(e, e == "write_files")
+      message: "Write to credential-classified resource requires approval."
+      action: REQUIRE_APPROVAL
+  defaultAction: ALLOW
