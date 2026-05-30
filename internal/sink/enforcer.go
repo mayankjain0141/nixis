@@ -2,7 +2,6 @@
 package sink
 
 import (
-	"net"
 	"strings"
 	"time"
 
@@ -36,9 +35,8 @@ func IsRestrictedEffect(effect string) bool {
 //
 // Returns:
 //
-//	ActionAllow          — session not tainted, or not a restricted sink, or internal-only resource
-//	ActionDeny           — tainted session targeting external network resource (exfiltration risk)
-//	ActionRequireApproval — tainted session attempting restricted non-network sink
+//	ActionAllow          — session not tainted, or not a restricted sink
+//	ActionRequireApproval — tainted session attempting restricted sink
 func Decision(snap ifc.SessionSnapshot, effects []string, resources []string, containsNetworkCmd bool) aegis.Action {
 	// INV-SINK-1: untainted session bypasses all sink enforcement
 	if !snap.IsTainted {
@@ -50,8 +48,7 @@ func Decision(snap ifc.SessionSnapshot, effects []string, resources []string, co
 		return aegis.ActionAllow
 	}
 
-	// INV-SINK-3: tainted session + restricted effect → check approval state.
-	// Approval always overrides destination-based discrimination.
+	// INV-SINK-3: tainted session + restricted effect → check approval state
 	switch snap.ApprovalState {
 	case ifc.ApprovalSessionGranted:
 		return aegis.ActionAllow
@@ -64,83 +61,7 @@ func Decision(snap ifc.SessionSnapshot, effects []string, resources []string, co
 	case ifc.ApprovalNone:
 		// No approval granted.
 	}
-
-	// Discriminate external exfiltration from legitimate internal communication.
-	// Only applies when no approval has been granted (cases above did not return).
-	//
-	// External resources are denied outright to prevent exfiltration.
-	// Internal/localhost resources are allowed — tainted sessions may use local services.
-	// Network binary with no extractable destination is denied conservatively.
-	if isExternalResource(resources) || (containsNetworkCmd && len(resources) == 0) {
-		return aegis.ActionDeny
-	}
-	if len(resources) > 0 && !isExternalResource(resources) {
-		// All resources are internal: allow without requiring approval.
-		return aegis.ActionAllow
-	}
-	// No resources and no network cmd: non-network restricted effect (ContentPublish,
-	// MessageContent, etc.) — require approval from user.
 	return aegis.ActionRequireApproval
-}
-
-// isExternalResource returns true if ANY resource in the list resolves to an
-// external (non-localhost, non-private) host or URL.
-func isExternalResource(resources []string) bool {
-	for _, r := range resources {
-		if isExternal(r) {
-			return true
-		}
-	}
-	return false
-}
-
-// isExternal returns true if the resource string refers to an external host.
-// Returns false for localhost, loopback addresses, private RFC-1918 ranges,
-// link-local addresses, and relative paths.
-func isExternal(resource string) bool {
-	r := resource
-	for _, prefix := range []string{"https://", "http://", "ws://", "wss://", "ftp://", "ssh://"} {
-		if strings.HasPrefix(r, prefix) {
-			r = r[len(prefix):]
-			break
-		}
-	}
-
-	// Handle bracketed IPv6: [::1]:8080 → ::1
-	if strings.HasPrefix(r, "[") {
-		if end := strings.Index(r, "]"); end >= 0 {
-			r = r[1:end]
-		}
-	} else {
-		// Strip path, port, query, fragment for non-bracketed hosts
-		if idx := strings.IndexAny(r, "/:?#"); idx >= 0 {
-			r = r[:idx]
-		}
-	}
-
-	r = strings.ToLower(strings.TrimSpace(r))
-
-	if r == "" {
-		return false
-	}
-
-	// Explicit localhost names
-	if r == "localhost" || strings.HasSuffix(r, ".localhost") || r == "host.docker.internal" {
-		return false
-	}
-
-	ip := net.ParseIP(r)
-	if ip != nil {
-		return !ip.IsLoopback() && !ip.IsPrivate() && !ip.IsLinkLocalUnicast() && !ip.IsLinkLocalMulticast()
-	}
-
-	// Domain names are treated as external (conservative)
-	return true
-}
-
-// IsExternal is exported for testing.
-func IsExternal(resource string) bool {
-	return isExternal(resource)
 }
 
 // isRestrictedSink returns true if any effect in the list is a restricted sink,
