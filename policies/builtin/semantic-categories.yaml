@@ -1,0 +1,27 @@
+# Semantic category-based policies — detect by resource label, not tool name/command string.
+# Policy 3 only: cloud metadata DENY (REQUIRE_APPROVAL policies ship after P0-A engine fix deployment).
+#
+# Category numeric constants (from internal/ifc/lattice.go):
+#   CatCredentials = 1      (1 << 0)
+#   CatSecurityKey = 1073741824  (1 << 30)
+#
+# Cloud metadata confirmation: curl 169.254.169.254/... triggers conf=2000, CatSecurityKey
+# (verified in internal/label/labeler_test.go case 20 and internal/label/labeler.go lines 420-430).
+---
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: semantic-cloud-metadata-deny
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Deny exec operations targeting cloud metadata endpoints (resource_type=cloud_metadata, resource_conf>=2000). Covers 169.254.169.254 and similar."
+  validations:
+    - expression: >-
+        resource_type == "cloud_metadata" &&
+        resource_conf >= 2000 &&
+        effects.exists(e, e == "exec_process")
+      message: "Exec targeting cloud metadata endpoint denied unconditionally — credential theft risk."
+      action: DENY
+  defaultAction: ALLOW
