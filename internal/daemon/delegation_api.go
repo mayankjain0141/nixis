@@ -8,17 +8,14 @@ import (
 	"github.com/mayjain/aegis/internal/delegation"
 )
 
-// DelegationAPI exposes delegation chain operations over HTTP.
 type DelegationAPI struct {
 	engine *delegation.Engine
 }
 
-// NewDelegationAPI constructs a DelegationAPI backed by the given Engine.
 func NewDelegationAPI(engine *delegation.Engine) *DelegationAPI {
 	return &DelegationAPI{engine: engine}
 }
 
-// RegisterRoutes registers delegation endpoints on mux.
 func (a *DelegationAPI) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/delegation/revoke", a.handleRevoke)
 	mux.HandleFunc("/api/v1/delegation/list", a.handleList)

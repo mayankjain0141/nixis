@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Package audit provides append-only SQLite persistence for Aegis governance decisions.
-// A single goroutine writes to SQLite (INV-8). The hot path enqueues via a buffered
+// A single goroutine writes to SQLite. The hot path enqueues via a buffered
 // channel and never blocks.
 package audit
 
@@ -25,7 +25,6 @@ const (
 	batchTimeout = 100 * time.Millisecond
 )
 
-// AuditRecord is an immutable audit log entry written for every Evaluate() call.
 type AuditRecord struct {
 	ID             int64 // SQLite ROWID (assigned on write)
 	Timestamp      int64 // unix nanos
@@ -40,7 +39,6 @@ type AuditRecord struct {
 	LabelAfter     aegis.SecurityLabel
 }
 
-// SessionLabelRecord tracks label state transitions per session.
 type SessionLabelRecord struct {
 	SessionID  string
 	LabelState string // "fresh", "escalated", "tainted_by_secret", "declassified"
@@ -53,14 +51,12 @@ type writeItem struct {
 	labelRecord *SessionLabelRecord
 }
 
-// Writer is the single-goroutine SQLite audit writer.
 type Writer struct {
 	db      *sql.DB
 	ch      chan writeItem
 	dropped atomic.Int64
 }
 
-// NewWriter opens (or creates) the SQLite database at dbPath and applies the schema.
 func NewWriter(dbPath string) (*Writer, error) {
 	db, err := sql.Open("sqlite", dbPath+
 		"?_journal_mode=WAL&_synchronous=NORMAL&_busy_timeout=5000"+
