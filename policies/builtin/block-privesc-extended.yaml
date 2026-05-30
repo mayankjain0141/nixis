@@ -1,0 +1,51 @@
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: block-privesc-extended
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Block extended privilege escalation: pkexec, doas, capsh, setpriv, runuser, newgrp, kernel panic"
+  matchConstraints:
+    tools: ["Bash"]
+  validations:
+    - expression: >-
+        request.args.command.matches("(?i)\\b(pkexec|doas)\\s+(bash|sh|zsh|fish|dash)\\b") ||
+        request.args.command.matches("(?i)\\bpkexec\\s+bash\\b")
+      message: "Blocked: pkexec/doas to shell is a privilege escalation technique"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bsu\\s+(root|-)\\b") ||
+        request.args.command.matches("(?i)\\bsu\\s+-c\\b") ||
+        request.args.command.matches("(?i)\\bsu\\b\\s+-\\b")
+      message: "Blocked: su to root or interactive root shell"
+      action: DENY
+    - expression: 'request.args.command.matches("(?i)\\bcapsh\\b.*(--uid=0|--gid=0)")'
+      message: "Blocked: capsh with uid=0 or gid=0 grants root capabilities"
+      action: DENY
+    - expression: 'request.args.command.matches("(?i)\\bsetpriv\\b.*(--reuid=0|--regid=0)")'
+      message: "Blocked: setpriv changing UID/GID to root"
+      action: DENY
+    - expression: 'request.args.command.matches("(?i)\\brunuser\\b.*root")'
+      message: "Blocked: runuser as root"
+      action: DENY
+    - expression: 'request.args.command.matches("(?i)\\bnewgrp\\s+root\\b")'
+      message: "Blocked: newgrp root grants root group access"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bsysctl\\s+-w.*kernel\\.sysrq") ||
+        request.args.command.matches("(?i)echo\\s+[bc]\\s*>\\s*/proc/sysrq-trigger")
+      message: "Blocked: sysrq trigger can cause kernel panic or reboot"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\busermod\\b.*(root|sudo|wheel|0)") ||
+        request.args.command.matches("(?i)\\busermod\\b.*-[Gg]\\s+(root|sudo|0)")
+      message: "Blocked: usermod adding users to privileged groups"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bmount\\b.*--bind\\b") &&
+        request.args.command.matches("(?i)/host")
+      message: "Blocked: bind mounting host filesystem paths (container escape)"
+      action: DENY
+  defaultAction: ALLOW

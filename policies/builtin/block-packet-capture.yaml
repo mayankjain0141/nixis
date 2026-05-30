@@ -1,0 +1,43 @@
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: block-packet-capture
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Block packet capture and traffic analysis tools"
+  matchConstraints:
+    tools: ["Bash"]
+  variables:
+    - name: isTcpdump
+      # tcpdump with any arguments — raw packet capture
+      expression: >-
+        request.args.command.matches("(?i).*\\btcpdump\\b.*")
+    - name: isWireshark
+      # wireshark (GUI), tshark (CLI), dumpcap (capture engine)
+      expression: >-
+        request.args.command.matches("(?i).*\\b(wireshark|tshark|dumpcap)\\b.*")
+    - name: isNetworkMirror
+      # ettercap, dsniff — MITM and sniffing tools
+      expression: >-
+        request.args.command.matches("(?i).*\\b(ettercap|dsniff|arpspoof|dnsspoof)\\b.*")
+    - name: isRawSocketCapture
+      # scapy with sniff() — Python raw socket packet capture
+      expression: >-
+        request.args.command.matches("(?i).*\\bscapy\\b.*\\bsniff\\b.*") ||
+        request.args.command.matches("(?i).*\\bpython[23]?\\b.*\\bsniff\\s*\\(.*")
+  validations:
+    - expression: 'isTcpdump'
+      message: "Blocked: tcpdump packet capture is not permitted"
+      action: DENY
+    - expression: 'isWireshark'
+      message: "Blocked: packet capture tools (wireshark/tshark/dumpcap) are not permitted"
+      action: DENY
+    - expression: 'isNetworkMirror'
+      message: "Blocked: network interception tools (ettercap/dsniff/arpspoof) are not permitted"
+      action: DENY
+    - expression: 'isRawSocketCapture'
+      message: "Blocked: raw socket packet capture via scapy is not permitted"
+      action: DENY
+  defaultAction: ALLOW

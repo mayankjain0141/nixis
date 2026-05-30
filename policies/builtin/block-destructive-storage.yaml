@@ -1,0 +1,50 @@
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: block-destructive-storage
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Block destructive storage operations: ZFS/Btrfs/LVM destroy, wipefs, blkdiscard, truncate of system logs"
+  matchConstraints:
+    tools: ["Bash"]
+  validations:
+    - expression: 'request.args.command.matches("(?i)\\bzfs\\s+destroy\\b")'
+      message: "Blocked: zfs destroy is irreversible — requires human approval"
+      action: DENY
+    - expression: 'request.args.command.matches("(?i)\\bbtrfs\\s+subvolume\\s+delete\\b")'
+      message: "Blocked: btrfs subvolume delete is irreversible"
+      action: DENY
+    - expression: 'request.args.command.matches("(?i)\\blvremove\\b")'
+      message: "Blocked: lvremove destroys logical volume data"
+      action: DENY
+    - expression: 'request.args.command.matches("(?i)\\bvgremove\\b")'
+      message: "Blocked: vgremove destroys volume group data"
+      action: DENY
+    - expression: 'request.args.command.matches("(?i)\\bwipefs\\b")'
+      message: "Blocked: wipefs removes filesystem signatures making disk unreadable"
+      action: DENY
+    - expression: 'request.args.command.matches("(?i)\\bblkdiscard\\b")'
+      message: "Blocked: blkdiscard discards all data on block device"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\b(wipe|secure-delete|srm)\\b.*-r") ||
+        (request.args.command.matches("(?i)\\b(wipe|secure-delete|srm)\\b") &&
+         request.args.command.matches("(?i)/(etc|var|opt|home|root|data|usr|srv|prod|secrets)"))
+      message: "Blocked: secure-delete of system/sensitive directories is irreversible"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\btruncate\\b.*-s\\s+0\\b") &&
+        request.args.command.matches("(?i)/(var/log|etc|auth\\.log|syslog|secure|kern\\.log)")
+      message: "Blocked: truncating system or auth logs destroys audit evidence"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bfind\\s+/") &&
+        request.args.command.matches("(?i)-(delete|exec\\s+rm)")
+      message: "Blocked: recursive find-delete across filesystem is destructive"
+      action: DENY
+    - expression: 'request.args.command.matches("(?i)\\bshred\\b.*/(etc|var|home|root|opt|data|usr|srv)")'
+      message: "Blocked: shred on system paths is irreversible"
+      action: DENY
+  defaultAction: ALLOW

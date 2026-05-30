@@ -1,0 +1,96 @@
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: block-evasion-indirect
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Block indirect execution evasion: download-execute chains, source /tmp, screen/tmux detach, at/watch/crontab persistence loops"
+  matchConstraints:
+    tools: ["Bash"]
+  validations:
+    - expression: >-
+        (request.args.command.matches("(?i)\\bwget\\b.*-O.*\\b/tmp/") ||
+         request.args.command.matches("(?i)\\bcurl\\b.*-[Oo].*\\b/tmp/")) &&
+        (request.args.command.matches("(?i)\\bchmod\\b.*\\+x\\b") ||
+         request.args.command.matches("(?i)&&.*/tmp/") ||
+         request.args.command.matches("(?i)\\bbash\\b.*/tmp/"))
+      message: "Blocked: download-execute chain (fetch to /tmp then run)"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bsource\\b\\s+/tmp/") ||
+        request.args.command.matches("(?i)\\bdot\\b\\s+/tmp/") ||
+        request.args.command.matches("(?i)\\.\\s+/tmp/[^\\s]+\\.sh")
+      message: "Blocked: sourcing scripts from /tmp (possible planted payload)"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bscreen\\b.*-dm\\b.*bash") ||
+        request.args.command.matches("(?i)\\bscreen\\b.*-dm\\b.*curl") ||
+        request.args.command.matches("(?i)\\bscreen\\b.*-dm\\b.*nc")
+      message: "Blocked: screen -dm creating detached sessions with dangerous payloads"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\btmux\\b.*new-session.*-d\\b") &&
+        (request.args.command.matches("(?i)curl") ||
+         request.args.command.matches("(?i)while\\s+true") ||
+         request.args.command.matches("(?i)evil"))
+      message: "Blocked: tmux detached session running persistent or remote payloads"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bnohup\\b.*curl.*\\|.*sh") ||
+        request.args.command.matches("(?i)\\bnohup\\b.*bash.*-c.*evil") ||
+        (request.args.command.matches("(?i)\\bnohup\\b") &&
+         request.args.command.matches("(?i)\\|\\s*(sh|bash)\\b") &&
+         request.args.command.matches("(?i)\\bcurl\\b"))
+      message: "Blocked: nohup running background remote payload"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bwatch\\b.*curl.*\\|.*sh") ||
+        request.args.command.matches("(?i)\\bwatch\\b.*-n.*curl")
+      message: "Blocked: watch repeatedly executing remote payload"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bwhile\\s+true\\b.*curl.*\\|.*sh") ||
+        (request.args.command.matches("(?i)\\bwhile\\s+true\\b") &&
+         request.args.command.matches("(?i)\\bcurl\\b.*\\|\\s*(sh|bash)\\b"))
+      message: "Blocked: infinite loop fetching and executing remote C2 payload"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bat\\b.*\\b(now|midnight|noon|\\+)") &&
+        (request.args.command.matches("(?i)/etc/shadow") ||
+         request.args.command.matches("(?i)curl") ||
+         request.args.command.matches("(?i)shred") ||
+         request.args.command.matches("(?i)cat\\s+/etc"))
+      message: "Blocked: at scheduler executing dangerous deferred payload"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bcrontab\\b\\s+-") &&
+        (request.args.command.matches("(?i)curl.*\\|.*sh") ||
+         request.args.command.matches("(?i)/etc/shadow") ||
+         request.args.command.matches("(?i)evil\\.com"))
+      message: "Blocked: crontab replacement installing C2 or credential exfil job"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bsystemd-run\\b") &&
+        (request.args.command.matches("(?i)curl.*\\|.*sh") ||
+         request.args.command.matches("(?i)bash\\s+-c.*evil"))
+      message: "Blocked: systemd-run scheduling remote payload execution"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bdocker\\s+run\\b") &&
+        (request.args.command.matches("(?i)-v\\s*/:/") ||
+         request.args.command.matches("(?i)-v\\s*/proc:/") ||
+         request.args.command.matches("(?i)-v\\s*/etc:/") ||
+         request.args.command.matches("(?i)-v\\s*/sys:/"))
+      message: "Blocked: Docker mounting host root, /proc, /etc, or /sys (container escape)"
+      action: DENY
+    - expression: >-
+        request.args.command.matches("(?i)\\bssh\\b.*localhost.*cat.*shadow") ||
+        (request.args.command.matches("(?i)\\bssh\\b") &&
+         request.args.command.matches("(?i)-o\\s*StrictHostKeyChecking=no") &&
+         request.args.command.matches("(?i)localhost") &&
+         request.args.command.matches("(?i)/etc/(shadow|passwd)"))
+      message: "Blocked: SSH to localhost used to escape shell restrictions"
+      action: DENY
+  defaultAction: ALLOW

@@ -1,0 +1,43 @@
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: block-crypto-mining
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Block cryptocurrency mining: known miner binaries and stratum pool connections"
+  matchConstraints:
+    tools: ["Bash"]
+  variables:
+    - name: isMinerBinary
+      # Known miner executables: xmrig, cpuminer, minerd, ethminer, cgminer, bfgminer, xmr-stak
+      expression: >-
+        request.args.command.matches("(?i).*\\b(xmrig|cpuminer|minerd|ethminer|cgminer|bfgminer|xmr-stak|xmr_stak|nheqminer|t-rex|teamredminer|lolminer|nanominer|gminer|srbminer|wildrig)\\b.*")
+    - name: isStratumConnection
+      # stratum+tcp:// or stratum+ssl:// pool protocol
+      expression: >-
+        request.args.command.matches("(?i).*stratum\\+(tcp|ssl|tls)://.*")
+    - name: isKnownMiningPool
+      # Well-known monero and ethereum mining pool hostnames
+      expression: >-
+        request.args.command.matches("(?i).*(pool\\.supportxmr\\.com|pool\\.minexmr\\.com|moneropool\\.com|xmrpool\\.eu|monerohash\\.com|hashvault\\.pro|nanopool\\.org|f2pool\\.com|antpool\\.com|nicehash\\.com|ethermine\\.org|mining\\.pool).*")
+    - name: isMinerPoolFlag
+      # -o flag pointing to mining pool ports 3333, 4444, 5555, 14444, or miner-specific port patterns
+      expression: >-
+        request.args.command.matches("(?i).*\\s-o\\s+.*:(3333|4444|5555|7777|14444)\\b.*") ||
+        request.args.command.matches("(?i).*\\s--url\\s+.*:(3333|4444|5555|7777|14444)\\b.*")
+  validations:
+    - expression: 'isMinerBinary'
+      message: "Blocked: known cryptocurrency miner binary detected"
+      action: DENY
+    - expression: 'isStratumConnection'
+      message: "Blocked: stratum mining pool protocol detected"
+      action: DENY
+    - expression: 'isKnownMiningPool'
+      message: "Blocked: known cryptocurrency mining pool hostname detected"
+      action: DENY
+    - expression: 'isMinerPoolFlag'
+      message: "Blocked: miner pool connection flag (-o/--url with mining port) detected"
+      action: DENY
+  defaultAction: ALLOW
