@@ -59,6 +59,7 @@ type SecurityLabel struct {
 type EnforcingLayer string
 
 const (
+	EnforcingLayerArgSchema  EnforcingLayer = "arg-schema"
 	EnforcingLayerCEL        EnforcingLayer = "cel"
 	EnforcingLayerIFC        EnforcingLayer = "ifc"
 	EnforcingLayerDelegation EnforcingLayer = "delegation"
