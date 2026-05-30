@@ -2,6 +2,7 @@
 package sink
 
 import (
+	"net"
 	"strings"
 	"time"
 
@@ -26,6 +27,53 @@ func IsRestrictedEffect(effect string) bool {
 	return restrictedEffects[effect]
 }
 
+// isExternal returns true if the resource refers to an external (non-private) host.
+// Localhost, RFC-1918 ranges, link-local, and docker-internal are treated as internal.
+// Justified by training cases T-LEG-086/087/088: localhost DB/cache access must be allowed
+// even from a tainted session to preserve legitimate development workflows.
+func isExternal(resource string) bool {
+	r := resource
+	for _, prefix := range []string{"https://", "http://", "ws://", "wss://", "ftp://", "ssh://"} {
+		if strings.HasPrefix(r, prefix) {
+			r = r[len(prefix):]
+			break
+		}
+	}
+	// Handle bracketed IPv6 before generic port/path stripping: [::1]:6379 → ::1
+	if strings.HasPrefix(r, "[") {
+		end := strings.Index(r, "]")
+		if end > 0 {
+			r = r[1:end]
+		}
+	} else {
+		// Strip port, path, query, fragment for non-IPv6 hosts
+		if idx := strings.IndexAny(r, "/:?#"); idx >= 0 {
+			r = r[:idx]
+		}
+	}
+	r = strings.ToLower(strings.TrimSpace(r))
+	if r == "" {
+		return false
+	}
+	if r == "localhost" || strings.HasSuffix(r, ".localhost") || r == "host.docker.internal" {
+		return false
+	}
+	ip := net.ParseIP(r)
+	if ip != nil {
+		return !ip.IsLoopback() && !ip.IsPrivate() && !ip.IsLinkLocalUnicast() && !ip.IsLinkLocalMulticast()
+	}
+	return true // domain names: conservative, treat as external
+}
+
+func isExternalResource(resources []string) bool {
+	for _, r := range resources {
+		if isExternal(r) {
+			return true
+		}
+	}
+	return false
+}
+
 // Decision returns the sink enforcement action for a tainted session.
 //
 // snap must be obtained via sessions.Snapshot() for consistent taint+approval state.
@@ -35,8 +83,8 @@ func IsRestrictedEffect(effect string) bool {
 //
 // Returns:
 //
-//	ActionAllow          — session not tainted, or not a restricted sink
-//	ActionRequireApproval — tainted session attempting restricted sink
+//	ActionAllow — session not tainted, not a restricted sink, or internal resource
+//	ActionDeny  — tainted session attempting external network egress without approval
 func Decision(snap ifc.SessionSnapshot, effects []string, resources []string, containsNetworkCmd bool) aegis.Action {
 	// INV-SINK-1: untainted session bypasses all sink enforcement
 	if !snap.IsTainted {
@@ -61,7 +109,14 @@ func Decision(snap ifc.SessionSnapshot, effects []string, resources []string, co
 	case ifc.ApprovalNone:
 		// No approval granted.
 	}
-	return aegis.ActionRequireApproval
+
+	// External resource from tainted session → deny (exfiltration risk).
+	// Internal/localhost → allow (preserves legitimate local service access).
+	// Unknown destination with network cmd → deny (conservative).
+	if isExternalResource(resources) || (containsNetworkCmd && len(resources) == 0) {
+		return aegis.ActionDeny
+	}
+	return aegis.ActionAllow
 }
 
 // isRestrictedSink returns true if any effect in the list is a restricted sink,
@@ -164,4 +219,9 @@ func matchesPattern(pattern, resource string) bool {
 // PatternMatches is exported for testing.
 func PatternMatches(pattern, resource string) bool {
 	return matchesPattern(pattern, resource)
+}
+
+// IsExternal is exported for testing.
+func IsExternal(resource string) bool {
+	return isExternal(resource)
 }
