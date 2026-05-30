@@ -3,13 +3,11 @@ package classify
 
 import "fmt"
 
-// ArgSchema defines expected argument types for a tool.
 type ArgSchema struct {
 	Required map[string]string // field → expected JSON type ("string", "int", "bool", "object", "array")
 	Optional map[string]string
 }
 
-// ArgSchemaError describes a type violation in tool arguments.
 type ArgSchemaError struct {
 	Field    string
 	Expected string
@@ -20,13 +18,11 @@ func (e *ArgSchemaError) Error() string {
 	return fmt.Sprintf("arg schema violation: field %q expected %s got %s", e.Field, e.Expected, e.Got)
 }
 
-// ArgSchemaResult is returned by CheckArgSchema.
 type ArgSchemaResult struct {
 	Err         error
 	UnknownTool bool // true when no schema is registered for this tool
 }
 
-// CheckArgSchema validates that tool args conform to the registered schema.
 // Unknown tools pass with UnknownTool=true (fail-open for backward compat).
 func CheckArgSchema(tool string, args map[string]any) ArgSchemaResult {
 	schema, ok := toolSchemas[tool]
@@ -81,8 +77,6 @@ func jsonTypeName(v any) string {
 	}
 }
 
-// toolSchemas is the catalog of registered tool argument schemas.
-// Only 4 Required fields: Bash.command, Read.file_path, Write.file_path, Write.content.
 // Conservative Required set minimizes blast radius from future API evolution.
 var toolSchemas = map[string]ArgSchema{
 	"Bash": {
