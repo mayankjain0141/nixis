@@ -37,7 +37,6 @@ import (
 	"github.com/mayjain/aegis/pkg/aegis"
 )
 
-// Exit codes per REQ-094.
 const (
 	exitSuccess        = 0 // clean shutdown
 	exitStartupFailure = 1 // fatal error during init

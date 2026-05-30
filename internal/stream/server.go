@@ -26,7 +26,6 @@ import (
 	"github.com/mayjain/aegis/pkg/aegis"
 )
 
-// ipLimiter enforces per-IP WebSocket connection and upgrade-attempt limits.
 type ipLimiter struct {
 	mu       sync.Mutex
 	conns    map[string]int
@@ -40,7 +39,6 @@ func newIPLimiter() *ipLimiter {
 	}
 }
 
-// allow returns true if the IP is within the per-IP connection and rate limits.
 // Max 4 concurrent WS connections, max 10 upgrade attempts per minute.
 func (l *ipLimiter) allow(ip string) bool {
 	l.mu.Lock()
@@ -58,14 +56,12 @@ func (l *ipLimiter) allow(ip string) bool {
 	return l.conns[ip] < 4 && len(filtered) <= 10
 }
 
-// inc increments the connection count for an IP.
 func (l *ipLimiter) inc(ip string) {
 	l.mu.Lock()
 	l.conns[ip]++
 	l.mu.Unlock()
 }
 
-// dec decrements the connection count for an IP.
 func (l *ipLimiter) dec(ip string) {
 	l.mu.Lock()
 	if l.conns[ip] > 0 {
@@ -242,7 +238,7 @@ func (s *StreamServer) Start(ctx context.Context, addr string) error {
 		s.addr = addr
 	}
 
-	// Bind to 127.0.0.1 only — security requirement (WS-12 constraints).
+	// Bind to 127.0.0.1 only — security requirement.
 	ln, err := net.Listen("tcp", resolveLoopbackAddr(s.addr))
 	if err != nil {
 		return fmt.Errorf("stream: listen %s: %w", s.addr, err)
@@ -744,7 +740,7 @@ func (s *StreamServer) handleSubscribeFilter(c *client, raw json.RawMessage) {
 }
 
 // handleBackfill handles backfill.request validation and rate-limiting.
-// Actual SQLite queries are out of scope for WS-12 (injected via reader interface).
+// Actual SQLite queries are out of scope (injected via reader interface).
 func (s *StreamServer) handleBackfill(c *client, from, to int64) {
 	// Rate limit: max 2 concurrent in-flight per client.
 	if c.backfillInFlight.Add(1) > 2 {
@@ -764,7 +760,7 @@ func (s *StreamServer) handleBackfill(c *client, from, to int64) {
 		return
 	}
 
-	// Backfill data is provided by the audit system (WS-06), not available here.
+	// Backfill data is provided by the audit system, not available here.
 	// Emit a system.error indicating unavailability for MVP-1.
 	s.sendSystemError(c, "backfill_unavailable", "backfill not yet available")
 }
@@ -917,7 +913,7 @@ func buildCloudEvent(event aegis.StreamEvent, seq uint64) ([]byte, error) {
 
 	// Non-Merkle events: stream.heartbeat and system.error omit merkle fields.
 	// Other events will have merkle fields populated by the audit system.
-	// For now (WS-12), merkle fields are left empty; audit integration is WS-06.
+	// Merkle fields are left empty; audit integration is pending.
 
 	return json.Marshal(evt)
 }

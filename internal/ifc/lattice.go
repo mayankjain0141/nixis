@@ -184,18 +184,18 @@ type DeclassificationAnnotation struct {
 }
 
 // DeclassificationGate records a declassification annotation.
-// It MUST NOT lower the session label. RISK-026 mitigation.
+// It MUST NOT lower the session label.
 type DeclassificationGate struct {
 	AuditRef string
 }
 
 // Apply records a declassification annotation and returns it.
 // It does NOT lower the session label. The label in the returned annotation
-// reflects the current session label at call time (unchanged). RISK-026.
+// reflects the current session label at call time (unchanged).
 func (g *DeclassificationGate) Apply(s *SessionLabels, sessionID string) DeclassificationAnnotation {
 	current := s.Current(sessionID)
 	// Mark declassified in state machine WITHOUT touching the label.
-	// Store() on the label field is explicitly FORBIDDEN here (RISK-026).
+	// Store() on the label field is explicitly FORBIDDEN here.
 	s.markDeclassified(sessionID)
 	return DeclassificationAnnotation{
 		SessionID: sessionID,

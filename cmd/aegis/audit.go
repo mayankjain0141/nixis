@@ -234,7 +234,6 @@ func appendInt64LE(buf []byte, n int64) []byte {
 	)
 }
 
-// auditRow holds a single audit_log row for export/tail.
 type auditRow struct {
 	ID             int64  `json:"id"`
 	Timestamp      int64  `json:"ts"`
@@ -247,7 +246,6 @@ type auditRow struct {
 	LatencyNs      int64  `json:"latency_ns,omitempty"`
 }
 
-// csvHeader returns ordered column headers for CSV export.
 var csvHeader = []string{"id", "ts", "session_id", "tool", "action", "reason", "policy_id", "enforcing_layer", "latency_ns"}
 
 func resolveExportDB() string {

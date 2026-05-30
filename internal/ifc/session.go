@@ -52,7 +52,7 @@ type StandingRule struct {
 // ATOMICITY GUARANTEE: This is NOT a single atomic read. It performs three
 // separate reads: label, approvalState, and standingRules (under RLock).
 //
-// KNOWN LIMITATION (R3 — ACCEPTED): A race exists where ApprovalState is granted
+// KNOWN LIMITATION: A race exists where ApprovalState is granted
 // between the TaintBit read and the ApprovalState read. This can cause ONE spurious
 // REQUIRE_APPROVAL response when the user has just granted approval. This is an
 // accepted limitation: the NEXT request from the same session will see the granted
@@ -89,7 +89,7 @@ type sessionData struct {
 // SessionLabels is a concurrent-safe registry of per-session IFC labels.
 //
 // Label updates use a CAS retry loop (Elevate). Direct Store() on the label
-// field is FORBIDDEN except in the CAS winner path. RISK-002 mitigation.
+// field is FORBIDDEN except in the CAS winner path.
 type SessionLabels struct {
 	entries sync.Map // sessionID (string) → *sessionData
 }
@@ -130,7 +130,7 @@ func advanceState(entry *sessionData, next uint32) {
 //
 // Implementation: CAS retry loop. Direct Store() on entry.label is FORBIDDEN —
 // a lost CAS that issues Store() would overwrite a higher concurrent label with
-// a stale lower one, silently downgrading the session. RISK-002.
+// a stale lower one, silently downgrading the session.
 //
 // Returns the new (post-elevation) label.
 func (s *SessionLabels) Elevate(sessionID string, resource aegis.SecurityLabel) aegis.SecurityLabel {
@@ -201,7 +201,7 @@ func (s *SessionLabels) LabelState(sessionID string) LabelState {
 }
 
 // TaintWithSecret sets TaintBit in the session category and transitions state
-// to tainted_by_secret. Uses the CAS loop in Elevate. RISK-002.
+// to tainted_by_secret. Uses the CAS loop in Elevate.
 func (s *SessionLabels) TaintWithSecret(sessionID string) aegis.SecurityLabel {
 	return s.Elevate(sessionID, aegis.SecurityLabel{Category: TaintBit})
 }
@@ -244,7 +244,7 @@ func (s *SessionLabels) CheckCeiling(sessionID string, proposed aegis.SecurityLa
 }
 
 // markDeclassified advances the session state to declassified.
-// The label itself is NOT modified — this is annotation-only. RISK-026.
+// The label itself is NOT modified — this is annotation-only.
 func (s *SessionLabels) markDeclassified(sessionID string) {
 	entry := s.getOrCreate(sessionID)
 	advanceState(entry, stateOrdinalDeclassified)

@@ -3,14 +3,14 @@ package aegis
 
 import "encoding/json"
 
-// Action is the verdict type. Zero value MUST be ActionDeny (INV-001).
+// Action is the verdict type. Zero-value MUST be ActionDeny — fail-secure.
 type Action int
 
 const (
-	ActionDeny Action = iota // 0 — zero value is DENY (INV-001)
+	ActionDeny Action = iota // 0 — zero value is DENY
 	ActionAllow
-	ActionRequireApproval // wire: "require_approval"
-	ActionAudit           // wire: "audit"
+	ActionRequireApproval
+	ActionAudit
 )
 
 func (a Action) MarshalJSON() ([]byte, error) {
@@ -48,11 +48,11 @@ func (a *Action) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// SecurityLabel is the lattice label. Zero value = minimum privilege (INV-002).
+// SecurityLabel is the lattice label. Zero value = minimum privilege.
 type SecurityLabel struct {
 	Confidentiality uint16 // Bell-LaPadula confidentiality level; 0 = public
 	Integrity       uint16 // Biba integrity level; 0 = untrusted
-	Category        uint32 // compartment bitmask (ADR-016); 0 = no compartment
+	Category        uint32 // compartment bitmask; 0 = no compartment
 }
 
 // EnforcingLayer identifies which evaluation layer produced the decision.
@@ -84,7 +84,7 @@ type DelegationRef struct {
 // CheckRequest is the evaluation input.
 type CheckRequest struct {
 	Tool      string          // exact tool name as declared by the hook (e.g. "Bash", "Write")
-	Args      json.RawMessage // tool arguments; only sha256:<hex> is stored in audit (INV-012)
+	Args      json.RawMessage // tool arguments; only sha256:<hex> is stored in audit
 	SessionID string          // stable session identifier propagated from the hook
 	// ParentSessionID is the session_id of the parent agent that spawned this session.
 	// Populated by the hook when AEGIS_SPAWN_TOKEN env var is present.
@@ -106,10 +106,10 @@ type CheckRequest struct {
 
 // Decision is the authorization verdict.
 type Decision struct {
-	Action   Action        // enforcement action; zero value is Deny (INV-001)
+	Action   Action        // enforcement action; zero value is Deny
 	Reason   string        // human-readable explanation for the action
 	PolicyID string        // policy that produced this verdict; empty if no policy matched
-	Labels   SecurityLabel // resultant label after evaluation (scalar per IFC-001 / ADR-013)
+	Labels   SecurityLabel // resultant label after evaluation
 }
 
 // Annotation is supplemental information attached to a CheckResponse.
@@ -128,5 +128,5 @@ type CheckResponse struct {
 	ThreatSeverity       string         // threat severity hint ("low", "medium", "high", "critical"); empty if not applicable
 }
 
-// MaxMessageSize is enforced at the framing layer (WS-07).
+// MaxMessageSize is enforced at the framing layer.
 const MaxMessageSize = 2 * 1024 * 1024
