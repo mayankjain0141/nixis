@@ -41,8 +41,6 @@ func newBundleStore(dir string, keep int) (*bundleStore, error) {
 	return &bundleStore{dir: dir, keep: keep}, nil
 }
 
-// save writes bundle content, signature, and manifest to disk.
-// Returns the directory path for this bundle entry.
 func (s *bundleStore) save(hashHex string, content, sig []byte, manifest BundleManifest) (string, error) {
 	entryDir := filepath.Join(s.dir, hashHex)
 	if err := os.MkdirAll(entryDir, 0700); err != nil {
@@ -67,8 +65,7 @@ func (s *bundleStore) save(hashHex string, content, sig []byte, manifest BundleM
 	return entryDir, nil
 }
 
-// gc removes oldest bundles beyond the keep count.
-// It reads stored_at from each manifest.json to determine order.
+// gc reads stored_at from each manifest.json to determine removal order.
 func (s *bundleStore) gc() error {
 	entries, err := os.ReadDir(s.dir)
 	if err != nil {
@@ -115,7 +112,6 @@ func (s *bundleStore) gc() error {
 	return nil
 }
 
-// count returns the number of stored bundle entries.
 func (s *bundleStore) count() int {
 	entries, err := os.ReadDir(s.dir)
 	if err != nil {

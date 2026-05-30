@@ -181,7 +181,7 @@ func (b *BundleLoader) tryActivate(ctx context.Context) {
 		return
 	}
 
-	// VERIFYING — Ed25519 signature check BEFORE any YAML parsing (INV-009)
+	// VERIFYING — Ed25519 signature check BEFORE any YAML parsing
 	if err := b.fsm.Transition(StateDownloading, StateVerifying); err != nil {
 		b.rollback()
 		return
