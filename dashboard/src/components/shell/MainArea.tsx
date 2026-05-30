@@ -3,6 +3,8 @@ import { EventStreamList } from '../governance/EventStreamList';
 import { GovernanceDAG } from '../governance/dag/GovernanceDAG';
 import { DelegationTree } from '../governance/DelegationTree';
 import { AuditHashChain } from '../governance/AuditHashChain';
+import { AuditIndicator, AuditAlarmBanner } from '../governance/AuditIndicator';
+import { AuditModal } from '../governance/AuditModal';
 import { PolicyPlayground } from './PolicyPlayground';
 import { ThreatTimeline } from '../governance/ThreatTimeline';
 import { LatticeHasseDiagram } from '../governance/LatticeHasseDiagram';
@@ -46,7 +48,10 @@ export function MainArea() {
             {tab === 'dag' ? 'DAG' : tab === 'playground' ? 'Playground' : tab === 'audit' ? 'Audit Chain' : tab === 'delegation' ? 'Delegation' : tab === 'threats' ? 'Threats' : 'IFC Lattice'}
           </button>
         ))}
+        <AuditIndicator />
       </div>
+      <AuditAlarmBanner />
+      <AuditModal />
 
       {/* Tab content */}
       <div style={{ flex: 1, overflow: 'auto', padding: 12 }}>
