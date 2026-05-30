@@ -67,6 +67,9 @@ func NewCELEnvironment(protoTypes ...proto.Message) (*CELEnvironment, error) {
 		cel.Variable("risk_level", cel.StringType),
 		cel.Variable("effects", cel.ListType(cel.StringType)),
 
+		// Per-policy params — populated from PolicyTemplate.Params at evaluation time.
+		cel.Variable("params", cel.MapType(cel.StringType, cel.DynType)),
+
 		// Resource labeler outputs — CEL fallback policies use these.
 		cel.Variable("resource_matched", cel.BoolType),
 		cel.Variable("resource_conf", cel.IntType),
