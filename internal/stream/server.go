@@ -311,7 +311,8 @@ func resolveLoopbackAddr(addr string) string {
 // to the internal fan-out channel. Overflow events are dropped.
 // nixissequence is assigned in the fan-out goroutine, not here.
 func (s *StreamServer) Emit(ctx context.Context, event nixis.StreamEvent) {
-	// Validate event type at entry — unknown types are rejected.
+	// Normalize internal event type to canonical wire type.
+	event.Type = normalizeEventType(event.Type)
 	if !validEventTypes[event.Type] {
 		return
 	}
