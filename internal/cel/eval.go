@@ -104,6 +104,7 @@ func (a *ActivationBuilder) Evaluate(
 	m["resource_path"] = types.String(labeled.ResourcePath)
 	m["resource_network_cmd"] = types.Bool(labeled.ContainsNetworkCmd)
 	m["resource_unknown_tool"] = types.Bool(labeled.UnknownTool)
+	m["resource_interpreter_exec"] = types.Bool(labeled.ContainsInterpreterExec)
 	m["params"] = params
 
 	val, _, err := (*prog).ContextEval(ctx, m)
@@ -166,6 +167,7 @@ func Eval(
 	m["resource_path"] = types.String(labeled.ResourcePath)
 	m["resource_network_cmd"] = types.Bool(labeled.ContainsNetworkCmd)
 	m["resource_unknown_tool"] = types.Bool(labeled.UnknownTool)
+	m["resource_interpreter_exec"] = types.Bool(labeled.ContainsInterpreterExec)
 	m["params"] = params
 
 	_ = snap // available for WS-05 to use; no-op at this layer

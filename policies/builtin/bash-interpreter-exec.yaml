@@ -1,0 +1,58 @@
+# Interpreter execution and startup-file injection detection.
+# Catches bash -c, python -c, pipe-to-interpreter, and BASH_ENV injection.
+# $( and backtick excluded — FP rate unacceptable (make -j$(nproc), GOFLAGS=$(git describe)).
+---
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: bash-interpreter-exec-any
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Require approval for any sub-interpreter execution"
+  matchConstraints:
+    tools: ["Bash"]
+  validations:
+    - expression: 'resource_interpreter_exec'
+      message: 'Sub-interpreter or startup-file injection detected — requires approval (bash -c, python -c, eval, BASH_ENV, pipe to sh)'
+      action: REQUIRE_APPROVAL
+  defaultAction: ALLOW
+---
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: bash-interpreter-exec-network
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Require approval when sub-interpreter wraps a network command — excludes standalone git commands"
+  matchConstraints:
+    tools: ["Bash"]
+  variables:
+    - name: isGitOnly
+      expression: >-
+        has(args.command) && args.command.startsWith("git ")
+  validations:
+    - expression: 'resource_interpreter_exec && resource_network_cmd && !isGitOnly'
+      message: 'Sub-interpreter wrapping a network command requires approval'
+      action: REQUIRE_APPROVAL
+  defaultAction: ALLOW
+---
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: bash-interpreter-exec-tainted
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Require approval for sub-interpreter execution in a tainted session"
+  matchConstraints:
+    tools: ["Bash"]
+  validations:
+    - expression: 'resource_interpreter_exec && (categories & 2147483648) != 0'
+      message: 'Sub-interpreter execution in a tainted session requires approval'
+      action: REQUIRE_APPROVAL
+  defaultAction: ALLOW
