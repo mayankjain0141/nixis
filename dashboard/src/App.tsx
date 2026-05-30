@@ -15,7 +15,6 @@ import { usePolicyStore } from './stores/policy-store';
 import { useUIStore } from './stores/ui-store';
 import { useLatticeStore } from './stores/lattice-store';
 import { useThreatStore } from './stores/threat-store';
-import { runDemoScenario, runLiveDemoScenario, getDemoPolicies } from './mocks/demoScenario';
 import { getDaemonApiBase } from './lib/api';
 import { loadPolicies } from './lib/policy-loader';
 import { createWebSocketManager } from './lib/realtime/ws-manager';
@@ -111,6 +110,16 @@ function routeEvents(
 
       case 'bundle.activated': {
         const b = event.data;
+        // Only fetch policies if none are loaded yet or if this is a newer bundle version.
+        const storedVersion = usePolicyStore.getState().bundleStatus?.version ?? 0;
+        const eventVersion = (b as { version?: number }).version ?? 0;
+        if (usePolicyStore.getState().policies.length === 0 || eventVersion > storedVersion) {
+          loadPolicies().then(policies => {
+            if (policies.length > 0) {
+              usePolicyStore.getState().setPolicies(policies);
+            }
+          });
+        }
         orchestrator.dispatchUpdate(atomicUpdate('FRAME', event.type, () => {
           const rawBundle = b as { policyCount?: number; policy_count?: number; policies?: { id: string; enabled: boolean; layer: string; cel_expression?: string }[] };
           setBundleStatus({
@@ -334,12 +343,16 @@ export default function App() {
       if (state.requestMockMode) {
         useStreamStore.getState().setConnectionState('MOCK');
         if (mockGenRef.current === null) {
-          // Seed policies directly — bypasses Zod pipeline so CEL expressions are guaranteed present.
-          usePolicyStore.getState().setPolicies(getDemoPolicies(1));
-          const cancelDemo = runDemoScenario((json) => {
-            window.dispatchEvent(new CustomEvent('aegis:mock-event', { detail: json }));
-          });
-          mockGenRef.current = { stop: cancelDemo } as { stop: () => void };
+          if (import.meta.env.DEV) {
+            import('./mocks/demoScenario').then(({ runDemoScenario, getDemoPolicies }) => {
+              // Seed policies directly — bypasses Zod pipeline so CEL expressions are guaranteed present.
+              usePolicyStore.getState().setPolicies(getDemoPolicies(1));
+              const cancelDemo = runDemoScenario((json) => {
+                window.dispatchEvent(new CustomEvent('aegis:mock-event', { detail: json }));
+              });
+              mockGenRef.current = { stop: cancelDemo } as { stop: () => void };
+            });
+          }
         }
       } else {
         mockGenRef.current?.stop();
@@ -425,12 +438,16 @@ export default function App() {
       if (useMock) return;
       useMock = true;
       setConnectionState('MOCK');
-      // Seed policies directly — bypasses Zod pipeline so CEL expressions are guaranteed present.
-      usePolicyStore.getState().setPolicies(getDemoPolicies(1));
-      const cancelDemo = runDemoScenario((json) => {
-        pipeline.ingest(json, { receivedAt: performance.now() });
-      });
-      mockGenRef.current = { stop: cancelDemo } as { stop: () => void };
+      if (import.meta.env.DEV) {
+        import('./mocks/demoScenario').then(({ runDemoScenario, getDemoPolicies }) => {
+          // Seed policies directly — bypasses Zod pipeline so CEL expressions are guaranteed present.
+          usePolicyStore.getState().setPolicies(getDemoPolicies(1));
+          const cancelDemo = runDemoScenario((json) => {
+            pipeline.ingest(json, { receivedAt: performance.now() });
+          });
+          mockGenRef.current = { stop: cancelDemo } as { stop: () => void };
+        });
+      }
     }
 
     function handleMockEvent(e: Event) {
@@ -461,7 +478,12 @@ export default function App() {
 
     const fallbackTimer = setTimeout(() => {
       if (wsManager.getState() !== 'CONNECTED' && !useMock) {
-        startMock();
+        if (import.meta.env.PROD) {
+          // Never silently degrade to mock in production — show explicit error instead.
+          setConnectionState('ERROR');
+        } else {
+          startMock();
+        }
       }
     }, 2000);
 
@@ -483,25 +505,28 @@ export default function App() {
   }, [appendEvent, updateLabel, recordLatency, recordEvent, setConnectionState, updateLastSequence, setBundleStatus]);
 
   const handleStartDemo = useCallback(() => {
+    if (!import.meta.env.DEV) return;
     useGovernanceStore.getState().clear?.();
-    usePolicyStore.getState().setPolicies(getDemoPolicies(1));
 
     const apiBase = getDaemonApiBase();
-    fetch(`${apiBase}/healthz`, { signal: AbortSignal.timeout(1000) })
-      .then(() => {
-        // Daemon is reachable — use live evaluation
-        mockGenRef.current?.stop();
-        mockGenRef.current = null;
-        const cancel = runLiveDemoScenario(apiBase, (err) => console.error('demo error:', err));
-        mockGenRef.current = { stop: cancel };
-      })
-      .catch(() => {
-        // Daemon not reachable — fall back to offline mock
-        console.warn('aegis-daemon not reachable — running offline demo');
-        useStreamStore.getState().setConnectionState('MOCK');
-        useStreamStore.getState().setRequestMockMode(false);
-        setTimeout(() => useStreamStore.getState().setRequestMockMode(true), 100);
-      });
+    import('./mocks/demoScenario').then(({ runLiveDemoScenario, getDemoPolicies }) => {
+      usePolicyStore.getState().setPolicies(getDemoPolicies(1));
+      fetch(`${apiBase}/healthz`, { signal: AbortSignal.timeout(1000) })
+        .then(() => {
+          // Daemon is reachable — use live evaluation
+          mockGenRef.current?.stop();
+          mockGenRef.current = null;
+          const cancel = runLiveDemoScenario(apiBase, (err) => console.error('demo error:', err));
+          mockGenRef.current = { stop: cancel };
+        })
+        .catch(() => {
+          // Daemon not reachable — fall back to offline mock
+          console.warn('aegis-daemon not reachable — running offline demo');
+          useStreamStore.getState().setConnectionState('MOCK');
+          useStreamStore.getState().setRequestMockMode(false);
+          setTimeout(() => useStreamStore.getState().setRequestMockMode(true), 100);
+        });
+    });
   }, []);
 
   const handleStopDemo = useCallback(() => {
@@ -524,6 +549,20 @@ export default function App() {
   return (
     <>
       <DenyColorGuard />
+      {connectionState === 'ERROR' && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
+            background: '#cf222e', color: '#fff',
+            padding: '10px 20px', textAlign: 'center',
+            fontWeight: 700, fontSize: 14, letterSpacing: '0.01em',
+          }}
+        >
+          Daemon unreachable — governance is NOT being enforced. Start the Aegis daemon.
+        </div>
+      )}
       <CommandPalette />
       <AppShell
         header={
