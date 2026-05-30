@@ -1,0 +1,254 @@
+# Source: Security research — cloud provider CLI destruction commands
+# Gate: G4 (CEL function tests)
+# Default: ENABLED — shipped as default-on in the built-in bundle
+#
+# Behavior:
+#   terraform destroy -auto-approve          → DENY
+#   cdktf destroy                            → DENY
+#   terragrunt destroy                       → DENY
+#   terragrunt run-all destroy               → DENY
+#   terraform apply -destroy                 → DENY
+#   tofu destroy                             → DENY
+#   aws s3 rb s3://bucket --force            → DENY
+#   aws s3api delete-bucket --bucket name    → DENY
+#   aws s3api delete-objects                 → DENY
+#   aws ecr delete-repository --force        → DENY
+#   aws eks delete-cluster --name foo        → DENY
+#   aws route53 delete-hosted-zone           → DENY
+#   aws secretsmanager delete-secret         → DENY
+#   aws iam delete-access-key                → DENY
+#   aws iam delete-role-policy               → DENY
+#   aws iam detach-role-policy               → DENY
+#   aws elasticache delete-replication-group → DENY
+#   aws dynamodb delete-table                → DENY
+#   aws sqs delete-queue                     → DENY
+#   aws sns delete-topic                     → DENY
+#   aws logs delete-log-group               → DENY
+#   aws ec2 delete-vpc                       → DENY
+#   aws ec2 delete-subnet                    → DENY
+#   aws acm delete-certificate               → DENY
+#   gcloud --quiet ... delete                → DENY
+#   gcloud firestore databases delete        → DENY
+#   gcloud redis instances delete            → DENY
+#   gcloud artifacts repositories delete     → DENY
+#   gcloud iam service-accounts delete       → DENY
+#   az acr delete                            → DENY
+#   az aks delete                            → DENY
+#   az keyvault delete                       → DENY
+#   az ad sp delete                          → DENY
+#   az network vnet delete                   → DENY
+#   fly apps destroy / flyctl apps destroy   → DENY
+#   railway down                             → DENY
+#   render services delete                   → DENY
+#
+# Rationale:
+#   Cloud infrastructure destruction is irreversible and can cause massive
+#   outages, data loss, and security incidents. AI agents must never execute
+#   these commands without explicit human approval.
+
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: block-cloud-infrastructure-destruction
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Block cloud infrastructure destruction: Terraform/Terragrunt/OpenTofu destroy, AWS/GCP/Azure/Fly.io/Railway/Render delete operations"
+  matchConstraints:
+    tools: ["Bash"]
+  variables:
+    # --- IaC tools ---
+    - name: isTerraformDestroy
+      # terraform destroy (any flags), terraform apply -destroy, cdktf destroy, tofu destroy
+      expression: >-
+        request.args.command.matches("(?i)\\bterraform\\b.*\\bdestroy\\b") ||
+        request.args.command.matches("(?i)\\bterraform\\b.*\\bapply\\b.*\\b-destroy\\b") ||
+        request.args.command.matches("(?i)\\bcdktf\\b.*\\bdestroy\\b") ||
+        request.args.command.matches("(?i)\\btofu\\b.*\\bdestroy\\b")
+    - name: isTerragruntDestroy
+      # terragrunt destroy, terragrunt run-all destroy
+      expression: >-
+        request.args.command.matches("(?i)\\bterragrunt\\b.*\\bdestroy\\b")
+
+    # --- AWS S3 ---
+    - name: isAwsS3Destroy
+      # aws s3 rb --force, aws s3api delete-bucket, aws s3api delete-objects
+      expression: >-
+        request.args.command.matches("(?i)\\baws\\s+s3\\s+rb\\b") ||
+        request.args.command.matches("(?i)\\baws\\s+s3api\\s+delete-bucket\\b") ||
+        request.args.command.matches("(?i)\\baws\\s+s3api\\s+delete-objects\\b")
+
+    # --- AWS ECR ---
+    - name: isAwsEcrDestroy
+      # aws ecr delete-repository
+      expression: >-
+        request.args.command.matches("(?i)\\baws\\s+ecr\\s+delete-repository\\b")
+
+    # --- AWS EKS ---
+    - name: isAwsEksDestroy
+      # aws eks delete-cluster
+      expression: >-
+        request.args.command.matches("(?i)\\baws\\s+eks\\s+delete-cluster\\b")
+
+    # --- AWS Route53 ---
+    - name: isAwsRoute53Destroy
+      # aws route53 delete-hosted-zone
+      expression: >-
+        request.args.command.matches("(?i)\\baws\\s+route53\\s+delete-hosted-zone\\b")
+
+    # --- AWS Secrets Manager ---
+    - name: isAwsSecretsDestroy
+      # aws secretsmanager delete-secret (with or without --force-delete-without-recovery)
+      expression: >-
+        request.args.command.matches("(?i)\\baws\\s+secretsmanager\\s+delete-secret\\b")
+
+    # --- AWS IAM ---
+    - name: isAwsIamDestroy
+      # aws iam delete-access-key, delete-role-policy, detach-role-policy
+      expression: >-
+        request.args.command.matches("(?i)\\baws\\s+iam\\s+delete-access-key\\b") ||
+        request.args.command.matches("(?i)\\baws\\s+iam\\s+delete-role-policy\\b") ||
+        request.args.command.matches("(?i)\\baws\\s+iam\\s+detach-role-policy\\b")
+
+    # --- AWS ElastiCache ---
+    - name: isAwsElastiCacheDestroy
+      # aws elasticache delete-replication-group
+      expression: >-
+        request.args.command.matches("(?i)\\baws\\s+elasticache\\s+delete-replication-group\\b")
+
+    # --- AWS DynamoDB ---
+    - name: isAwsDynamoDbDestroy
+      # aws dynamodb delete-table
+      expression: >-
+        request.args.command.matches("(?i)\\baws\\s+dynamodb\\s+delete-table\\b")
+
+    # --- AWS SQS/SNS ---
+    - name: isAwsMessagingDestroy
+      # aws sqs delete-queue, aws sns delete-topic
+      expression: >-
+        request.args.command.matches("(?i)\\baws\\s+sqs\\s+delete-queue\\b") ||
+        request.args.command.matches("(?i)\\baws\\s+sns\\s+delete-topic\\b")
+
+    # --- AWS CloudWatch Logs ---
+    - name: isAwsLogsDestroy
+      # aws logs delete-log-group
+      expression: >-
+        request.args.command.matches("(?i)\\baws\\s+logs\\s+delete-log-group\\b")
+
+    # --- AWS EC2 Networking ---
+    - name: isAwsNetworkDestroy
+      # aws ec2 delete-vpc, aws ec2 delete-subnet
+      expression: >-
+        request.args.command.matches("(?i)\\baws\\s+ec2\\s+delete-vpc\\b") ||
+        request.args.command.matches("(?i)\\baws\\s+ec2\\s+delete-subnet\\b")
+
+    # --- AWS ACM ---
+    - name: isAwsAcmDestroy
+      # aws acm delete-certificate
+      expression: >-
+        request.args.command.matches("(?i)\\baws\\s+acm\\s+delete-certificate\\b")
+
+    # --- GCP / gcloud ---
+    - name: isGcloudDestroy
+      # gcloud ... delete (any service), gcloud --quiet ... delete (skips confirmation)
+      # Covers: compute, sql, container, pubsub, functions, spanner, bigtable, run,
+      #         firestore databases, redis instances, artifacts repositories,
+      #         iam service-accounts, projects
+      expression: >-
+        request.args.command.matches("(?i)\\bgcloud\\b.*\\bdelete\\b") ||
+        request.args.command.matches("(?i)\\bgcloud\\b.*\\bdestroy\\b")
+
+    # --- Azure / az ---
+    - name: isAzureDestroy
+      # az group delete, az vm delete, az cosmosdb delete, az sql ... delete,
+      # az acr delete, az aks delete, az keyvault delete, az ad sp delete,
+      # az network vnet delete
+      expression: >-
+        request.args.command.matches("(?i)\\baz\\s+group\\s+delete\\b") ||
+        request.args.command.matches("(?i)\\baz\\s+vm\\s+delete\\b") ||
+        request.args.command.matches("(?i)\\baz\\s+cosmosdb\\s+delete\\b") ||
+        request.args.command.matches("(?i)\\baz\\s+sql\\b.*\\bdelete\\b") ||
+        request.args.command.matches("(?i)\\baz\\s+acr\\s+delete\\b") ||
+        request.args.command.matches("(?i)\\baz\\s+aks\\s+delete\\b") ||
+        request.args.command.matches("(?i)\\baz\\s+keyvault\\s+delete\\b") ||
+        request.args.command.matches("(?i)\\baz\\s+ad\\s+sp\\s+delete\\b") ||
+        request.args.command.matches("(?i)\\baz\\s+network\\s+vnet\\s+delete\\b")
+
+    # --- Fly.io ---
+    - name: isFlyDestroy
+      # fly apps destroy, flyctl apps destroy
+      expression: >-
+        request.args.command.matches("(?i)\\b(fly|flyctl)\\b.*\\bapps\\s+destroy\\b")
+
+    # --- Railway ---
+    - name: isRailwayDown
+      # railway down
+      expression: >-
+        request.args.command.matches("(?i)\\brailway\\s+down\\b")
+
+    # --- Render.com ---
+    - name: isRenderDestroy
+      # render services delete
+      expression: >-
+        request.args.command.matches("(?i)\\brender\\s+services\\s+delete\\b")
+
+  validations:
+    - expression: 'isTerraformDestroy'
+      message: 'Blocked: terraform/cdktf/tofu destroy is irreversible — requires human approval'
+      action: DENY
+    - expression: 'isTerragruntDestroy'
+      message: 'Blocked: terragrunt destroy is irreversible — requires human approval'
+      action: DENY
+    - expression: 'isAwsS3Destroy'
+      message: 'Blocked: AWS S3 bucket/object deletion is irreversible — requires human approval'
+      action: DENY
+    - expression: 'isAwsEcrDestroy'
+      message: 'Blocked: AWS ECR repository deletion destroys container images — requires human approval'
+      action: DENY
+    - expression: 'isAwsEksDestroy'
+      message: 'Blocked: AWS EKS cluster deletion is irreversible — requires human approval'
+      action: DENY
+    - expression: 'isAwsRoute53Destroy'
+      message: 'Blocked: AWS Route53 hosted zone deletion can cause DNS outages — requires human approval'
+      action: DENY
+    - expression: 'isAwsSecretsDestroy'
+      message: 'Blocked: AWS Secrets Manager secret deletion is irreversible — requires human approval'
+      action: DENY
+    - expression: 'isAwsIamDestroy'
+      message: 'Blocked: AWS IAM key/policy deletion can break access — requires human approval'
+      action: DENY
+    - expression: 'isAwsElastiCacheDestroy'
+      message: 'Blocked: AWS ElastiCache replication group deletion is irreversible — requires human approval'
+      action: DENY
+    - expression: 'isAwsDynamoDbDestroy'
+      message: 'Blocked: AWS DynamoDB table deletion destroys all data — requires human approval'
+      action: DENY
+    - expression: 'isAwsMessagingDestroy'
+      message: 'Blocked: AWS SQS/SNS queue/topic deletion is irreversible — requires human approval'
+      action: DENY
+    - expression: 'isAwsLogsDestroy'
+      message: 'Blocked: AWS CloudWatch log group deletion destroys audit evidence — requires human approval'
+      action: DENY
+    - expression: 'isAwsNetworkDestroy'
+      message: 'Blocked: AWS EC2 VPC/subnet deletion can cause network outages — requires human approval'
+      action: DENY
+    - expression: 'isAwsAcmDestroy'
+      message: 'Blocked: AWS ACM certificate deletion can break TLS — requires human approval'
+      action: DENY
+    - expression: 'isGcloudDestroy'
+      message: 'Blocked: GCP resource deletion is irreversible — requires human approval'
+      action: DENY
+    - expression: 'isAzureDestroy'
+      message: 'Blocked: Azure resource deletion is irreversible — requires human approval'
+      action: DENY
+    - expression: 'isFlyDestroy'
+      message: 'Blocked: Fly.io app destruction is irreversible — requires human approval'
+      action: DENY
+    - expression: 'isRailwayDown'
+      message: 'Blocked: railway down tears down the deployment — requires human approval'
+      action: DENY
+    - expression: 'isRenderDestroy'
+      message: 'Blocked: Render service deletion is irreversible — requires human approval'
+      action: DENY
+  defaultAction: ALLOW
