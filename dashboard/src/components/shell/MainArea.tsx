@@ -5,8 +5,9 @@ import { DelegationTree } from '../governance/DelegationTree';
 import { AuditHashChain } from '../governance/AuditHashChain';
 import { PolicyPlayground } from './PolicyPlayground';
 import { ThreatTimeline } from '../governance/ThreatTimeline';
+import { LatticeHasseDiagram } from '../governance/LatticeHasseDiagram';
 
-export type MainTab = 'dag' | 'playground' | 'audit' | 'delegation' | 'threats';
+export type MainTab = 'dag' | 'playground' | 'audit' | 'delegation' | 'threats' | 'lattice';
 
 // Shared ref so App.tsx's navigate handler can switch tabs without prop-drilling
 export const activeTabRef = { current: 'dag' as MainTab, setTab: (_t: MainTab) => {} };
@@ -30,7 +31,7 @@ export function MainArea() {
         background: 'var(--bg-surface)',
         padding: '0 12px', height: 36, flexShrink: 0,
       }}>
-        {(['dag', 'playground', 'audit', 'delegation', 'threats'] as const).map(tab => (
+        {(['dag', 'playground', 'audit', 'delegation', 'threats', 'lattice'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -42,7 +43,7 @@ export function MainArea() {
               textTransform: 'uppercase' as const, letterSpacing: '0.06em',
             }}
           >
-            {tab === 'dag' ? 'DAG' : tab === 'playground' ? 'Playground' : tab === 'audit' ? 'Audit Chain' : tab === 'delegation' ? 'Delegation' : 'Threats'}
+            {tab === 'dag' ? 'DAG' : tab === 'playground' ? 'Playground' : tab === 'audit' ? 'Audit Chain' : tab === 'delegation' ? 'Delegation' : tab === 'threats' ? 'Threats' : 'IFC Lattice'}
           </button>
         ))}
       </div>
@@ -56,6 +57,11 @@ export function MainArea() {
         {activeTab === 'threats'    && (
           <div style={{ padding: 16 }}>
             <ThreatTimeline />
+          </div>
+        )}
+        {activeTab === 'lattice'    && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
+            <LatticeHasseDiagram />
           </div>
         )}
       </div>
