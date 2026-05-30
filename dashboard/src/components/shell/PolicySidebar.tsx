@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { usePolicyStore } from '../../stores/policy-store';
+import { useGovernanceStore } from '../../stores/governance-store';
 
 const SECTION_HEADER: React.CSSProperties = {
   padding: '10px 12px 6px',
@@ -147,19 +148,30 @@ function PolicyRow({
   isSelected,
   selectedPolicy,
   onSelect,
+  matchCount,
+  filterPolicy,
+  setFilterPolicy,
 }: {
   policy: PolicyItem;
   isSelected: boolean;
   selectedPolicy: PolicyItem | null;
   onSelect: () => void;
+  matchCount: number;
+  filterPolicy: string | null;
+  setFilterPolicy: (id: string | null) => void;
 }): React.ReactElement {
   const source = getPolicySource(policy.id);
   const displayName = formatPolicyName(policy.id);
+  const isFiltering = filterPolicy === policy.id;
 
   return (
     <div key={policy.id}>
       <div
-        onClick={onSelect}
+        onClick={() => {
+          const newId = isSelected ? null : policy.id;
+          onSelect();
+          setFilterPolicy(newId);
+        }}
         style={{
           padding: '7px 12px',
           cursor: 'pointer',
@@ -169,7 +181,9 @@ function PolicyRow({
           alignItems: 'center',
           gap: '6px',
           background: isSelected ? '#1f2937' : 'transparent',
-          borderLeft: isSelected ? '2px solid #58a6ff' : '2px solid transparent',
+          borderLeft: isFiltering
+            ? '2px solid #2da44e'
+            : isSelected ? '2px solid #58a6ff' : '2px solid transparent',
         }}
       >
         <SourceBadge source={source} />
@@ -182,9 +196,22 @@ function PolicyRow({
             flexShrink: 0,
           }}
         />
-        <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
           {displayName}
         </span>
+        {matchCount > 0 && (
+          <span style={{
+            background: '#21262d',
+            borderRadius: 10,
+            padding: '0 5px',
+            fontSize: 10,
+            color: 'var(--text-secondary)',
+            marginLeft: 4,
+            flexShrink: 0,
+          }}>
+            {matchCount}
+          </span>
+        )}
       </div>
 
       {isSelected && selectedPolicy && (
@@ -266,6 +293,10 @@ export function PolicySidebar(): React.ReactElement {
   const selectPolicy = usePolicyStore((s) => s.selectPolicy);
   const bundleStatus = usePolicyStore((s) => s.bundleStatus);
 
+  const events = useGovernanceStore((s) => s.events);
+  const filterPolicy = useGovernanceStore((s) => s.filterPolicy);
+  const setFilterPolicy = useGovernanceStore((s) => s.setFilterPolicy);
+
   const [filter, setFilter] = useState('');
 
   const selectedPolicy = useMemo(
@@ -292,6 +323,14 @@ export function PolicySidebar(): React.ReactElement {
     }
     return groups;
   }, [visiblePolicies]);
+
+  const policyCounts = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const e of events) {
+      if (e.policyId) m[e.policyId] = (m[e.policyId] ?? 0) + 1;
+    }
+    return m;
+  }, [events]);
 
   const isFiltering = filter.trim().length > 0;
 
@@ -330,6 +369,9 @@ export function PolicySidebar(): React.ReactElement {
                   isSelected={isSelected}
                   selectedPolicy={selectedPolicy}
                   onSelect={() => selectPolicy(isSelected ? null : policy.id)}
+                  matchCount={policyCounts[policy.id] ?? 0}
+                  filterPolicy={filterPolicy}
+                  setFilterPolicy={setFilterPolicy}
                 />
               );
             })}
@@ -357,6 +399,9 @@ export function PolicySidebar(): React.ReactElement {
                         isSelected={isSelected}
                         selectedPolicy={selectedPolicy}
                         onSelect={() => selectPolicy(isSelected ? null : policy.id)}
+                        matchCount={policyCounts[policy.id] ?? 0}
+                        filterPolicy={filterPolicy}
+                        setFilterPolicy={setFilterPolicy}
                       />
                     );
                   })}
