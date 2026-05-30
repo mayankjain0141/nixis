@@ -79,6 +79,7 @@ import socket
 import struct
 import sys
 import time
+import uuid
 
 def send_request(sock_path, request_json, timeout_ms):
     """Send CheckRequest to daemon, return (response_dict, latency_ms) or (None, error_str)."""
@@ -127,9 +128,12 @@ def run_case(sock_path, case, timeout_ms):
     """Run a single test case, return result dict."""
     case_id = case.get('id', 'UNKNOWN')
     description = case.get('description', '')
-    request = case.get('request', {})
+    request = dict(case.get('request', {}))
     expected = case.get('expected_decision', 'deny')
     expected_layer = case.get('expected_layer')
+
+    # Unique session per case prevents taint bleed when cases share session IDs in JSONL.
+    request['session_id'] = f"eval-{case_id}-{uuid.uuid4().hex[:8]}"
 
     response, latency_or_error = send_request(sock_path, request, timeout_ms)
 
