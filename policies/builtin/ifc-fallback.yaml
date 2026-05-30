@@ -203,3 +203,71 @@ spec:
       message: 'WebFetch to cloud metadata IP range blocked'
       action: DENY
   defaultAction: ALLOW
+
+---
+# P5: Unmatched Bash network command — isGitOnly guard prevents excessive git FP
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: bash-unmatched-network-cmd
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Require approval when unrecognized Bash command uses a network-capable binary (excludes plain git commands)"
+  matchConstraints:
+    tools: ["Bash"]
+  variables:
+    - name: isGitOnly
+      expression: >-
+        has(args.command) && args.command.startsWith("git ")
+  validations:
+    - expression: '!resource_matched && resource_network_cmd && !isGitOnly'
+      message: 'Unrecognized Bash command with network capability requires approval (unknown target domain/path)'
+      action: REQUIRE_APPROVAL
+  defaultAction: ALLOW
+
+---
+# P5: Unmatched Read with credential file pattern — narrowed regex (no "token"/"secret"/"private")
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: read-unmatched-sensitive-path
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Require approval for Read on unrecognized paths matching credential file name patterns"
+  matchConstraints:
+    tools: ["Read"]
+  variables:
+    - name: looksSensitive
+      expression: >-
+        has(args.file_path) &&
+        args.file_path.matches(".*(shadow|passwd|authorized_keys|id_rsa|id_ed25519|id_ecdsa|id_dsa|\\.pem|\\.key|\\.pfx|\\.p12|\\.jks|client_secret|service_account.*\\.json|\\.gnupg|credentials\\.json).*")
+  validations:
+    - expression: '!resource_matched && looksSensitive'
+      message: 'Reading an unrecognized file matching a credential file name pattern requires approval'
+      action: REQUIRE_APPROVAL
+  defaultAction: ALLOW
+
+---
+# P5: Unusually long unmatched Bash command — obfuscation/encoded payload signal
+# Threshold 1000 chars: base64-encoded meaningful payload typically exceeds this.
+# AUDIT action is NOT supported (compiles to always-allow stub) — using REQUIRE_APPROVAL.
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: bash-unmatched-long-command
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Require approval for unusually long unrecognized Bash commands — possible obfuscation"
+  matchConstraints:
+    tools: ["Bash"]
+  validations:
+    - expression: '!resource_matched && has(args.command) && size(args.command) > 1000'
+      message: 'Unusually long unrecognized Bash command requires approval — possible obfuscation or encoded payload'
+      action: REQUIRE_APPROVAL
+  defaultAction: ALLOW
