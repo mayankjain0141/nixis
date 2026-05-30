@@ -399,16 +399,12 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 		}
 
 		sinkAction := sink.Decision(sinkSnap, verdict.Effects, resources, containsNetworkCmd)
-		if sinkAction != aegis.ActionAllow {
+		if sinkAction == aegis.ActionRequireApproval {
 			effectName := findRestrictedEffect(verdict.Effects, containsNetworkCmd)
-			reason := "tainted session blocked at sink: " + effectName
-			if sinkAction == aegis.ActionRequireApproval {
-				reason = "tainted session requires approval for " + effectName
-			}
 			return aegis.CheckResponse{
 				Decision: aegis.Decision{
-					Action:   sinkAction,
-					Reason:   reason,
+					Action:   aegis.ActionRequireApproval,
+					Reason:   "tainted session requires approval for " + effectName,
 					PolicyID: "sink:taint-enforcement",
 					Labels:   sinkSnap.Label,
 				},
