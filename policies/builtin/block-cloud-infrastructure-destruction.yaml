@@ -196,59 +196,59 @@ spec:
   validations:
     - expression: 'isTerraformDestroy'
       message: 'Blocked: terraform/cdktf/tofu destroy is irreversible — requires human approval'
-      action: DENY
+      action: REQUIRE_APPROVAL
     - expression: 'isTerragruntDestroy'
       message: 'Blocked: terragrunt destroy is irreversible — requires human approval'
-      action: DENY
+      action: REQUIRE_APPROVAL
     - expression: 'isAwsS3Destroy'
       message: 'Blocked: AWS S3 bucket/object deletion is irreversible — requires human approval'
-      action: DENY
+      action: REQUIRE_APPROVAL
     - expression: 'isAwsEcrDestroy'
       message: 'Blocked: AWS ECR repository deletion destroys container images — requires human approval'
-      action: DENY
+      action: REQUIRE_APPROVAL
     - expression: 'isAwsEksDestroy'
       message: 'Blocked: AWS EKS cluster deletion is irreversible — requires human approval'
-      action: DENY
+      action: REQUIRE_APPROVAL
     - expression: 'isAwsRoute53Destroy'
       message: 'Blocked: AWS Route53 hosted zone deletion can cause DNS outages — requires human approval'
-      action: DENY
+      action: REQUIRE_APPROVAL
     - expression: 'isAwsSecretsDestroy'
       message: 'Blocked: AWS Secrets Manager secret deletion is irreversible — requires human approval'
-      action: DENY
+      action: REQUIRE_APPROVAL
     - expression: 'isAwsIamDestroy'
       message: 'Blocked: AWS IAM key/policy deletion can break access — requires human approval'
-      action: DENY
+      action: REQUIRE_APPROVAL
     - expression: 'isAwsElastiCacheDestroy'
       message: 'Blocked: AWS ElastiCache replication group deletion is irreversible — requires human approval'
-      action: DENY
+      action: REQUIRE_APPROVAL
     - expression: 'isAwsDynamoDbDestroy'
       message: 'Blocked: AWS DynamoDB table deletion destroys all data — requires human approval'
-      action: DENY
+      action: REQUIRE_APPROVAL
     - expression: 'isAwsMessagingDestroy'
       message: 'Blocked: AWS SQS/SNS queue/topic deletion is irreversible — requires human approval'
-      action: DENY
+      action: REQUIRE_APPROVAL
     - expression: 'isAwsLogsDestroy'
       message: 'Blocked: AWS CloudWatch log group deletion destroys audit evidence — requires human approval'
-      action: DENY
+      action: REQUIRE_APPROVAL
     - expression: 'isAwsNetworkDestroy'
       message: 'Blocked: AWS EC2 VPC/subnet deletion can cause network outages — requires human approval'
-      action: DENY
+      action: REQUIRE_APPROVAL
     - expression: 'isAwsAcmDestroy'
       message: 'Blocked: AWS ACM certificate deletion can break TLS — requires human approval'
-      action: DENY
+      action: REQUIRE_APPROVAL
     - expression: 'isGcloudDestroy'
       message: 'Blocked: GCP resource deletion is irreversible — requires human approval'
-      action: DENY
+      action: REQUIRE_APPROVAL
     - expression: 'isAzureDestroy'
       message: 'Blocked: Azure resource deletion is irreversible — requires human approval'
-      action: DENY
+      action: REQUIRE_APPROVAL
     - expression: 'isFlyDestroy'
       message: 'Blocked: Fly.io app destruction is irreversible — requires human approval'
-      action: DENY
+      action: REQUIRE_APPROVAL
     - expression: 'isRailwayDown'
       message: 'Blocked: railway down tears down the deployment — requires human approval'
-      action: DENY
+      action: REQUIRE_APPROVAL
     - expression: 'isRenderDestroy'
       message: 'Blocked: Render service deletion is irreversible — requires human approval'
-      action: DENY
+      action: REQUIRE_APPROVAL
   defaultAction: ALLOW
