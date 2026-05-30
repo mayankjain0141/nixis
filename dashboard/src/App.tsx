@@ -1,14 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { AppShell, AppHeader, AppMetricsBar } from './components/shell/AppShell';
-import { EventStreamList } from './components/governance/EventStreamList';
 import { PolicySidebar } from './components/shell/PolicySidebar';
-import { GovernanceDAG } from './components/governance/dag/GovernanceDAG';
-import { DelegationTree } from './components/governance/DelegationTree';
-import { AuditHashChain } from './components/governance/AuditHashChain';
 import { CommandPalette } from './components/shell/CommandPalette';
 import { Inspector } from './components/shell/Inspector';
 import { SessionCards } from './components/shell/SessionCards';
-import { PolicyPlayground } from './components/shell/PolicyPlayground';
+import { MainArea, activeTabRef } from './components/shell/MainArea';
+import type { MainTab } from './components/shell/MainArea';
 import { DenyColorGuard } from './services/DenyColorGuard';
 import { useGovernanceStore } from './stores/governance-store';
 import { useMetricsStore } from './stores/metrics-store';
@@ -262,58 +259,6 @@ function routeEvents(
 }
 
 // ── Sub-components ──────────────────────────────────────────────────────────
-
-type MainTab = 'dag' | 'playground' | 'audit' | 'delegation';
-
-// Shared ref so App.tsx's navigate handler can switch tabs without prop-drilling
-const activeTabRef = { current: 'dag' as MainTab, setTab: (_t: MainTab) => {} };
-
-function MainContent() {
-  const [activeTab, setActiveTab] = useState<MainTab>('dag');
-  activeTabRef.current = activeTab;
-  activeTabRef.setTab = setActiveTab;
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      {/* Event stream: takes 50% of height */}
-      <div style={{ flex: '0 0 50%', overflow: 'hidden', borderBottom: '1px solid var(--border)' }}>
-        <EventStreamList />
-      </div>
-
-      {/* Tab bar */}
-      <div style={{
-        display: 'flex', alignItems: 'center',
-        borderBottom: '1px solid var(--border)',
-        background: 'var(--bg-surface)',
-        padding: '0 12px', height: 36, flexShrink: 0,
-      }}>
-        {(['dag', 'playground', 'audit', 'delegation'] as const).map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            style={{
-              padding: '0 14px', height: '100%', border: 'none', cursor: 'pointer',
-              background: 'transparent', fontSize: 12, fontWeight: 500,
-              color: activeTab === tab ? 'var(--text-primary)' : 'var(--text-secondary)',
-              borderBottom: activeTab === tab ? '2px solid var(--info-blue)' : '2px solid transparent',
-              textTransform: 'uppercase' as const, letterSpacing: '0.06em',
-            }}
-          >
-            {tab === 'dag' ? 'DAG' : tab === 'playground' ? 'Playground' : tab === 'audit' ? 'Audit Chain' : 'Delegation'}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab content */}
-      <div style={{ flex: 1, overflow: 'auto', padding: 12 }}>
-        {activeTab === 'dag'        && <GovernanceDAG />}
-        {activeTab === 'playground' && <PolicyPlayground />}
-        {activeTab === 'audit'      && <AuditHashChain />}
-        {activeTab === 'delegation' && <DelegationTree />}
-      </div>
-    </div>
-  );
-}
 
 function RightPanel() {
   return (
@@ -597,7 +542,7 @@ export default function App() {
           />
         }
         sidebar={<PolicySidebar />}
-        main={<MainContent />}
+        main={<MainArea />}
         inspector={<RightPanel />}
       />
     </>
