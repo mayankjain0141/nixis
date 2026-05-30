@@ -6,8 +6,10 @@ import (
 	"sync"
 
 	celgo "github.com/google/cel-go/cel"
+	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/mayjain/aegis/internal/classify"
+	"github.com/mayjain/aegis/internal/label"
 	aegis "github.com/mayjain/aegis/pkg/aegis"
 )
 
@@ -64,6 +66,7 @@ func (a *ActivationBuilder) Evaluate(
 	req aegis.CheckRequest,
 	verdictEntry classify.VerdictEntry,
 	decodedArgs map[string]any,
+	labeled label.LabeledRequest,
 ) (ref.Val, error) {
 	mp := a.pool.Get().(*map[string]any)
 	m := *mp
@@ -80,6 +83,12 @@ func (a *ActivationBuilder) Evaluate(
 	m["categories"] = int64(req.SecurityLabel.Category)
 	m["risk_level"] = string(verdictEntry.RiskLevel)
 	m["effects"] = verdictEntry.Effects
+	m["resource_matched"] = types.Bool(labeled.Matched)
+	m["resource_conf"] = types.Int(labeled.ResourceLabel.Confidentiality)
+	m["resource_cat"] = types.Int(labeled.ResourceLabel.Category)
+	m["resource_type"] = types.String(labeled.ResourceType)
+	m["resource_path"] = types.String(labeled.ResourcePath)
+	m["resource_network_cmd"] = types.Bool(labeled.ContainsNetworkCmd)
 
 	val, _, err := (*prog).ContextEval(ctx, m)
 
@@ -108,6 +117,7 @@ func Eval(
 	verdictEntry classify.VerdictEntry,
 	snap *aegis.EngineSnapshot,
 	decodedArgs map[string]any,
+	labeled label.LabeledRequest,
 ) (ref.Val, error) {
 	mp := activationPool.Get().(*map[string]any)
 	m := *mp
@@ -124,6 +134,12 @@ func Eval(
 	m["categories"] = int64(req.SecurityLabel.Category)
 	m["risk_level"] = string(verdictEntry.RiskLevel)
 	m["effects"] = verdictEntry.Effects
+	m["resource_matched"] = types.Bool(labeled.Matched)
+	m["resource_conf"] = types.Int(labeled.ResourceLabel.Confidentiality)
+	m["resource_cat"] = types.Int(labeled.ResourceLabel.Category)
+	m["resource_type"] = types.String(labeled.ResourceType)
+	m["resource_path"] = types.String(labeled.ResourcePath)
+	m["resource_network_cmd"] = types.Bool(labeled.ContainsNetworkCmd)
 
 	_ = snap // available for WS-05 to use; no-op at this layer
 
