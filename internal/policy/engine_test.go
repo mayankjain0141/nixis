@@ -260,6 +260,7 @@ func TestPolicyEngine_Evaluate_Pipeline_CELLayer(t *testing.T) {
 
 	req := aegis.CheckRequest{
 		Tool:      "Bash",
+		Args:      []byte(`{"command":"ls -la"}`),
 		SessionID: "test-session",
 	}
 
