@@ -39,21 +39,21 @@ type StreamEvent struct {
 //   - delegation.revoked: an active delegation was explicitly revoked
 //   - delegation.expired: a delegation expired due to TTL or session end
 const (
-	EventTypeDecision            = "decision"
-	EventTypeLabelEscalated      = "label.escalated"
-	EventTypeLabelTainted        = "label.tainted"
-	EventTypeSecretFound         = "secret.found"
-	EventTypeBundleActivated     = "bundle.activated"
-	EventTypeBundleRolledBack    = "bundle.rolledback"
-	EventTypeReloadStarted       = "reload.started"
-	EventTypeReloadCompleted     = "reload.completed"
-	EventTypeReloadFailed        = "reload.failed"
-	EventTypeSessionStart        = "session.start"
-	EventTypeSessionEnd          = "session.end"
-	EventTypeSystemError         = "system.error"
-	EventTypeDelegationCreated   = "delegation.created"
-	EventTypeDelegationRevoked   = "delegation.revoked"
-	EventTypeDelegationExpired   = "delegation.expired"
+	EventTypeDecision          = "decision"
+	EventTypeLabelEscalated    = "label.escalated"
+	EventTypeLabelTainted      = "label.tainted"
+	EventTypeSecretFound       = "secret.found"
+	EventTypeBundleActivated   = "bundle.activated"
+	EventTypeBundleRolledBack  = "bundle.rolledback"
+	EventTypeReloadStarted     = "reload.started"
+	EventTypeReloadCompleted   = "reload.completed"
+	EventTypeReloadFailed      = "reload.failed"
+	EventTypeSessionStart      = "session.start"
+	EventTypeSessionEnd        = "session.end"
+	EventTypeSystemError       = "system.error"
+	EventTypeDelegationCreated = "delegation.created"
+	EventTypeDelegationRevoked = "delegation.revoked"
+	EventTypeDelegationExpired = "delegation.expired"
 )
 
 // StreamTap is the injection interface for internal/stream/ to receive events

@@ -5,6 +5,7 @@ package secret
 import (
 	"context"
 	"log"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -12,6 +13,8 @@ import (
 	"github.com/mayjain/aegis/internal/ifc"
 	policy "github.com/mayjain/aegis/internal/policy"
 	"github.com/mayjain/aegis/pkg/aegis"
+	"github.com/spf13/viper"
+	"github.com/zricethezav/gitleaks/v8/config"
 	"github.com/zricethezav/gitleaks/v8/detect"
 )
 
@@ -67,18 +70,50 @@ func NewScanner() *Scanner {
 	return &Scanner{}
 }
 
+// exampleCredentialPatterns lists known documentation/example credential strings
+// that should not trigger secret scan alerts.
+var exampleCredentialPatterns = []string{
+	`AKIAIOSFODNN7EXAMPLE`,
+	`wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY`,
+	`your-api-key-here`,
+	`YOUR_API_KEY`,
+	`<API_KEY>`,
+	`PLACEHOLDER`,
+	`xxxxxxxxxxxx`,
+}
+
 func (s *Scanner) init() {
 	s.once.Do(func() {
 		if s.testDetector != nil {
 			s.detector = s.testDetector
 			return
 		}
-		d, err := detect.NewDetectorDefaultConfig()
-		if err != nil {
-			log.Printf("aegis/secret: gitleaks init failed — scanner disabled")
+		viper.SetConfigType("toml")
+		if err := viper.ReadConfig(strings.NewReader(config.DefaultConfig)); err != nil {
+			log.Printf("aegis/secret: gitleaks config read failed — scanner disabled")
 			return
 		}
-		s.detector = &realDetector{d: d}
+		var vc config.ViperConfig
+		if err := viper.Unmarshal(&vc); err != nil {
+			log.Printf("aegis/secret: gitleaks config unmarshal failed — scanner disabled")
+			return
+		}
+		cfg, err := vc.Translate()
+		if err != nil {
+			log.Printf("aegis/secret: gitleaks config translate failed — scanner disabled")
+			return
+		}
+		regexes := make([]*regexp.Regexp, 0, len(exampleCredentialPatterns))
+		for _, pat := range exampleCredentialPatterns {
+			re := regexp.MustCompile(regexp.QuoteMeta(pat))
+			regexes = append(regexes, re)
+		}
+		cfg.Allowlists = append(cfg.Allowlists, &config.Allowlist{
+			Description: "Known safe example/documentation credential patterns",
+			RegexTarget: "match",
+			Regexes:     regexes,
+		})
+		s.detector = &realDetector{d: detect.NewDetector(cfg)}
 	})
 }
 
