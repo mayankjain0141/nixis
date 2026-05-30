@@ -19,13 +19,23 @@ import (
 )
 
 // Category bit constants for aegis.SecurityLabel.Category.
+// Bit allocation:
+// 0:  CatCredentials
+// 1:  CatFinance
+// 2:  CatPersonalData
+// 3:  CatInternal
+// 4:  CatCryptographic
+// 5-29: available
+// 30: CatSecurityKey
+// 31: TaintBit (reserved — never use for categories)
 const (
-	CatCredentials  uint32 = 1 << 0  // bit 0
-	CatFinance      uint32 = 1 << 1  // bit 1
-	CatPersonalData uint32 = 1 << 2  // bit 2
-	CatInternal     uint32 = 1 << 3  // bit 3
-	CatSecurityKey  uint32 = 1 << 30 // bit 30 — high-value asset
-	TaintBit        uint32 = 1 << 31 // bit 31 — tainted_by_secret sentinel
+	CatCredentials   uint32 = 1 << 0  // bit 0 — passwords, API keys, tokens
+	CatFinance       uint32 = 1 << 1  // bit 1 — financial data
+	CatPersonalData  uint32 = 1 << 2  // bit 2 — PII
+	CatInternal      uint32 = 1 << 3  // bit 3 — internal docs (non-sensitive)
+	CatCryptographic uint32 = 1 << 4  // bit 4 — encryption keys, TLS certs, LUKS
+	CatSecurityKey   uint32 = 1 << 30 // bit 30 — high-value asset (SSH keys, GPG)
+	TaintBit         uint32 = 1 << 31 // bit 31 — tainted_by_secret sentinel
 )
 
 // LabelState is the session label lifecycle state machine.
