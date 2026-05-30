@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useGovernanceStore } from '../../stores/governance-store';
 import { useMetricsStore } from '../../stores/metrics-store';
 import { useStreamStore } from '../../stores/stream-store';
@@ -35,6 +36,15 @@ export function MetricsBar() {
 
   const totalDenials = useGovernanceStore((s) => s.totalDenials);
   const totalAllows = useGovernanceStore((s) => s.totalAllows);
+  const events = useGovernanceStore((s) => s.events);
+
+  const layerCounts = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const e of events) {
+      if (e.enforcingLayer) m[e.enforcingLayer] = (m[e.enforcingLayer] ?? 0) + 1;
+    }
+    return m;
+  }, [events]);
 
   // Compute derived values outside selectors.
   const eventsPerSec = computeEventsPerSec(rateWindow);
@@ -98,6 +108,22 @@ export function MetricsBar() {
           {p95Ms.toFixed(2)}ms
         </span>
       </div>
+
+      {Object.keys(layerCounts).length > 0 && (
+        <>
+          <div style={styles.divider} aria-hidden="true" />
+          <div style={styles.item}>
+            <span style={styles.label}>Layers</span>
+            <span style={{ display: 'flex', gap: 8 }}>
+              {Object.entries(layerCounts).map(([layer, count]) => (
+                <span key={layer} style={{ ...styles.value, color: '#57606a', fontSize: 10 }}>
+                  {layer.toUpperCase()}: {count}
+                </span>
+              ))}
+            </span>
+          </div>
+        </>
+      )}
     </div>
   );
 }
