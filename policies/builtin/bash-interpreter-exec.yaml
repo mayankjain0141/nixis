@@ -52,7 +52,7 @@ spec:
   matchConstraints:
     tools: ["Bash"]
   validations:
-    - expression: 'resource_interpreter_exec && (categories & 2147483648) != 0'
+    - expression: 'resource_interpreter_exec && categories != 0'
       message: 'Sub-interpreter execution in a tainted session requires approval'
       action: REQUIRE_APPROVAL
   defaultAction: ALLOW

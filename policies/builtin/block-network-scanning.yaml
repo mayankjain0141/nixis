@@ -1,0 +1,51 @@
+apiVersion: aegis.io/v1
+kind: PolicyTemplate
+metadata:
+  name: block-network-scanning
+  annotations:
+    aegis.io/default-enabled: "true"
+    aegis.io/bundle: builtin
+spec:
+  description: "Block network scanning and host discovery tools"
+  matchConstraints:
+    tools: ["Bash"]
+  variables:
+    - name: isNmap
+      # nmap with any arguments — port/host scanner
+      expression: >-
+        request.args.command.matches("(?i).*\\bnmap\\b.*")
+    - name: isArpScan
+      # arp-scan, arp scan (with space), netdiscover
+      expression: >-
+        request.args.command.matches("(?i).*\\barp-scan\\b.*") ||
+        request.args.command.matches("(?i).*\\barp\\s+scan\\b.*") ||
+        request.args.command.matches("(?i).*\\bnetdiscover\\b.*")
+    - name: isMasscan
+      # masscan — high-speed port scanner
+      expression: >-
+        request.args.command.matches("(?i).*\\bmasscan\\b.*")
+    - name: isZmap
+      # zmap — internet-wide scanner
+      expression: >-
+        request.args.command.matches("(?i).*\\bzmap\\b.*")
+    - name: isUnicodeScanTool
+      # unicornscan, hping3 used for scanning, dnsenum for enumeration
+      expression: >-
+        request.args.command.matches("(?i).*\\b(unicornscan|hping3|dnsenum|dnsrecon|fierce|amass)\\b.*")
+  validations:
+    - expression: 'isNmap'
+      message: "Blocked: nmap network scanning is not permitted"
+      action: DENY
+    - expression: 'isArpScan'
+      message: "Blocked: ARP-based network host discovery is not permitted"
+      action: DENY
+    - expression: 'isMasscan'
+      message: "Blocked: masscan high-speed port scanning is not permitted"
+      action: DENY
+    - expression: 'isZmap'
+      message: "Blocked: zmap internet-wide scanning is not permitted"
+      action: DENY
+    - expression: 'isUnicodeScanTool'
+      message: "Blocked: network reconnaissance tool detected"
+      action: DENY
+  defaultAction: ALLOW
