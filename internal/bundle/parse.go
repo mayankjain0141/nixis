@@ -69,10 +69,18 @@ func ParsePolicyFile(path string) (*policy_types.PolicyTemplate, *policy_types.P
 		return nil, nil, nil
 	}
 
-	expr := buildCombinedExpression(&manifest)
+	expr, requireApproval := buildCombinedExpression(&manifest)
 	if expr == "" {
 		log.Printf("bundle: %s: PolicyTemplate %q has no evaluable validations — skipping", path, manifest.Metadata.Name)
 		return nil, nil, nil
+	}
+
+	var message string
+	for _, v := range manifest.Spec.Validations {
+		if v.Message != "" {
+			message = v.Message
+			break
+		}
 	}
 
 	params, err := resolveParams(manifest.Spec.Params, path)
@@ -101,8 +109,10 @@ func ParsePolicyFile(path string) (*policy_types.PolicyTemplate, *policy_types.P
 			Tools:   manifest.Spec.MatchConstraints.Tools,
 			Effects: manifest.Spec.MatchConstraints.Effects,
 		},
-		Priority: 0,
-		Layer:    layer,
+		Priority:        0,
+		Layer:           layer,
+		RequireApproval: requireApproval,
+		Message:         message,
 	}
 
 	return template, binding, nil
@@ -157,13 +167,15 @@ func resolveParams(defs map[string]paramDefinition, sourceFile string) (map[stri
 }
 
 // buildCombinedExpression builds a single CEL expression from policy validations.
+// Returns the expression string and a bool indicating whether this is a REQUIRE_APPROVAL policy.
 // Variables defined in spec.variables are inlined by substitution before compilation.
 //
 // Key behaviors:
 //   - Variables are inlined using multiple passes to handle nested references (e.g., isProtected → branchName).
 //   - All DENY validations are combined with OR: !(expr1 || expr2 || ...).
-//   - If no DENY validations exist, falls back to the first non-empty validation.
-func buildCombinedExpression(m *policyManifest) string {
+//   - If no DENY validations exist, REQUIRE_APPROVAL validations are collected next.
+//   - If neither exists, falls back to the first non-empty validation.
+func buildCombinedExpression(m *policyManifest) (string, bool) {
 	// Build variable substitution map: name → normalized expression.
 	vars := make(map[string]string, len(m.Spec.Variables))
 	for _, v := range m.Spec.Variables {
@@ -200,7 +212,19 @@ func buildCombinedExpression(m *policyManifest) string {
 		// Combined expression: deny if ANY of the deny conditions is true.
 		// The expression evaluates to true (allow) when none of the conditions match.
 		// !(cond1 || cond2 || cond3) == allow when all conditions are false.
-		return "!(" + strings.Join(denyExprs, " || ") + ")"
+		return "!(" + strings.Join(denyExprs, " || ") + ")", false
+	}
+
+	// Collect REQUIRE_APPROVAL validations.
+	var reqApprovalExprs []string
+	for _, v := range m.Spec.Validations {
+		if v.Action == "REQUIRE_APPROVAL" && v.Expression != "" {
+			reqApprovalExprs = append(reqApprovalExprs, inline(v.Expression))
+		}
+	}
+
+	if len(reqApprovalExprs) > 0 {
+		return "!(" + strings.Join(reqApprovalExprs, " || ") + ")", true
 	}
 
 	// Fallback: use first non-empty validation expression regardless of action.
@@ -209,18 +233,10 @@ func buildCombinedExpression(m *policyManifest) string {
 	// The engine skips AUDIT evaluation at runtime; the loader must not drop them.
 	for _, v := range m.Spec.Validations {
 		if v.Expression != "" {
-			return "!(" + inline(v.Expression) + ")"
+			return "!(" + inline(v.Expression) + ")", false
 		}
 	}
-	// AUDIT-only policies: return !(false) so the policy loads and is visible in
-	// governance output, but never blocks. Without this, returning "" causes the
-	// bundle parser to silently drop AUDIT-only policies (mutate/generate stubs).
-	for _, v := range m.Spec.Validations {
-		if v.Expression != "" {
-			return "!(false)"
-		}
-	}
-	return ""
+	return "", false
 }
 
 // replaceIdentifier replaces a CEL identifier (variable name) with a replacement value,

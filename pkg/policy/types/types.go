@@ -14,10 +14,12 @@ type PolicyTemplate struct {
 
 // PolicyBinding binds a template to a scope.
 type PolicyBinding struct {
-	TemplateID string
-	Scope      PolicyScope
-	Priority   int
-	Layer      string // "cel", "ifc", "adapter"
+	TemplateID      string
+	Scope           PolicyScope
+	Priority        int
+	Layer           string // "cel", "ifc", "adapter"
+	RequireApproval bool   // true if the policy's primary action is REQUIRE_APPROVAL
+	Message         string // human-readable message from YAML validations[].message
 }
 
 // PolicyScope defines which tools/sessions a binding applies to.
