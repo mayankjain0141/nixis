@@ -67,6 +67,14 @@ func NewCELEnvironment(protoTypes ...proto.Message) (*CELEnvironment, error) {
 		cel.Variable("risk_level", cel.StringType),
 		cel.Variable("effects", cel.ListType(cel.StringType)),
 
+		// Resource labeler outputs — CEL fallback policies use these.
+		cel.Variable("resource_matched", cel.BoolType),
+		cel.Variable("resource_conf", cel.IntType),
+		cel.Variable("resource_cat", cel.IntType),
+		cel.Variable("resource_type", cel.StringType),
+		cel.Variable("resource_path", cel.StringType),
+		cel.Variable("resource_network_cmd", cel.BoolType),
+
 		// bash.* namespace
 		bashExtension(),
 

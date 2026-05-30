@@ -29,6 +29,7 @@ import (
 	"github.com/mayjain/aegis/internal/cel"
 	"github.com/mayjain/aegis/internal/classify"
 	"github.com/mayjain/aegis/internal/ifc"
+	"github.com/mayjain/aegis/internal/label"
 	"github.com/mayjain/aegis/pkg/aegis"
 	policy_types "github.com/mayjain/aegis/pkg/policy/types"
 )
@@ -275,7 +276,7 @@ func (e *PolicyEngine) evaluateWithSnapshot(
 			continue
 		}
 
-		val, err := e.activationBuilder.Evaluate(ctx, prog, req, verdict, decodedArgs)
+		val, err := e.activationBuilder.Evaluate(ctx, prog, req, verdict, decodedArgs, label.LabeledRequest{})
 		if err != nil {
 			log.Printf("WARN: policy %s eval error (skipping): %v", cb.binding.TemplateID, err)
 			continue
