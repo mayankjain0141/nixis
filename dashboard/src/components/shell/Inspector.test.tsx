@@ -116,14 +116,20 @@ describe('Inspector', () => {
 
     render(<Inspector />);
 
-    // Section is closed by default
-    expect(screen.queryByText('Confidentiality')).not.toBeInTheDocument();
+    // Section is open by default
+    expect(screen.getByText('Confidentiality')).toBeInTheDocument();
+    expect(screen.getByText('Confidential')).toBeInTheDocument();
 
     const secBtn = screen.getByRole('button', { name: /security label/i });
     fireEvent.click(secBtn);
 
+    // Clicking closes it
+    expect(screen.queryByText('Confidentiality')).not.toBeInTheDocument();
+
+    fireEvent.click(secBtn);
+
+    // Clicking again re-opens it
     expect(screen.getByText('Confidentiality')).toBeInTheDocument();
-    expect(screen.getByText('Confidential')).toBeInTheDocument();
   });
 
   it('TestInspector_DominatesComputed: IFC Reasoning section shows Dominates YES', () => {
