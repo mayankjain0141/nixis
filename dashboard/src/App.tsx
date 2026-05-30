@@ -344,9 +344,7 @@ export default function App() {
         useStreamStore.getState().setConnectionState('MOCK');
         if (mockGenRef.current === null) {
           if (import.meta.env.DEV) {
-            import('./mocks/demoScenario').then(({ runDemoScenario, getDemoPolicies }) => {
-              // Seed policies directly — bypasses Zod pipeline so CEL expressions are guaranteed present.
-              usePolicyStore.getState().setPolicies(getDemoPolicies(1));
+            import('./mocks/demoScenario').then(({ runDemoScenario }) => {
               const cancelDemo = runDemoScenario((json) => {
                 window.dispatchEvent(new CustomEvent('aegis:mock-event', { detail: json }));
               });
@@ -439,9 +437,7 @@ export default function App() {
       useMock = true;
       setConnectionState('MOCK');
       if (import.meta.env.DEV) {
-        import('./mocks/demoScenario').then(({ runDemoScenario, getDemoPolicies }) => {
-          // Seed policies directly — bypasses Zod pipeline so CEL expressions are guaranteed present.
-          usePolicyStore.getState().setPolicies(getDemoPolicies(1));
+        import('./mocks/demoScenario').then(({ runDemoScenario }) => {
           const cancelDemo = runDemoScenario((json) => {
             pipeline.ingest(json, { receivedAt: performance.now() });
           });
@@ -509,8 +505,10 @@ export default function App() {
     useGovernanceStore.getState().clear?.();
 
     const apiBase = getDaemonApiBase();
-    import('./mocks/demoScenario').then(({ runLiveDemoScenario, getDemoPolicies }) => {
-      usePolicyStore.getState().setPolicies(getDemoPolicies(1));
+    import('./mocks/demoScenario').then(({ runLiveDemoScenario }) => {
+      // Do NOT replace real daemon policies with getDemoPolicies() — allPolicies.ts is a stub
+      // that returns [] so getDemoPolicies() only has 6 core entries. The daemon already
+      // loaded the full policy set via loadPolicies() at startup; keep it.
       fetch(`${apiBase}/healthz`, { signal: AbortSignal.timeout(1000) })
         .then(() => {
           // Daemon is reachable — use live evaluation
