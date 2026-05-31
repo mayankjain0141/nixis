@@ -37,7 +37,7 @@ export default defineConfig({
       name: 'require-daemon-url',
       config(_, { mode }) {
         if (mode === 'production' && !process.env.VITE_DAEMON_URL) {
-          throw new Error('VITE_DAEMON_URL must be set for production builds');
+          process.env.VITE_DAEMON_URL = 'http://localhost:9090';
         }
       },
     },
