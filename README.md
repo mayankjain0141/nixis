@@ -27,9 +27,17 @@ The only guardrail today is hoping the model says no. Nixis enforces externally 
 ## Install
 
 ```bash
+# One-liner (recommended)
+curl -sSfL https://raw.githubusercontent.com/mayankjain0141/nixis/main/install.sh | sh
+
+# Via Go
+go install github.com/mayankjain0141/nixis/cmd/nixis@latest
+
 # From source
 git clone https://github.com/mayankjain0141/nixis.git && cd nixis && make install
 ```
+
+Then run `nixis setup` to configure the daemon, policies, and IDE hook.
 
 ## Setup
 
