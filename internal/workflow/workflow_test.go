@@ -78,11 +78,30 @@ func waitSocketReady(t *testing.T, socketPath string) {
 	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
 		conn, err := net.Dial("unix", socketPath)
-		if err == nil {
-			_ = conn.Close()
-			return
+		if err != nil {
+			time.Sleep(10 * time.Millisecond)
+			continue
 		}
-		time.Sleep(5 * time.Millisecond)
+		// Verify the daemon can actually handle a request (not just that
+		// the kernel backlog accepted the connection).
+		payload, _ := json.Marshal(nixis.CheckRequest{
+			Tool:      "Bash",
+			Args:      json.RawMessage(`{"command":"echo probe"}`),
+			SessionID: "wf-probe",
+		})
+		dl := time.Now().Add(5 * time.Second)
+		if err := daemon.WriteMessage(conn, payload, dl); err != nil {
+			_ = conn.Close()
+			time.Sleep(10 * time.Millisecond)
+			continue
+		}
+		if _, err := daemon.ReadMessage(conn, dl, nixis.MaxMessageSize); err != nil {
+			_ = conn.Close()
+			time.Sleep(10 * time.Millisecond)
+			continue
+		}
+		_ = conn.Close()
+		return
 	}
 	t.Fatalf("daemon socket %s never became ready", socketPath)
 }
@@ -678,22 +697,51 @@ func TestWorkflow_ConcurrentRequests(t *testing.T) {
 	waitSocketReady(t, socketPath)
 
 	const n = 10
-	type result struct{ action nixis.Action }
+	type result struct {
+		action nixis.Action
+		err    error
+	}
 	results := make(chan result, n)
 
 	for i := range n {
 		go func(i int) {
-			resp := sendWorkflowRequest(t, socketPath, nixis.CheckRequest{
+			req := nixis.CheckRequest{
 				Tool:      "Bash",
 				Args:      json.RawMessage(`{"command":"ls -la"}`),
 				SessionID: fmt.Sprintf("wf-concurrent-%d", i),
-			})
-			results <- result{resp.Decision.Action}
+			}
+			conn, err := net.Dial("unix", socketPath)
+			if err != nil {
+				results <- result{err: fmt.Errorf("dial: %w", err)}
+				return
+			}
+			defer func() { _ = conn.Close() }()
+
+			payload, _ := json.Marshal(req)
+			deadline := time.Now().Add(5 * time.Second)
+			if err := daemon.WriteMessage(conn, payload, deadline); err != nil {
+				results <- result{err: fmt.Errorf("write: %w", err)}
+				return
+			}
+			raw, err := daemon.ReadMessage(conn, deadline, nixis.MaxMessageSize)
+			if err != nil {
+				results <- result{err: fmt.Errorf("read: %w", err)}
+				return
+			}
+			var resp nixis.CheckResponse
+			if err := json.Unmarshal(raw, &resp); err != nil {
+				results <- result{err: fmt.Errorf("unmarshal: %w", err)}
+				return
+			}
+			results <- result{action: resp.Decision.Action}
 		}(i)
 	}
 
 	for range n {
 		r := <-results
+		if r.err != nil {
+			t.Fatalf("concurrent request failed: %v", r.err)
+		}
 		if r.action != nixis.ActionAllow && r.action != nixis.ActionDeny {
 			t.Errorf("unexpected action from concurrent request: %v", r.action)
 		}
