@@ -219,7 +219,18 @@ Full 5-layer pipeline P99: **<10μs.** Hook round-trip budget: **200ms** (domina
 
 ## Evaluation
 
-Nixis ships with a 784-case adversarial benchmark covering credential exfiltration, reverse shells, delegation attacks, evasion techniques, and more. Overall precision: **92%**, direct attack recall: **93%**. See [eval/adversarial/EVAL_BENCH.md](eval/adversarial/EVAL_BENCH.md) for full methodology and per-category results.
+Nixis ships with a 784-case adversarial benchmark (`eval/`) covering 7 attack categories:
+
+| Category | Recall | Notes |
+|----------|--------|-------|
+| Direct attacks | 93% | Unobfuscated `rm -rf`, reverse shells, privilege escalation |
+| Evasion techniques | 87% | Base64 encoding, variable expansion, multi-stage payloads |
+| Delegation attacks | 80-86% | Forged chains, circular delegation, expired tokens |
+| Taint propagation | 78% | Read-then-exfiltrate, cross-session taint |
+| Label manipulation | 52% | IFC label spoofing — needs Go-level hardening |
+| Protocol attacks | 18-38% | Wire-level abuse — needs Go-level changes, not more CEL |
+
+**Overall precision: 92%.** Train/test gap is small (F1: 84% vs 80%) — no overfitting. See [eval/adversarial/EVAL_BENCH.md](eval/adversarial/EVAL_BENCH.md) for methodology and per-case results.
 
 ## Contributing
 
