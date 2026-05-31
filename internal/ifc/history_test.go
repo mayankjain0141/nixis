@@ -16,7 +16,7 @@ func TestNewTaintHistory_CreatesDB(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewTaintHistory: %v", err)
 	}
-	defer h.Close()
+	defer func() { _ = h.Close() }()
 
 	if _, err := os.Stat(dbPath); err != nil {
 		t.Errorf("database file not created: %v", err)

@@ -73,6 +73,14 @@ linters:
           pkg: 'internal/(stream|daemon)'
           msg: '"escalate" is banned from wire-facing code — use the canonical label.escalated event type'
 
+    errcheck:
+      exclude-functions:
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - fmt.Fprint
+        - (io.Closer).Close
+        - os.Unsetenv
+
     depguard:
       rules:
         Main:
@@ -93,6 +101,8 @@ linters:
         # silently ignored — verified exhaustively. Enforcement is via scripts/check-stream-isolation.sh.
 
   exclusions:
+    paths:
+      - dashboard/node_modules
     rules:
       # Test files are exempt from hot-path allocation rules
       - path: '_test\.go'

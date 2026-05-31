@@ -29,10 +29,10 @@ import (
 //
 //	INITIALIZING → LISTENING → DRAINING → FLUSHING → STOPPED
 type Daemon struct {
-	cfg         Config
-	engine      nixis.Engine
-	auditWriter *audit.Writer
-	listener    net.Listener
+	cfg          Config
+	engine       nixis.Engine
+	auditWriter  *audit.Writer
+	listener     net.Listener
 	streamSrv    nixis.StreamTap    // nil disables streaming
 	sessions     *ifc.SessionLabels // nil disables session label persistence
 	delegAPI     *DelegationAPI     // nil disables delegation HTTP endpoints

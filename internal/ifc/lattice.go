@@ -30,13 +30,13 @@ import (
 
 // Category bit constants for nixis.SecurityLabel.Category.
 const (
-	CatCredentials  uint32 = 1 << 0  // bit 0 — passwords, API keys, tokens
-	CatFinance      uint32 = 1 << 1  // bit 1 — financial data
-	CatPersonalData uint32 = 1 << 2  // bit 2 — PII
-	CatInternal     uint32 = 1 << 3  // bit 3 — internal docs (non-sensitive)
-	CatCryptographic uint32 = 1 << 4 // bit 4 — encryption keys, TLS certificates, LUKS keys
-	CatSecurityKey  uint32 = 1 << 30 // bit 30 — high-value asset
-	TaintBit        uint32 = 1 << 31 // bit 31 — tainted_by_secret sentinel
+	CatCredentials   uint32 = 1 << 0  // bit 0 — passwords, API keys, tokens
+	CatFinance       uint32 = 1 << 1  // bit 1 — financial data
+	CatPersonalData  uint32 = 1 << 2  // bit 2 — PII
+	CatInternal      uint32 = 1 << 3  // bit 3 — internal docs (non-sensitive)
+	CatCryptographic uint32 = 1 << 4  // bit 4 — encryption keys, TLS certificates, LUKS keys
+	CatSecurityKey   uint32 = 1 << 30 // bit 30 — high-value asset
+	TaintBit         uint32 = 1 << 31 // bit 31 — tainted_by_secret sentinel
 )
 
 // LabelState is the session label lifecycle state machine.

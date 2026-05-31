@@ -354,17 +354,17 @@ func patchSettingsJSON(w io.Writer, homeDir, hookPath string) error {
 		return fmt.Errorf("marshal settings.json: %w", err)
 	}
 
-	fmt.Fprintf(w, "  Hook command: %s\n", hookPath)
+	_, _ = fmt.Fprintf(w, "  Hook command: %s\n", hookPath)
 
 	if setupDryRun {
-		fmt.Fprintln(w, "  (dry-run) Would write settings.json")
+		_, _ = fmt.Fprintln(w, "  (dry-run) Would write settings.json")
 		return nil
 	}
 
 	if !setupYes {
-		fmt.Fprintf(w, "\n  Will write to: %s\n", path)
+		_, _ = fmt.Fprintf(w, "\n  Will write to: %s\n", path)
 		if !confirm("Apply settings.json patch?") {
-			fmt.Fprintln(w, "  Skipped (user declined)")
+			_, _ = fmt.Fprintln(w, "  Skipped (user declined)")
 			return nil
 		}
 	}
@@ -372,7 +372,7 @@ func patchSettingsJSON(w io.Writer, homeDir, hookPath string) error {
 	if err := os.WriteFile(path, append(newData, '\n'), 0o644); err != nil {
 		return fmt.Errorf("write settings.json: %w", err)
 	}
-	fmt.Fprintln(w, "  ✓ settings.json patched")
+	_, _ = fmt.Fprintln(w, "  ✓ settings.json patched")
 	return nil
 }
 
@@ -393,7 +393,7 @@ func unpatchSettingsJSON(w io.Writer, homeDir string) error {
 
 	hooks, ok := settings["hooks"].(map[string]interface{})
 	if !ok {
-		fmt.Fprintln(w, "  No hooks section found")
+		_, _ = fmt.Fprintln(w, "  No hooks section found")
 		return nil
 	}
 	delete(hooks, "PreToolUse")
@@ -413,7 +413,7 @@ func unpatchSettingsJSON(w io.Writer, homeDir string) error {
 			return fmt.Errorf("write settings.json: %w", err)
 		}
 	}
-	fmt.Fprintln(w, "  ✓ Hook removed from settings.json")
+	_, _ = fmt.Fprintln(w, "  ✓ Hook removed from settings.json")
 	return nil
 }
 
@@ -424,7 +424,7 @@ func runSmokeTest(w io.Writer, nixisDir string) error {
 	if err != nil {
 		return fmt.Errorf("hook --version failed: %w (%s)", err, strings.TrimSpace(string(output)))
 	}
-	fmt.Fprintf(w, "  Hook version: %s\n", strings.TrimSpace(string(output)))
+	_, _ = fmt.Fprintf(w, "  Hook version: %s\n", strings.TrimSpace(string(output)))
 	return nil
 }
 

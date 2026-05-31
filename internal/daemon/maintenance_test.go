@@ -3,24 +3,11 @@ package daemon
 
 import (
 	"context"
-	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/mayankjain0141/nixis/internal/ifc"
 )
-
-// stubSessionLabels wraps SessionLabels and counts PruneExpiredRules calls.
-// We embed the real SessionLabels so the prune logic actually runs.
-type countingSessionLabels struct {
-	*ifc.SessionLabels
-	pruneCount atomic.Int64
-}
-
-func (c *countingSessionLabels) PruneExpiredRules() {
-	c.pruneCount.Add(1)
-	c.SessionLabels.PruneExpiredRules()
-}
 
 // TestRunMaintenanceLoop_PrunesOnTick verifies that the maintenance loop calls
 // PruneExpiredRules after at least one ruleTicker fires, then respects ctx.Done().

@@ -11,9 +11,9 @@ import (
 // and sustained refill rate. Stale sessions are pruned after 5 minutes
 // of inactivity.
 type RateLimiter struct {
-	mu        sync.Mutex
-	buckets   map[string]*bucket
-	burstSize int
+	mu         sync.Mutex
+	buckets    map[string]*bucket
+	burstSize  int
 	refillRate float64 // tokens per second
 	staleAfter time.Duration
 }

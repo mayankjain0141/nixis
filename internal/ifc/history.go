@@ -102,7 +102,7 @@ ORDER BY tainted_at DESC`,
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var records []TaintRecord
 	for rows.Next() {
