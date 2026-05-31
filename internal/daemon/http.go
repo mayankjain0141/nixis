@@ -24,9 +24,9 @@ type checkRequestJSON struct {
 
 // checkResponseJSON is the wire format for the /v1/check response.
 type checkResponseJSON struct {
-	Decision    decisionJSON   `json:"decision"`
-	LatencyNs   int64          `json:"latency_ns"`
-	Layer       string         `json:"enforcing_layer,omitempty"`
+	Decision    decisionJSON     `json:"decision"`
+	LatencyNs   int64            `json:"latency_ns"`
+	Layer       string           `json:"enforcing_layer,omitempty"`
 	Annotations []annotationJSON `json:"annotations,omitempty"`
 }
 

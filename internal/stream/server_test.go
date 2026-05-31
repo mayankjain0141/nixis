@@ -585,7 +585,7 @@ func TestStream_AllowsHTTPSLocalhostOrigin(t *testing.T) {
 		}
 		t.Fatalf("expected upgrade to succeed for https://localhost origin: %v", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 }
 
 // TestStream_HealthzReady verifies /healthz/ready returns 200 after listener is bound.
@@ -599,7 +599,7 @@ func TestStream_HealthzReady(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET /healthz/ready: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
 	}
@@ -616,7 +616,7 @@ func TestStream_HealthzReady_NotReady(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET /healthz/ready: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusServiceUnavailable {
 		t.Errorf("expected 503, got %d", resp.StatusCode)
 	}

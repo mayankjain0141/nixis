@@ -51,7 +51,7 @@ func TestCheckHandler_Allow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("POST /v1/check: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -85,7 +85,7 @@ func TestCheckHandler_Deny(t *testing.T) {
 	if err != nil {
 		t.Fatalf("POST /v1/check: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -119,7 +119,7 @@ func TestCheckHandler_MalformedJSON(t *testing.T) {
 	if err != nil {
 		t.Fatalf("POST /v1/check: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -138,7 +138,7 @@ func TestCheckHandler_EmptyBody(t *testing.T) {
 	if err != nil {
 		t.Fatalf("POST /v1/check: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -158,7 +158,7 @@ func TestCheckHandler_MissingToolField(t *testing.T) {
 	if err != nil {
 		t.Fatalf("POST /v1/check: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -178,7 +178,7 @@ func TestCheckHandler_ContentTypeJSON(t *testing.T) {
 	if err != nil {
 		t.Fatalf("POST /v1/check: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	ct := resp.Header.Get("Content-Type")
 	if ct != "application/json" {

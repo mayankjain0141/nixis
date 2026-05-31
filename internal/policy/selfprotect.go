@@ -118,11 +118,7 @@ func (g *SelfProtectGuard) checkShellCommand(req nixis.CheckRequest) bool {
 		}
 	}
 
-	if g.commandTargetsProtectedPath(cmd) {
-		return true
-	}
-
-	return false
+	return g.commandTargetsProtectedPath(cmd)
 }
 
 // extractFilePath gets the file path from tool arguments.

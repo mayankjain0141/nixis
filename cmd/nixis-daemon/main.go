@@ -60,7 +60,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "nixis-daemon: %v\n", err)
 		os.Exit(exitStartupFailure)
 	}
-	defer pidLock.Unlock()
+	defer func() { _ = pidLock.Unlock() }()
 
 	cfg := daemon.Config{
 		SocketPath:  *socketPath,

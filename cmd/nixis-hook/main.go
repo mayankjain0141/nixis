@@ -222,32 +222,6 @@ func translateToClaudeCode(resp nixis.CheckResponse, eventName string) ClaudeCod
 	return ClaudeCodeHookOutput{HookSpecificOutput: specific}
 }
 
-// translateResponse converts a CheckResponse into a CursorHookOutput.
-// Retained for test compatibility.
-func translateResponse(resp nixis.CheckResponse) CursorHookOutput {
-	var out CursorHookOutput
-	out.LatencyNs = resp.LatencyNs
-
-	switch resp.Decision.Action {
-	case nixis.ActionAllow:
-		out.Decision.Action = "allow"
-	case nixis.ActionDeny:
-		out.Decision.Action = "deny"
-		out.Decision.Reason = resp.Decision.Reason
-		out.Decision.PolicyID = resp.Decision.PolicyID
-	case nixis.ActionRequireApproval:
-		out.Decision.Action = "require_approval"
-		out.Decision.Reason = resp.Decision.Reason
-		out.Decision.PolicyID = resp.Decision.PolicyID
-	case nixis.ActionAudit:
-		out.Decision.Action = "audit"
-	default:
-		out.Decision.Action = "deny"
-		out.Decision.Reason = "unknown action"
-	}
-	return out
-}
-
 // logFailOpen records a fail-open event to the log file and increments the OTel counter.
 func logFailOpen(reason, tool string, args json.RawMessage, deadlineExceeded bool) {
 	otel.InstrumentFailOpen().Add(context.Background(), 1)

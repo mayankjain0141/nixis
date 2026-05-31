@@ -15,11 +15,11 @@ import (
 )
 
 var (
-	policyUpgradeLocal  bool
-	policyUpgradeDir    string
-	policyUpgradeOwner  string
-	policyUpgradeRepo   string
-	policyUpgradeYes    bool
+	policyUpgradeLocal bool
+	policyUpgradeDir   string
+	policyUpgradeOwner string
+	policyUpgradeRepo  string
+	policyUpgradeYes   bool
 )
 
 var policyUpgradeCmd = &cobra.Command{

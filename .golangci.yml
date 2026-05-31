@@ -73,6 +73,14 @@ linters:
           pkg: 'internal/(stream|daemon)'
           msg: '"escalate" is banned from wire-facing code — use the canonical label.escalated event type'
 
+    errcheck:
+      exclude-functions:
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - fmt.Fprint
+        - (io.Closer).Close
+        - os.Unsetenv
+
     depguard:
       rules:
         Main:
@@ -92,20 +100,23 @@ linters:
         # is NOT enforced here. golangci-lint v2.12.2 depguard files-scoped deny rules are
         # silently ignored — verified exhaustively. Enforcement is via scripts/check-stream-isolation.sh.
 
+  exclusions:
+    paths:
+      - dashboard/node_modules
+    rules:
+      # Test files are exempt from hot-path allocation rules
+      - path: '_test\.go'
+        linters:
+          - forbidigo
+        text: "fmt\\.Sprintf|encoding/json\\.Marshal"
+
+      # internal/policy is the single authorized caller of snapshot.Store() — INV-005
+      - path: 'internal/policy/'
+        linters:
+          - forbidigo
+        text: "snapshot\\.Store"
+
 issues:
-  exclude-rules:
-    # Test files are exempt from hot-path allocation rules
-    - path: '_test\.go'
-      linters:
-        - forbidigo
-      text: "fmt\\.Sprintf|encoding/json\\.Marshal"
-
-    # internal/policy is the single authorized caller of snapshot.Store() — INV-005
-    - path: 'internal/policy/'
-      linters:
-        - forbidigo
-      text: "snapshot\\.Store"
-
   max-issues-per-linter: 0
   max-same-issues: 0
 
