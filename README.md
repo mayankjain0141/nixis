@@ -4,11 +4,11 @@
 [![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go&logoColor=white)](https://go.dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**Real-time governance engine for AI coding agents.**
+**Real-time governance engine for AI coding agents.** Built for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Works with any agent that exposes tool calls.
 
 Nixis intercepts every tool call your AI assistant makes — file writes, shell commands, network access — and evaluates it against security policies in under 200ms. If the action violates policy, Nixis blocks it before execution. No prompt engineering. No trust assumptions. External enforcement.
 
-> `install → nixis setup → your agent is guardrailed.` Three commands, two minutes, 750+ policies active.
+> `install → nixis setup → your agent is guardrailed.` Three commands, two minutes, 44 policies active.
 
 ## The Problem
 
@@ -30,14 +30,12 @@ The only guardrail today is hoping the model says no. Nixis enforces externally 
 # One-liner (recommended)
 curl -sSfL https://raw.githubusercontent.com/mayankjain0141/nixis/main/install.sh | sh
 
-# Via Go
+# Via Go (CLI only — use curl installer for full daemon + hook)
 go install github.com/mayankjain0141/nixis/cmd/nixis@latest
 
 # From source
 git clone https://github.com/mayankjain0141/nixis.git && cd nixis && make install
 ```
-
-Then run `nixis setup` to configure the daemon, policies, and IDE hook.
 
 ## Setup
 
@@ -79,7 +77,9 @@ Nixis Health Check
 Overall: HEALTHY
 ```
 
-That's it. Every tool call your agent makes is now evaluated against 750+ security policies.
+That's it. Every tool call your agent makes is now evaluated against 44 security policies.
+
+**Currently supported:** Claude Code (via PreToolUse hook). Cursor and other MCP-based agents work via the gRPC ext_authz or HTTP API integration.
 
 ## Try It
 
@@ -164,7 +164,7 @@ flowchart LR
 
 ## Key Capabilities
 
-- **CEL Policy Engine** — Declarative YAML policies with [CEL](https://github.com/google/cel-go) expressions. Sub-3μs evaluation. Hot-reloadable.
+- **CEL Policy Engine** — Declarative YAML policies with [CEL](https://github.com/google/cel-go) expressions. Sub-3μs per-policy evaluation. Hot-reloadable.
 - **Information Flow Control** — Bell-LaPadula + Biba security lattice. Tracks what data a session has seen and restricts where it can flow.
 - **Secret Scanning** — Detects credentials in tool arguments before they reach the network. Powered by [gitleaks](https://github.com/zricethezav/gitleaks).
 - **Delegation Chains** — Ed25519-signed permission escalation. Max depth 8, TTL expiry, declassification gates.
@@ -201,7 +201,7 @@ spec:
   defaultAction: ALLOW
 ```
 
-**44 built-in policies** ship enabled by default, covering credential exfiltration, destructive commands, reverse shells, privilege escalation, supply chain attacks, and more. An additional **700+ imported policies** (converted from Kyverno, Sigma, OPA Gatekeeper, AgentWall) are available in `policies/imported/`. See [Policy Authoring Guide](docs/guide/policy-authoring.md).
+**44 built-in policies** ship enabled by default, covering credential exfiltration, destructive commands, reverse shells, privilege escalation, supply chain attacks, and more. An additional **700+ community policies** (converted from Kyverno, Sigma, OPA Gatekeeper, AgentWall) are available in `policies/imported/` for opt-in use.
 
 ## Why Not...
 
@@ -215,31 +215,11 @@ spec:
 
 ## Performance
 
-Full evaluation pipeline P99: **<10μs.** Hook round-trip budget: **200ms** (dominated by process startup and socket connect — policy evaluation itself is sub-microsecond on the hot path thanks to zero-allocation design and pre-compiled CEL programs).
+Full 5-layer pipeline P99: **<10μs.** Hook round-trip budget: **200ms** (dominated by process startup and socket connect — policy evaluation itself is sub-microsecond thanks to zero-allocation design and pre-compiled CEL programs).
 
 ## Evaluation
 
-Nixis ships with a 784-case adversarial benchmark (`eval/`) covering 7 attack categories:
-
-| Category | Recall | Notes |
-|----------|--------|-------|
-| Direct attacks | 93% | Unobfuscated `rm -rf`, reverse shells, privilege escalation |
-| Evasion techniques | 87% | Base64 encoding, variable expansion, multi-stage payloads |
-| Delegation attacks | 80-86% | Forged chains, circular delegation, expired tokens |
-| Taint propagation | 78% | Read-then-exfiltrate, cross-session taint |
-| Label manipulation | 52% | IFC label spoofing — needs Go-level hardening |
-| Protocol attacks | 18-38% | Wire-level abuse — needs Go-level changes, not more CEL |
-
-**Overall precision: 92%.** Train/test gap is small (F1: 84% vs 80%) — no overfitting. See [eval/adversarial/EVAL_BENCH.md](eval/adversarial/EVAL_BENCH.md) for methodology and per-case results.
-
-## Documentation
-
-| Guide | Audience |
-|-------|----------|
-| [Getting Started](docs/guide/getting-started.md) | Install, configure, integrate with your IDE |
-| [Policy Authoring](docs/guide/policy-authoring.md) | Write custom policies, test with `nixis simulate` |
-| [Architecture](docs/guide/architecture.md) | System design, concurrency model, performance |
-| [Security Model](docs/guide/security-model.md) | IFC lattice, delegation chains, audit integrity |
+Nixis ships with a 784-case adversarial benchmark covering credential exfiltration, reverse shells, delegation attacks, evasion techniques, and more. Overall precision: **92%**, direct attack recall: **93%**. See [eval/adversarial/EVAL_BENCH.md](eval/adversarial/EVAL_BENCH.md) for full methodology and per-category results.
 
 ## Contributing
 

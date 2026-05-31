@@ -6,7 +6,7 @@ Thank you for your interest in contributing. This document covers prerequisites,
 
 - **Go 1.25+** (version pinned in `go.mod`)
 - **Node.js 20+** (for the dashboard)
-- **golangci-lint** — install via `go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest` or follow the [official docs](https://golangci-lint.run/welcome/install/)
+- **golangci-lint v2** — install via `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest` or follow the [official docs](https://golangci-lint.run/welcome/install/)
 - **npm** (bundled with Node.js)
 
 ## Building
