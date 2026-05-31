@@ -8,7 +8,7 @@
 
 Nixis intercepts every tool call your AI assistant makes — file writes, shell commands, network access — and evaluates it against security policies in under 200ms. If the action violates policy, Nixis blocks it before execution. No prompt engineering. No trust assumptions. External enforcement.
 
-> `install → nixis setup → your agent is sandboxed.` Three commands, two minutes, 750+ policies active.
+> `install → nixis setup → your agent is guardrailed.` Three commands, two minutes, 750+ policies active.
 
 ## The Problem
 
