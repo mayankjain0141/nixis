@@ -93,7 +93,7 @@ linters:
         # silently ignored — verified exhaustively. Enforcement is via scripts/check-stream-isolation.sh.
 
 issues:
-  exclude-rules:
+  exclude:
     # Test files are exempt from hot-path allocation rules
     - path: '_test\.go'
       linters:
