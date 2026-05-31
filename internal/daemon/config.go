@@ -6,7 +6,7 @@
 //   - No atomic.Pointer.Store() in this package — PolicyEngine owns reload.
 //   - Every error path returns Decision{Action: ActionDeny} (fail-secure, A5).
 //   - MaxMessageSize (2MB) enforced at framing layer before any allocation.
-//   - Per-connection 50ms evaluation deadline.
+//   - Per-connection 5s I/O deadline (latency budget tracked via OTel).
 //   - Graceful shutdown: drain in-flight → close listener → flush audit.
 package daemon
 
@@ -21,7 +21,11 @@ const (
 	maxConcurrentConnections = 128
 	socketPermissions        = 0600
 	socketDirPermissions     = 0700
-	evaluationDeadline       = 50 * time.Millisecond
+	// evaluationDeadline is the per-connection I/O timeout. This must be long
+	// enough for CEL evaluation + JSON marshaling under worst-case load with
+	// -race instrumentation. The 50ms latency *budget* is tracked via OTel, not
+	// enforced by killing connections.
+	evaluationDeadline = 5 * time.Second
 )
 
 // Config carries daemon startup parameters.
