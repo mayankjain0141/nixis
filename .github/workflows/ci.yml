@@ -22,9 +22,7 @@ jobs:
         run: go build ./...
 
       - name: Test
-        run: |
-          go test -race -timeout 120s $(go list ./... | grep -v /internal/workflow)
-          go test -timeout 120s ./internal/workflow/
+        run: go test -race -timeout 120s ./...
 
       - name: Lint
         uses: golangci/golangci-lint-action@v6
