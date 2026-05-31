@@ -92,20 +92,21 @@ linters:
         # is NOT enforced here. golangci-lint v2.12.2 depguard files-scoped deny rules are
         # silently ignored — verified exhaustively. Enforcement is via scripts/check-stream-isolation.sh.
 
+  exclusions:
+    rules:
+      # Test files are exempt from hot-path allocation rules
+      - path: '_test\.go'
+        linters:
+          - forbidigo
+        text: "fmt\\.Sprintf|encoding/json\\.Marshal"
+
+      # internal/policy is the single authorized caller of snapshot.Store() — INV-005
+      - path: 'internal/policy/'
+        linters:
+          - forbidigo
+        text: "snapshot\\.Store"
+
 issues:
-  exclude:
-    # Test files are exempt from hot-path allocation rules
-    - path: '_test\.go'
-      linters:
-        - forbidigo
-      text: "fmt\\.Sprintf|encoding/json\\.Marshal"
-
-    # internal/policy is the single authorized caller of snapshot.Store() — INV-005
-    - path: 'internal/policy/'
-      linters:
-        - forbidigo
-      text: "snapshot\\.Store"
-
   max-issues-per-linter: 0
   max-same-issues: 0
 
