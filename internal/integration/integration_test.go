@@ -171,7 +171,16 @@ func TestIntegration_HotReload_CorruptedPolicy_KeepsOld(t *testing.T) {
 	}
 
 	// Reload was attempted and failed — ReloadErrorTotal must have incremented.
-	errorsAfter := reload.ReloadErrorTotal()
+	// Poll briefly: the metric increment may happen on a separate goroutine.
+	var errorsAfter int64
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		errorsAfter = reload.ReloadErrorTotal()
+		if errorsAfter > errorsBefore {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 	if errorsAfter <= errorsBefore {
 		t.Errorf("ReloadErrorTotal did not increment: before=%d after=%d", errorsBefore, errorsAfter)
 	}
