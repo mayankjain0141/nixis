@@ -99,15 +99,14 @@ describe('createEventIngestionPipeline', () => {
   describe('TestIngestion_BackfillViaWebSocket', () => {
     beforeEach(() => vi.useFakeTimers());
     afterEach(() => vi.useRealTimers());
-    it('sends backfill.request on gap detection after 500ms debounce', () => {
+    it('no longer sends backfill.request (backfill disabled)', () => {
       const send = makeSend();
       const pipeline = createEventIngestionPipeline({ send });
       pipeline.onValidated(() => {});
       pipeline.ingest(makePolicyEvaluated(1, 'e1'), META);
-      pipeline.ingest(makePolicyEvaluated(3, 'e3'), META); // gap at seq 2
-      expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'backfill.request' }));
+      pipeline.ingest(makePolicyEvaluated(3, 'e3'), META);
       vi.advanceTimersByTime(600);
-      expect(send).toHaveBeenCalledWith(expect.objectContaining({ type: 'backfill.request', from: 2, to: 2 }));
+      expect(send).not.toHaveBeenCalled();
     });
   });
 
@@ -121,15 +120,15 @@ describe('createEventIngestionPipeline', () => {
       pipeline.ingest(makePolicyEvaluated(3, 'e3'), META);
       expect(seqs).toEqual([1, 2, 3]);
     });
-    it('buffers out-of-order events and delivers once gap is filled', () => {
+    it('delivers events immediately regardless of sequence order', () => {
       const pipeline = createEventIngestionPipeline({ send: makeSend() });
       const seqs: number[] = [];
       pipeline.onValidated(e => seqs.push(e.envelope.nixissequence));
       pipeline.ingest(makePolicyEvaluated(1, 'e1'), META);
       pipeline.ingest(makePolicyEvaluated(3, 'e3'), META);
-      expect(seqs).toEqual([1]);
+      expect(seqs).toEqual([1, 3]);
       pipeline.ingest(makePolicyEvaluated(2, 'e2'), META);
-      expect(seqs).toEqual([1, 2, 3]);
+      expect(seqs).toEqual([1, 3, 2]);
     });
   });
 

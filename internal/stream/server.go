@@ -313,7 +313,7 @@ func resolveLoopbackAddr(addr string) string {
 func (s *StreamServer) Emit(ctx context.Context, event nixis.StreamEvent) {
 	// Normalize internal event type to canonical wire type.
 	event.Type = normalizeEventType(event.Type)
-	if !validEventTypes[event.Type] {
+	if event.Type == "" || !validEventTypes[event.Type] {
 		return
 	}
 	select {

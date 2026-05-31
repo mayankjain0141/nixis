@@ -47,6 +47,6 @@ func normalizeEventType(internal string) string {
 	case "mcp.tool_drift":
 		return "mcp.tool_drift"
 	default:
-		return "system.error"
+		return ""
 	}
 }
