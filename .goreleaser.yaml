@@ -33,31 +33,34 @@ builds:
     flags:
       - -trimpath
 
+  - id: nixis-daemon
+    main: ./cmd/nixis-daemon
+    binary: nixis-daemon
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+    flags:
+      - -trimpath
+
 archives:
   - id: default
     builds:
       - nixis
       - nixis-hook
+      - nixis-daemon
     format: tar.gz
     name_template: "nixis_{{ .Os }}_{{ .Arch }}"
 
 checksum:
   name_template: checksums.txt
   algorithm: sha256
-
-brews:
-  - name: nixis
-    repository:
-      owner: mayjain
-      name: homebrew-tap
-    directory: Formula
-    homepage: https://github.com/mayankjain0141/nixis
-    description: "Real-time governance engine for AI coding agents"
-    install: |
-      bin.install "nixis"
-      bin.install "nixis-hook"
-    test: |
-      system "#{bin}/nixis", "version"
 
 changelog:
   sort: asc
@@ -68,17 +71,17 @@ changelog:
 
 release:
   github:
-    owner: mayjain
+    owner: mayankjain0141
     name: nixis
   header: |
     ## Install
 
     ```bash
-    # Homebrew (macOS)
-    brew install mayjain/tap/nixis
+    # Curl one-liner
+    curl -sSfL https://raw.githubusercontent.com/mayankjain0141/nixis/main/install.sh | sh
 
-    # Or curl one-liner
-    curl -sSfL https://raw.githubusercontent.com/mayjain/nixis/main/install.sh | sh
+    # Or via go install
+    go install github.com/mayankjain0141/nixis/cmd/nixis@{{ .Tag }}
 
     # Then configure
     nixis setup
