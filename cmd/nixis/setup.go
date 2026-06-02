@@ -222,7 +222,10 @@ func runInstall(cmd *cobra.Command, homeDir, nixisDir string) error {
 		fmt.Fprintln(w, "  Run this to use nixis in your current shell:")
 		fmt.Fprintf(w, "\n    source %s\n\n", shellConfig)
 	}
-	fmt.Fprintf(w, "  Then verify: nixis doctor\n")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "  Dashboard: http://localhost:9090")
+	fmt.Fprintln(w, "  Verify:    nixis doctor")
+	fmt.Fprintln(w)
 	return nil
 }
 

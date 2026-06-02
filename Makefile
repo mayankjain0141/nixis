@@ -1,4 +1,4 @@
-.PHONY: build generate test-keys dev lint test install uninstall release-local clean dev-install update-policies preflight preflight-node ci install-hooks
+.PHONY: build build-dashboard build-go generate test-keys dev lint test install uninstall release-local clean dev-install update-policies preflight preflight-node ci install-hooks
 
 GO_MIN_VERSION := 1.25
 NODE_MIN_VERSION := 26
@@ -29,8 +29,19 @@ preflight-node:
 	   echo "ERROR: Node >= $(NODE_MIN_VERSION) required (found v$$(node --version)). Run: nvm install $(NODE_MIN_VERSION)"; exit 1; \
 	 fi
 
+## build-dashboard: compile the React dashboard into dashboard/dist/ (required for go:embed)
+build-dashboard:
+	@echo "==> Building dashboard..."
+	@cd dashboard && \
+	  (test -d node_modules || npm ci) && \
+	  npm run build
+
+## build-go: compile Go binaries only — use when dashboard/dist/ already exists
+build-go: preflight
+	go build -o bin/ ./cmd/...
+
 ## build: compile all Go binaries into bin/
-build: preflight
+build: preflight build-dashboard
 	go build -o bin/ ./cmd/...
 
 ## clean: remove build artifacts and stale binaries
@@ -56,12 +67,13 @@ lint:
 test:
 	go test ./... -race -count=1
 
-## dev: start daemon + dashboard dev server (requires daemon binary built first)
+## dev: start daemon + dashboard dev server (builds dashboard first if dist/ missing)
 dev: preflight preflight-node
+	@test -d dashboard/dist || $(MAKE) build-dashboard
 	@echo "Starting daemon on :9090..."
 	@go build -o /tmp/nixis-daemon ./cmd/nixis-daemon/ && \
 	  /tmp/nixis-daemon -policy-dir ./policies &
-	@echo "Starting dashboard dev server..."
+	@echo "Starting dashboard dev server on :5173..."
 	@cd dashboard && npm run dev
 
 ## install: one-command build + deploy + restart (idempotent)

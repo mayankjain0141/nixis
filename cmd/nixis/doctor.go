@@ -69,6 +69,9 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	// Check 9: Port conflicts
 	checks = append(checks, checkPortConflicts())
 
+	// Check 10: Dashboard
+	checks = append(checks, checkDashboard())
+
 	for _, c := range checks {
 		mark := "✓"
 		if c.status == "FAIL" {
@@ -330,4 +333,20 @@ func checkPortConflicts() doctorCheck {
 		}
 	}
 	return doctorCheck{name: "Ports", status: "OK", detail: "9090/9091 owned by Nixis"}
+}
+
+func checkDashboard() doctorCheck {
+	client := &http.Client{Timeout: 2 * time.Second}
+	resp, err := client.Get("http://127.0.0.1:9090/")
+	if err != nil {
+		return doctorCheck{name: "Dashboard", status: "FAIL",
+			detail: "http://localhost:9090 unreachable", warning: true}
+	}
+	defer func() { _ = resp.Body.Close() }()
+	ct := resp.Header.Get("Content-Type")
+	if resp.StatusCode != http.StatusOK || !strings.Contains(ct, "text/html") {
+		return doctorCheck{name: "Dashboard", status: "FAIL",
+			detail: fmt.Sprintf("unexpected response: HTTP %d %s", resp.StatusCode, ct), warning: true}
+	}
+	return doctorCheck{name: "Dashboard", status: "OK", detail: "http://localhost:9090 (open in browser)"}
 }

@@ -40,6 +40,8 @@ import (
 	"github.com/mayankjain0141/nixis/internal/secret"
 	"github.com/mayankjain0141/nixis/internal/stream"
 	"github.com/mayankjain0141/nixis/pkg/nixis"
+
+	"github.com/mayankjain0141/nixis/dashboard"
 )
 
 const (
@@ -181,6 +183,7 @@ func main() {
 	streamSrv := stream.NewStreamServer(nil, nil,
 		stream.WithEvaluator(engine),
 		stream.WithPolicyLister(engine),
+		stream.WithStaticFS(dashboard.FS),
 		stream.WithRouteRegistrar(func(mux *http.ServeMux) {
 			daemon.RegisterCheckHandler(mux, engine)
 		}),
@@ -193,9 +196,15 @@ func main() {
 		if addr == "" {
 			addr = "127.0.0.1:9090"
 		}
+		// Extract port for log messages; fall back to the raw addr if malformed.
+		port := addr
+		if _, p, err := net.SplitHostPort(addr); err == nil {
+			port = p
+		}
+		fmt.Fprintf(os.Stderr, "nixis-daemon: dashboard at http://localhost:%s\n", port)
+		fmt.Fprintf(os.Stderr, "nixis-daemon:   (remote access: set window.__NIXIS_DAEMON_URL__ in browser console)\n")
 		if err := streamSrv.Start(streamCtx, addr); err != nil && streamCtx.Err() == nil {
 			if isAddrInUse(err) {
-				_, port, _ := net.SplitHostPort(addr)
 				fmt.Fprintf(os.Stderr, "FATAL: Cannot bind %s — port already in use.\n  Check: lsof -i :%s\n  Fix: set NIXIS_DASHBOARD_ADDR=127.0.0.1:<other-port>\n", addr, port)
 			} else {
 				fmt.Fprintf(os.Stderr, "nixis-daemon: stream server error: %v\n", err)

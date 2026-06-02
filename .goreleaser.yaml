@@ -1,5 +1,9 @@
 version: 2
 
+before:
+  hooks:
+    - sh -c "npm ci --prefix dashboard && npm run build --prefix dashboard"
+
 builds:
   - id: nixis
     main: ./cmd/nixis
