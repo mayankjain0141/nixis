@@ -637,9 +637,9 @@ func TestDaemon_ModeReadOnly_DeniesRequests(t *testing.T) {
 // --- /reload endpoint tests ---
 
 type stubReloader struct {
-	mu      sync.Mutex
-	err     error
-	called  int
+	mu     sync.Mutex
+	err    error
+	called int
 }
 
 func (s *stubReloader) Reload() error {

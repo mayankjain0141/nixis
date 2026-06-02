@@ -41,7 +41,7 @@ type Daemon struct {
 
 	reloader reload.PolicyReloader // nil until SetReloader is called
 
-	mode modeState
+	mode        modeState
 	evaluations atomic.Int64
 	startTime   time.Time
 
