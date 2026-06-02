@@ -1,0 +1,10 @@
+{
+  "name": "nixis-opencode",
+  "version": "1.0.0",
+  "description": "Nixis governance plugin for OpenCode",
+  "type": "module",
+  "main": "src/index.ts",
+  "peerDependencies": {
+    "@opencode-ai/core": "*"
+  }
+}
