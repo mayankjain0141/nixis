@@ -170,7 +170,5 @@ main() {
     run_setup
     print_success
 }
-    print_success
-}
 
 main
