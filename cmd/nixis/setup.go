@@ -233,6 +233,22 @@ func findBinary(name string) string {
 }
 
 func copyFile(src, dst string, mode fs.FileMode) error {
+	srcInfo, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+	// If dst exists: skip when it's the same inode (binary copying onto itself),
+	// otherwise unlink before writing to avoid ETXTBSY on Linux when overwriting
+	// a running executable.
+	if dstInfo, err := os.Stat(dst); err == nil {
+		if os.SameFile(srcInfo, dstInfo) {
+			return nil
+		}
+		if err := os.Remove(dst); err != nil {
+			return fmt.Errorf("remove existing %s: %w", dst, err)
+		}
+	}
+
 	in, err := os.Open(src)
 	if err != nil {
 		return err
