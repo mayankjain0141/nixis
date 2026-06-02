@@ -9,7 +9,7 @@
 
 Nixis intercepts every tool call your AI assistant makes — file writes, shell commands, network access — and evaluates it against security policies in under 200ms. If the action violates policy, Nixis blocks it before execution. No prompt engineering. No trust assumptions. External enforcement.
 
-> `install → nixis setup → your agent is guardrailed.` Three commands, two minutes, 44 policies active.
+> `curl install.sh | sh` → `source ~/.zshrc && nixis setup` — two commands, two minutes, 44 policies active.
 
 ## The Problem
 
@@ -31,12 +31,17 @@ The only guardrail today is hoping the model says no. Nixis enforces externally 
 # One-liner (recommended)
 curl -sSfL https://raw.githubusercontent.com/mayankjain0141/nixis/main/install.sh | sh
 
+# Then reload your shell and run setup (the installer will print the exact command):
+source ~/.zshrc && nixis setup
+
 # Via Go (CLI only — use curl installer for full daemon + hook)
 go install github.com/mayankjain0141/nixis/cmd/nixis@latest
 
 # From source
 git clone https://github.com/mayankjain0141/nixis.git && cd nixis && make install
 ```
+
+> The installer adds `~/.nixis` to your PATH via your shell config (`.zshrc`, `.bashrc`, etc.) and prints the exact `source` command to run. You don't need to edit anything manually.
 
 ## Setup
 

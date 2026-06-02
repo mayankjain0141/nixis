@@ -87,20 +87,68 @@ install_binaries() {
     chmod +x "${INSTALL_DIR}/nixis" "${INSTALL_DIR}/nixis-hook"
 }
 
-print_success() {
-    printf "\n\033[1;32m✓ Nixis installed successfully!\033[0m\n\n"
-    printf "  Binaries: %s/nixis, %s/nixis-hook\n" "$INSTALL_DIR" "$INSTALL_DIR"
-    printf "  Version:  %s\n\n" "$VERSION"
-
-    case ":${PATH}:" in
-        *":${INSTALL_DIR}:"*) ;;
-        *)
-            printf "  Add to your PATH:\n"
-            printf "    export PATH=\"%s:\$PATH\"\n\n" "$INSTALL_DIR"
-            ;;
+# Detect the shell config file to write PATH into.
+detect_shell_config() {
+    # Prefer the running shell's rc file; fall back to common defaults.
+    SHELL_NAME=$(basename "${SHELL:-}")
+    case "$SHELL_NAME" in
+        zsh)  SHELL_CONFIG="$HOME/.zshrc" ;;
+        bash) SHELL_CONFIG="${HOME}/.bashrc" ;;
+        fish) SHELL_CONFIG="$HOME/.config/fish/config.fish" ;;
+        *)    SHELL_CONFIG="" ;;
     esac
 
-    printf "  Run 'nixis setup' to configure.\n\n"
+    # Fall back to the first file that already exists.
+    if [ -z "$SHELL_CONFIG" ] || [ ! -f "$SHELL_CONFIG" ]; then
+        for f in "$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.profile"; do
+            if [ -f "$f" ]; then
+                SHELL_CONFIG="$f"
+                break
+            fi
+        done
+    fi
+}
+
+add_to_path() {
+    detect_shell_config
+
+    # Already in PATH — nothing to do.
+    case ":${PATH}:" in
+        *":${INSTALL_DIR}:"*) return ;;
+    esac
+
+    if [ -z "$SHELL_CONFIG" ]; then
+        warn "Could not detect shell config file. Add this manually:"
+        warn "  export PATH=\"${INSTALL_DIR}:\$PATH\""
+        return
+    fi
+
+    # Already written to this config file — skip.
+    if grep -q "${INSTALL_DIR}" "$SHELL_CONFIG" 2>/dev/null; then
+        return
+    fi
+
+    if [ "$SHELL_NAME" = "fish" ]; then
+        printf '\n# Nixis\nfish_add_path %s\n' "$INSTALL_DIR" >> "$SHELL_CONFIG"
+    else
+        printf '\n# Nixis\nexport PATH="%s:$PATH"\n' "$INSTALL_DIR" >> "$SHELL_CONFIG"
+    fi
+
+    info "Added ${INSTALL_DIR} to PATH in ${SHELL_CONFIG}"
+    NEEDS_SOURCE="$SHELL_CONFIG"
+}
+
+print_success() {
+    printf "\n\033[1;32m✓ Nixis installed to %s\033[0m\n\n" "$INSTALL_DIR"
+    printf "  Version: %s\n\n" "$VERSION"
+
+    if [ -n "${NEEDS_SOURCE:-}" ]; then
+        printf "  Reload your shell, then run setup:\n\n"
+        printf "    \033[1msource %s && nixis setup\033[0m\n\n" "$NEEDS_SOURCE"
+    else
+        printf "  Run setup:\n\n"
+        printf "    \033[1mnixis setup\033[0m\n\n"
+    fi
 }
 
 main() {
@@ -111,6 +159,7 @@ main() {
     download
     verify_checksum
     install_binaries
+    add_to_path
     print_success
 }
 
