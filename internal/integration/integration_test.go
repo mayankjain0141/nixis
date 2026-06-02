@@ -415,26 +415,22 @@ func TestIntegration_GRPCExtAuthz(t *testing.T) {
 		srvDone <- grpcSrv.Start(ctx)
 	}()
 
-	// Poll until the gRPC TCP port is reachable.
-	var conn *grpc.ClientConn
+	// Poll until the gRPC TCP port is reachable via actual TCP probe.
 	pollUntil(t, 3*time.Second, func() bool {
-		c, dialErr := grpc.NewClient(grpcAddr,
-			grpc.WithTransportCredentials(insecure.NewCredentials()))
+		c, dialErr := net.DialTimeout("tcp", grpcAddr, 50*time.Millisecond)
 		if dialErr != nil {
 			return false
 		}
-		conn = c
+		_ = c.Close()
 		return true
 	}, "gRPC server did not become reachable within 3s")
-	defer func() { _ = conn.Close() }()
 
-	// nc -z equivalent: verify TCP port is open.
-	tcpConn, err := net.DialTimeout("tcp", grpcAddr, 1*time.Second)
+	conn, err := grpc.NewClient(grpcAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		t.Errorf("TCP port %s not reachable: %v", grpcAddr, err)
-	} else {
-		_ = tcpConn.Close()
+		t.Fatalf("grpc.NewClient: %v", err)
 	}
+	defer func() { _ = conn.Close() }()
 
 	client := authv3.NewAuthorizationClient(conn)
 

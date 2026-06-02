@@ -19,7 +19,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-          cache: true
+          cache: false
 
       - name: Build
         run: go build ./...
@@ -58,3 +58,17 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  ci-complete:
+    name: CI complete
+    runs-on: ubuntu-latest
+    needs: [backend, dashboard]
+    if: always()
+    steps:
+      - name: Check all jobs passed
+        run: |
+          if [ "${{ needs.backend.result }}" != "success" ] || [ "${{ needs.dashboard.result }}" != "success" ]; then
+            echo "backend: ${{ needs.backend.result }}"
+            echo "dashboard: ${{ needs.dashboard.result }}"
+            exit 1
+          fi
