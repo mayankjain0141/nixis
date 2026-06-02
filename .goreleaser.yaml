@@ -57,6 +57,10 @@ archives:
       - nixis-daemon
     format: tar.gz
     name_template: "nixis_{{ .Os }}_{{ .Arch }}"
+    files:
+      - src: policies/builtin/**
+        dst: policies/builtin
+        strip_parent: true
 
 checksum:
   name_template: checksums.txt

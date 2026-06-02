@@ -89,11 +89,18 @@ install_binaries() {
         mv -f "${TMPDIR}/extracted/${bin}" "${INSTALL_DIR}/${bin}"
     done
     chmod +x "${INSTALL_DIR}/nixis" "${INSTALL_DIR}/nixis-hook" "${INSTALL_DIR}/nixis-daemon"
+    # Move policies from tarball into install dir
+    if [ -d "${TMPDIR}/extracted/policies" ]; then
+        mkdir -p "${INSTALL_DIR}/policies"
+        cp -r "${TMPDIR}/extracted/policies/." "${INSTALL_DIR}/policies/"
+    fi
 }
 
 run_setup() {
-    info "Configuring (policies + daemon + hook)..."
-    "${INSTALL_DIR}/nixis" setup --yes --skip-binaries
+    info "Configuring (daemon + hook)..."
+    # Policies are already in ${INSTALL_DIR}/policies from the tarball;
+    # pass --policy-dir so setup doesn't look for ./policies in CWD.
+    "${INSTALL_DIR}/nixis" setup --yes --skip-binaries --policy-dir "${INSTALL_DIR}/policies"
 }
 
 # Detect the shell config file to write PATH into.
