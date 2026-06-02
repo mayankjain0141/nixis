@@ -547,6 +547,7 @@ export default function App() {
   }, [appendEvent, updateLabel, recordLatency, recordEvent, setConnectionState, updateLastSequence, setBundleStatus]);
 
   const handleStartDemo = useCallback(() => {
+    if (!import.meta.env.DEV) return;
     useGovernanceStore.getState().clear?.();
 
     const apiBase = getDaemonApiBase();
