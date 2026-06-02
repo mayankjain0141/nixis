@@ -336,51 +336,41 @@ func copyFile(src, dst string, mode fs.FileMode) error {
 }
 
 func copyPolicies(w io.Writer, srcDir, destDir string) error {
-	entries, err := os.ReadDir(srcDir)
-	if err != nil {
+	// Confirm srcDir exists before walking.
+	if _, err := os.Stat(srcDir); err != nil {
 		return fmt.Errorf("read %s: %w", srcDir, err)
 	}
 
 	count := 0
-	for _, entry := range entries {
-		if entry.IsDir() {
-			subSrc := filepath.Join(srcDir, entry.Name())
-			subDest := filepath.Join(destDir, entry.Name())
-			if !setupDryRun {
-				if err := os.MkdirAll(subDest, 0o755); err != nil {
-					return err
-				}
-			}
-			subEntries, err := os.ReadDir(subSrc)
-			if err != nil {
-				return err
-			}
-			for _, se := range subEntries {
-				if se.IsDir() || !isYAML(se.Name()) {
-					continue
-				}
-				src := filepath.Join(subSrc, se.Name())
-				dst := filepath.Join(subDest, se.Name())
-				if !setupDryRun {
-					if err := copyFile(src, dst, 0o644); err != nil {
-						return err
-					}
-				}
-				count++
-			}
-			continue
+	err := filepath.WalkDir(srcDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
 		}
-		if !isYAML(entry.Name()) {
-			continue
+		rel, err := filepath.Rel(srcDir, path)
+		if err != nil {
+			return err
 		}
-		src := filepath.Join(srcDir, entry.Name())
-		dst := filepath.Join(destDir, entry.Name())
+		dst := filepath.Join(destDir, rel)
+
+		if d.IsDir() {
+			if setupDryRun {
+				return nil
+			}
+			return os.MkdirAll(dst, 0o755)
+		}
+		if !isYAML(d.Name()) {
+			return nil
+		}
 		if !setupDryRun {
-			if err := copyFile(src, dst, 0o644); err != nil {
+			if err := copyFile(path, dst, 0o644); err != nil {
 				return err
 			}
 		}
 		count++
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 	fmt.Fprintf(w, "  Installed %d policy files\n", count)
 	return nil
