@@ -158,6 +158,16 @@ print_success() {
     printf "\n\033[1;32m✓ Nixis %s installed to %s\033[0m\n\n" "$VERSION" "$INSTALL_DIR"
 }
 
+handle_macos_gatekeeper() {
+    if [ "$OS" != "darwin" ]; then return; fi
+    # Only safe to do because we already verified SHA-256 integrity above.
+    if command -v xattr >/dev/null 2>&1; then
+        xattr -d com.apple.quarantine "${INSTALL_DIR}/nixis" 2>/dev/null || true
+        xattr -d com.apple.quarantine "${INSTALL_DIR}/nixis-hook" 2>/dev/null || true
+        xattr -d com.apple.quarantine "${INSTALL_DIR}/nixis-daemon" 2>/dev/null || true
+    fi
+}
+
 main() {
     info "Installing Nixis..."
     detect_platform
