@@ -206,9 +206,23 @@ func runInstall(cmd *cobra.Command, homeDir, nixisDir string) error {
 		}
 	}
 
+	// Step 9: Patch shell PATH (always — mirrors what Homebrew does)
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "[9/9] Patching shell PATH...")
+	shellConfig, patched, err := patchShellPATH(w, nixisDir)
+	if err != nil {
+		fmt.Fprintf(w, "  Warning: could not patch PATH: %v\n", err)
+		fmt.Fprintf(w, "  Add this manually: export PATH=\"%s:$PATH\"\n", nixisDir)
+	}
+
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "✓ Nixis setup complete!")
-	fmt.Fprintf(w, "  Run 'nixis doctor' to verify installation health.\n")
+	if patched && shellConfig != "" {
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, "  Run this to use nixis in your current shell:")
+		fmt.Fprintf(w, "\n    source %s\n\n", shellConfig)
+	}
+	fmt.Fprintf(w, "  Then verify: nixis doctor\n")
 	return nil
 }
 
@@ -534,4 +548,96 @@ func confirm(prompt string) bool {
 	line, _ := reader.ReadString('\n')
 	line = strings.TrimSpace(strings.ToLower(line))
 	return line == "" || line == "y" || line == "yes"
+}
+
+// patchShellPATH adds nixisDir to PATH in the user's shell config if not already present.
+// Returns (configFile, didPatch, error). Mirrors what install.sh's add_to_path does
+// so that `nixis setup` and `make dev-install` behave identically to the curl installer.
+func patchShellPATH(w io.Writer, nixisDir string) (string, bool, error) {
+	// Already in the current process's PATH — nothing to write, but tell the user.
+	inPath := false
+	for _, dir := range filepath.SplitList(os.Getenv("PATH")) {
+		if dir == nixisDir {
+			inPath = true
+			break
+		}
+	}
+
+	cfg := detectShellConfig()
+	if cfg == "" {
+		if inPath {
+			fmt.Fprintln(w, "  Already in PATH")
+			return "", false, nil
+		}
+		return "", false, fmt.Errorf("could not detect shell config file")
+	}
+
+	// Already written to this config — skip silently.
+	if data, err := os.ReadFile(cfg); err == nil {
+		if strings.Contains(string(data), nixisDir) {
+			if inPath {
+				fmt.Fprintf(w, "  PATH already configured in %s\n", cfg)
+			} else {
+				// Written but not sourced yet — still print the source hint.
+				fmt.Fprintf(w, "  PATH already configured in %s (not yet sourced)\n", cfg)
+			}
+			return cfg, false, nil
+		}
+	}
+
+	if setupDryRun {
+		fmt.Fprintf(w, "  (dry-run) Would add %s to PATH in %s\n", nixisDir, cfg)
+		return cfg, false, nil
+	}
+
+	shell := filepath.Base(os.Getenv("SHELL"))
+	var line string
+	if shell == "fish" {
+		line = fmt.Sprintf("\n# Nixis\nfish_add_path %s\n", nixisDir)
+	} else {
+		line = fmt.Sprintf("\n# Nixis\nexport PATH=\"%s:$PATH\"\n", nixisDir)
+	}
+
+	f, err := os.OpenFile(cfg, os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		return cfg, false, fmt.Errorf("open %s: %w", cfg, err)
+	}
+	defer func() { _ = f.Close() }()
+	if _, err := f.WriteString(line); err != nil {
+		return cfg, false, fmt.Errorf("write %s: %w", cfg, err)
+	}
+
+	fmt.Fprintf(w, "  Added %s to PATH in %s\n", nixisDir, cfg)
+	return cfg, true, nil
+}
+
+// detectShellConfig returns the most appropriate shell rc file to write PATH into.
+func detectShellConfig() string {
+	homeDir, _ := os.UserHomeDir()
+	shell := filepath.Base(os.Getenv("SHELL"))
+
+	candidates := map[string]string{
+		"zsh":  filepath.Join(homeDir, ".zshrc"),
+		"bash": filepath.Join(homeDir, ".bashrc"),
+		"fish": filepath.Join(homeDir, ".config", "fish", "config.fish"),
+	}
+
+	if cfg, ok := candidates[shell]; ok {
+		if _, err := os.Stat(cfg); err == nil {
+			return cfg
+		}
+	}
+
+	// Fall back to first existing file.
+	for _, f := range []string{
+		filepath.Join(homeDir, ".zshrc"),
+		filepath.Join(homeDir, ".bashrc"),
+		filepath.Join(homeDir, ".bash_profile"),
+		filepath.Join(homeDir, ".profile"),
+	} {
+		if _, err := os.Stat(f); err == nil {
+			return f
+		}
+	}
+	return ""
 }

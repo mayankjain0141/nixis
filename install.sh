@@ -155,16 +155,7 @@ add_to_path() {
 }
 
 print_success() {
-    printf "\n\033[1;32m✓ Nixis installed to %s\033[0m\n\n" "$INSTALL_DIR"
-    printf "  Version: %s\n\n" "$VERSION"
-
-    if [ -n "${NEEDS_SOURCE:-}" ]; then
-        printf "  Reload your shell, then run setup:\n\n"
-        printf "    \033[1msource %s && nixis setup\033[0m\n\n" "$NEEDS_SOURCE"
-    else
-        printf "  Run setup:\n\n"
-        printf "    \033[1mnixis setup\033[0m\n\n"
-    fi
+    printf "\n\033[1;32m✓ Nixis %s installed to %s\033[0m\n\n" "$VERSION" "$INSTALL_DIR"
 }
 
 main() {
@@ -175,8 +166,10 @@ main() {
     download
     verify_checksum
     install_binaries
-    add_to_path
+    handle_macos_gatekeeper
     run_setup
+    print_success
+}
     print_success
 }
 
