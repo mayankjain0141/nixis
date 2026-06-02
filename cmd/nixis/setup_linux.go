@@ -4,12 +4,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const systemdServiceName = "nixis-daemon.service"
@@ -20,6 +22,11 @@ func systemdUnitPath() string {
 }
 
 func installDaemonService(homeDir, policyDir string, yes bool) error {
+	if !filepath.IsAbs(policyDir) {
+		if abs, err := filepath.Abs(policyDir); err == nil {
+			policyDir = abs
+		}
+	}
 	nixisDir := filepath.Join(homeDir, ".nixis")
 	daemonBin := filepath.Join(nixisDir, "nixis-daemon")
 	socketPath := "/tmp/nixis.sock"
@@ -128,4 +135,54 @@ func stopDaemon() error {
 		return fmt.Errorf("stop daemon: %w (%s)", err, strings.TrimSpace(string(output)))
 	}
 	return nil
+}
+
+func stopDaemonWithTimeout(timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "systemctl", "--user", "stop", systemdServiceName)
+	output, err := cmd.CombinedOutput()
+	if ctx.Err() == context.DeadlineExceeded {
+		return fmt.Errorf("systemctl timed out after %v (service may be stuck)", timeout)
+	}
+	if err != nil {
+		return fmt.Errorf("stop daemon: %w (%s)", err, strings.TrimSpace(string(output)))
+	}
+	return nil
+}
+
+func daemonServiceStatusWithTimeout(timeout time.Duration) (running bool, pid int, err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "systemctl", "--user", "show", systemdServiceName,
+		"--property=ActiveState,MainPID")
+	output, err := cmd.CombinedOutput()
+	if ctx.Err() == context.DeadlineExceeded {
+		return false, 0, fmt.Errorf("systemctl timed out — service may be corrupt")
+	}
+	if err != nil {
+		return false, 0, nil
+	}
+
+	var active string
+	var mainPID int
+	for _, line := range strings.Split(string(output), "\n") {
+		if strings.HasPrefix(line, "ActiveState=") {
+			active = strings.TrimPrefix(line, "ActiveState=")
+		}
+		if strings.HasPrefix(line, "MainPID=") {
+			val := strings.TrimPrefix(line, "MainPID=")
+			mainPID, _ = strconv.Atoi(strings.TrimSpace(val))
+		}
+	}
+
+	isRunning := active == "active"
+	return isRunning, mainPID, nil
+}
+
+func findDaemonPID() int {
+	cmd := exec.Command("pgrep", "-f", "nixis-daemon")
+	output, _ := cmd.Output()
+	pid, _ := strconv.Atoi(strings.TrimSpace(string(output)))
+	return pid
 }

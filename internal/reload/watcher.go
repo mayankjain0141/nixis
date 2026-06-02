@@ -3,6 +3,7 @@ package reload
 
 import (
 	"context"
+	"io/fs"
 	"log/slog"
 	"path/filepath"
 	"sync/atomic"
@@ -55,7 +56,12 @@ func (r *ReloadWatcher) Start(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if err := watcher.Add(r.policyDir); err != nil {
+	if err := filepath.WalkDir(r.policyDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || !d.IsDir() {
+			return nil
+		}
+		return watcher.Add(path)
+	}); err != nil {
 		if cerr := watcher.Close(); cerr != nil {
 			slog.Error("fsnotify watcher close error", "err", cerr)
 		}

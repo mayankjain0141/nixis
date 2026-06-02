@@ -3,7 +3,9 @@ package daemon
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -629,5 +631,186 @@ func TestDaemon_ModeReadOnly_DeniesRequests(t *testing.T) {
 	}
 	if resp.Decision.Reason != "daemon in read_only mode" {
 		t.Errorf("unexpected reason: %q", resp.Decision.Reason)
+	}
+}
+
+// --- /reload endpoint tests ---
+
+type stubReloader struct {
+	mu      sync.Mutex
+	err     error
+	called  int
+}
+
+func (s *stubReloader) Reload() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.called++
+	return s.err
+}
+
+func TestHandleReload_POST_Success(t *testing.T) {
+	_, ready, healthzAddr := startDaemonWithTap(t, allowEngine{}, nil, nil)
+	waitReady(t, ready)
+
+	// Wire reloader — need direct access to daemon's reloader field.
+	// Use a fresh daemon with reloader for this test.
+	socketPath := testSocketPath()
+	healthzAddr2 := testHealthzAddr()
+	t.Cleanup(func() { _ = os.Remove(socketPath) })
+
+	cfg := Config{SocketPath: socketPath, HealthzAddr: healthzAddr2}
+	w, auditCancel, auditDone := newTestAuditWriter(t)
+	d := New(cfg, allowEngine{}, w, nil, nil)
+	d.SetAuditContext(auditCancel, auditDone)
+
+	sr := &stubReloader{}
+	d.SetReloader(sr)
+
+	ready2 := make(chan struct{})
+	d.setReadyCh(ready2)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	runDone := make(chan error, 1)
+	go func() { runDone <- d.Run(ctx) }()
+	t.Cleanup(func() {
+		cancel()
+		select {
+		case <-runDone:
+		case <-time.After(5 * time.Second):
+		}
+	})
+
+	waitReady(t, ready2)
+
+	client := &http.Client{Transport: &http.Transport{DisableKeepAlives: true}}
+	var resp *http.Response
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		var err error
+		resp, err = client.Post("http://"+healthzAddr2+"/reload", "", nil)
+		if err == nil {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if resp == nil {
+		t.Fatal("reload endpoint never became available")
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected 200, got %d", resp.StatusCode)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	if string(body) != "{\"status\":\"reloaded\"}\n" {
+		t.Errorf("unexpected body: %q", body)
+	}
+	sr.mu.Lock()
+	if sr.called != 1 {
+		t.Errorf("expected reloader called once, got %d", sr.called)
+	}
+	sr.mu.Unlock()
+
+	_ = healthzAddr // suppress unused from first startDaemonWithTap
+}
+
+func TestHandleReload_GET_MethodNotAllowed(t *testing.T) {
+	socketPath := testSocketPath()
+	healthzAddr := testHealthzAddr()
+	t.Cleanup(func() { _ = os.Remove(socketPath) })
+
+	cfg := Config{SocketPath: socketPath, HealthzAddr: healthzAddr}
+	w, auditCancel, auditDone := newTestAuditWriter(t)
+	d := New(cfg, allowEngine{}, w, nil, nil)
+	d.SetAuditContext(auditCancel, auditDone)
+	d.SetReloader(&stubReloader{})
+
+	ready := make(chan struct{})
+	d.setReadyCh(ready)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	runDone := make(chan error, 1)
+	go func() { runDone <- d.Run(ctx) }()
+	t.Cleanup(func() {
+		cancel()
+		select {
+		case <-runDone:
+		case <-time.After(5 * time.Second):
+		}
+	})
+
+	waitReady(t, ready)
+
+	client := &http.Client{Transport: &http.Transport{DisableKeepAlives: true}}
+	var resp *http.Response
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		var err error
+		resp, err = client.Get("http://" + healthzAddr + "/reload")
+		if err == nil {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if resp == nil {
+		t.Fatal("reload endpoint never became available")
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("expected 405, got %d", resp.StatusCode)
+	}
+}
+
+func TestHandleReload_Error_Returns500(t *testing.T) {
+	socketPath := testSocketPath()
+	healthzAddr := testHealthzAddr()
+	t.Cleanup(func() { _ = os.Remove(socketPath) })
+
+	cfg := Config{SocketPath: socketPath, HealthzAddr: healthzAddr}
+	w, auditCancel, auditDone := newTestAuditWriter(t)
+	d := New(cfg, allowEngine{}, w, nil, nil)
+	d.SetAuditContext(auditCancel, auditDone)
+	d.SetReloader(&stubReloader{err: errors.New("parse error: invalid yaml")})
+
+	ready := make(chan struct{})
+	d.setReadyCh(ready)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	runDone := make(chan error, 1)
+	go func() { runDone <- d.Run(ctx) }()
+	t.Cleanup(func() {
+		cancel()
+		select {
+		case <-runDone:
+		case <-time.After(5 * time.Second):
+		}
+	})
+
+	waitReady(t, ready)
+
+	client := &http.Client{Transport: &http.Transport{DisableKeepAlives: true}}
+	var resp *http.Response
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		var err error
+		resp, err = client.Post("http://"+healthzAddr+"/reload", "", nil)
+		if err == nil {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if resp == nil {
+		t.Fatal("reload endpoint never became available")
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Errorf("expected 500, got %d", resp.StatusCode)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	if string(body) != "parse error: invalid yaml\n" {
+		t.Errorf("unexpected error body: %q", body)
 	}
 }

@@ -4,12 +4,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const plistLabel = "com.nixis.daemon"
@@ -20,6 +22,11 @@ func plistPath() string {
 }
 
 func installDaemonService(homeDir, policyDir string, yes bool) error {
+	if !filepath.IsAbs(policyDir) {
+		if abs, err := filepath.Abs(policyDir); err == nil {
+			policyDir = abs
+		}
+	}
 	nixisDir := filepath.Join(homeDir, ".nixis")
 	daemonBin := filepath.Join(nixisDir, "nixis-daemon")
 	logPath := filepath.Join(nixisDir, "daemon.log")
@@ -175,4 +182,67 @@ func stopDaemon() error {
 		}
 	}
 	return nil
+}
+
+func stopDaemonWithTimeout(timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "launchctl", "bootout", fmt.Sprintf("gui/%d/%s", os.Getuid(), plistLabel))
+	output, err := cmd.CombinedOutput()
+	if ctx.Err() == context.DeadlineExceeded {
+		return fmt.Errorf("launchctl timed out after %v (service may be stuck)", timeout)
+	}
+	if err != nil {
+		cmd2 := exec.CommandContext(ctx, "launchctl", "unload", plistPath())
+		if output2, err2 := cmd2.CombinedOutput(); err2 != nil {
+			return fmt.Errorf("stop daemon: %w (%s; %s)", err2,
+				strings.TrimSpace(string(output2)), strings.TrimSpace(string(output)))
+		}
+	}
+	return nil
+}
+
+func daemonServiceStatusWithTimeout(timeout time.Duration) (running bool, pid int, err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "launchctl", "list", plistLabel)
+	output, err := cmd.CombinedOutput()
+	if ctx.Err() == context.DeadlineExceeded {
+		return false, 0, fmt.Errorf("launchctl timed out — service may be corrupt")
+	}
+	if err != nil {
+		return false, 0, nil
+	}
+	lines := strings.Split(string(output), "\n")
+	for _, line := range lines {
+		fields := strings.Fields(line)
+		if len(fields) >= 3 && fields[2] == plistLabel {
+			if fields[0] != "-" {
+				p, _ := strconv.Atoi(fields[0])
+				return true, p, nil
+			}
+			return false, 0, nil
+		}
+	}
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "\"PID\"") || strings.HasPrefix(trimmed, "\"pid\"") {
+			parts := strings.SplitN(trimmed, "=", 2)
+			if len(parts) == 2 {
+				val := strings.TrimSpace(strings.TrimRight(parts[1], ";"))
+				p, _ := strconv.Atoi(val)
+				if p > 0 {
+					return true, p, nil
+				}
+			}
+		}
+	}
+	return false, 0, nil
+}
+
+func findDaemonPID() int {
+	cmd := exec.Command("pgrep", "-f", "nixis-daemon")
+	output, _ := cmd.Output()
+	pid, _ := strconv.Atoi(strings.TrimSpace(string(output)))
+	return pid
 }

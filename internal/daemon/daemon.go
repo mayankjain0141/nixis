@@ -21,6 +21,7 @@ import (
 	"github.com/mayankjain0141/nixis/internal/delegation"
 	"github.com/mayankjain0141/nixis/internal/ifc"
 	"github.com/mayankjain0141/nixis/internal/otel"
+	"github.com/mayankjain0141/nixis/internal/reload"
 	"github.com/mayankjain0141/nixis/internal/stream"
 	"github.com/mayankjain0141/nixis/pkg/nixis"
 )
@@ -38,7 +39,9 @@ type Daemon struct {
 	delegAPI     *DelegationAPI     // nil disables delegation HTTP endpoints
 	taintHistory *ifc.TaintHistory  // nil disables taint history pruning
 
-	mode        modeState
+	reloader reload.PolicyReloader // nil until SetReloader is called
+
+	mode modeState
 	evaluations atomic.Int64
 	startTime   time.Time
 
@@ -258,6 +261,30 @@ func (d *Daemon) SetTaintHistory(h *ifc.TaintHistory) {
 	d.taintHistory = h
 }
 
+// SetReloader wires a PolicyReloader so the /reload HTTP endpoint can trigger
+// a policy re-parse and engine reload on demand.
+func (d *Daemon) SetReloader(r reload.PolicyReloader) {
+	d.reloader = r
+}
+
+// handleReload triggers a synchronous policy reload via the wired PolicyReloader.
+func (d *Daemon) handleReload(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+		return
+	}
+	if d.reloader == nil {
+		http.Error(w, "no reloader configured", http.StatusServiceUnavailable)
+		return
+	}
+	if err := d.reloader.Reload(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte("{\"status\":\"reloaded\"}\n"))
+}
+
 // runMaintenanceLoop runs periodic cleanup tasks:
 // - Prune expired standing rules from all sessions every 5 minutes
 // - Prune old taint history records older than 7 days every hour
@@ -309,6 +336,7 @@ type Check struct {
 func (d *Daemon) serveHealthz(ctx context.Context) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", d.handleHealthz)
+	mux.HandleFunc("/reload", d.handleReload)
 	if d.delegAPI != nil {
 		d.delegAPI.RegisterRoutes(mux)
 	}

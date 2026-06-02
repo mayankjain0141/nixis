@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -65,14 +66,16 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	// Check 8: Heartbeat
 	checks = append(checks, checkHeartbeat())
 
+	// Check 9: Port conflicts
+	checks = append(checks, checkPortConflicts())
+
 	for _, c := range checks {
 		mark := "✓"
-		if c.warning {
-			mark = "⚠"
-			warnings++
-		}
 		if c.status == "FAIL" {
 			mark = "✗"
+			warnings++
+		} else if c.warning {
+			mark = "⚠"
 			warnings++
 		}
 		fmt.Fprintf(w, "  %-14s %s %s\n", c.name+":", mark, c.detail)
@@ -88,7 +91,7 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 }
 
 func checkDaemon() doctorCheck {
-	running, pid, err := daemonServiceStatus()
+	running, pid, err := daemonServiceStatusWithTimeout(3 * time.Second)
 	if err != nil {
 		return doctorCheck{name: "Daemon", status: "FAIL", detail: fmt.Sprintf("error checking status: %v", err), warning: true}
 	}
@@ -283,4 +286,48 @@ func formatDuration(d time.Duration) string {
 		return fmt.Sprintf("%dm%ds", minutes, int(d.Seconds())%60)
 	}
 	return fmt.Sprintf("%ds", int(d.Seconds()))
+}
+
+func checkPortConflicts() doctorCheck {
+	// Port 9091 is the healthz/API port — verify ownership via /healthz.
+	// Port 9090 is the WebSocket/dashboard stream port — has no /healthz, so
+	// verify ownership by confirming 9091 is up (same process owns both).
+	var conflicts []string
+
+	// Check 9091 first: if it responds with 200, nixis owns both ports.
+	nixisOwns9091 := false
+	client := &http.Client{Timeout: 2 * time.Second}
+	if resp, err := client.Get("http://127.0.0.1:9091/healthz"); err == nil {
+		_ = resp.Body.Close()
+		nixisOwns9091 = resp.StatusCode == http.StatusOK
+	}
+
+	// Check 9090: if it's bound but nixis doesn't own 9091, it's a conflict.
+	conn90, err := net.DialTimeout("tcp", "127.0.0.1:9090", 1*time.Second)
+	if err == nil {
+		_ = conn90.Close()
+		if !nixisOwns9091 {
+			conflicts = append(conflicts, "9090")
+		}
+	}
+
+	// Check 9091: if it's bound but didn't respond to /healthz, it's a conflict.
+	conn91, err := net.DialTimeout("tcp", "127.0.0.1:9091", 1*time.Second)
+	if err == nil {
+		_ = conn91.Close()
+		if !nixisOwns9091 {
+			conflicts = append(conflicts, "9091")
+		}
+	}
+
+	if len(conflicts) > 0 {
+		return doctorCheck{
+			name:   "Ports",
+			status: "FAIL",
+			detail: fmt.Sprintf("port(s) %s occupied by non-Nixis process (check: lsof -i :%s)",
+				strings.Join(conflicts, ", "), conflicts[0]),
+			warning: false,
+		}
+	}
+	return doctorCheck{name: "Ports", status: "OK", detail: "9090/9091 owned by Nixis"}
 }

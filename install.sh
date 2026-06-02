@@ -83,8 +83,17 @@ verify_checksum() {
 install_binaries() {
     info "Installing to ${INSTALL_DIR}..."
     mkdir -p "$INSTALL_DIR"
-    tar -xzf "${TMPDIR}/${TARBALL}" -C "$INSTALL_DIR"
-    chmod +x "${INSTALL_DIR}/nixis" "${INSTALL_DIR}/nixis-hook"
+    mkdir -p "${TMPDIR}/extracted"
+    tar -xzf "${TMPDIR}/${TARBALL}" -C "${TMPDIR}/extracted"
+    for bin in nixis nixis-hook nixis-daemon; do
+        mv -f "${TMPDIR}/extracted/${bin}" "${INSTALL_DIR}/${bin}"
+    done
+    chmod +x "${INSTALL_DIR}/nixis" "${INSTALL_DIR}/nixis-hook" "${INSTALL_DIR}/nixis-daemon"
+}
+
+run_setup() {
+    info "Configuring (policies + daemon + hook)..."
+    "${INSTALL_DIR}/nixis" setup --yes --skip-binaries
 }
 
 # Detect the shell config file to write PATH into.
@@ -160,6 +169,7 @@ main() {
     verify_checksum
     install_binaries
     add_to_path
+    run_setup
     print_success
 }
 
