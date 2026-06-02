@@ -103,59 +103,18 @@ run_setup() {
     "${INSTALL_DIR}/nixis" setup --yes --skip-binaries --policy-dir "${INSTALL_DIR}/policies"
 }
 
-# Detect the shell config file to write PATH into.
-detect_shell_config() {
-    # Prefer the running shell's rc file; fall back to common defaults.
-    SHELL_NAME=$(basename "${SHELL:-}")
-    case "$SHELL_NAME" in
-        zsh)  SHELL_CONFIG="$HOME/.zshrc" ;;
-        bash) SHELL_CONFIG="${HOME}/.bashrc" ;;
-        fish) SHELL_CONFIG="$HOME/.config/fish/config.fish" ;;
-        *)    SHELL_CONFIG="" ;;
-    esac
-
-    # Fall back to the first file that already exists.
-    if [ -z "$SHELL_CONFIG" ] || [ ! -f "$SHELL_CONFIG" ]; then
-        for f in "$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.profile"; do
-            if [ -f "$f" ]; then
-                SHELL_CONFIG="$f"
-                break
-            fi
-        done
-    fi
-}
-
-add_to_path() {
-    detect_shell_config
-
-    # Already in PATH — nothing to do.
-    case ":${PATH}:" in
-        *":${INSTALL_DIR}:"*) return ;;
-    esac
-
-    if [ -z "$SHELL_CONFIG" ]; then
-        warn "Could not detect shell config file. Add this manually:"
-        warn "  export PATH=\"${INSTALL_DIR}:\$PATH\""
-        return
-    fi
-
-    # Already written to this config file — skip.
-    if grep -q "${INSTALL_DIR}" "$SHELL_CONFIG" 2>/dev/null; then
-        return
-    fi
-
-    if [ "$SHELL_NAME" = "fish" ]; then
-        printf '\n# Nixis\nfish_add_path %s\n' "$INSTALL_DIR" >> "$SHELL_CONFIG"
-    else
-        printf '\n# Nixis\nexport PATH="%s:$PATH"\n' "$INSTALL_DIR" >> "$SHELL_CONFIG"
-    fi
-
-    info "Added ${INSTALL_DIR} to PATH in ${SHELL_CONFIG}"
-    NEEDS_SOURCE="$SHELL_CONFIG"
-}
-
 print_success() {
     printf "\n\033[1;32m✓ Nixis %s installed to %s\033[0m\n\n" "$VERSION" "$INSTALL_DIR"
+}
+
+handle_macos_gatekeeper() {
+    if [ "$OS" != "darwin" ]; then return; fi
+    # Only safe to do because we already verified SHA-256 integrity above.
+    if command -v xattr >/dev/null 2>&1; then
+        xattr -d com.apple.quarantine "${INSTALL_DIR}/nixis" 2>/dev/null || true
+        xattr -d com.apple.quarantine "${INSTALL_DIR}/nixis-hook" 2>/dev/null || true
+        xattr -d com.apple.quarantine "${INSTALL_DIR}/nixis-daemon" 2>/dev/null || true
+    fi
 }
 
 main() {
