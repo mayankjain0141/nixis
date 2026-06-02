@@ -177,6 +177,26 @@ func runInstall(cmd *cobra.Command, homeDir, nixisDir string) error {
 		return fmt.Errorf("patch settings.json: %w", err)
 	}
 
+	// Step 6b: Configure hermes integration (optional)
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "[6b] Configuring hermes-agent integration (optional)...")
+	if detectHermes(homeDir) != "" {
+		if err := patchHermesConfig(w, homeDir, hookPath); err != nil {
+			fmt.Fprintf(w, "  Warning: could not configure hermes: %v\n", err)
+		}
+	} else {
+		fmt.Fprintln(w, "  hermes-agent not detected, skipping")
+	}
+
+	// Step 6c: Configure opencode integration (optional)
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "[6c] Configuring opencode integration (optional)...")
+	if err := patchOpenCodeConfig(w, homeDir, nixisDir); err != nil {
+		fmt.Fprintf(w, "  Warning: could not configure opencode: %v\n", err)
+	} else {
+		fmt.Fprintln(w, "  opencode instructions configured")
+	}
+
 	// Step 7: Smoke test
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "[7/8] Running smoke test...")
@@ -249,6 +269,20 @@ func runUninstall(cmd *cobra.Command, homeDir, nixisDir string) error {
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "[2/4] Removing hook from settings.json...")
 	if err := unpatchSettingsJSON(w, homeDir); err != nil {
+		fmt.Fprintf(w, "  Warning: %v\n", err)
+	}
+
+	// Step 2b: Remove hermes integration
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "[2b] Removing hermes-agent integration...")
+	if err := unpatchHermesConfig(w, homeDir); err != nil {
+		fmt.Fprintf(w, "  Warning: %v\n", err)
+	}
+
+	// Step 2c: Remove opencode integration
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "[2c] Removing opencode integration...")
+	if err := unpatchOpenCodeConfig(w, homeDir); err != nil {
 		fmt.Fprintf(w, "  Warning: %v\n", err)
 	}
 
