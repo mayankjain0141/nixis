@@ -497,20 +497,6 @@ export default function App() {
     let stateCheckInterval: ReturnType<typeof setInterval> | null = null;
     let useMock = false;
 
-    function startMock() {
-      if (useMock) return;
-      useMock = true;
-      setConnectionState('MOCK');
-      if (import.meta.env.DEV) {
-        import('./mocks/demoScenario').then(({ runDemoScenario }) => {
-          const cancelDemo = runDemoScenario((json) => {
-            pipeline.ingest(json, { receivedAt: performance.now() });
-          });
-          mockGenRef.current = { stop: cancelDemo } as { stop: () => void };
-        });
-      }
-    }
-
     function handleMockEvent(e: Event) {
       const raw = (e as CustomEvent<string>).detail;
       pipeline.ingest(raw, { receivedAt: performance.now() });
@@ -539,12 +525,7 @@ export default function App() {
 
     const fallbackTimer = setTimeout(() => {
       if (wsManager.getState() !== 'CONNECTED' && !useMock) {
-        if (import.meta.env.PROD) {
-          setConnectionState('ERROR');
-        } else {
-          console.warn('[nixis] daemon not reachable after 5s — running offline demo');
-          startMock();
-        }
+        setConnectionState('ERROR');
       }
     }, 5000);
 
