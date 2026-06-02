@@ -11,6 +11,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"log"
 	"net"
 	"net/http"
@@ -123,6 +124,14 @@ func WithRouteRegistrar(r RouteRegistrar) Option {
 	}
 }
 
+// WithStaticFS serves the provided filesystem as the embedded UI at /.
+// Directory listing is disabled. API routes registered before this call
+// take precedence (stdlib mux uses longest-prefix matching).
+// Pass an embed.FS with a "dist/" subdirectory — it will be stripped.
+func WithStaticFS(fsys fs.FS) Option {
+	return func(s *StreamServer) { s.staticFS = fsys }
+}
+
 // client represents one connected dashboard WebSocket client.
 type client struct {
 	id     string
@@ -223,6 +232,8 @@ type StreamServer struct {
 
 	// routeRegistrars holds callbacks that register additional HTTP handlers.
 	routeRegistrars []RouteRegistrar
+
+	staticFS fs.FS // nil = no dashboard served; set via WithStaticFS
 }
 
 // NewStreamServer constructs a StreamServer.
@@ -266,6 +277,14 @@ func (s *StreamServer) Start(ctx context.Context, addr string) error {
 
 	for _, reg := range s.routeRegistrars {
 		reg(mux)
+	}
+
+	if s.staticFS != nil {
+		sub, err := fs.Sub(s.staticFS, "dist")
+		if err != nil {
+			return fmt.Errorf("stream: sub dist: %w", err)
+		}
+		mux.Handle("/", noDirListingHandler(http.FS(sub)))
 	}
 
 	s.httpSrv = &http.Server{
@@ -972,6 +991,41 @@ func buildCloudEvent(event nixis.StreamEvent, seq uint64) ([]byte, error) {
 	// Merkle fields are left empty; audit integration is pending.
 
 	return json.Marshal(evt)
+}
+
+// noDirListingFile wraps http.File to block directory listing via Readdir
+// while keeping Open("/") functional so http.FileServer can resolve index.html.
+type noDirListingFile struct{ http.File }
+
+func (f noDirListingFile) Readdir(_ int) ([]fs.FileInfo, error) {
+	return nil, os.ErrPermission
+}
+
+type noDirFS struct{ http.FileSystem }
+
+func (nd noDirFS) Open(name string) (http.File, error) {
+	f, err := nd.FileSystem.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	return noDirListingFile{f}, nil
+}
+
+func noDirListingHandler(fsys http.FileSystem) http.Handler {
+	return http.FileServer(noDirFS{fsys})
+}
+
+// StaticHandler returns the static file http.Handler built from staticFS, or nil
+// if no filesystem was configured via WithStaticFS. Used in tests.
+func (s *StreamServer) StaticHandler() http.Handler {
+	if s.staticFS == nil {
+		return nil
+	}
+	sub, err := fs.Sub(s.staticFS, "dist")
+	if err != nil {
+		return nil
+	}
+	return noDirListingHandler(http.FS(sub))
 }
 
 func min(a, b int) int {
