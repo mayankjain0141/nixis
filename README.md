@@ -3,6 +3,7 @@
 [![CI](https://github.com/mayankjain0141/nixis/actions/workflows/ci.yml/badge.svg)](https://github.com/mayankjain0141/nixis/actions/workflows/ci.yml)
 [![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go&logoColor=white)](https://go.dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Medium](https://img.shields.io/badge/Medium-Blog-black?logo=medium)](https://medium.com/@mayankjain0141/building-an-ai-agent-firewall-lessons-from-three-rewrites-4120fe8af402)
 
 **Real-time governance engine for AI coding agents.** Built for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Works with any agent that exposes tool calls.
 
