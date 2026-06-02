@@ -21,7 +21,7 @@ AI coding agents (Claude Code, Cursor, Copilot) have unrestricted tool access. T
 
 The only guardrail today is hoping the model says no. Nixis enforces externally — the model cannot bypass it because the hook intercepts at the tool-call boundary *before* execution.
 
-![Nixis Dashboard — governance DAG, event stream, IFC lattice](docs/assets/dashboard-demo-screenshot.png)
+![Nixis Dashboard — governance DAG, event stream, IFC lattice](docs/assets/dashboard-demo.gif)
 
 ## Install
 
@@ -113,7 +113,7 @@ reason=Secret detected in outbound request
 
 The governance dashboard is embedded in `nixis-daemon` — no separate server or configuration needed.
 
-![Nixis Dashboard — governance DAG, event stream, IFC lattice](docs/assets/dashboard-demo-screenshot.png)
+![Nixis Dashboard — governance DAG, event stream, IFC lattice](docs/assets/dashboard-demo.gif)
 
 Open **http://localhost:9090** in your browser after `make install` or `curl | sh`.
 
