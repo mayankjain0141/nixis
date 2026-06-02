@@ -82,6 +82,14 @@ That's it. Every tool call your agent makes is now evaluated against 44 security
 
 **Currently supported:** Claude Code (via PreToolUse hook). Cursor and other MCP-based agents work via the gRPC ext_authz or HTTP API integration.
 
+## Uninstall
+
+```bash
+nixis setup --uninstall -y
+```
+
+This stops the daemon service, removes the PreToolUse hook from `~/.claude/settings.json`, and deletes `~/.nixis/`. Run without `-y` to confirm each step interactively.
+
 ## Try It
 
 After setup, the daemon is running. Test policies instantly:
