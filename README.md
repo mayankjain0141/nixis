@@ -9,8 +9,6 @@
 
 Nixis intercepts every tool call your AI assistant makes — file writes, shell commands, network access — and evaluates it against security policies in under 200ms. If the action violates policy, Nixis blocks it before execution. No prompt engineering. No trust assumptions. External enforcement.
 
-> `curl install.sh | sh` → `source ~/.zshrc && nixis setup` — two commands, two minutes, 44 policies active.
-
 ## The Problem
 
 AI coding agents (Claude Code, Cursor, Copilot) have unrestricted tool access. They can:
@@ -27,45 +25,47 @@ The only guardrail today is hoping the model says no. Nixis enforces externally 
 
 ## Install
 
+### End Users
+
+One command. The installer downloads binaries, adds `~/.nixis` to PATH, and fully configures the daemon, policies, and IDE hook automatically.
+
 ```bash
-# One-liner (recommended)
 curl -sSfL https://raw.githubusercontent.com/mayankjain0141/nixis/main/install.sh | sh
+```
 
-# Then reload your shell and run setup (the installer will print the exact command):
-source ~/.zshrc && nixis setup
+After it completes, reload your shell with the printed `source` command and you're done. No manual `nixis setup` step required.
 
-# Via Go (CLI only — use curl installer for full daemon + hook)
+### From Source
+
+```bash
+# First-time setup (generates test keys, installs Node deps, builds, deploys):
+git clone https://github.com/mayankjain0141/nixis.git && cd nixis
+make dev-install
+
+# Subsequent rebuilds — idempotent, stops old daemon and restarts with new binary:
+make install
+```
+
+### CLI Only (no daemon)
+
+```bash
 go install github.com/mayankjain0141/nixis/cmd/nixis@latest
-
-# From source
-git clone https://github.com/mayankjain0141/nixis.git && cd nixis && make install
+nixis setup   # configure daemon + hook after installing
 ```
 
-> The installer adds `~/.nixis` to your PATH via your shell config (`.zshrc`, `.bashrc`, etc.) and prints the exact `source` command to run. You don't need to edit anything manually.
+Useful for CI pipelines and environments where you want just the CLI tools.
 
-## Setup
+### Requirements
 
-One command configures everything — daemon, policies, IDE hook:
+| Requirement | Version | When needed |
+|-------------|---------|-------------|
+| macOS or Linux | amd64 / arm64 | Always |
+| Go | 1.25+ | Source builds only |
+| Node.js | 26+ | Dashboard dev (`make dev`, `make dev-install`) |
 
-```
-$ nixis setup
+## Quickstart
 
-Nixis Setup
-===========
-[1/8] Detecting binaries...
-[2/8] Deploying to ~/.nixis/
-[3/8] Creating policy directories...
-[4/8] Installing 750+ builtin policies...
-[5/8] Installing daemon service (launchd/systemd, auto-start)...
-[6/8] Patching ~/.claude/settings.json (PreToolUse hook)...
-[7/8] Smoke test... ✓
-[8/8] Cleaning up...
-
-✓ Nixis setup complete!
-  Run 'nixis doctor' to verify installation health.
-```
-
-Verify everything works:
+After installation, verify everything works:
 
 ```
 $ nixis doctor
@@ -73,31 +73,17 @@ $ nixis doctor
 Nixis Health Check
 ==================
   Daemon:      ✓ running (PID 48291, uptime 12s)
-  Socket:      ✓ /tmp/nixis.sock (mode 0700)
+  Socket:      ✓ /tmp/nixis.sock (mode 0600)
   Hook:        ✓ ~/.nixis/nixis-hook (executable)
-  Settings:    ✓ PreToolUse hook configured
-  Policies:    ✓ engine ok, 763 policies loaded
+  Settings:    ✓ PreToolUse hook configured with literal path
+  Policies:    ✓ engine ok, 44 evaluations served
   Fail-open:   ✓ 0 events in last 24h
   Heartbeat:   ✓ daemon responsive
 
-Overall: HEALTHY
+Overall: HEALTHY (0 warnings)
 ```
 
-That's it. Every tool call your agent makes is now evaluated against 44 security policies.
-
-**Currently supported:** Claude Code (via PreToolUse hook). Cursor and other MCP-based agents work via the gRPC ext_authz or HTTP API integration.
-
-## Uninstall
-
-```bash
-nixis setup --uninstall -y
-```
-
-This stops the daemon service, removes the PreToolUse hook from `~/.claude/settings.json`, and deletes `~/.nixis/`. Run without `-y` to confirm each step interactively.
-
-## Try It
-
-After setup, the daemon is running. Test policies instantly:
+Test policies instantly:
 
 ```bash
 # Reverse shell — blocked
@@ -120,12 +106,14 @@ action=deny policy=nixis/no-secret-transmission layer=secret latency=3200ns
 reason=Secret detected in outbound request
 ```
 
-## CLI
+## CLI Reference
 
 | Command | What it does |
 |---------|-------------|
-| `nixis setup` | One-command install wizard — daemon, policies, IDE hook |
-| `nixis doctor` | Health check with pass/warn/fail verdicts |
+| `nixis setup` | Wizard: installs policies, starts daemon service, registers IDE hook |
+| `nixis uninstall` | Completely remove Nixis — daemon, service, hook, PATH entry, all files. `--force` bypasses launchctl/systemctl for recovery when stuck. |
+| `nixis reload` | Hot-reload policies from disk without restarting the daemon |
+| `nixis doctor` | Health check — daemon, socket, hook, policies, port conflicts |
 | `nixis simulate <tool>` | Test a tool call against live policies |
 | `nixis scan <mcp-server>` | Discover and classify MCP tools by risk level |
 | `nixis daemon status` | Show daemon health, uptime, evaluation count |
@@ -187,6 +175,37 @@ flowchart LR
 - **Policy Import** — Auto-convert from Kyverno, Sigma, Falco, OPA Gatekeeper, AgentWall, Checkov, and more. LLM-assisted CEL translation for complex rules.
 - **gRPC ext_authz** — Drop-in Envoy/Istio integration for service mesh deployments.
 
+## Managing Policies
+
+**Hot-reload after editing a policy (from source):**
+
+```bash
+make update-policies   # rsync ./policies/ → ~/.nixis/policies/ then hot-reloads the daemon
+```
+
+**Reload from the installed directory (no source needed):**
+
+```bash
+nixis reload
+```
+
+**Rebuild binaries and policies together after code changes:**
+
+```bash
+make install   # build → stop daemon → deploy binaries → restart daemon
+```
+
+**Policy directory layout in `~/.nixis/policies/`:**
+
+```
+policies/
+  builtin/     # 44 policies enabled by default — updated by make install
+  imported/    # 700+ converted from Kyverno/Sigma/Falco/OPA — opt-in
+  custom/      # your own policies — never overwritten by make install
+```
+
+Add your own policies to `custom/` and run `nixis reload`. They take effect immediately.
+
 ## Policy Example
 
 ```yaml
@@ -215,7 +234,7 @@ spec:
   defaultAction: ALLOW
 ```
 
-**44 built-in policies** ship enabled by default, covering credential exfiltration, destructive commands, reverse shells, privilege escalation, supply chain attacks, and more. An additional **700+ community policies** (converted from Kyverno, Sigma, OPA Gatekeeper, AgentWall) are available in `policies/imported/` for opt-in use.
+**44 builtin policies** ship enabled by default, covering credential exfiltration, destructive commands, reverse shells, privilege escalation, and supply chain attacks. An additional **700+ community policies** (converted from Kyverno, Sigma, OPA Gatekeeper, AgentWall) are available in `policies/imported/` for opt-in use.
 
 ## Why Not...
 
@@ -246,9 +265,81 @@ Nixis ships with a 784-case adversarial benchmark (`eval/`) covering 7 attack ca
 
 **Overall precision: 92%.** Train/test gap is small (F1: 84% vs 80%) — no overfitting. See [eval/adversarial/EVAL_BENCH.md](eval/adversarial/EVAL_BENCH.md) for methodology and per-case results.
 
+## Troubleshooting
+
+**Daemon won't start — port already in use**
+
+```bash
+lsof -i :9090                                  # find what's using the port
+NIXIS_DASHBOARD_ADDR=127.0.0.1:9092 nixis setup  # use a different port
+```
+
+**`nixis doctor` or `nixis uninstall` hangs indefinitely**
+
+This happens when macOS launchd or Linux systemd has the service in a corrupt state. Try `--force` first:
+
+```bash
+nixis uninstall --force --yes
+```
+
+If even that hangs (you'll see the process in uninterruptible sleep), nuclear option in a new terminal:
+
+```bash
+pgrep -f nixis | xargs kill -9 2>/dev/null
+
+# macOS:
+rm -f ~/Library/LaunchAgents/com.nixis.daemon.plist
+
+# Linux:
+rm -f ~/.config/systemd/user/nixis-daemon.service
+systemctl --user daemon-reload
+
+rm -rf ~/.nixis && rm -f /tmp/nixis.sock
+# Remove the '# Nixis' block from your shell rc file manually, then:
+curl -sSfL https://raw.githubusercontent.com/mayankjain0141/nixis/main/install.sh | sh
+```
+
+**"text file busy" on upgrade (pre-v0.x installs only)**
+
+Fixed in the current release — the installer uses atomic rename. If you're on an older binary, uninstall first:
+
+```bash
+nixis uninstall --force --yes
+curl -sSfL https://raw.githubusercontent.com/mayankjain0141/nixis/main/install.sh | sh
+```
+
+**`make dev-install` fails on first clone**
+
+Check toolchain versions and run the one-time setup:
+
+```bash
+go version      # need 1.25+
+node --version  # need v26+ (only required for make dev-install / make dev)
+make test-keys  # generates Ed25519 test key pair (run once after clone)
+```
+
 ## Contributing
 
-See [CONTRIBUTING.md](.github/CONTRIBUTING.md). Prerequisites: Go 1.25+, Node 20+.
+See [CONTRIBUTING.md](.github/CONTRIBUTING.md).
+
+**Prerequisites:** Go 1.25+, Node 26+
+
+```bash
+git clone https://github.com/mayankjain0141/nixis.git && cd nixis
+
+# One-time setup: generate test keys + install pre-push CI hook
+make test-keys
+make install-hooks   # runs 'make ci' before every git push
+
+# Development workflow
+make dev-install     # first-time full setup (build + daemon + dashboard)
+make install         # rebuild + redeploy after code changes
+make ci              # run the same checks as GitHub CI (build + test + lint)
+make test            # Go tests only (faster iteration)
+make lint            # golangci-lint only
+make dev             # start daemon + dashboard dev server with hot-reload
+make update-policies # sync policy changes to installed dir + hot-reload
+```
 
 ## Attributions
 
