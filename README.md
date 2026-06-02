@@ -3,6 +3,7 @@
 [![CI](https://github.com/mayankjain0141/nixis/actions/workflows/ci.yml/badge.svg)](https://github.com/mayankjain0141/nixis/actions/workflows/ci.yml)
 [![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go&logoColor=white)](https://go.dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Medium](https://img.shields.io/badge/Medium-Blog-black?logo=medium)](https://medium.com/@mayankjain0141/building-an-ai-agent-firewall-lessons-from-three-rewrites-4120fe8af402)
 
 **Real-time governance engine for AI coding agents.** Built for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Works with any agent that exposes tool calls.
 
@@ -235,6 +236,19 @@ Nixis ships with a 784-case adversarial benchmark (`eval/`) covering 7 attack ca
 ## Contributing
 
 See [CONTRIBUTING.md](.github/CONTRIBUTING.md). Prerequisites: Go 1.25+, Node 20+.
+
+## Attributions
+
+The policies in `policies/imported/` are converted from third-party rule sets. Nixis does not claim authorship of the underlying detection logic — credit belongs to the original projects.
+
+| Source | License | What was imported |
+|--------|---------|-------------------|
+| [falcosecurity/rules](https://github.com/falcosecurity/rules) | Apache-2.0 | Runtime security rules (container escapes, reverse shells, credential access, privilege escalation) |
+| [kyverno/policies](https://github.com/kyverno/policies) | Apache-2.0 | Kubernetes admission policies (converted to CEL via `nixis policy import --llm-assist`) |
+| [open-policy-agent/gatekeeper-library](https://github.com/open-policy-agent/gatekeeper-library) | Apache-2.0 | OPA Gatekeeper constraint templates (converted to CEL) |
+| [agentwall/agentwall](https://github.com/agentwall/agentwall) | Apache-2.0 | AI agent tool-call constraints — Aravind, A. (2026). [AgentWall: A Runtime Safety Layer for Local AI Agents](https://arxiv.org/abs/2605.16265). arXiv:2605.16265 |
+
+The `policies/builtin/` rules and the 385-entry tool catalog (`pkg/adapters/catalog.json`) are original work.
 
 ## License
 
