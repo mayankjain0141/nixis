@@ -1,4 +1,4 @@
-.PHONY: build generate test-keys dev lint test install uninstall release-local clean dev-install update-policies preflight preflight-node
+.PHONY: build generate test-keys dev lint test install uninstall release-local clean dev-install update-policies preflight preflight-node ci install-hooks
 
 GO_MIN_VERSION := 1.25
 NODE_MIN_VERSION := 26
@@ -104,3 +104,23 @@ uninstall:
 ## release-local: build release artifacts locally (for testing)
 release-local:
 	goreleaser release --snapshot --clean
+
+## ci: run the same checks as GitHub CI (backend + dashboard)
+ci: preflight preflight-node
+	@echo "==> Backend: build"
+	@go build ./...
+	@echo "==> Backend: test"
+	@go test -race -timeout 120s ./...
+	@echo "==> Backend: lint"
+	@golangci-lint run ./...
+	@echo "==> Dashboard: type-check + test + build"
+	@cd dashboard && npm ci && npm run type-check && npm run test && npm run build
+	@echo ""
+	@echo "✓ All CI checks passed."
+
+## install-hooks: install git pre-push hook to run CI before every push
+install-hooks:
+	@echo "==> Installing git pre-push hook..."
+	@cp scripts/pre-push .git/hooks/pre-push
+	@chmod +x .git/hooks/pre-push
+	@echo "  ✓ Pre-push hook installed. 'make ci' will run before every push."

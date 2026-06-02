@@ -1,0 +1,11 @@
+#!/bin/sh
+# Git pre-push hook — runs the same checks as GitHub CI before every push.
+# Install with: make install-hooks
+
+set -e
+
+echo "==> Pre-push: running CI checks (make ci)..."
+echo "    (skip with: git push --no-verify)"
+echo ""
+
+make ci
