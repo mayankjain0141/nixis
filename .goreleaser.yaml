@@ -58,8 +58,8 @@ archives:
     format: tar.gz
     name_template: "nixis_{{ .Os }}_{{ .Arch }}"
     files:
-      - src: policies/builtin/**
-        dst: policies/builtin
+      - src: policies/**
+        dst: policies
         strip_parent: true
 
 checksum:
