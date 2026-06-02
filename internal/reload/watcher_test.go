@@ -210,3 +210,28 @@ func TestReload_MetricsIncrement(t *testing.T) {
 		t.Errorf("ReloadSuccessTotal: expected delta 1; got %d", got)
 	}
 }
+
+func TestReload_SubdirectoryFileChange(t *testing.T) {
+	dir := t.TempDir()
+	subdir := filepath.Join(dir, "builtin")
+	if err := os.MkdirAll(subdir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+
+	mock := &mockReloader{}
+	cancel, done := startWatcher(t, dir, mock)
+	time.Sleep(50 * time.Millisecond)
+
+	// Write a YAML file in the subdirectory — should trigger reload.
+	if err := os.WriteFile(filepath.Join(subdir, "deny-rm.yaml"), []byte("action: deny"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	time.Sleep(300 * time.Millisecond)
+
+	cancel()
+	<-done
+
+	if count := mock.reloadCount(); count != 1 {
+		t.Errorf("expected 1 reload from subdirectory change; got %d", count)
+	}
+}

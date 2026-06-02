@@ -16,11 +16,14 @@ package main
 import (
 	"context"
 	"crypto/ed25519"
+	"errors"
 	"flag"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"github.com/mayankjain0141/nixis/internal/audit"
@@ -159,11 +162,12 @@ func main() {
 	}
 
 	// Start reload watcher after initial policy load (spec: started AFTER initial compile).
-	reloadWatcher, rwErr := reload.NewReloadWatcher(cfg.PolicyDir, &policyReloader{
+	pr := &policyReloader{
 		policyDir: cfg.PolicyDir,
 		engine:    engine,
 		ctx:       ctx,
-	})
+	}
+	reloadWatcher, rwErr := reload.NewReloadWatcher(cfg.PolicyDir, pr)
 	if rwErr != nil {
 		fmt.Fprintf(os.Stderr, "nixis-daemon: failed to create reload watcher: %v\n", rwErr)
 	} else {
@@ -190,7 +194,12 @@ func main() {
 			addr = "127.0.0.1:9090"
 		}
 		if err := streamSrv.Start(streamCtx, addr); err != nil && streamCtx.Err() == nil {
-			fmt.Fprintf(os.Stderr, "nixis-daemon: stream server error: %v\n", err)
+			if isAddrInUse(err) {
+				_, port, _ := net.SplitHostPort(addr)
+				fmt.Fprintf(os.Stderr, "FATAL: Cannot bind %s — port already in use.\n  Check: lsof -i :%s\n  Fix: set NIXIS_DASHBOARD_ADDR=127.0.0.1:<other-port>\n", addr, port)
+			} else {
+				fmt.Fprintf(os.Stderr, "nixis-daemon: stream server error: %v\n", err)
+			}
 		}
 	}()
 	// Wire audit checkpoint → stream event so the dashboard Forensic Review shows live data.
@@ -250,6 +259,7 @@ func main() {
 
 	d := daemon.New(cfg, engine, auditWriter, streamSrv, sessions)
 	d.SetDelegationEngine(delegEngine)
+	d.SetReloader(pr)
 	d.SetAuditContext(cancel, auditDone)
 
 	if err := d.Run(ctx); err != nil {
@@ -289,4 +299,16 @@ func expandHome(path string) string {
 		return path
 	}
 	return home + path[1:]
+}
+
+// isAddrInUse reports whether the error is caused by EADDRINUSE.
+func isAddrInUse(err error) bool {
+	var opErr *net.OpError
+	if errors.As(err, &opErr) {
+		var sysErr *os.SyscallError
+		if errors.As(opErr.Err, &sysErr) {
+			return errors.Is(sysErr.Err, syscall.EADDRINUSE)
+		}
+	}
+	return false
 }

@@ -27,6 +27,8 @@ func init() {
 	rootCmd.AddCommand(setupCmd)
 	rootCmd.AddCommand(doctorCmd)
 	rootCmd.AddCommand(daemonCmd)
+	rootCmd.AddCommand(reloadCmd)
+	rootCmd.AddCommand(uninstallCmd)
 }
 
 func main() {
