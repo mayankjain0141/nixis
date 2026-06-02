@@ -1,0 +1,9 @@
+name: nixis
+version: 1.0.0
+description: Governance daemon for tool-call classification and policy enforcement
+kind: standalone
+provides_hooks:
+  - pre_tool_call
+  - post_tool_call
+  - on_session_start
+  - on_session_end
