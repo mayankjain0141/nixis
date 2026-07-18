@@ -1,4 +1,4 @@
-# Nixis - AI Agent Firewall
+# Nixis
 
 [![CI](https://github.com/mayankjain0141/nixis/actions/workflows/ci.yml/badge.svg)](https://github.com/mayankjain0141/nixis/actions/workflows/ci.yml)
 [![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go&logoColor=white)](https://go.dev)
